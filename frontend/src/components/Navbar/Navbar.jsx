@@ -92,6 +92,7 @@ const Navbar = () => {
                     <li><NavLink className="access" to="/nosotros">Nosotros</NavLink></li>
                     <li><NavLink className="access" to="/reservas">Reservas</NavLink></li>
                     <li><NavLink className="access" to="/comentarios">Comentarios</NavLink></li>
+                    <li><NavLink className="access" to="/login">Ingresar</NavLink></li>
 
                     {/* Carrito integrado */}
                     <li className="menu__item-carrito">
