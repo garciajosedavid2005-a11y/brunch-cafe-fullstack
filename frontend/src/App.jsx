@@ -9,7 +9,8 @@ import Domicilios from "./pages/Domicilios/Domicilios";
 import Comentarios from "./pages/Comentarios/Comentarios";
 import Login from "./pages/Login/Login";
 import Perfil from "./pages/Perfil/Perfil";
-import { CarritoProvider } from './context/CarritoContext'
+import Registro from "./pages/Registro/Registro";
+import { CarritoProvider } from './context/CarritoContext';
 
 import "./styles/index.css";
 import "./styles/variables.css";
@@ -29,6 +30,7 @@ function App() {
             <Route path="/domicilios"  element={<Domicilios />}  />
             <Route path="/login"       element={<Login />}       />
             <Route path="/perfil"      element={<Perfil />}      />
+            <Route path="/registro"    element={<Registro />}    />
           </Routes>
         </div>
         <Footer />
