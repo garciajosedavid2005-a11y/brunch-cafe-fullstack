@@ -6,6 +6,7 @@ import { config } from './config.js';
 import { connectDB } from './db.js';
 import authRoutes from './routes/auth.routes.js';
 import usuarioRoutes from './routes/usuario.routes.js';
+import reservaRoutes from './routes/reserva.routes.js';
 // Cuando sigamos creando entidades, se importan y se montan aquí, por ejemplo:
 // import productoRoutes from './routes/producto.routes.js';
 
@@ -33,6 +34,7 @@ app.get('/api/health', (req, res) => {
 // Rutas reales:
 app.use('/api/auth', authRoutes);
 app.use('/api/usuarios', usuarioRoutes);
+app.use('/api/reservas', reservaRoutes);
 // app.use('/api/productos', productoRoutes);
 // app.use('/api/pedidos', pedidoRoutes);
 // etc.
