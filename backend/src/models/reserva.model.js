@@ -23,6 +23,11 @@ const reservaSchema = new mongoose.Schema({
     hora: {
         type: String,
         required: true
+    },
+    observaciones: {
+        type: String,
+        trim: true,
+        maxlength: 200
     }
 }, {
     timestamps: true

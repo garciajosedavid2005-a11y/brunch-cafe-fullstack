@@ -22,7 +22,7 @@ const Registro = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setCargando(true);
     setMensaje(null);
@@ -43,16 +43,49 @@ const Registro = () => {
       return;
     }
 
-    setTimeout(() => {
+    try {
+      const res = await fetch("http://localhost:4000/api/auth/registro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          nombre: formData.nombre.trim(),
+          apellido: formData.apellido.trim(),
+          correo: formData.email.trim(),
+          contraseña: formData.password,
+          telefono: formData.telefono.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setCargando(false);
+        setMensaje({
+          tipo: "error",
+          // Zod responde un array de mensajes; los demás errores vienen como { message }
+          texto: Array.isArray(data)
+            ? data[0]
+            : data.message || "Error al crear la cuenta",
+        });
+        return;
+      }
+
       setCargando(false);
       setMensaje({
         tipo: "exito",
-        texto: "¡Cuenta creada exitosamente! Bienvenido a Brunch Café.",
+        texto: "¡Cuenta creada exitosamente! Ahora inicia sesión.",
       });
       setTimeout(() => {
         navigate("/login");
       }, 1400);
-    }, 1000);
+    } catch (err) {
+      setCargando(false);
+      setMensaje({
+        tipo: "error",
+        texto: "No se pudo conectar con el servidor",
+      });
+    }
   };
 
   return (
@@ -207,7 +240,7 @@ const Registro = () => {
                   name="password"
                   type={mostrarPassword ? "text" : "password"}
                   className="auth-input"
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="Mínimo 6 caracteres"
                   autoComplete="new-password"
                   required
                   value={formData.password}

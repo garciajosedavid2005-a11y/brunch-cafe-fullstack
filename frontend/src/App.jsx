@@ -11,31 +11,34 @@ import Login from "./pages/Login/Login";
 import Perfil from "./pages/Perfil/Perfil";
 import Registro from "./pages/Registro/Registro";
 import { CarritoProvider } from './context/CarritoContext';
+import { AuthProvider } from './context/AuthContext';
 
 import "./styles/index.css";
 import "./styles/variables.css";
 
 function App() {
   return (
-    <CarritoProvider>
-      <BrowserRouter>
-        <Navbar />
-        <div className="main-content">
-          <Routes>
-            <Route path="/"            element={<Inicio />}     />
-            <Route path="/menu"        element={<Menu />}        />
-            <Route path="/nosotros"    element={<Nosotros />}    />
-            <Route path="/reservas"    element={<Reservas />}    />
-            <Route path="/comentarios" element={<Comentarios />} />
-            <Route path="/domicilios"  element={<Domicilios />}  />
-            <Route path="/login"       element={<Login />}       />
-            <Route path="/perfil"      element={<Perfil />}      />
-            <Route path="/registro"    element={<Registro />}    />
-          </Routes>
-        </div>
-        <Footer />
-      </BrowserRouter>
-    </CarritoProvider>
+    <AuthProvider>
+      <CarritoProvider>
+        <BrowserRouter>
+          <Navbar />
+          <div className="main-content">
+            <Routes>
+              <Route path="/"            element={<Inicio />}     />
+              <Route path="/menu"        element={<Menu />}        />
+              <Route path="/nosotros"    element={<Nosotros />}    />
+              <Route path="/reservas"    element={<Reservas />}    />
+              <Route path="/comentarios" element={<Comentarios />} />
+              <Route path="/domicilios"  element={<Domicilios />}  />
+              <Route path="/login"       element={<Login />}       />
+              <Route path="/perfil"      element={<Perfil />}      />
+              <Route path="/registro"    element={<Registro />}    />
+            </Routes>
+          </div>
+          <Footer />
+        </BrowserRouter>
+      </CarritoProvider>
+    </AuthProvider>
   );
 }
 

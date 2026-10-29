@@ -24,7 +24,7 @@ const useSelectPersonas = (label, opciones, mostrarLabel = true) => {
         </>
     )
 
-    return [state, SelectPersonas]
+    return [state, SelectPersonas, setState]
 }
 
 export default useSelectPersonas

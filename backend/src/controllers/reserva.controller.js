@@ -5,7 +5,7 @@ import Estado from '../models/estado.model.js'
 
 export const crearReserva = async (req, res) => {
     try {
-        const { cantidadPersonas, fecha, hora } = req.body
+        const { cantidadPersonas, fecha, hora, observaciones } = req.body
 
         const estadoPendiente = await Estado.findOne({ nombre: 'Pendiente', tipo: 'reserva' })
         if (!estadoPendiente) {
@@ -17,7 +17,8 @@ export const crearReserva = async (req, res) => {
             estado: estadoPendiente._id,
             cantidadPersonas,
             fecha,
-            hora
+            hora,
+            observaciones
         })
 
         const reservaGuardada = await nuevaReserva.save()

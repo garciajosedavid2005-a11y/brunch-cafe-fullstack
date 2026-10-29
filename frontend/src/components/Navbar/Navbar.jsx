@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useCarrito } from "../../context/CarritoContext";
+import { useAuth } from "../../context/AuthContext";
 import compras from "../../assets/carrito-de-compras.png";
 import logoOscuro from "../../assets/logoOscuro.png";
 import logoClaro from "../../assets/logoClaro.png";
@@ -18,11 +19,25 @@ const Navbar = () => {
     const [oculta, setOculta] = useState(false);
     const [animando, setAnimando] = useState(false);
     const [menuAbierto, setMenuAbierto] = useState(false);
+    const [cerrandoSesion, setCerrandoSesion] = useState(false);
     
     const esTransparente = rutasTransparentes.includes(pathname);
     const { productos } = useCarrito();
+    const { usuario, cargando, logout } = useAuth();
 
     const totalProductos = productos.reduce((acc, p) => acc + p.cantidad, 0);
+
+    const manejarLogout = async () => {
+        setCerrandoSesion(true);
+        try {
+            await logout();
+            setMenuAbierto(false);
+        } catch (error) {
+            alert(error.message || "No se pudo cerrar la sesión. Intenta de nuevo.");
+        } finally {
+            setCerrandoSesion(false);
+        }
+    };
 
     // Cerrar el menú automáticamente al cambiar de ruta
     useEffect(() => {
@@ -92,7 +107,23 @@ const Navbar = () => {
                     <li><NavLink className="access" to="/nosotros">Nosotros</NavLink></li>
                     <li><NavLink className="access" to="/reservas">Reservas</NavLink></li>
                     <li><NavLink className="access" to="/comentarios">Comentarios</NavLink></li>
-                    <li><NavLink className="access" to="/login">Ingresar</NavLink></li>
+                    {!cargando && (usuario ? (
+                        <>
+                            <li><NavLink className="access" to="/perfil">Mi perfil</NavLink></li>
+                            <li>
+                                <button
+                                    type="button"
+                                    className="access navbar__logout"
+                                    onClick={manejarLogout}
+                                    disabled={cerrandoSesion}
+                                >
+                                    {cerrandoSesion ? "Cerrando sesión..." : "Cerrar sesión"}
+                                </button>
+                            </li>
+                        </>
+                    ) : (
+                        <li><NavLink className="access" to="/login">Ingresar</NavLink></li>
+                    ))}
 
                     {/* Carrito integrado */}
                     <li className="menu__item-carrito">

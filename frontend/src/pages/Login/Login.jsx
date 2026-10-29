@@ -3,9 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import AuthBanner from "../Auth/AuthBanner";
 import "../Auth/Auth.css";
+import { useAuth } from "../../context/AuthContext";   
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();  
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -42,7 +44,7 @@ const Login = () => {
         setCargando(false);
         return;
       }
-
+      login(data);  
       navigate('/perfil');
     } catch (err) {
       setMensaje({

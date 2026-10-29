@@ -11,5 +11,8 @@ export const crearReservaSchema = z.object({
     }),
     hora: z.string({
         required_error: "La hora es requerida"
-    })
+    }),
+    observaciones: z.string().max(200, {
+        message: "Las observaciones no pueden superar 200 caracteres"
+    }).optional()
 })

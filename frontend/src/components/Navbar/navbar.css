@@ -126,6 +126,18 @@
   border-bottom: 2px solid transparent;
 }
 
+.navbar__logout {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.navbar__logout:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .access:hover,
 .menu .active {
   color: var(--color-suave);
