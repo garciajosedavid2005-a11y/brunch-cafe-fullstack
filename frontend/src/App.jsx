@@ -12,6 +12,7 @@ import Login from "./pages/Login/Login";
 import Perfil from "./pages/Perfil/Perfil";
 import Registro from "./pages/Registro/Registro";
 import CustomerDashboard from "./pages/CustomerDashboard/CustomerDashboard";
+import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
 import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./context/useAuth";
 import { CarritoProvider } from "./context/CarritoContext";
@@ -22,13 +23,38 @@ import "./styles/variables.css";
 function CustomerRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <main className="customer-dashboard-loading">Cargando tu cuenta...</main>;
-  return user ? children : <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === "admin") return <Navigate to="/admin" replace />;
+  return children;
+}
+
+function AdminRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <main className="customer-dashboard-loading">Verificando permisos...</main>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "admin") return <Navigate to="/cuenta" replace />;
+  return children;
 }
 
 function GuestRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;
-  return user ? <Navigate to="/cuenta" replace /> : children;
+  if (!user) return children;
+  return user.role === "admin" ? <Navigate to="/admin" replace /> : <Navigate to="/cuenta" replace />;
+}
+
+function HomeRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user?.role === "admin") return <Navigate to="/admin" replace />;
+  return <Inicio />;
+}
+
+function DomiciliosRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user?.role === "admin") return <Navigate to="/admin" replace />;
+  return <Domicilios />;
 }
 
 function ReservationsRoute() {
@@ -45,6 +71,7 @@ function ReservationsRoute() {
   }, [loading, user, navigate, location.pathname]);
 
   if (loading) return <main className="customer-dashboard-loading">Verificando tu cuenta...</main>;
+  if (user?.role === "admin") return <Navigate to="/admin" replace />;
   if (user) return <Reservas />;
 
   return (
@@ -60,25 +87,30 @@ function ReservationsRoute() {
 }
 
 function AppRoutes() {
+  const { user } = useAuth();
+  const esAdmin = user?.role === "admin";
+
   return (
     <>
       <Navbar />
       <div className="main-content">
         <Routes>
-          <Route path="/" element={<Inicio />} />
+          <Route path="/" element={<HomeRoute />} />
           <Route path="/menu" element={<Menu />} />
           <Route path="/nosotros" element={<Nosotros />} />
           <Route path="/reservas" element={<ReservationsRoute />} />
           <Route path="/comentarios" element={<Comentarios />} />
-          <Route path="/domicilios" element={<Domicilios />} />
+          <Route path="/domicilios" element={<DomiciliosRoute />} />
           <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
           <Route path="/registro" element={<GuestRoute><Registro /></GuestRoute>} />
           <Route path="/perfil" element={<CustomerRoute><Perfil /></CustomerRoute>} />
           <Route path="/cuenta" element={<CustomerRoute><CustomerDashboard /></CustomerRoute>} />
           <Route path="/dashboard/cliente" element={<CustomerRoute><CustomerDashboard /></CustomerRoute>} />
+          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/dashboard/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         </Routes>
       </div>
-      <Footer />
+      {!esAdmin && <Footer />}
     </>
   );
 }

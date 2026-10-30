@@ -27,6 +27,7 @@ const NavbarContent = ({ pathname }) => {
     const esTransparente = rutasTransparentes.includes(pathname);
     const { productos } = useCarrito();
     const { user, loading, logout } = useAuth();
+    const esAdmin = user?.role === "admin";
 
     const totalProductos = productos.reduce((acc, p) => acc + p.cantidad, 0);
 
@@ -76,64 +77,88 @@ const NavbarContent = ({ pathname }) => {
             {/* 2. LOGO (Se renderiza SOLO si el menú está cerrado) */}
             {!menuAbierto && (
                 <div className="top-bar-left">
-                    <NavLink to="/" className="navbar__logo-enlace">
-                        <div className="navbar__logo-wrapper">
-                            <img
-                                src={esTransparente ? logoClaro : logoOscuro}
-                                alt="Brunch Café"
-                                className="navbar__logo"
-                            />
+                    {esAdmin ? (
+                        <div className="navbar__logo-enlace" style={{ cursor: "default" }}>
+                            <div className="navbar__logo-wrapper">
+                                <img
+                                    src={esTransparente ? logoClaro : logoOscuro}
+                                    alt="Brunch Café"
+                                    className="navbar__logo"
+                                />
+                            </div>
                         </div>
-                    </NavLink>
+                    ) : (
+                        <NavLink to="/" className="navbar__logo-enlace">
+                            <div className="navbar__logo-wrapper">
+                                <img
+                                    src={esTransparente ? logoClaro : logoOscuro}
+                                    alt="Brunch Café"
+                                    className="navbar__logo"
+                                />
+                            </div>
+                        </NavLink>
+                    )}
                 </div>
             )}
 
             {/* 3. MENÚ DESPLEGABLE VERTICAL */}
             <nav className={`top-bar-right ${menuAbierto ? "top-bar-right--abierto" : ""}`}>
                 <ul className="menu">
-                    <li><NavLink className="access" to="/">Inicio</NavLink></li>
-                    <li><NavLink className="access" to="/menu">Menú</NavLink></li>
-                    <li><NavLink className="access" to="/nosotros">Nosotros</NavLink></li>
-                    <li><NavLink className="access" to="/reservas">Reservas</NavLink></li>
-                    <li><NavLink className="access" to="/comentarios">Comentarios</NavLink></li>
-                    {!loading && (user ? (
+                    {esAdmin ? (
+                        /* Si es Admin, solo ve Panel Admin */
+                        <li>
+                            <NavLink className="access" to="/admin" onClick={() => setMenuAbierto(false)}>
+                                Panel Admin
+                            </NavLink>
+                        </li>
+                    ) : (
+                        /* Menú normal para clientes y visitantes */
                         <>
-                            <li><NavLink className="access" to="/cuenta">Mi cuenta</NavLink></li>
-                            <li>
-                                <button
-                                    type="button"
-                                    className="access navbar__logout"
-                                    onClick={manejarLogout}
-                                    disabled={cerrandoSesion}
-                                >
-                                    {cerrandoSesion ? "Cerrando sesión..." : "Cerrar sesión"}
-                                </button>
+                            <li><NavLink className="access" to="/">Inicio</NavLink></li>
+                            <li><NavLink className="access" to="/menu">Menú</NavLink></li>
+                            <li><NavLink className="access" to="/nosotros">Nosotros</NavLink></li>
+                            <li><NavLink className="access" to="/reservas">Reservas</NavLink></li>
+                            <li><NavLink className="access" to="/comentarios">Comentarios</NavLink></li>
+                            {!loading && (user ? (
+                                <>
+                                    <li><NavLink className="access" to="/cuenta">Mi cuenta</NavLink></li>
+                                    <li>
+                                        <button
+                                            type="button"
+                                            className="access navbar__logout"
+                                            onClick={manejarLogout}
+                                            disabled={cerrandoSesion}
+                                        >
+                                            {cerrandoSesion ? "Cerrando sesión..." : "Cerrar sesión"}
+                                        </button>
+                                    </li>
+                                </>
+                            ) : (
+                                <li><NavLink className="access" to="/login">Ingresar</NavLink></li>
+                            ))}
+
+                            {/* Carrito integrado */}
+                            <li className="menu__item-carrito">
+                                <NavLink className="access" to="/domicilios">
+                                    <div
+                                        key={totalProductos}
+                                        className={`navbar__carrito ${totalProductos > 0 ? "navbar__carrito--animando" : ""}`}
+                                    >
+                                        <img
+                                            src={compras}
+                                            alt="Carrito de compras"
+                                            className="icon-carrito"
+                                        />
+                                        {totalProductos > 0 && (
+                                            <span className="navbar__carrito-badge">
+                                                {totalProductos}
+                                            </span>
+                                        )}
+                                    </div>
+                                </NavLink>
                             </li>
                         </>
-                    ) : (
-                        <li><NavLink className="access" to="/login">Ingresar</NavLink></li>
-                    ))}
-
-                    {/* Carrito integrado */}
-                    <li className="menu__item-carrito">
-                        <NavLink className="access" to="/domicilios">
-                            <div
-                                key={totalProductos}
-                                className={`navbar__carrito ${totalProductos > 0 ? "navbar__carrito--animando" : ""}`}
-                            >
-                                <img
-                                    src={compras}
-                                    alt="Carrito de compras"
-                                    className="icon-carrito"
-                                />
-                                {totalProductos > 0 && (
-                                    <span className="navbar__carrito-badge">
-                                        {totalProductos}
-                                    </span>
-                                )}
-                            </div>
-                        </NavLink>
-                    </li>
+                    )}
                 </ul>
             </nav>
 
