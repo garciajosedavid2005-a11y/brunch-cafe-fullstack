@@ -15,9 +15,12 @@ const rutasTransparentes = [
 ];
 
 const Navbar = () => {
-    const { pathname } = useLocation();
+    const location = useLocation();
+    return <NavbarContent key={location.key} pathname={location.pathname} />;
+};
+
+const NavbarContent = ({ pathname }) => {
     const [oculta, setOculta] = useState(false);
-    const [animando, setAnimando] = useState(false);
     const [menuAbierto, setMenuAbierto] = useState(false);
     const [cerrandoSesion, setCerrandoSesion] = useState(false);
     
@@ -38,20 +41,6 @@ const Navbar = () => {
             setCerrandoSesion(false);
         }
     };
-
-    // Cerrar el menú automáticamente al cambiar de ruta
-    useEffect(() => {
-        setMenuAbierto(false);
-    }, [pathname]);
-
-    // Animación al agregar producto
-    useEffect(() => {
-        if (totalProductos > 0) {
-            setAnimando(true);
-            const timer = setTimeout(() => setAnimando(false), 600);
-            return () => clearTimeout(timer);
-        }
-    }, [totalProductos]);
 
     useEffect(() => {
         if (esTransparente || menuAbierto) return;
@@ -128,7 +117,10 @@ const Navbar = () => {
                     {/* Carrito integrado */}
                     <li className="menu__item-carrito">
                         <NavLink className="access" to="/domicilios">
-                            <div className={`navbar__carrito ${animando ? 'navbar__carrito--animando' : ''}`}>
+                            <div
+                                key={totalProductos}
+                                className={`navbar__carrito ${totalProductos > 0 ? "navbar__carrito--animando" : ""}`}
+                            >
                                 <img
                                     src={compras}
                                     alt="Carrito de compras"
