@@ -275,7 +275,7 @@
   display: grid;
   gap: 0.5rem;
   margin: 1rem 0;
-  color: #594742;
+  color: #38241f;
   font-size: 0.9rem;
 }
 
@@ -284,6 +284,15 @@
   display: flex;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.dashboard-order-items > div > span:first-child {
+  color: #38241f;
+}
+
+.dashboard-order-items > div > span:last-child {
+  color: #4a2119;
+  font-weight: 600;
 }
 
 .dashboard-order-delivery {
@@ -308,6 +317,16 @@
 .dashboard-card__total {
   padding-top: 0.75rem;
   border-top: 1px solid #eee3de;
+  color: #493733;
+}
+
+.dashboard-card__total > span {
+  color: #493733;
+  font-weight: 600;
+}
+
+.dashboard-card__total strong {
+  color: #2c0703;
 }
 
 .dashboard-subheading {
