@@ -2,14 +2,19 @@ import "./CarritoFormulario.css"
 import {FaUser,FaMapMarkerAlt,FaClock,FaHome,FaStickyNote} from 'react-icons/fa'
 import { useCarrito } from '../../context/CarritoContext'
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/useAuth'
+import { apiRequest } from '../../services/api'
 import ResumenPedido from '../ResumenPedido/ResumenPedido'
 
 const CarritoFormulario = () => {
 
     const { calcularTotal, limpiarCarrito, productos } = useCarrito()
+    const { user } = useAuth()
+    const navigate = useNavigate()
 
     const [formData, setFormData] = useState({
-        nombre: '',
+        nombre: `${user?.nombre || ''} ${user?.apellido || ''}`.trim(),
         direccion: '',
         hora: '',
         barrio: '',
@@ -18,6 +23,8 @@ const CarritoFormulario = () => {
 
     const [mostrarModal, setMostrarModal] = useState(false)
     const [errores, setErrores] = useState({})
+    const [errorPedido, setErrorPedido] = useState('')
+    const [guardando, setGuardando] = useState(false)
 
     const handleChange = (e) => {
         let valor = e.target.value
@@ -58,7 +65,7 @@ const CarritoFormulario = () => {
             }
         }
 
-        const barrioRegex =/^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s\-]{3,40}$/
+        const barrioRegex =/^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s-]{3,40}$/
         if (!formData.barrio.trim()) {
             nuevosErrores.barrio = 'El barrio es requerido'
         } else if (!barrioRegex.test(formData.barrio.trim())) {
@@ -76,6 +83,11 @@ const CarritoFormulario = () => {
     }
 
     const handleFinalizar = () => {
+        if (!user) {
+            navigate('/login', { state: { from: '/domicilios' } })
+            return
+        }
+
         if (productos.length === 0) {
             alert(
                 'Tu carrito está vacío — agrega productos desde el menú'
@@ -90,22 +102,43 @@ const CarritoFormulario = () => {
         }
 
         setErrores({})
+        setErrorPedido('')
         setMostrarModal(true)
     }
 
-    const handleConfirmar = () => {
-        setMostrarModal(false)
-        alert(
-            '¡Pedido confirmado! Pago Contra Entrega.'
-        )
-        limpiarCarrito()
-        setFormData({
-            nombre: '',
-            direccion: '',
-            hora: '',
-            barrio: '',
-            indicaciones: ''
-        })
+    const handleConfirmar = async () => {
+        setGuardando(true)
+        setErrorPedido('')
+        try {
+            const { order } = await apiRequest('/customer/orders', {
+                method: 'POST',
+                body: JSON.stringify({
+                    ...formData,
+                    items: productos.map(({ id, cantidad }) => ({
+                        productoId: id,
+                        cantidad
+                    }))
+                })
+            })
+            setMostrarModal(false)
+            limpiarCarrito()
+            setFormData({
+                nombre: `${user?.nombre || ''} ${user?.apellido || ''}`.trim(),
+                direccion: '',
+                hora: '',
+                barrio: '',
+                indicaciones: ''
+            })
+            alert(`¡Pedido ${order.orderNumber} confirmado! Pago contra entrega.`)
+        } catch (error) {
+            if (error.status === 401 || error.status === 403) {
+                navigate('/login', { state: { from: '/domicilios' } })
+                return
+            }
+            setErrorPedido(error.message)
+        } finally {
+            setGuardando(false)
+        }
     }
 
     return (
@@ -116,6 +149,12 @@ const CarritoFormulario = () => {
                 <h3 className="carrito-formulario__titulo">
                     Información de Domicilio...
                 </h3>
+                {!user && (
+                    <p role="status">
+                        Para guardar tu compra en “Mis pedidos”, <Link to="/login" state={{ from: '/domicilios' }}>inicia sesión</Link>.
+                    </p>
+                )}
+                {errorPedido && <p className="carrito-error" role="alert">{errorPedido}</p>}
                 <div className="carrito-formulario__separador"></div>
                 <div className="carrito-formulario__contenedor">
 
@@ -280,6 +319,8 @@ const CarritoFormulario = () => {
                     formData={formData}
                     onEditar={() => setMostrarModal(false)}
                     onConfirmar={handleConfirmar}
+                    guardando={guardando}
+                    error={errorPedido}
                 />
             )}
         </>

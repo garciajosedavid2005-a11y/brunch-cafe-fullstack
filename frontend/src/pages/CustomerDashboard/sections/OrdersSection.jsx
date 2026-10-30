@@ -57,6 +57,14 @@ export default function OrdersSection() {
                 </div>
               ))}
             </div>
+            {order.delivery && (
+              <div className="dashboard-order-delivery">
+                <h4>Datos de entrega</h4>
+                <p>{order.delivery.nombre} · {order.delivery.direccion}, {order.delivery.barrio}</p>
+                <p>Hora solicitada: {order.delivery.hora}</p>
+                {order.delivery.indicaciones && <p>Indicaciones: {order.delivery.indicaciones}</p>}
+              </div>
+            )}
             <div className="dashboard-card__total"><span>Total</span><strong>{money(order.total)}</strong></div>
           </article>
         ))}

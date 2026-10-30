@@ -7,10 +7,11 @@ export const crearReserva = async (req, res) => {
     try {
         const { cantidadPersonas, fecha, hora, observaciones, nombre, correo, motivo } = req.body
 
-        const estadoPendiente = await Estado.findOne({ nombre: 'Pendiente', tipo: 'reserva' })
-        if (!estadoPendiente) {
-            return res.status(500).json({ message: "No existe el estado 'Pendiente' de tipo reserva, creelo primero" })
-        }
+        const estadoPendiente = await Estado.findOneAndUpdate(
+            { nombre: 'Pendiente', tipo: 'reserva' },
+            { $setOnInsert: { nombre: 'Pendiente', tipo: 'reserva' } },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        )
 
         const nuevaReserva = new Reserva({
             usuario: req.usuario.id,
@@ -56,10 +57,11 @@ export const cancelarReserva = async (req, res) => {
             return res.status(403).json({ message: "No puedes cancelar una reserva que no es tuya" })
         }
 
-        const estadoCancelada = await Estado.findOne({ nombre: 'Cancelada', tipo: 'reserva' })
-        if (!estadoCancelada) {
-            return res.status(500).json({ message: "No existe el estado 'Cancelada' de tipo reserva, creelo primero" })
-        }
+        const estadoCancelada = await Estado.findOneAndUpdate(
+            { nombre: 'Cancelada', tipo: 'reserva' },
+            { $setOnInsert: { nombre: 'Cancelada', tipo: 'reserva' } },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        )
 
         const reservaActualizada = await Reserva.findOneAndUpdate(
             { _id: reserva._id, usuario: req.usuario.id },

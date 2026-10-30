@@ -1,16 +1,24 @@
 import { Router } from 'express';
+import { readFileSync } from 'node:fs';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import { validateToken } from '../middlewares/validateToken.js';
 import Usuario from '../models/usuario.model.js';
 import Pedido from '../models/pedido.model.js';
 import DetallePedido from '../models/detallePedido.model.js';
+import MetodoPago from '../models/metodoPago.model.js';
 import Reserva from '../models/reserva.model.js';
 import Estado from '../models/estado.model.js';
 import Review from '../models/Review.js';
 
 const router = Router();
 router.use(validateToken);
+
+const menu = JSON.parse(readFileSync(
+  new URL('../../../frontend/src/data/menu.json', import.meta.url),
+  'utf8'
+));
+const menuById = new Map(menu.map((product) => [product.id, product]));
 
 const profileSchema = z.object({
   nombre: z.string().trim().min(1).max(60),
@@ -45,6 +53,21 @@ const reviewSchema = z.discriminatedUnion('tipo', [
     comentario: z.string().trim().min(10).max(300),
   }),
 ]);
+
+const orderSchema = z.object({
+  items: z.array(z.object({
+    productoId: z.coerce.number().int().min(1).max(24),
+    cantidad: z.coerce.number().int().min(1).max(20),
+  })).min(1).max(50),
+  nombre: z.string().trim().min(3).max(50),
+  direccion: z.string().trim().min(5).max(60).regex(
+    /^(calle|cl|carrera|cra|avenida|av|transversal|tv|diagonal|dg)\s*\d+[a-zA-Z]?\s*(sur|norte|este|oeste)?\s*#\s*\d+[a-zA-Z]?\s*-\s*\d+[a-zA-Z]?$/i,
+    'Ingresa una dirección válida. Ejemplo: Carrera 36B #30-06.'
+  ),
+  hora: z.string().regex(/^(?:(?:0[8-9]|1[0-5]):[0-5]\d|16:00)$/),
+  barrio: z.string().trim().min(3).max(40),
+  indicaciones: z.string().trim().max(120).default(''),
+});
 
 const availableReservationTimes = (date) => {
   const day = new Date(`${date}T00:00:00Z`).getUTCDay();
@@ -88,8 +111,16 @@ const serializeReservation = (reservation) => {
 
 const getReservationStates = async () => {
   const [pending, cancelled] = await Promise.all([
-    Estado.findOne({ nombre: 'Pendiente', tipo: 'reserva' }),
-    Estado.findOne({ nombre: 'Cancelada', tipo: 'reserva' }),
+    Estado.findOneAndUpdate(
+      { nombre: 'Pendiente', tipo: 'reserva' },
+      { $setOnInsert: { nombre: 'Pendiente', tipo: 'reserva' } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    ),
+    Estado.findOneAndUpdate(
+      { nombre: 'Cancelada', tipo: 'reserva' },
+      { $setOnInsert: { nombre: 'Cancelada', tipo: 'reserva' } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    ),
   ]);
   return { pending, cancelled };
 };
@@ -121,7 +152,15 @@ const serializeOrder = (order, details) => ({
   status: orderStatus(order.estado?.nombre),
   total: order.total,
   createdAt: order.createdAt,
+  delivery: {
+    nombre: order.nombreEntrega || '',
+    direccion: order.direccion || '',
+    barrio: order.barrio || '',
+    hora: order.horaEntrega || '',
+    indicaciones: order.indicaciones || '',
+  },
   items: details.map((detail) => ({
+    productId: detail.productoId,
     name: detail.nombreProducto,
     quantity: detail.cantidad,
     unitPrice: detail.precioProducto,
@@ -203,6 +242,78 @@ router.get('/orders', async (req, res, next) => {
     return res.json({
       orders: orders.map((order) => serializeOrder(order, detailsByOrder.get(order._id.toString()) || [])),
     });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/orders', async (req, res, next) => {
+  const parsed = orderSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Revisa los productos y datos de entrega.', errors: parsed.error.flatten() });
+  }
+
+  const lines = parsed.data.items.map((item) => {
+    const product = menuById.get(item.productoId);
+    if (!product) return null;
+    const unitPrice = Number(product.precio.replace(/[^\d]/g, ''));
+    if (!Number.isSafeInteger(unitPrice) || unitPrice < 0) return null;
+    return {
+      productId: product.id,
+      name: product.nombre,
+      unitPrice,
+      quantity: item.cantidad,
+      subtotal: unitPrice * item.cantidad,
+    };
+  });
+  if (lines.some((line) => !line)) {
+    return res.status(400).json({ message: 'Uno o más productos ya no están disponibles en el menú.' });
+  }
+
+  try {
+    const [pending, paymentMethod] = await Promise.all([
+      Estado.findOneAndUpdate(
+        { nombre: 'Pendiente', tipo: 'pedido' },
+        { $setOnInsert: { nombre: 'Pendiente', tipo: 'pedido' } },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      ),
+      MetodoPago.findOneAndUpdate(
+        { nombre: 'Contra Entrega' },
+        { $setOnInsert: { nombre: 'Contra Entrega', descripcion: 'Pago al recibir el pedido' } },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      ),
+    ]);
+
+    const order = await Pedido.create({
+      usuario: req.usuario.id,
+      estado: pending._id,
+      metodoPago: paymentMethod._id,
+      total: lines.reduce((total, line) => total + line.subtotal, 0),
+      nombreEntrega: parsed.data.nombre,
+      direccion: parsed.data.direccion,
+      barrio: parsed.data.barrio,
+      horaEntrega: parsed.data.hora,
+      indicaciones: parsed.data.indicaciones,
+    });
+
+    let details;
+    try {
+      details = await DetallePedido.insertMany(lines.map((line) => ({
+        pedido: order._id,
+        productoId: line.productId,
+        nombreProducto: line.name,
+        precioProducto: line.unitPrice,
+        cantidad: line.quantity,
+        subtotal: line.subtotal,
+      })));
+    } catch (error) {
+      await DetallePedido.deleteMany({ pedido: order._id });
+      await Pedido.findByIdAndDelete(order._id);
+      throw error;
+    }
+
+    const populatedOrder = await Pedido.findById(order._id).populate('estado', 'nombre').lean();
+    return res.status(201).json({ order: serializeOrder(populatedOrder, details) });
   } catch (error) {
     return next(error);
   }

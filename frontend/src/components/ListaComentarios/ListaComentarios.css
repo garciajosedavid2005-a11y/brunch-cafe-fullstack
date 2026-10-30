@@ -35,6 +35,47 @@
     
 }
 
+.lista-comentarios__descripcion,
+.lista-comentarios__estado,
+.lista-comentarios__cta {
+    color: var(--color-oscuro);
+    text-align: center;
+}
+
+.lista-comentarios__descripcion {
+    margin: 0 auto 2rem;
+}
+
+.lista-comentarios__estado {
+    margin: 2rem auto;
+}
+
+.lista-comentarios__estado--error {
+    color: #a20d2b;
+}
+
+.lista-comentarios__producto {
+    color: var(--color-primario);
+    font-weight: 600;
+    margin: 0;
+}
+
+.lista-comentarios__fecha {
+    color: var(--color-oscuro);
+    font-size: 0.8rem;
+    opacity: 0.75;
+}
+
+.lista-comentarios__cta {
+    margin: 2rem auto 0;
+}
+
+.lista-comentarios__cta a {
+    color: var(--color-primario);
+    font-weight: 700;
+    text-decoration: underline;
+}
+
 /* ── Tarjeta ── */
 .lista-comentarios__tarjeta {
     background: #ffffff;

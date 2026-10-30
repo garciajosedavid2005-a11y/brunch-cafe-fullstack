@@ -286,6 +286,25 @@
   gap: 1rem;
 }
 
+.dashboard-order-delivery {
+  margin: 1rem 0;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: #faf4f1;
+  color: #594742;
+  font-size: 0.9rem;
+}
+
+.dashboard-order-delivery h4 {
+  margin: 0 0 0.4rem;
+  color: #372622;
+  font-size: 0.95rem;
+}
+
+.dashboard-order-delivery p {
+  margin: 0.2rem 0;
+}
+
 .dashboard-card__total {
   padding-top: 0.75rem;
   border-top: 1px solid #eee3de;

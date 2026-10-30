@@ -61,12 +61,8 @@
   transition-delay: 0s;
 }
 
-.comentarios-formulario.animar {
-  transition-delay: 0.15s;
-}
-
 .comentarios-lista.animar {
-  transition-delay: 0.3s;
+  transition-delay: 0.15s;
 }
 
 .animar--suave {

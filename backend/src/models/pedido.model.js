@@ -20,6 +20,30 @@ const pedidoSchema = new mongoose.Schema({
         type: Number,
         required: true,
         min: 0
+    },
+    nombreEntrega: {
+        type: String,
+        trim: true,
+        maxlength: 50
+    },
+    direccion: {
+        type: String,
+        trim: true,
+        maxlength: 60
+    },
+    barrio: {
+        type: String,
+        trim: true,
+        maxlength: 40
+    },
+    horaEntrega: {
+        type: String,
+        trim: true
+    },
+    indicaciones: {
+        type: String,
+        trim: true,
+        maxlength: 120
     }
 }, {
     timestamps: true

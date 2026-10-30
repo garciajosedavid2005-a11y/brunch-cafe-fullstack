@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { useCarrito } from '../../context/CarritoContext'
 import { FaShoppingCart, FaMapMarkerAlt, FaClock, FaUser, FaHome, FaStickyNote } from 'react-icons/fa'
 
-const ResumenPedido = ({ formData, onEditar, onConfirmar }) => {
+const ResumenPedido = ({ formData, onEditar, onConfirmar, guardando = false, error = '' }) => {
 
     const { productos, calcularTotal } = useCarrito()
 
@@ -105,13 +105,15 @@ const ResumenPedido = ({ formData, onEditar, onConfirmar }) => {
                     </span>
                 </div>
 
+                {error && <p className="carrito-error" role="alert">{error}</p>}
+
                 {/* Botones */}
                 <div className="resumen-pedido__botones">
-                    <button className="resumen-pedido__btn-editar" onClick={onEditar}>
+                    <button className="resumen-pedido__btn-editar" onClick={onEditar} disabled={guardando}>
                         Editar Pedido
                     </button>
-                    <button className="resumen-pedido__btn-confirmar" onClick={onConfirmar}>
-                        Confirmar Pedido
+                    <button className="resumen-pedido__btn-confirmar" onClick={onConfirmar} disabled={guardando}>
+                        {guardando ? 'Guardando pedido...' : 'Confirmar Pedido'}
                     </button>
                 </div>
 

@@ -8,8 +8,12 @@ const detallePedidoSchema = new mongoose.Schema({
     },
     producto: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Producto',
-        required: true
+        ref: 'Producto'
+    },
+    productoId: {
+        type: Number,
+        min: 1,
+        max: 24
     },
     nombreProducto: {
         type: String,

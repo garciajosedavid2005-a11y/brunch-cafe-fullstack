@@ -91,6 +91,20 @@
   font-style: normal;
 }
 
+.testimonios__producto {
+  margin: 0;
+  color: var(--color-primario);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.testimonios__enlace {
+  margin-top: 1.5rem;
+  color: var(--color-primario);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
 /* ───────── Autor ───────── */
 
 .testimonios__autor {

@@ -10,7 +10,11 @@ export const register = async (req, res) => {
         const existe = await Usuario.findOne({ correo })
         if (existe) return res.status(400).json({ message: "Ya existe un usuario con ese correo" })
 
-        const rolCliente = await Rol.findOne({ nombre: 'cliente' })
+        const rolCliente = await Rol.findOneAndUpdate(
+            { nombre: 'cliente' },
+            { $setOnInsert: { nombre: 'cliente' } },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        )
         if (!rolCliente) return res.status(500).json({ message: "No existe el rol 'cliente' en la base de datos, crealo primero" })
 
         const contraseñaHash = await bcrypt.hash(contraseña, 10)
