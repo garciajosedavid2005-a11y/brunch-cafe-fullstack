@@ -4,11 +4,7 @@ import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import { config } from './config.js';
 import { connectDB } from './db.js';
-import authRoutes from './routes/auth.routes.js';
-import usuarioRoutes from './routes/usuario.routes.js';
-import reservaRoutes from './routes/reserva.routes.js';
-// Cuando sigamos creando entidades, se importan y se montan aquí, por ejemplo:
-// import productoRoutes from './routes/producto.routes.js';
+import routes from './routes/index.routes.js';
 
 const app = express();
 
@@ -23,7 +19,7 @@ app.use(express.json()); // parsear JSON en el body de las peticiones
 app.use(cookieParser()); // leer cookies (para el token JWT)
 
 if (config.NODE_ENV === 'development') {
-  app.use(morgan('dev')); // log de peticiones en consola
+  app.use(morgan('dev')); // log de peticiones en consola (debe ir ANTES de las rutas)
 }
 
 // Ruta de prueba para confirmar que el servidor y la DB están vivos
@@ -31,13 +27,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', entorno: config.NODE_ENV });
 });
 
-// Rutas reales:
-app.use('/api/auth', authRoutes);
-app.use('/api/usuarios', usuarioRoutes);
-app.use('/api/reservas', reservaRoutes);
-// app.use('/api/productos', productoRoutes);
-// app.use('/api/pedidos', pedidoRoutes);
-// etc.
+// Todas las rutas de la API (auth, usuarios, categorias, productos, pedidos,
+// reservas, comentarios, estados, metodos-pago) se montan desde index.routes.js
+app.use('/api', routes);
 
 const start = async () => {
   await connectDB();

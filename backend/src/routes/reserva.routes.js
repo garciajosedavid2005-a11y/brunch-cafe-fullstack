@@ -14,7 +14,7 @@ import { crearReservaSchema } from '../schema/reserva.schema.js'
 const router = Router()
 
 // Rutas del cliente necesita estar logueado
-router.post('/', validateToken, validateSchema(crearReservaSchema), crearReserva)
+router.post('/', validateToken, authorizeRole('cliente'), validateSchema(crearReservaSchema), crearReserva)
 router.get('/mias', validateToken, misReservas)
 router.patch('/:id/cancelar', validateToken, cancelarReserva)
 
