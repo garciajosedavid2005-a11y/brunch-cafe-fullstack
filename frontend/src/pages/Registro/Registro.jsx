@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Mail, Phone, Lock, Eye, EyeOff, Sparkles } from "lucide-react";
 import AuthBanner from "../Auth/AuthBanner";
+import { useAuth } from "../../context/useAuth";
 import "../Auth/Auth.css";
 
 const Registro = () => {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     nombre: "",
     apellido: "",
@@ -44,47 +46,22 @@ const Registro = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:4000/api/auth/registro", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          nombre: formData.nombre.trim(),
-          apellido: formData.apellido.trim(),
-          correo: formData.email.trim(),
-          contraseña: formData.password,
-          telefono: formData.telefono.trim(),
-        }),
+      await register({
+        ...formData,
+        nombre: formData.nombre.trim(),
+        apellido: formData.apellido.trim(),
+        email: formData.email.trim(),
+        telefono: formData.telefono.trim(),
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setCargando(false);
-        setMensaje({
-          tipo: "error",
-          // Zod responde un array de mensajes; los demás errores vienen como { message }
-          texto: Array.isArray(data)
-            ? data[0]
-            : data.message || "Error al crear la cuenta",
-        });
-        return;
-      }
-
       setCargando(false);
       setMensaje({
         tipo: "exito",
-        texto: "¡Cuenta creada exitosamente! Ahora inicia sesión.",
+        texto: "¡Cuenta creada exitosamente!",
       });
-      setTimeout(() => {
-        navigate("/login");
-      }, 1400);
-    } catch (err) {
+      navigate("/cuenta");
+    } catch (error) {
       setCargando(false);
-      setMensaje({
-        tipo: "error",
-        texto: "No se pudo conectar con el servidor",
-      });
+      setMensaje({ tipo: "error", texto: error.message });
     }
   };
 

@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import AuthBanner from "../Auth/AuthBanner";
+import { useAuth } from "../../context/useAuth";
 import "../Auth/Auth.css";
-import { useAuth } from "../../context/AuthContext";   
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();  
+  const location = useLocation();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -27,30 +28,11 @@ const Login = () => {
     setMensaje(null);
 
     try {
-      const res = await fetch('http://localhost:4000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ correo: formData.email, contraseña: formData.password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setMensaje({
-          tipo: "error",
-          texto: data.message || 'Error al iniciar sesion',
-        });
-        setCargando(false);
-        return;
-      }
-      login(data);  
-      navigate('/perfil');
-    } catch (err) {
-      setMensaje({
-        tipo: "error",
-        texto: 'No se pudo conectar con el servidor',
-      });
+      await login(formData);
+      navigate(location.state?.from || "/cuenta", { replace: true });
+    } catch (error) {
+      setMensaje({ tipo: "error", texto: error.message });
+    } finally {
       setCargando(false);
     }
   };

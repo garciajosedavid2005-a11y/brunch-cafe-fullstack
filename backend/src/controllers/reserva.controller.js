@@ -5,7 +5,7 @@ import Estado from '../models/estado.model.js'
 
 export const crearReserva = async (req, res) => {
     try {
-        const { cantidadPersonas, fecha, hora, observaciones } = req.body
+        const { cantidadPersonas, fecha, hora, observaciones, nombre, correo, motivo } = req.body
 
         const estadoPendiente = await Estado.findOne({ nombre: 'Pendiente', tipo: 'reserva' })
         if (!estadoPendiente) {
@@ -18,7 +18,10 @@ export const crearReserva = async (req, res) => {
             cantidadPersonas,
             fecha,
             hora,
-            observaciones
+            observaciones,
+            nombre,
+            correo,
+            motivo
         })
 
         const reservaGuardada = await nuevaReserva.save()
@@ -58,11 +61,13 @@ export const cancelarReserva = async (req, res) => {
             return res.status(500).json({ message: "No existe el estado 'Cancelada' de tipo reserva, creelo primero" })
         }
 
-        reserva.estado = estadoCancelada._id
-        await reserva.save()
-        await reserva.populate('estado')
+        const reservaActualizada = await Reserva.findOneAndUpdate(
+            { _id: reserva._id, usuario: req.usuario.id },
+            { $set: { estado: estadoCancelada._id } },
+            { new: true }
+        ).populate('estado')
 
-        res.json(reserva)
+        res.json(reservaActualizada)
     } catch (error) {
         console.log(error)
         res.status(500).json({ message: error.message })

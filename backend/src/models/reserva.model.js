@@ -24,6 +24,22 @@ const reservaSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    nombre: {
+        type: String,
+        trim: true,
+        maxlength: 120
+    },
+    correo: {
+        type: String,
+        trim: true,
+        lowercase: true,
+        maxlength: 254
+    },
+    motivo: {
+        type: String,
+        trim: true,
+        maxlength: 120
+    },
     observaciones: {
         type: String,
         trim: true,

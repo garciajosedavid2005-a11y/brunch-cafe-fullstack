@@ -5,39 +5,46 @@ import morgan from 'morgan';
 import { config } from './config.js';
 import { connectDB } from './db.js';
 import authRoutes from './routes/auth.routes.js';
+import customerRoutes from './routes/customer.routes.js';
+import reviewRoutes from './routes/review.routes.js';
 import usuarioRoutes from './routes/usuario.routes.js';
 import reservaRoutes from './routes/reserva.routes.js';
-// Cuando sigamos creando entidades, se importan y se montan aquí, por ejemplo:
-// import productoRoutes from './routes/producto.routes.js';
 
 const app = express();
 
-// Middlewares base
 app.use(
   cors({
-    origin: config.CLIENT_URL, // el front (React) corriendo en Vite
-    credentials: true, // permite enviar/recibir cookies (necesario para el JWT en cookie)
+    origin: config.CLIENT_URL,
+    credentials: true,
   })
 );
-app.use(express.json()); // parsear JSON en el body de las peticiones
-app.use(cookieParser()); // leer cookies (para el token JWT)
+app.use(express.json());
+app.use(cookieParser());
 
 if (config.NODE_ENV === 'development') {
-  app.use(morgan('dev')); // log de peticiones en consola
+  app.use(morgan('dev'));
 }
 
-// Ruta de prueba para confirmar que el servidor y la DB están vivos
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', entorno: config.NODE_ENV });
 });
 
-// Rutas reales:
 app.use('/api/auth', authRoutes);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/reservas', reservaRoutes);
-// app.use('/api/productos', productoRoutes);
-// app.use('/api/pedidos', pedidoRoutes);
-// etc.
+app.use('/api/customer', customerRoutes);
+app.use('/api/reviews', reviewRoutes);
+
+app.use((error, req, res, next) => {
+  console.error(error);
+  if (res.headersSent) return next(error);
+  if (error.code === 11000) {
+    return res.status(409).json({ message: 'Ya existe un registro con esos datos.' });
+  }
+  return res.status(error.status || 500).json({
+    message: error.status ? error.message : 'Ocurrió un error interno.',
+  });
+});
 
 const start = async () => {
   await connectDB();
