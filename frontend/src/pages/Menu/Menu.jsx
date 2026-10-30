@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import menu from "../../data/menu.json";
 import TarjetaMenu from "../../components/TarjetaMenu/TarjetaMenu";
+import { apiRequest } from "../../services/api";
 import useAnimacionEntrada from "../../hooks/useAnimacionEntrada";
 import "./Menu.css";
 
@@ -16,12 +18,40 @@ const categorias = [
 
 const ITEMS_POR_PAGINA = 8;
 
+function getVisibleCountForHash(hash) {
+  const productId = Number(hash.replace("#producto-", ""));
+  const productIndex = menu.findIndex((product) => product.id === productId);
+  if (productIndex === -1) return ITEMS_POR_PAGINA;
+  return Math.ceil((productIndex + 1) / ITEMS_POR_PAGINA) * ITEMS_POR_PAGINA;
+}
+
 const Menu = () => {
+  const location = useLocation();
   const [categoriaActiva, setCategoriaActiva] = useState("Todo");
-  const [visibleCount, setVisibleCount] = useState(ITEMS_POR_PAGINA);
+  const [visibleCount, setVisibleCount] = useState(() => getVisibleCountForHash(location.hash));
+  const [productRatings, setProductRatings] = useState({});
   const heroRef = useAnimacionEntrada();
   const categoriasRef = useAnimacionEntrada();
   const gridRef = useAnimacionEntrada();
+
+  useEffect(() => {
+    apiRequest("/reviews/product-ratings")
+      .then(({ productRatings: ratings }) => {
+        setProductRatings(Object.fromEntries(ratings.map(({ productoId, average, count }) => [
+          productoId,
+          { average, count },
+        ])));
+      })
+      .catch((error) => console.error("No se pudieron cargar las calificaciones del menú:", error));
+  }, []);
+
+  useEffect(() => {
+    if (!location.hash.startsWith("#producto-")) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [location.hash, visibleCount]);
 
   // El hook aplica la clase `visible` a cada sección con `animar`
   // cuando entra en viewport. Esa clase activa las transiciones de
@@ -94,6 +124,8 @@ const Menu = () => {
               descripcion={producto.descripcion}
               precio={producto.precio}
               imagen={imagenUrl}
+              rating={productRatings[producto.id]?.average ?? 5}
+              ratingCount={productRatings[producto.id]?.count ?? 0}
               delay={index % 5 + 1}
             />
           );

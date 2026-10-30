@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Mail, Phone, Lock, Eye, EyeOff, Sparkles } from "lucide-react";
 import AuthBanner from "../Auth/AuthBanner";
+import { useAuth } from "../../context/useAuth";
 import "../Auth/Auth.css";
 
 const Registro = () => {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     nombre: "",
     apellido: "",
@@ -22,7 +24,7 @@ const Registro = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setCargando(true);
     setMensaje(null);
@@ -43,16 +45,18 @@ const Registro = () => {
       return;
     }
 
-    setTimeout(() => {
+    try {
+      await register(formData);
       setCargando(false);
       setMensaje({
         tipo: "exito",
         texto: "¡Cuenta creada exitosamente! Bienvenido a Brunch Café.",
       });
-      setTimeout(() => {
-        navigate("/login");
-      }, 1400);
-    }, 1000);
+      navigate("/cuenta");
+    } catch (error) {
+      setCargando(false);
+      setMensaje({ tipo: "error", texto: error.message });
+    }
   };
 
   return (

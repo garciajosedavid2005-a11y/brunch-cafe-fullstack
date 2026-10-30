@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "npm run lint": true,
+        "ForEach-Object": true,
+        "npm run build": true,
+        "npx eslint": true
+    }
+}

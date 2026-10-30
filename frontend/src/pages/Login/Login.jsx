@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import AuthBanner from "../Auth/AuthBanner";
+import { useAuth } from "../../context/useAuth";
 import "../Auth/Auth.css";
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -19,7 +22,7 @@ const Login = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setCargando(true);
     setMensaje(null);
@@ -34,16 +37,18 @@ const Login = () => {
       return;
     }
 
-    setTimeout(() => {
+    try {
+      await login(formData);
       setCargando(false);
       setMensaje({
         tipo: "exito",
         texto: "¡Bienvenido de nuevo a Brunch Café!",
       });
-      setTimeout(() => {
-        navigate("/");
-      }, 1200);
-    }, 900);
+      navigate(location.state?.from || "/cuenta", { replace: true });
+    } catch (error) {
+      setCargando(false);
+      setMensaje({ tipo: "error", texto: error.message });
+    }
   };
 
   return (

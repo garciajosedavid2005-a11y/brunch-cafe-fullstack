@@ -123,11 +123,20 @@
   font-size: 1.8rem !important;
   height: auto;
   line-height: 1;            
-  color: var(--color-primario);
+  color: transparent;
+  background: linear-gradient(90deg, var(--color-primario) var(--rating-fill, 100%), #b7a39a var(--rating-fill, 100%));
+  background-clip: text;
+  -webkit-background-clip: text;
 }
 
 .tarjeta-menu__valoracion span {
   display: inline-block;
+}
+
+.tarjeta-menu__rating-count {
+  color: #594742;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .tarjeta-menu__precio {

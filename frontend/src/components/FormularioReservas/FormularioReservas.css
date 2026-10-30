@@ -72,8 +72,8 @@
     display: flex;
     align-items: center;
     gap: 0.8rem;
-    border: 1px solid #ccc;
-    border-radius: 6px;
+    border: 1px solid #d8c9c4;
+    border-radius: 10px;
     padding: 0.5rem 0.8rem;
     margin-bottom: 1rem;
     background: #fff;
@@ -81,11 +81,24 @@
 }
 
 .formulario-campo-icono select {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    height: auto;
     margin: 0 !important;
+    padding: 0.35rem 1.8rem 0.35rem 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+    color: #33201b;
+    line-height: 1.5;
 }
 
 .formulario-campo-icono:focus-within {
     border-color: var(--color-primario);
+    box-shadow: 0 0 0 3px rgba(137, 6, 32, 0.12);
 }
 
 .formulario-icono {
@@ -135,6 +148,16 @@
     outline: none;
 }
 
+.formulario-campo-icono select:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.formulario-campo-icono select:disabled {
+    color: #75645e;
+    cursor: not-allowed;
+}
+
 .formulario-error {
     color: var(--color-primario);
     font-size: 0.8rem;
@@ -149,4 +172,26 @@
 .formulario-error::before {
     content: '⚠';
     font-size: 0.75rem;
+}
+
+.formulario-reserva-notice,
+.formulario-reserva-horario {
+    color: #493733;
+    line-height: 1.6;
+}
+
+.formulario-reserva-notice {
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    background: #eaf4e8;
+}
+
+.formulario-reserva-notice.is-error {
+    background: #fff0ef;
+    color: #9c2520;
+}
+
+.formulario-reserva-horario {
+    margin: 1rem 0 0;
+    font-size: 0.8rem;
 }

@@ -5,8 +5,9 @@ import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import { config } from './config.js';
 import { connectDB } from './db.js';
-// Cuando empecemos a crear rutas, se importan y se montan aquí, por ejemplo:
-// import productoRoutes from './routes/producto.routes.js';
+import authRoutes from './routes/auth.routes.js';
+import customerRoutes from './routes/customer.routes.js';
+import reviewRoutes from './routes/review.routes.js';
  
 const app = express();
  
@@ -24,16 +25,24 @@ if (config.NODE_ENV === 'development') {
   app.use(morgan('dev')); // log de peticiones en consola
 }
  
-// Ruta de prueba para confirmar que el servidor y la DB están vivos
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', entorno: config.NODE_ENV });
 });
- 
-// Aquí se montarán las rutas reales a medida que las construyamos:
-// app.use('/api/productos', productoRoutes);
-// app.use('/api/usuarios', usuarioRoutes);
-// app.use('/api/pedidos', pedidoRoutes);
-// etc.
+
+app.use('/api/auth', authRoutes);
+app.use('/api/customer', customerRoutes);
+app.use('/api/reviews', reviewRoutes);
+
+app.use((error, req, res, next) => {
+  console.error(error);
+  if (res.headersSent) return next(error);
+  if (error.code === 11000) {
+    return res.status(409).json({ message: 'Ya existe un registro con esos datos.' });
+  }
+  res.status(error.status || 500).json({
+    message: error.status ? error.message : 'Ocurrió un error interno.',
+  });
+});
  
 const start = async () => {
   await connectDB();

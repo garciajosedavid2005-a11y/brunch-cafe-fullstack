@@ -114,7 +114,11 @@
    LINKS (Escritorio)
 ========================= */
 
-.access {
+.access,
+.access:link,
+.access:visited,
+.access:focus,
+.access:active {
   display: flex;
   align-items: center;
   padding: 0.5rem 0;
@@ -131,11 +135,24 @@
   color: var(--color-suave);
 }
 
+.menu .access:visited,
+.menu .access:focus,
+.menu .access:active {
+  color: var(--color-oscuro);
+}
+
 .menu .active {
   border-bottom-color: var(--color-suave);
 }
 
 .top-bar--transparente .access {
+  color: var(--color-marfil);
+}
+
+.top-bar--transparente .access:link,
+.top-bar--transparente .access:visited,
+.top-bar--transparente .access:focus,
+.top-bar--transparente .access:active {
   color: var(--color-marfil);
 }
 
@@ -305,7 +322,11 @@
   }
 
   /* Tu tipografía original intacta (0.85rem) + Contraste Marfil */
-  .access {
+  .access,
+  .access:link,
+  .access:visited,
+  .access:focus,
+  .access:active {
     font-size: 0.85rem !important;
     font-weight: 500 !important;
     color: var(--color-marfil) !important;

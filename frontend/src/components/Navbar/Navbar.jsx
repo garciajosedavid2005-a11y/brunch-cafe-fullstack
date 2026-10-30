@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useCarrito } from "../../context/CarritoContext";
+import { useAuth } from "../../context/useAuth";
 import compras from "../../assets/carrito-de-compras.png";
 import logoOscuro from "../../assets/logoOscuro.png";
 import logoClaro from "../../assets/logoClaro.png";
@@ -15,6 +16,7 @@ const rutasTransparentes = [
 
 const Navbar = () => {
     const { pathname } = useLocation();
+    const { user } = useAuth();
     const [oculta, setOculta] = useState(false);
     const [animando, setAnimando] = useState(false);
     const [menuAbierto, setMenuAbierto] = useState(false);
@@ -92,7 +94,11 @@ const Navbar = () => {
                     <li><NavLink className="access" to="/nosotros">Nosotros</NavLink></li>
                     <li><NavLink className="access" to="/reservas">Reservas</NavLink></li>
                     <li><NavLink className="access" to="/comentarios">Comentarios</NavLink></li>
-                    <li><NavLink className="access" to="/login">Ingresar</NavLink></li>
+                    <li>
+                        <NavLink className="access" to={user ? "/cuenta" : "/login"}>
+                            {user ? "Mi cuenta" : "Ingresar"}
+                        </NavLink>
+                    </li>
 
                     {/* Carrito integrado */}
                     <li className="menu__item-carrito">
