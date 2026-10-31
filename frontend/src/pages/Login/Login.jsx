@@ -28,8 +28,12 @@ const Login = () => {
     setMensaje(null);
 
     try {
-      await login(formData);
-      navigate(location.state?.from || "/cuenta", { replace: true });
+      const loggedUser = await login(formData);
+      if (loggedUser?.role === "admin") {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate(location.state?.from || "/cuenta", { replace: true });
+      }
     } catch (error) {
       setMensaje({ tipo: "error", texto: error.message });
     } finally {
