@@ -35,7 +35,7 @@ const Menu = () => {
   const gridRef = useAnimacionEntrada();
 
   useEffect(() => {
-    apiRequest("/reviews/product-ratings")
+    apiRequest("/comentarios/product-ratings")
       .then(({ productRatings: ratings }) => {
         setProductRatings(Object.fromEntries(ratings.map(({ productoId, average, count }) => [
           productoId,

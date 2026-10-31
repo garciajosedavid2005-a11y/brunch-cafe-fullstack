@@ -17,7 +17,7 @@ export default function ReviewsSection() {
   const [notice, setNotice] = useState({ message: "", error: false });
 
   useEffect(() => {
-    apiRequest("/customer/reviews")
+    apiRequest("/customer/comentarios")
       .then(({ reviews: customerReviews }) => setReviews(customerReviews))
       .catch((error) => setNotice({ message: error.message, error: true }))
       .finally(() => setLoading(false));
@@ -28,7 +28,7 @@ export default function ReviewsSection() {
     setSaving(true);
     setNotice({ message: "", error: false });
     try {
-      const { review } = await apiRequest("/customer/reviews", {
+      const { review } = await apiRequest("/customer/comentarios", {
         method: "POST",
         body: JSON.stringify({
           tipo,

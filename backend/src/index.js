@@ -6,9 +6,9 @@ import { config } from './config.js';
 import { connectDB } from './db.js';
 import authRoutes from './routes/auth.routes.js';
 import customerRoutes from './routes/customer.routes.js';
-import reviewRoutes from './routes/review.routes.js';
 import usuarioRoutes from './routes/usuario.routes.js';
 import reservaRoutes from './routes/reserva.routes.js';
+import comentarioRoutes from './routes/comentario.routes.js';
 
 const app = express();
 
@@ -33,7 +33,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/reservas', reservaRoutes);
 app.use('/api/customer', customerRoutes);
-app.use('/api/reviews', reviewRoutes);
+app.use('/api/comentarios', comentarioRoutes);
+app.use('/api/reviews', comentarioRoutes);
 
 app.use((error, req, res, next) => {
   console.error(error);

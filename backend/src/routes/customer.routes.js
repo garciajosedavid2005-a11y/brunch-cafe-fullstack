@@ -9,7 +9,7 @@ import DetallePedido from '../models/detallePedido.model.js';
 import MetodoPago from '../models/metodoPago.model.js';
 import Reserva from '../models/reserva.model.js';
 import Estado from '../models/estado.model.js';
-import Review from '../models/Review.js';
+import { crearComentario, listarMisComentarios } from '../controllers/comentario.controller.js';
 
 const router = Router();
 router.use(validateToken);
@@ -39,20 +39,6 @@ const reservationSchema = z.object({
   hora: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   observaciones: z.string().trim().max(200).default(''),
 });
-
-const reviewSchema = z.discriminatedUnion('tipo', [
-  z.object({
-    tipo: z.literal('general'),
-    calificacion: z.coerce.number().int().min(1).max(5),
-    comentario: z.string().trim().min(10).max(300),
-  }),
-  z.object({
-    tipo: z.literal('producto'),
-    productoId: z.coerce.number().int().min(1).max(24),
-    calificacion: z.coerce.number().int().min(1).max(5),
-    comentario: z.string().trim().min(10).max(300),
-  }),
-]);
 
 const orderSchema = z.object({
   items: z.array(z.object({
@@ -456,26 +442,7 @@ router.patch('/reservations/:id/cancel', async (req, res, next) => {
   }
 });
 
-router.get('/reviews', async (req, res, next) => {
-  try {
-    const reviews = await Review.find({ user: req.usuario.id }).sort({ createdAt: -1 }).lean();
-    return res.json({ reviews });
-  } catch (error) {
-    return next(error);
-  }
-});
-
-router.post('/reviews', async (req, res, next) => {
-  const parsed = reviewSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ message: 'Revisa la calificación y el comentario.', errors: parsed.error.flatten() });
-  }
-  try {
-    const review = await Review.create({ ...parsed.data, user: req.usuario.id });
-    return res.status(201).json({ review });
-  } catch (error) {
-    return next(error);
-  }
-});
+router.get(['/reviews', '/comentarios'], listarMisComentarios);
+router.post(['/reviews', '/comentarios'], crearComentario);
 
 export default router;
