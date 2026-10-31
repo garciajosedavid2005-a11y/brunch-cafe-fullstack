@@ -6,6 +6,12 @@ const categoriaSchema = new mongoose.Schema({
         required: true,
         trim: true,
         unique: true
+    },
+    descripcion: {
+        type: String,
+        trim: true,
+        maxlength: 200,
+        default: ''
     }
 }, {
     timestamps: true
