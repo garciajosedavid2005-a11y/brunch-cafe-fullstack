@@ -1,6 +1,21 @@
 import Reserva from '../models/reserva.model.js'
 import Estado from '../models/estado.model.js'
 
+const formatoAdmin = (reserva) => ({
+    id: reserva._id,
+    codigo: `RES-${reserva._id.toString().slice(-6).toUpperCase()}`,
+    cliente: reserva.nombre || [reserva.usuario?.nombre, reserva.usuario?.apellido].filter(Boolean).join(' ') || 'Cliente',
+    correo: reserva.correo || reserva.usuario?.correo || '',
+    telefono: reserva.usuario?.telefono || '',
+    personas: reserva.cantidadPersonas,
+    fecha: reserva.fecha,
+    hora: reserva.hora,
+    motivo: reserva.motivo || '',
+    estado: reserva.estado?.nombre || '',
+    estadoId: reserva.estado?._id || reserva.estado,
+    observaciones: reserva.observaciones || '',
+})
+
 // Acciones del cliente 
 
 export const crearReserva = async (req, res) => {
@@ -85,7 +100,7 @@ export const listarReservas = async (req, res) => {
             .populate('estado')
             .sort({ fecha: -1 })
 
-        res.json(reservas)
+        res.json(reservas.map(formatoAdmin))
     } catch (error) {
         console.log(error)
         res.status(500).json({ message: error.message })
@@ -109,7 +124,7 @@ export const cambiarEstadoReserva = async (req, res) => {
 
         if (!reservaActualizada) return res.status(404).json({ message: "Reserva no encontrada" })
 
-        res.json(reservaActualizada)
+        res.json(formatoAdmin(reservaActualizada))
     } catch (error) {
         console.log(error)
         res.status(500).json({ message: error.message })

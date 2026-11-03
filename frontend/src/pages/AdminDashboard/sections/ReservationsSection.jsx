@@ -1,23 +1,23 @@
 import { useState } from "react";
 import { Search, Eye, Check, X, CalendarDays, Users, Clock, Mail, Phone, MessageSquare, Info } from "lucide-react";
-import { reservasIniciales } from "../mockData";
+import useAdminResource from "../hooks/useAdminResource";
+import AdminStatus from "../components/AdminStatus";
+import { formatClock, formatDate } from "../adminFormat";
 
 export default function ReservationsSection() {
-  const [reservas, setReservas] = useState(reservasIniciales);
+  const { items: reservas, cargando, error, cargar, parchear } = useAdminResource("/reservas");
+  const estadosResource = useAdminResource("/estados?tipo=reserva");
   const [filtroEstado, setFiltroEstado] = useState("Todas");
   const [busqueda, setBusqueda] = useState("");
   const [reservaSeleccionada, setReservaSeleccionada] = useState(null);
 
-  const estadosDisponibles = ["Todas", "Pendiente", "Confirmada", "Cancelada"];
+  const estadosDisponibles = ["Todas", ...new Set(estadosResource.items.map((estado) => estado.nombre))];
 
-  // Cambiar estado de una reserva interactivamente
-  const handleCambiarEstado = (id, nuevoEstado) => {
-    setReservas((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, estado: nuevoEstado } : r))
-    );
-    if (reservaSeleccionada && reservaSeleccionada.id === id) {
-      setReservaSeleccionada((prev) => ({ ...prev, estado: nuevoEstado }));
-    }
+  const handleCambiarEstado = async (id, nuevoEstado) => {
+    const estado = estadosResource.items.find((item) => item.nombre === nuevoEstado);
+    if (!estado) return;
+    const actualizada = await parchear(id, { estado: estado.id }, "/estado");
+    if (actualizada && reservaSeleccionada?.id === id) setReservaSeleccionada(actualizada);
   };
 
   // Filtrar reservas
@@ -58,6 +58,14 @@ export default function ReservationsSection() {
       </div>
 
       {/* BARRA DE BÚSQUEDA Y FILTROS */}
+      <AdminStatus
+        cargando={cargando || estadosResource.cargando}
+        error={error || estadosResource.error}
+        onReintentar={() => {
+          cargar();
+          estadosResource.cargar();
+        }}
+      />
       <div className="admin-toolbar">
         <div className="admin-search-wrapper">
           <Search size={18} className="admin-search-icon" />
@@ -105,7 +113,7 @@ export default function ReservationsSection() {
                 reservasFiltradas.map((reserva) => (
                   <tr key={reserva.id}>
                     <td>
-                      <span className="admin-table__code">{reserva.id}</span>
+                      <span className="admin-table__code">{reserva.codigo}</span>
                     </td>
                     <td>
                       <strong className="admin-table__client-name">{reserva.cliente}</strong>
@@ -118,8 +126,8 @@ export default function ReservationsSection() {
                     </td>
                     <td>
                       <div className="admin-table__schedule">
-                        <strong>{reserva.fecha}</strong>
-                        <span>{reserva.hora}</span>
+                        <strong>{formatDate(reserva.fecha)}</strong>
+                        <span>{formatClock(reserva.hora)}</span>
                       </div>
                     </td>
                     <td>
@@ -137,9 +145,9 @@ export default function ReservationsSection() {
                         value={reserva.estado}
                         onChange={(e) => handleCambiarEstado(reserva.id, e.target.value)}
                       >
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="Confirmada">Confirmada</option>
-                        <option value="Cancelada">Cancelada</option>
+                        {estadosResource.items.map((estado) => (
+                          <option key={estado.id} value={estado.nombre}>{estado.nombre}</option>
+                        ))}
                       </select>
                     </td>
                     <td>
@@ -201,7 +209,7 @@ export default function ReservationsSection() {
             <div className="admin-modal-header">
               <div>
                 <span className="admin-badge admin-badge--neutral">
-                  Reserva {reservaSeleccionada.id}
+                  Reserva {reservaSeleccionada.codigo}
                 </span>
                 <h3 className="admin-modal-title">Detalle de la Reserva</h3>
               </div>
@@ -261,9 +269,9 @@ export default function ReservationsSection() {
                     handleCambiarEstado(reservaSeleccionada.id, e.target.value)
                   }
                 >
-                  <option value="Pendiente">Pendiente</option>
-                  <option value="Confirmada">Confirmada</option>
-                  <option value="Cancelada">Cancelada</option>
+                  {estadosResource.items.map((estado) => (
+                    <option key={estado.id} value={estado.nombre}>{estado.nombre}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -283,4 +291,3 @@ export default function ReservationsSection() {
     </div>
   );
 }
-

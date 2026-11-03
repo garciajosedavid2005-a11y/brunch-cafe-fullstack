@@ -12,10 +12,12 @@ import {
   X,
   Lock,
 } from "lucide-react";
-import { metodosPagoIniciales } from "../mockExtraData";
+import useAdminResource from "../hooks/useAdminResource";
+import AdminStatus from "../components/AdminStatus";
 
 export default function PaymentsSection() {
-  const [metodos, setMetodos] = useState(metodosPagoIniciales);
+  const { items: metodos, cargando, error, guardando, cargar, crear, actualizar, eliminar } =
+    useAdminResource("/metodos-pago");
   const [busqueda, setBusqueda] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [metodoEnEdicion, setMetodoEnEdicion] = useState(null);
@@ -47,39 +49,23 @@ export default function PaymentsSection() {
     setModalAbierto(true);
   };
 
-  const handleGuardar = (e) => {
+  const handleGuardar = async (e) => {
     e.preventDefault();
     if (!formData.nombre.trim()) return;
 
-    if (metodoEnEdicion) {
-      setMetodos((prev) =>
-        prev.map((m) =>
-          m.id === metodoEnEdicion.id ? { ...m, ...formData } : m
-        )
-      );
-    } else {
-      const nuevo = {
-        id: Date.now(),
-        codigo: formData.nombre.toLowerCase().replace(/\s+/g, "-"),
-        ...formData,
-        icono: "CreditCard",
-        pedidosAsociados: 0,
-      };
-      setMetodos((prev) => [...prev, nuevo]);
-    }
-    setModalAbierto(false);
+    const guardado = metodoEnEdicion
+      ? await actualizar(metodoEnEdicion.id, formData)
+      : await crear({ ...formData, icono: "CreditCard" });
+    if (guardado) setModalAbierto(false);
   };
 
-  const handleEliminar = () => {
+  const handleEliminar = async () => {
     if (!metodoAEliminar) return;
-    setMetodos((prev) => prev.filter((m) => m.id !== metodoAEliminar.id));
-    setMetodoAEliminar(null);
+    if (await eliminar(metodoAEliminar.id)) setMetodoAEliminar(null);
   };
 
-  const handleToggleActivo = (id) => {
-    setMetodos((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, activo: !m.activo } : m))
-    );
+  const handleToggleActivo = (item) => {
+    actualizar(item.id, { activo: !item.activo });
   };
 
   const metodosFiltrados = metodos.filter(
@@ -126,6 +112,7 @@ export default function PaymentsSection() {
       </div>
 
       {/* TABLA DE MÉTODOS DE PAGO */}
+      <AdminStatus cargando={cargando} error={error} onReintentar={cargar} />
       <div className="admin-card">
         <div className="admin-table-container">
           <table className="admin-table">
@@ -161,7 +148,7 @@ export default function PaymentsSection() {
                     <td>
                       <button
                         type="button"
-                        onClick={() => handleToggleActivo(item.id)}
+                        onClick={() => handleToggleActivo(item)}
                         className={`admin-badge ${
                           item.activo ? "admin-badge--success" : "admin-badge--danger"
                         }`}
@@ -278,7 +265,7 @@ export default function PaymentsSection() {
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="admin-button--primary">
+                <button type="submit" className="admin-button--primary" disabled={guardando}>
                   {metodoEnEdicion ? "Guardar Cambios" : "Crear Método"}
                 </button>
               </div>
@@ -329,4 +316,3 @@ export default function PaymentsSection() {
     </div>
   );
 }
-

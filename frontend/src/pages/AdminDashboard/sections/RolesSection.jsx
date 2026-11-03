@@ -12,10 +12,12 @@ import {
   X,
   ShieldAlert,
 } from "lucide-react";
-import { rolesIniciales } from "../mockExtraData";
+import useAdminResource from "../hooks/useAdminResource";
+import AdminStatus from "../components/AdminStatus";
 
 export default function RolesSection() {
-  const [roles, setRoles] = useState(rolesIniciales);
+  const { items: roles, cargando, error, guardando, cargar, crear, actualizar, eliminar } =
+    useAdminResource("/roles");
   const [busqueda, setBusqueda] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [rolEnEdicion, setRolEnEdicion] = useState(null);
@@ -47,7 +49,7 @@ export default function RolesSection() {
     setModalAbierto(true);
   };
 
-  const handleGuardar = (e) => {
+  const handleGuardar = async (e) => {
     e.preventDefault();
     if (!formData.nombre.trim()) return;
 
@@ -56,38 +58,20 @@ export default function RolesSection() {
       .map((p) => p.trim())
       .filter(Boolean);
 
-    if (rolEnEdicion) {
-      setRoles((prev) =>
-        prev.map((r) =>
-          r.id === rolEnEdicion.id
-            ? {
-                ...r,
-                nombre: formData.nombre,
-                descripcion: formData.descripcion,
-                permisos: listaPermisos,
-              }
-            : r
-        )
-      );
-    } else {
-      const nuevo = {
-        id: Date.now(),
-        codigo: formData.nombre.toLowerCase().replace(/\s+/g, "_"),
-        nombre: formData.nombre,
-        descripcion: formData.descripcion,
-        usuariosAsignados: 0,
-        esSistema: false,
-        permisos: listaPermisos,
-      };
-      setRoles((prev) => [...prev, nuevo]);
-    }
-    setModalAbierto(false);
+    const datos = {
+      nombre: formData.nombre,
+      descripcion: formData.descripcion,
+      permisos: listaPermisos,
+    };
+    const guardado = rolEnEdicion
+      ? await actualizar(rolEnEdicion.id, datos)
+      : await crear(datos);
+    if (guardado) setModalAbierto(false);
   };
 
-  const handleEliminar = () => {
+  const handleEliminar = async () => {
     if (!rolAEliminar || rolAEliminar.esSistema) return;
-    setRoles((prev) => prev.filter((r) => r.id !== rolAEliminar.id));
-    setRolAEliminar(null);
+    if (await eliminar(rolAEliminar.id)) setRolAEliminar(null);
   };
 
   const rolesFiltrados = roles.filter(
@@ -134,6 +118,7 @@ export default function RolesSection() {
       </div>
 
       {/* GRID / TABLA DE ROLES */}
+      <AdminStatus cargando={cargando} error={error} onReintentar={cargar} />
       <div className="admin-card">
         <div className="admin-table-container">
           <table className="admin-table">
@@ -320,7 +305,7 @@ export default function RolesSection() {
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="admin-button--primary">
+                <button type="submit" className="admin-button--primary" disabled={guardando}>
                   {rolEnEdicion ? "Guardar Cambios" : "Crear Rol"}
                 </button>
               </div>
@@ -371,4 +356,3 @@ export default function RolesSection() {
     </div>
   );
 }
-

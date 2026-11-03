@@ -1,9 +1,19 @@
 import { useState, useRef } from "react";
 import { Plus, Edit2, Trash2, Search, X, Coffee, Star, AlertCircle, Image as ImageIcon, UploadCloud } from "lucide-react";
-import { productosIniciales, categoriasIniciales } from "../mockCatalogData";
+import useAdminResource from "../hooks/useAdminResource";
+import AdminStatus from "../components/AdminStatus";
+import { formatCurrency } from "../adminFormat";
+import { apiAssetUrl } from "../../../services/api";
 
 export default function ProductsSection() {
-  const [productos, setProductos] = useState(productosIniciales);
+  const { items: productos, cargando, error, guardando, cargar, crear, actualizar, eliminar } =
+    useAdminResource("/productos");
+  const {
+    items: categorias,
+    cargando: cargandoCategorias,
+    error: errorCategorias,
+    cargar: cargarCategorias,
+  } = useAdminResource("/categorias");
   const [busqueda, setBusqueda] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("Todas");
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -14,7 +24,7 @@ export default function ProductsSection() {
   // Formulario local
   const [formData, setFormData] = useState({
     nombre: "",
-    categoria: "Desayunos",
+    categoria: "",
     precio: "",
     descripcion: "",
     imagen: "",
@@ -49,8 +59,8 @@ export default function ProductsSection() {
     setProductoEnEdicion(null);
     setFormData({
       nombre: "",
-      categoria: categoriasIniciales[0]?.nombre || "Desayunos",
-      precio: "$",
+      categoria: categorias[0]?.id || "",
+      precio: "",
       descripcion: "",
       imagen: "",
       destacado: false,
@@ -62,8 +72,8 @@ export default function ProductsSection() {
     setProductoEnEdicion(prod);
     setFormData({
       nombre: prod.nombre,
-      categoria: prod.categoria,
-      precio: prod.precio,
+      categoria: prod.categoriaId,
+      precio: String(prod.precio),
       descripcion: prod.descripcion || "",
       imagen: prod.imagen || "",
       destacado: prod.destacado || false,
@@ -71,40 +81,31 @@ export default function ProductsSection() {
     setModalAbierto(true);
   };
 
-  const handleGuardar = (e) => {
+  const handleGuardar = async (e) => {
     e.preventDefault();
     if (!formData.nombre.trim() || !formData.precio.trim()) return;
 
-    if (productoEnEdicion) {
-      // Editar
-      setProductos((prev) =>
-        prev.map((p) =>
-          p.id === productoEnEdicion.id
-            ? { ...p, ...formData }
-            : p
-        )
-      );
-    } else {
-      // Crear
-      const nuevo = {
-        id: Date.now(),
-        ...formData,
-      };
-      setProductos((prev) => [nuevo, ...prev]);
-    }
-    setModalAbierto(false);
+    const precio = Number(formData.precio.replace(/[^\d]/g, ""));
+    if (!Number.isSafeInteger(precio) || precio < 0 || !formData.categoria) return;
+    const datos = {
+      ...formData,
+      precio,
+      categoriaId: formData.categoria,
+    };
+    delete datos.categoria;
+    const guardado = productoEnEdicion
+      ? await actualizar(productoEnEdicion.id, datos)
+      : await crear(datos);
+    if (guardado) setModalAbierto(false);
   };
 
-  const handleEliminar = () => {
+  const handleEliminar = async () => {
     if (!productoAEliminar) return;
-    setProductos((prev) => prev.filter((p) => p.id !== productoAEliminar.id));
-    setProductoAEliminar(null);
+    if (await eliminar(productoAEliminar.id)) setProductoAEliminar(null);
   };
 
-  const handleToggleDestacado = (id) => {
-    setProductos((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, destacado: !p.destacado } : p))
-    );
+  const handleToggleDestacado = async (producto) => {
+    await actualizar(producto.id, { destacado: !producto.destacado });
   };
 
   // Filtrado
@@ -138,6 +139,10 @@ export default function ProductsSection() {
       </div>
 
       {/* BARRA DE BÚSQUEDA Y FILTRO POR CATEGORÍA */}
+      <AdminStatus cargando={cargando || cargandoCategorias} error={error || errorCategorias} onReintentar={() => {
+        cargar();
+        cargarCategorias();
+      }} />
       <div className="admin-toolbar">
         <div className="admin-search-wrapper">
           <Search size={18} className="admin-search-icon" />
@@ -158,7 +163,7 @@ export default function ProductsSection() {
           >
             Todas
           </button>
-          {categoriasIniciales.map((cat) => (
+          {categorias.map((cat) => (
             <button
               key={cat.id}
               type="button"
@@ -192,7 +197,7 @@ export default function ProductsSection() {
                       <div className="admin-product-cell">
                         {prod.imagen ? (
                           <img
-                            src={prod.imagen}
+                            src={apiAssetUrl(prod.imagen)}
                             alt={prod.nombre}
                             className="admin-product-thumbnail"
                             onError={(e) => {
@@ -218,13 +223,13 @@ export default function ProductsSection() {
                       </span>
                     </td>
                     <td>
-                      <span className="admin-table__amount">{prod.precio}</span>
+                      <span className="admin-table__amount">{formatCurrency(prod.precio)}</span>
                     </td>
                     <td>
                       <button
                         type="button"
                         className={`admin-badge-star-btn ${prod.destacado ? "is-active" : ""}`}
-                        onClick={() => handleToggleDestacado(prod.id)}
+                        onClick={() => handleToggleDestacado(prod)}
                         title={prod.destacado ? "Quitar de destacados" : "Marcar como destacado"}
                       >
                         <Star size={14} fill={prod.destacado ? "#f57f17" : "transparent"} />
@@ -327,8 +332,8 @@ export default function ProductsSection() {
                         setFormData({ ...formData, categoria: e.target.value })
                       }
                     >
-                      {categoriasIniciales.map((cat) => (
-                        <option key={cat.id} value={cat.nombre}>
+                      {categorias.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
                           {cat.nombre}
                         </option>
                       ))}
@@ -369,7 +374,7 @@ export default function ProductsSection() {
                       {formData.imagen ? (
                         <div className="admin-file-preview-card">
                           <img
-                            src={formData.imagen}
+                            src={apiAssetUrl(formData.imagen)}
                             alt="Vista previa"
                             className="admin-file-preview-img"
                           />
@@ -444,7 +449,7 @@ export default function ProductsSection() {
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="admin-button--primary">
+                <button type="submit" className="admin-button--primary" disabled={guardando || categorias.length === 0}>
                   {productoEnEdicion ? "Guardar cambios" : "Crear producto"}
                 </button>
               </div>
@@ -503,4 +508,3 @@ export default function ProductsSection() {
     </div>
   );
 }
-

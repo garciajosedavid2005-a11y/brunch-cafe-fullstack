@@ -4,11 +4,7 @@ import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import { config } from './config.js';
 import { connectDB } from './db.js';
-import authRoutes from './routes/auth.routes.js';
-import customerRoutes from './routes/customer.routes.js';
-import usuarioRoutes from './routes/usuario.routes.js';
-import reservaRoutes from './routes/reserva.routes.js';
-import comentarioRoutes from './routes/comentario.routes.js';
+import routes from './routes/index.routes.js';
 
 const app = express();
 
@@ -18,7 +14,7 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: '6mb' }));
 app.use(cookieParser());
 
 if (config.NODE_ENV === 'development') {
@@ -29,12 +25,8 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', entorno: config.NODE_ENV });
 });
 
-app.use('/api/auth', authRoutes);
-app.use('/api/usuarios', usuarioRoutes);
-app.use('/api/reservas', reservaRoutes);
-app.use('/api/customer', customerRoutes);
-app.use('/api/comentarios', comentarioRoutes);
-app.use('/api/reviews', comentarioRoutes);
+// Todas las rutas de la API se montan desde index.routes.js
+app.use('/api', routes);
 
 app.use((error, req, res, next) => {
   console.error(error);

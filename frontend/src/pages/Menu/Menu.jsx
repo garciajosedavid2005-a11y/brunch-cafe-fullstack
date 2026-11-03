@@ -1,24 +1,13 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import menu from "../../data/menu.json";
 import TarjetaMenu from "../../components/TarjetaMenu/TarjetaMenu";
-import { apiRequest } from "../../services/api";
+import { apiAssetUrl, apiRequest } from "../../services/api";
 import useAnimacionEntrada from "../../hooks/useAnimacionEntrada";
 import "./Menu.css";
 
-const categorias = [
-  "Todo",
-  "Desayunos",
-  "Postres",
-  "Pancakes y Waffles",
-  "Tostadas",
-  "Bowls Saludables",
-  "Bebidas",
-];
-
 const ITEMS_POR_PAGINA = 8;
 
-function getVisibleCountForHash(hash) {
+function getVisibleCountForHash(hash, menu) {
   const productId = Number(hash.replace("#producto-", ""));
   const productIndex = menu.findIndex((product) => product.id === productId);
   if (productIndex === -1) return ITEMS_POR_PAGINA;
@@ -27,12 +16,37 @@ function getVisibleCountForHash(hash) {
 
 const Menu = () => {
   const location = useLocation();
+  const [menu, setMenu] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [loadingMenu, setLoadingMenu] = useState(true);
+  const [menuError, setMenuError] = useState("");
   const [categoriaActiva, setCategoriaActiva] = useState("Todo");
-  const [visibleCount, setVisibleCount] = useState(() => getVisibleCountForHash(location.hash));
+  const [visibleCount, setVisibleCount] = useState(ITEMS_POR_PAGINA);
   const [productRatings, setProductRatings] = useState({});
   const heroRef = useAnimacionEntrada();
   const categoriasRef = useAnimacionEntrada();
   const gridRef = useAnimacionEntrada();
+
+  useEffect(() => {
+    let active = true;
+    apiRequest("/productos/menu")
+      .then(({ productos, categorias: categoriasMenu }) => {
+        if (!active) return;
+        setMenu(productos);
+        setCategorias(categoriasMenu);
+        setVisibleCount(getVisibleCountForHash(location.hash, productos));
+      })
+      .catch((error) => {
+        if (active) setMenuError(error.message);
+      })
+      .finally(() => {
+        if (active) setLoadingMenu(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [location.hash]);
 
   useEffect(() => {
     apiRequest("/comentarios/product-ratings")
@@ -94,7 +108,7 @@ const Menu = () => {
 
       <section ref={categoriasRef} className="menu-categorias animar" aria-label="Categorías del menú">
         <ul className="menu-categorias__lista">
-          {categorias.map((categoria) => (
+          {["Todo", ...categorias].map((categoria) => (
             <li key={categoria}>
               <button
                 type="button"
@@ -109,13 +123,12 @@ const Menu = () => {
       </section>
 
       <section ref={gridRef} className="menu-grid animar">
+        {loadingMenu && <p role="status">Cargando menú...</p>}
+        {menuError && <p role="alert">{menuError}</p>}
+        {!loadingMenu && !menuError && productosVisibles.length === 0 && (
+          <p>En este momento no hay productos disponibles en esta categoría.</p>
+        )}
         {productosVisibles.map((producto, index) => {
-          const imagenUrl = producto.imagen
-            ? producto.imagen.startsWith("/")
-              ? producto.imagen
-              : new URL(`../../assets/menu/${producto.imagen}`, import.meta.url).href
-            : "";
-
           return (
             <TarjetaMenu
               key={producto.id}
@@ -123,7 +136,7 @@ const Menu = () => {
               nombre={producto.nombre}
               descripcion={producto.descripcion}
               precio={producto.precio}
-              imagen={imagenUrl}
+              imagen={apiAssetUrl(producto.imagen)}
               rating={productRatings[producto.id]?.average ?? 5}
               ratingCount={productRatings[producto.id]?.count ?? 0}
               delay={index % 5 + 1}

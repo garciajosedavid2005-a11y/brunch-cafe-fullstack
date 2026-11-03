@@ -13,7 +13,6 @@ const detallePedidoSchema = new mongoose.Schema({
     productoId: {
         type: Number,
         min: 1,
-        max: 24
     },
     nombreProducto: {
         type: String,

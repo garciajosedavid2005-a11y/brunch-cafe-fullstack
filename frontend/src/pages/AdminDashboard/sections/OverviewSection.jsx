@@ -1,11 +1,58 @@
+import { useCallback, useEffect, useState } from "react";
 import { ShoppingBag, CalendarDays, Star, ArrowRight } from "lucide-react";
-import { metricasResumen, pedidosIniciales, reservasIniciales, comentariosRecientes } from "../mockData";
+import { adminApi } from "../../../services/adminApi";
+import AdminStatus from "../components/AdminStatus";
+import { formatClock, formatCurrency, formatDate } from "../adminFormat";
+
+const cargarDatosResumen = () => Promise.all([
+  adminApi.get("/pedidos"),
+  adminApi.get("/reservas"),
+  adminApi.get("/comentarios/admin"),
+]);
 
 export default function OverviewSection({ onNavigateTab }) {
-  // Tomamos los 3 pedidos más recientes
-  const pedidosRecientes = pedidosIniciales.slice(0, 3);
-  // Tomamos las reservas pendientes prioritarias
-  const reservasPendientes = reservasIniciales.filter((r) => r.estado === "Pendiente");
+  const [datos, setDatos] = useState({ pedidos: [], reservas: [], comentarios: [] });
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    setError("");
+    try {
+      const [pedidos, reservas, comentarios] = await cargarDatosResumen();
+      setDatos({ pedidos, reservas, comentarios });
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    cargarDatosResumen()
+      .then(([pedidos, reservas, comentarios]) => {
+        if (active) setDatos({ pedidos, reservas, comentarios });
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError.message);
+      })
+      .finally(() => {
+        if (active) setCargando(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const hoy = new Date().toLocaleDateString("en-CA");
+  const pedidosHoy = datos.pedidos.filter((pedido) => new Date(pedido.fecha).toLocaleDateString("en-CA") === hoy);
+  const reservasPendientes = datos.reservas.filter((reserva) => reserva.estado.toLowerCase().includes("pendiente"));
+  const promedio = datos.comentarios.length
+    ? (datos.comentarios.reduce((total, item) => total + item.calificacion, 0) / datos.comentarios.length).toFixed(1)
+    : "0.0";
+  const pedidosRecientes = datos.pedidos.slice(0, 3);
+  const comentariosRecientes = datos.comentarios.slice(0, 3);
 
   const getBadgeClass = (estado) => {
     switch (estado) {
@@ -41,8 +88,8 @@ export default function OverviewSection({ onNavigateTab }) {
           </div>
           <div className="admin-kpi-card__info">
             <span className="admin-kpi-card__label">Pedidos del Día</span>
-            <h3 className="admin-kpi-card__value">{metricasResumen.pedidosHoy.total} pedidos</h3>
-            <span className="admin-kpi-card__sub">{metricasResumen.pedidosHoy.ingresos} hoy</span>
+            <h3 className="admin-kpi-card__value">{pedidosHoy.length} pedidos</h3>
+            <span className="admin-kpi-card__sub">{formatCurrency(pedidosHoy.reduce((total, pedido) => total + pedido.total, 0))} hoy</span>
           </div>
         </button>
 
@@ -58,9 +105,9 @@ export default function OverviewSection({ onNavigateTab }) {
           </div>
           <div className="admin-kpi-card__info">
             <span className="admin-kpi-card__label">Reservas Pendientes</span>
-            <h3 className="admin-kpi-card__value">{metricasResumen.reservasPendientes.total} por revisar</h3>
+            <h3 className="admin-kpi-card__value">{reservasPendientes.length} por revisar</h3>
             <span className="admin-kpi-card__sub admin-kpi-card__sub--alert">
-              {metricasResumen.reservasPendientes.urgentes} urgentes hoy
+              Requieren confirmación
             </span>
           </div>
         </button>
@@ -77,13 +124,14 @@ export default function OverviewSection({ onNavigateTab }) {
           </div>
           <div className="admin-kpi-card__info">
             <span className="admin-kpi-card__label">Satisfacción Clientes</span>
-            <h3 className="admin-kpi-card__value">{metricasResumen.comentarios.calificacionPromedio} ★</h3>
-            <span className="admin-kpi-card__sub">{metricasResumen.comentarios.total} opiniones</span>
+            <h3 className="admin-kpi-card__value">{promedio} ★</h3>
+            <span className="admin-kpi-card__sub">{datos.comentarios.length} opiniones</span>
           </div>
         </button>
       </div>
 
       {/* 2. TABLAS RÁPIDAS DE ACTIVIDAD */}
+      <AdminStatus cargando={cargando} error={error} onReintentar={cargar} />
       <div className="admin-overview__grid">
         {/* Pedidos recientes */}
         <div className="admin-card">
@@ -116,7 +164,7 @@ export default function OverviewSection({ onNavigateTab }) {
                 {pedidosRecientes.map((pedido) => (
                   <tr key={pedido.id}>
                     <td>
-                      <span className="admin-table__code">{pedido.id}</span>
+                      <span className="admin-table__code">{pedido.codigo}</span>
                     </td>
                     <td>
                       <div className="admin-table__client">
@@ -125,7 +173,7 @@ export default function OverviewSection({ onNavigateTab }) {
                       </div>
                     </td>
                     <td>
-                      <span className="admin-table__amount">{pedido.total}</span>
+                      <span className="admin-table__amount">{formatCurrency(pedido.total)}</span>
                     </td>
                     <td>
                       <span className={`admin-badge ${getBadgeClass(pedido.estado)}`}>
@@ -178,8 +226,8 @@ export default function OverviewSection({ onNavigateTab }) {
                       </td>
                       <td>
                         <div className="admin-table__schedule">
-                          <strong>{reserva.fecha}</strong>
-                          <span>{reserva.hora}</span>
+                          <strong>{formatDate(reserva.fecha)}</strong>
+                          <span>{formatClock(reserva.hora)}</span>
                         </div>
                       </td>
                       <td>
@@ -231,7 +279,7 @@ export default function OverviewSection({ onNavigateTab }) {
                   {"★".repeat(c.calificacion)}
                   {"☆".repeat(5 - c.calificacion)}
                 </div>
-                <span className="admin-review-item__time">{c.fecha}</span>
+                <span className="admin-review-item__time">{formatDate(c.fecha)}</span>
               </div>
               <p className="admin-review-item__text">"{c.comentario}"</p>
               <span className="admin-review-item__tag">{c.tipo}</span>

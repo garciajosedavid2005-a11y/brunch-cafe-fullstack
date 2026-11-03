@@ -5,7 +5,7 @@ import {
   useMemo,
 } from "react";
 
-import menu from "../../data/menu.json";
+import { apiAssetUrl, apiRequest } from "../../services/api";
 
 import TarjetaDestacado from "./TarjetaDestacado";
 
@@ -33,13 +33,25 @@ const Destacados = () => {
 
   /* ───────── Datos ───────── */
 
-  const destacados = useMemo(
-    () =>
-      menu.filter(
-        ({ destacado }) => destacado
-      ),
-    []
-  );
+  const [menu, setMenu] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    apiRequest("/productos/menu")
+      .then(({ productos }) => {
+        if (active) setMenu(productos);
+      })
+      .catch((error) => console.error("No se pudieron cargar los productos destacados:", error))
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const destacados = useMemo(() => menu.filter(({ destacado }) => destacado), [menu]);
 
   const total = destacados.length;
 
@@ -56,12 +68,14 @@ const Destacados = () => {
   /* ───────── Navegación ───────── */
 
   const siguiente = useCallback(() => {
+    if (total < 2) return;
     setIndiceActual((prev) =>
       (prev + 1) % total
     );
   }, [total]);
 
   const anterior = useCallback(() => {
+    if (total < 2) return;
     setIndiceActual((prev) =>
       (prev - 1 + total) % total
     );
@@ -81,7 +95,7 @@ const Destacados = () => {
 
   /* ───────── Early return ───────── */
 
-  if (!total) return null;
+  if (loading || !total) return null;
 
   /* ───────── Transform ───────── */
 
@@ -161,7 +175,7 @@ const Destacados = () => {
                     className="destacados__celda"
                   >
                     <TarjetaDestacado
-                      producto={producto}
+                      producto={{ ...producto, imagen: apiAssetUrl(producto.imagen) }}
                     />
                   </div>
                 )

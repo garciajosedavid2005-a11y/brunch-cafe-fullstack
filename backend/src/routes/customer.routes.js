@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { readFileSync } from 'node:fs';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import { validateToken } from '../middlewares/validateToken.js';
@@ -9,16 +8,11 @@ import DetallePedido from '../models/detallePedido.model.js';
 import MetodoPago from '../models/metodoPago.model.js';
 import Reserva from '../models/reserva.model.js';
 import Estado from '../models/estado.model.js';
+import Producto from '../models/producto.model.js';
 import { crearComentario, listarMisComentarios } from '../controllers/comentario.controller.js';
 
 const router = Router();
 router.use(validateToken);
-
-const menu = JSON.parse(readFileSync(
-  new URL('../../../frontend/src/data/menu.json', import.meta.url),
-  'utf8'
-));
-const menuById = new Map(menu.map((product) => [product.id, product]));
 
 const profileSchema = z.object({
   nombre: z.string().trim().min(1).max(60),
@@ -42,7 +36,7 @@ const reservationSchema = z.object({
 
 const orderSchema = z.object({
   items: z.array(z.object({
-    productoId: z.coerce.number().int().min(1).max(24),
+    productoId: z.coerce.number().int().min(1),
     cantidad: z.coerce.number().int().min(1).max(20),
   })).min(1).max(50),
   nombre: z.string().trim().min(3).max(50),
@@ -239,17 +233,19 @@ router.post('/orders', async (req, res, next) => {
     return res.status(400).json({ message: 'Revisa los productos y datos de entrega.', errors: parsed.error.flatten() });
   }
 
+  const productCodes = parsed.data.items.map((item) => item.productoId);
+  const products = await Producto.find({ codigo: { $in: productCodes } }).lean();
+  const productByCode = new Map(products.map((product) => [product.codigo, product]));
   const lines = parsed.data.items.map((item) => {
-    const product = menuById.get(item.productoId);
+    const product = productByCode.get(item.productoId);
     if (!product) return null;
-    const unitPrice = Number(product.precio.replace(/[^\d]/g, ''));
-    if (!Number.isSafeInteger(unitPrice) || unitPrice < 0) return null;
     return {
-      productId: product.id,
+      productId: product.codigo,
+      productRef: product._id,
       name: product.nombre,
-      unitPrice,
+      unitPrice: product.precio,
       quantity: item.cantidad,
-      subtotal: unitPrice * item.cantidad,
+      subtotal: product.precio * item.cantidad,
     };
   });
   if (lines.some((line) => !line)) {
@@ -286,6 +282,7 @@ router.post('/orders', async (req, res, next) => {
     try {
       details = await DetallePedido.insertMany(lines.map((line) => ({
         pedido: order._id,
+        producto: line.productRef,
         productoId: line.productId,
         nombreProducto: line.name,
         precioProducto: line.unitPrice,

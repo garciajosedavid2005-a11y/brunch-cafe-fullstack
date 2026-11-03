@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import menu from "../../data/menu.json";
 import { apiRequest } from "../../services/api";
 import "./ListaComentarios.css";
 
@@ -64,10 +63,6 @@ const ListaComentarios = () => {
 
         <div className="grid-x grid-padding-x">
           {reviews.slice(0, visibleCount).map((review) => {
-            const product = review.tipo === "producto"
-              ? menu.find((item) => item.id === review.productoId)
-              : null;
-
             return (
               <div key={review._id} className="cell small-12 medium-6 large-4">
                 <article className="lista-comentarios__tarjeta">
@@ -78,7 +73,7 @@ const ListaComentarios = () => {
                     <span className="lista-comentarios__nombre">{review.nombre}</span>
                     <Estrellas calificacion={review.calificacion} />
                   </div>
-                  {product && <p className="lista-comentarios__producto">Sobre: {product.nombre}</p>}
+                  {review.producto && <p className="lista-comentarios__producto">Sobre: {review.producto}</p>}
                   <p className="lista-comentarios__comentario">{review.comentario}</p>
                   <time className="lista-comentarios__fecha" dateTime={review.createdAt}>
                     {new Intl.DateTimeFormat("es-CO", { dateStyle: "medium" }).format(new Date(review.createdAt))}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   User,
   Mail,
@@ -11,16 +11,17 @@ import {
   Lock,
 } from "lucide-react";
 import { useAuth } from "../../../context/useAuth";
+import { apiRequest } from "../../../services/api";
 
 export default function ProfileSection() {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
 
   // Datos personales del Administrador
   const [perfilData, setPerfilData] = useState({
-    nombre: user?.nombre || "Jose",
-    apellido: user?.apellido || "Administrador",
-    correo: user?.email || "jose@test.com",
-    telefono: user?.telefono || "312 456 7890",
+    nombre: user?.nombre || "",
+    apellido: user?.apellido || "",
+    correo: user?.email || "",
+    telefono: user?.telefono || "",
     rol: "Administrador del Sistema",
   });
 
@@ -32,16 +33,76 @@ export default function ProfileSection() {
   });
 
   const [mensajePerfil, setMensajePerfil] = useState("");
+  const [errorPerfil, setErrorPerfil] = useState("");
   const [mensajePass, setMensajePass] = useState("");
   const [errorPass, setErrorPass] = useState("");
+  const [cargando, setCargando] = useState(true);
+  const [guardandoPerfil, setGuardandoPerfil] = useState(false);
+  const [guardandoPass, setGuardandoPass] = useState(false);
 
-  const handleGuardarPerfil = (e) => {
+  useEffect(() => {
+    let active = true;
+    apiRequest("/usuarios/perfil")
+      .then((profile) => {
+        if (!active) return;
+        setPerfilData({
+          nombre: profile.nombre || "",
+          apellido: profile.apellido || "",
+          correo: profile.correo || "",
+          telefono: profile.telefono || "",
+          rol: profile.rol?.etiqueta || profile.rol?.nombre || "Administrador",
+        });
+      })
+      .catch((error) => {
+        if (active) setErrorPerfil(error.message);
+      })
+      .finally(() => {
+        if (active) setCargando(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleGuardarPerfil = async (e) => {
     e.preventDefault();
-    setMensajePerfil("¡Datos personales actualizados correctamente!");
-    setTimeout(() => setMensajePerfil(""), 4000);
+    setGuardandoPerfil(true);
+    setMensajePerfil("");
+    setErrorPerfil("");
+    try {
+      const profile = await apiRequest("/usuarios/perfil", {
+        method: "PUT",
+        body: JSON.stringify({
+          nombre: perfilData.nombre,
+          apellido: perfilData.apellido,
+          correo: perfilData.correo,
+          telefono: perfilData.telefono,
+        }),
+      });
+      setPerfilData((prev) => ({
+        ...prev,
+        nombre: profile.nombre,
+        apellido: profile.apellido,
+        correo: profile.correo,
+        telefono: profile.telefono || "",
+      }));
+      setUser({
+        ...user,
+        nombre: profile.nombre,
+        apellido: profile.apellido,
+        email: profile.correo,
+        telefono: profile.telefono || "",
+        role: profile.rol?.nombre || user?.role,
+      });
+      setMensajePerfil("¡Datos personales actualizados correctamente!");
+    } catch (error) {
+      setErrorPerfil(error.message);
+    } finally {
+      setGuardandoPerfil(false);
+    }
   };
 
-  const handleCambiarPassword = (e) => {
+  const handleCambiarPassword = async (e) => {
     e.preventDefault();
     setErrorPass("");
     setMensajePass("");
@@ -61,9 +122,19 @@ export default function ProfileSection() {
       return;
     }
 
-    setMensajePass("¡Contraseña actualizada con éxito!");
-    setPasswordData({ actual: "", nueva: "", confirmar: "" });
-    setTimeout(() => setMensajePass(""), 4000);
+    setGuardandoPass(true);
+    try {
+      await apiRequest("/usuarios/perfil/contrasena", {
+        method: "PUT",
+        body: JSON.stringify({ actual: passwordData.actual, nueva: passwordData.nueva }),
+      });
+      setMensajePass("¡Contraseña actualizada con éxito!");
+      setPasswordData({ actual: "", nueva: "", confirmar: "" });
+    } catch (error) {
+      setErrorPass(error.message);
+    } finally {
+      setGuardandoPass(false);
+    }
   };
 
   return (
@@ -79,6 +150,7 @@ export default function ProfileSection() {
       </div>
 
       <div className="admin-profile-grid">
+        {cargando && <p role="status">Cargando perfil...</p>}
         {/* TARJETA 1: INFORMACIÓN PERSONAL */}
         <div className="admin-card">
           <div className="admin-card__header">
@@ -90,6 +162,12 @@ export default function ProfileSection() {
             </div>
           </div>
 
+          {errorPerfil && (
+            <div className="admin-alert-error">
+              <AlertCircle size={18} />
+              <span>{errorPerfil}</span>
+            </div>
+          )}
           {mensajePerfil && (
             <div className="admin-alert-success">
               <CheckCircle size={18} />
@@ -174,7 +252,7 @@ export default function ProfileSection() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
-              <button type="submit" className="admin-button--primary">
+              <button type="submit" className="admin-button--primary" disabled={guardandoPerfil || cargando}>
                 <Save size={18} />
                 <span>Guardar Cambios</span>
               </button>
@@ -268,7 +346,7 @@ export default function ProfileSection() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
-              <button type="submit" className="admin-button--secondary-sm" style={{ height: "42px", padding: "0 1.25rem" }}>
+              <button type="submit" className="admin-button--secondary-sm" disabled={guardandoPass} style={{ height: "42px", padding: "0 1.25rem" }}>
                 <KeyRound size={16} />
                 <span>Actualizar Contraseña</span>
               </button>
@@ -279,4 +357,3 @@ export default function ProfileSection() {
     </div>
   );
 }
-

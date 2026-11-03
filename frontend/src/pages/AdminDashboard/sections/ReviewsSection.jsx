@@ -9,27 +9,41 @@ import {
   MessageSquareQuote,
   CheckCircle2,
 } from "lucide-react";
-import { comentariosCompletos } from "../mockExtraData";
+import useAdminResource from "../hooks/useAdminResource";
+import AdminStatus from "../components/AdminStatus";
+import { adminApi } from "../../../services/adminApi";
+import { formatDate } from "../adminFormat";
 
 export default function ReviewsSection() {
-  const [comentarios, setComentarios] = useState(comentariosCompletos);
+  const { items: comentarios, setItems, cargando, error, cargar } =
+    useAdminResource("/comentarios/admin");
   const [busqueda, setBusqueda] = useState("");
   const [filtroCalificacion, setFiltroCalificacion] = useState("todas");
   const [filtroTipo, setFiltroTipo] = useState("todos");
   const [comentarioAEliminar, setComentarioAEliminar] = useState(null);
 
   // Alternar visibilidad (moderar)
-  const handleToggleVisibilidad = (id) => {
-    setComentarios((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, visible: !c.visible } : c))
-    );
+  const handleToggleVisibilidad = async (item) => {
+    try {
+      const { visible } = await adminApi.patch(`/comentarios/${item.id}/visibility`, {
+        visible: !item.visible,
+      });
+      setItems((prev) => prev.map((comment) => (comment.id === item.id ? { ...comment, visible } : comment)));
+    } catch (requestError) {
+      window.alert(requestError.message);
+    }
   };
 
   // Eliminar comentario
-  const handleEliminar = () => {
+  const handleEliminar = async () => {
     if (!comentarioAEliminar) return;
-    setComentarios((prev) => prev.filter((c) => c.id !== comentarioAEliminar.id));
-    setComentarioAEliminar(null);
+    try {
+      await adminApi.delete(`/comentarios/${comentarioAEliminar.id}`);
+      setItems((prev) => prev.filter((comment) => comment.id !== comentarioAEliminar.id));
+      setComentarioAEliminar(null);
+    } catch (requestError) {
+      window.alert(requestError.message);
+    }
   };
 
   // Filtrado
@@ -184,6 +198,7 @@ export default function ReviewsSection() {
       </div>
 
       {/* TABLA DE COMENTARIOS */}
+      <AdminStatus cargando={cargando} error={error} onReintentar={cargar} />
       <div className="admin-card">
         <div className="admin-table-container">
           <table className="admin-table">
@@ -246,7 +261,7 @@ export default function ReviewsSection() {
                       </div>
                     </td>
                     <td>
-                      <span className="admin-table__date">{item.fecha}</span>
+                      <span className="admin-table__date">{formatDate(item.fecha)}</span>
                     </td>
                     <td>
                       {item.visible ? (
@@ -260,7 +275,7 @@ export default function ReviewsSection() {
                         <button
                           type="button"
                           className="admin-button--secondary-sm"
-                          onClick={() => handleToggleVisibilidad(item.id)}
+                          onClick={() => handleToggleVisibilidad(item)}
                           title={item.visible ? "Ocultar comentario" : "Publicar comentario"}
                         >
                           {item.visible ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -336,4 +351,3 @@ export default function ReviewsSection() {
     </div>
   );
 }
-

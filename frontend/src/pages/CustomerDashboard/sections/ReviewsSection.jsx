@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import menu from "../../../data/menu.json";
 import { apiRequest } from "../../../services/api";
 import SectionHeading from "../SectionHeading";
 
@@ -8,6 +7,7 @@ const reviewDate = (value) => new Intl.DateTimeFormat("es-CO", { dateStyle: "med
 
 export default function ReviewsSection() {
   const [reviews, setReviews] = useState([]);
+  const [menu, setMenu] = useState([]);
   const [tipo, setTipo] = useState("general");
   const [productoId, setProductoId] = useState("");
   const [calificacion, setCalificacion] = useState(0);
@@ -21,6 +21,12 @@ export default function ReviewsSection() {
       .then(({ reviews: customerReviews }) => setReviews(customerReviews))
       .catch((error) => setNotice({ message: error.message, error: true }))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    apiRequest("/productos/menu")
+      .then(({ productos }) => setMenu(productos))
+      .catch((error) => setNotice({ message: error.message, error: true }));
   }, []);
 
   const publishReview = async (event) => {

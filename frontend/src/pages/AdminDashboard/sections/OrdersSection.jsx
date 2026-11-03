@@ -1,29 +1,28 @@
 import { useState } from "react";
 import { Search, Eye, X, Filter, ShoppingBag, MapPin, Phone, CreditCard, Clock } from "lucide-react";
-import { pedidosIniciales } from "../mockData";
+import useAdminResource from "../hooks/useAdminResource";
+import AdminStatus from "../components/AdminStatus";
+import { adminApi } from "../../../services/adminApi";
+import { formatClock, formatCurrency, formatDate } from "../adminFormat";
 
 export default function OrdersSection() {
-  const [pedidos, setPedidos] = useState(pedidosIniciales);
+  const { items: pedidos, cargando, error, cargar } = useAdminResource("/pedidos");
+  const estadosResource = useAdminResource("/estados?tipo=pedido");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   const [busqueda, setBusqueda] = useState("");
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
 
-  const estadosDisponibles = [
-    "Todos",
-    "Pendiente",
-    "En preparación",
-    "Listo",
-    "Entregado",
-    "Cancelado",
-  ];
+  const estadosDisponibles = ["Todos", ...new Set(estadosResource.items.map((estado) => estado.nombre))];
 
-  // Cambio de estado interactivo (simulado visualmente)
-  const handleCambiarEstado = (id, nuevoEstado) => {
-    setPedidos((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, estado: nuevoEstado } : p))
-    );
-    if (pedidoSeleccionado && pedidoSeleccionado.id === id) {
-      setPedidoSeleccionado((prev) => ({ ...prev, estado: nuevoEstado }));
+  const handleCambiarEstado = async (id, nuevoEstado) => {
+    const estado = estadosResource.items.find((item) => item.nombre === nuevoEstado);
+    if (!estado) return;
+    try {
+      const actualizado = await adminApi.patch(`/pedidos/${id}/estado`, { estado: estado.id });
+      if (pedidoSeleccionado?.id === id) setPedidoSeleccionado(actualizado);
+      await cargar();
+    } catch (requestError) {
+      window.alert(requestError.message);
     }
   };
 
@@ -33,7 +32,7 @@ export default function OrdersSection() {
       filtroEstado === "Todos" || pedido.estado === filtroEstado;
     const coincideBusqueda =
       pedido.cliente.toLowerCase().includes(busqueda.toLowerCase()) ||
-      pedido.id.toLowerCase().includes(busqueda.toLowerCase()) ||
+      pedido.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
       pedido.barrio.toLowerCase().includes(busqueda.toLowerCase());
     return coincideEstado && coincideBusqueda;
   });
@@ -67,6 +66,14 @@ export default function OrdersSection() {
       </div>
 
       {/* BARRA DE FILTROS Y BÚSQUEDA */}
+      <AdminStatus
+        cargando={cargando || estadosResource.cargando}
+        error={error || estadosResource.error}
+        onReintentar={() => {
+          cargar();
+          estadosResource.cargar();
+        }}
+      />
       <div className="admin-toolbar">
         <div className="admin-search-wrapper">
           <Search size={18} className="admin-search-icon" />
@@ -113,8 +120,8 @@ export default function OrdersSection() {
                 pedidosFiltrados.map((pedido) => (
                   <tr key={pedido.id}>
                     <td>
-                      <span className="admin-table__code">{pedido.id}</span>
-                      <small className="admin-table__date">{pedido.fecha}</small>
+                      <span className="admin-table__code">{pedido.codigo}</span>
+                      <small className="admin-table__date">{formatDate(pedido.fecha)} · {formatClock(new Date(pedido.fecha).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }))}</small>
                     </td>
                     <td>
                       <div className="admin-table__client">
@@ -129,7 +136,7 @@ export default function OrdersSection() {
                       </div>
                     </td>
                     <td>
-                      <span className="admin-table__amount">{pedido.total}</span>
+                      <span className="admin-table__amount">{formatCurrency(pedido.total)}</span>
                     </td>
                     <td>
                       <span className="admin-table__payment">{pedido.metodoPago}</span>
@@ -141,11 +148,9 @@ export default function OrdersSection() {
                         value={pedido.estado}
                         onChange={(e) => handleCambiarEstado(pedido.id, e.target.value)}
                       >
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="En preparación">En preparación</option>
-                        <option value="Listo">Listo</option>
-                        <option value="Entregado">Entregado</option>
-                        <option value="Cancelado">Cancelado</option>
+                        {estadosResource.items.map((estado) => (
+                          <option key={estado.id} value={estado.nombre}>{estado.nombre}</option>
+                        ))}
                       </select>
                     </td>
                     <td>
@@ -184,7 +189,7 @@ export default function OrdersSection() {
             <div className="admin-modal-header">
               <div>
                 <span className="admin-badge admin-badge--neutral">
-                  Pedido {pedidoSeleccionado.id}
+                  Pedido {pedidoSeleccionado.codigo}
                 </span>
                 <h3 className="admin-modal-title">Detalle del Pedido</h3>
                 <small className="admin-modal-date">{pedidoSeleccionado.fecha}</small>
@@ -244,8 +249,8 @@ export default function OrdersSection() {
                       <tr key={idx}>
                         <td>{item.nombre}</td>
                         <td>{item.cantidad}</td>
-                        <td>{item.precio}</td>
-                        <td><strong>{item.subtotal}</strong></td>
+                        <td>{formatCurrency(item.precio)}</td>
+                        <td><strong>{formatCurrency(item.subtotal)}</strong></td>
                       </tr>
                     ))}
                   </tbody>
@@ -274,11 +279,9 @@ export default function OrdersSection() {
                     handleCambiarEstado(pedidoSeleccionado.id, e.target.value)
                   }
                 >
-                  <option value="Pendiente">Pendiente</option>
-                  <option value="En preparación">En preparación</option>
-                  <option value="Listo">Listo</option>
-                  <option value="Entregado">Entregado</option>
-                  <option value="Cancelado">Cancelado</option>
+                  {estadosResource.items.map((estado) => (
+                    <option key={estado.id} value={estado.nombre}>{estado.nombre}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -298,4 +301,3 @@ export default function OrdersSection() {
     </div>
   );
 }
-

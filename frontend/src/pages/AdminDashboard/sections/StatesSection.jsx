@@ -10,15 +10,13 @@ import {
   ShoppingBag,
   CalendarDays,
 } from "lucide-react";
-import {
-  estadosPedidosIniciales,
-  estadosReservasIniciales,
-} from "../mockExtraData";
+import useAdminResource from "../hooks/useAdminResource";
+import AdminStatus from "../components/AdminStatus";
 
 export default function StatesSection() {
   const [tipoActivo, setTipoActivo] = useState("pedidos"); // "pedidos" | "reservas"
-  const [estadosPedidos, setEstadosPedidos] = useState(estadosPedidosIniciales);
-  const [estadosReservas, setEstadosReservas] = useState(estadosReservasIniciales);
+  const pedidosResource = useAdminResource("/estados?tipo=pedido");
+  const reservasResource = useAdminResource("/estados?tipo=reserva");
   const [busqueda, setBusqueda] = useState("");
 
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -34,8 +32,8 @@ export default function StatesSection() {
     esFinal: false,
   });
 
-  const listaActual = tipoActivo === "pedidos" ? estadosPedidos : estadosReservas;
-  const setListaActual = tipoActivo === "pedidos" ? setEstadosPedidos : setEstadosReservas;
+  const recursoActual = tipoActivo === "pedidos" ? pedidosResource : reservasResource;
+  const listaActual = recursoActual.items;
 
   const abrirModalCrear = () => {
     setEstadoEnEdicion(null);
@@ -63,31 +61,23 @@ export default function StatesSection() {
     setModalAbierto(true);
   };
 
-  const handleGuardar = (e) => {
+  const handleGuardar = async (e) => {
     e.preventDefault();
     if (!formData.nombre.trim()) return;
 
-    if (estadoEnEdicion) {
-      setListaActual((prev) =>
-        prev.map((est) =>
-          est.id === estadoEnEdicion.id ? { ...est, ...formData } : est
-        )
-      );
-    } else {
-      const nuevo = {
-        id: Date.now(),
-        tipo: tipoActivo === "pedidos" ? "pedido" : "reserva",
-        ...formData,
-      };
-      setListaActual((prev) => [...prev, nuevo]);
-    }
-    setModalAbierto(false);
+    const datos = {
+      ...formData,
+      ...(estadoEnEdicion ? {} : { tipo: tipoActivo === "pedidos" ? "pedido" : "reserva" }),
+    };
+    const guardado = estadoEnEdicion
+      ? await recursoActual.actualizar(estadoEnEdicion.id, datos)
+      : await recursoActual.crear(datos);
+    if (guardado) setModalAbierto(false);
   };
 
-  const handleEliminar = () => {
+  const handleEliminar = async () => {
     if (!estadoAEliminar) return;
-    setListaActual((prev) => prev.filter((est) => est.id !== estadoAEliminar.id));
-    setEstadoAEliminar(null);
+    if (await recursoActual.eliminar(estadoAEliminar.id)) setEstadoAEliminar(null);
   };
 
   const estadosFiltrados = listaActual.filter(
@@ -127,7 +117,7 @@ export default function StatesSection() {
           }}
         >
           <ShoppingBag size={18} />
-          <span>Estados de Pedidos ({estadosPedidos.length})</span>
+          <span>Estados de Pedidos ({pedidosResource.items.length})</span>
         </button>
         <button
           type="button"
@@ -138,7 +128,7 @@ export default function StatesSection() {
           }}
         >
           <CalendarDays size={18} />
-          <span>Estados de Reservas ({estadosReservas.length})</span>
+          <span>Estados de Reservas ({reservasResource.items.length})</span>
         </button>
       </div>
 
@@ -157,6 +147,14 @@ export default function StatesSection() {
       </div>
 
       {/* TABLA DE ESTADOS */}
+      <AdminStatus
+        cargando={pedidosResource.cargando || reservasResource.cargando}
+        error={pedidosResource.error || reservasResource.error}
+        onReintentar={() => {
+          pedidosResource.cargar();
+          reservasResource.cargar();
+        }}
+      />
       <div className="admin-card">
         <div className="admin-table-container">
           <table className="admin-table">
@@ -336,7 +334,7 @@ export default function StatesSection() {
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="admin-button--primary">
+                <button type="submit" className="admin-button--primary" disabled={recursoActual.guardando}>
                   {estadoEnEdicion ? "Guardar Cambios" : "Crear Estado"}
                 </button>
               </div>
@@ -387,4 +385,3 @@ export default function StatesSection() {
     </div>
   );
 }
-

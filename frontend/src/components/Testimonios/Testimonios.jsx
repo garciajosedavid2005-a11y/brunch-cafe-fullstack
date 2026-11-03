@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import menu from "../../data/menu.json";
 import { apiRequest } from "../../services/api";
 import useAnimacionEntrada from "../../hooks/useAnimacionEntrada";
 import "./Testimonios.css";
@@ -70,10 +69,6 @@ const Testimonios = () => {
   }, [siguiente, animando, reviews.length]);
 
   const testimonio = reviews[actual];
-  const producto = testimonio?.tipo === "producto"
-    ? menu.find((item) => item.id === testimonio.productoId)
-    : null;
-
   return (
     <section ref={ref} className="testimonios-wrap animar-subir">
       <div className="testimonios">
@@ -100,7 +95,7 @@ const Testimonios = () => {
             >
               <blockquote className="testimonios__blockquote">
                 {testimonio.tipo === "producto" && (
-                  <p className="testimonios__producto">Sobre: {producto?.nombre || "un producto del menú"}</p>
+                  <p className="testimonios__producto">Sobre: {testimonio.producto || "un producto del menú"}</p>
                 )}
                 <p className="testimonios__comentario">“{testimonio.comentario}”</p>
                 <footer className="testimonios__autor">

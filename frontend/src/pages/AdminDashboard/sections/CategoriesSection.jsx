@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Plus, Edit2, Trash2, Search, X, Tags, AlertCircle, Check } from "lucide-react";
-import { categoriasIniciales } from "../mockCatalogData";
+import useAdminResource from "../hooks/useAdminResource";
+import AdminStatus from "../components/AdminStatus";
 
 export default function CategoriesSection() {
-  const [categorias, setCategorias] = useState(categoriasIniciales);
+  const { items: categorias, cargando, error, guardando, cargar, crear, actualizar, eliminar } =
+    useAdminResource("/categorias");
   const [busqueda, setBusqueda] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [categoriaEnEdicion, setCategoriaEnEdicion] = useState(null); // null = crear nueva
@@ -30,34 +32,19 @@ export default function CategoriesSection() {
     setModalAbierto(true);
   };
 
-  const handleGuardar = (e) => {
+  const handleGuardar = async (e) => {
     e.preventDefault();
     if (!formData.nombre.trim()) return;
 
-    if (categoriaEnEdicion) {
-      // Editar
-      setCategorias((prev) =>
-        prev.map((c) =>
-          c.id === categoriaEnEdicion.id
-            ? { ...c, ...formData }
-            : c
-        )
-      );
-    } else {
-      // Crear
-      const nueva = {
-        id: Date.now(),
-        ...formData,
-      };
-      setCategorias((prev) => [...prev, nueva]);
-    }
-    setModalAbierto(false);
+    const guardada = categoriaEnEdicion
+      ? await actualizar(categoriaEnEdicion.id, formData)
+      : await crear(formData);
+    if (guardada) setModalAbierto(false);
   };
 
-  const handleEliminar = () => {
+  const handleEliminar = async () => {
     if (!categoriaAEliminar) return;
-    setCategorias((prev) => prev.filter((c) => c.id !== categoriaAEliminar.id));
-    setCategoriaAEliminar(null);
+    if (await eliminar(categoriaAEliminar.id)) setCategoriaAEliminar(null);
   };
 
   const categoriasFiltradas = categorias.filter(
@@ -104,6 +91,7 @@ export default function CategoriesSection() {
       </div>
 
       {/* TABLA DE CATEGORÍAS */}
+      <AdminStatus cargando={cargando} error={error} onReintentar={cargar} />
       <div className="admin-card">
         <div className="admin-table-container">
           <table className="admin-table">
@@ -231,7 +219,7 @@ export default function CategoriesSection() {
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="admin-button--primary">
+                <button type="submit" className="admin-button--primary" disabled={guardando}>
                   {categoriaEnEdicion ? "Guardar cambios" : "Crear categoría"}
                 </button>
               </div>
@@ -290,4 +278,3 @@ export default function CategoriesSection() {
     </div>
   );
 }
-
