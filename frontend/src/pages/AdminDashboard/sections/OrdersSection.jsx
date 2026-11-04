@@ -41,8 +41,10 @@ export default function OrdersSection() {
     switch (estado) {
       case "Pendiente":
         return "admin-badge--warning";
+      case "Confirmado":
       case "En preparación":
         return "admin-badge--info";
+      case "Recibido":
       case "Listo":
       case "Entregado":
         return "admin-badge--success";
@@ -214,6 +216,7 @@ export default function OrdersSection() {
                   </div>
                   <p><strong>Nombre:</strong> {pedidoSeleccionado.cliente}</p>
                   <p><strong>Teléfono:</strong> {pedidoSeleccionado.telefono}</p>
+                  {pedidoSeleccionado.correo && <p><strong>Correo:</strong> {pedidoSeleccionado.correo}</p>}
                 </div>
 
                 <div className="admin-modal-box">
@@ -265,7 +268,7 @@ export default function OrdersSection() {
                 </div>
                 <div className="admin-modal-total">
                   <span>Total a cobrar:</span>
-                  <h3>{pedidoSeleccionado.total}</h3>
+                  <h3>{formatCurrency(pedidoSeleccionado.total)}</h3>
                 </div>
               </div>
 

@@ -1,7 +1,7 @@
 import "./CarritoFormulario.css"
-import {FaUser,FaMapMarkerAlt,FaClock,FaHome,FaStickyNote} from 'react-icons/fa'
+import { FaUser, FaMapMarkerAlt, FaClock, FaHome, FaStickyNote, FaCreditCard, FaMoneyBillWave } from 'react-icons/fa'
 import { useCarrito } from '../../context/CarritoContext'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/useAuth'
 import { apiRequest } from '../../services/api'
@@ -25,6 +25,47 @@ const CarritoFormulario = () => {
     const [errores, setErrores] = useState({})
     const [errorPedido, setErrorPedido] = useState('')
     const [guardando, setGuardando] = useState(false)
+    const [metodosPagoEstado, setMetodosPagoEstado] = useState({
+        usuarioId: null,
+        metodos: [],
+        error: ''
+    })
+    const [metodoPagoId, setMetodoPagoId] = useState('')
+
+    const metodosPago = metodosPagoEstado.usuarioId === user?.id
+        ? metodosPagoEstado.metodos
+        : []
+    const cargandoMetodos = Boolean(user?.id) && metodosPagoEstado.usuarioId !== user.id
+    const errorMetodos = metodosPagoEstado.usuarioId === user?.id
+        ? metodosPagoEstado.error
+        : ''
+
+    useEffect(() => {
+        if (!user?.id) return undefined
+
+        let activo = true
+        apiRequest('/customer/payment-methods')
+            .then((metodos) => {
+                if (!activo) return
+                setMetodosPagoEstado({ usuarioId: user.id, metodos, error: '' })
+                setMetodoPagoId((seleccionActual) =>
+                    metodos.some((metodo) => metodo.id === seleccionActual)
+                        ? seleccionActual
+                        : metodos[0]?.id || ''
+                )
+            })
+            .catch((error) => {
+                if (activo) setMetodosPagoEstado({
+                    usuarioId: user.id,
+                    metodos: [],
+                    error: error.message
+                })
+            })
+
+        return () => {
+            activo = false
+        }
+    }, [user?.id])
 
     const handleChange = (e) => {
         let valor = e.target.value
@@ -95,6 +136,16 @@ const CarritoFormulario = () => {
             return
         }
 
+        if (cargandoMetodos) {
+            setErrorPedido('Espera un momento mientras cargamos los métodos de pago.')
+            return
+        }
+
+        if (!metodosPago.some((metodo) => metodo.id === metodoPagoId)) {
+            setErrorPedido(errorMetodos || 'Selecciona un método de pago disponible para continuar.')
+            return
+        }
+
         const nuevosErrores = validar()
         if (Object.keys(nuevosErrores).length > 0) {
             setErrores(nuevosErrores)
@@ -110,10 +161,12 @@ const CarritoFormulario = () => {
         setGuardando(true)
         setErrorPedido('')
         try {
+            const metodoPago = metodosPago.find((metodo) => metodo.id === metodoPagoId)
             const { order } = await apiRequest('/customer/orders', {
                 method: 'POST',
                 body: JSON.stringify({
                     ...formData,
+                    metodoPagoId,
                     items: productos.map(({ id, cantidad }) => ({
                         productoId: id,
                         cantidad
@@ -129,7 +182,7 @@ const CarritoFormulario = () => {
                 barrio: '',
                 indicaciones: ''
             })
-            alert(`¡Pedido ${order.orderNumber} confirmado! Pago contra entrega.`)
+            alert(`¡Pedido ${order.orderNumber} confirmado! Método de pago: ${metodoPago.nombre}.`)
         } catch (error) {
             if (error.status === 401 || error.status === 403) {
                 navigate('/login', { state: { from: '/domicilios' } })
@@ -286,6 +339,51 @@ const CarritoFormulario = () => {
                         </div>
                     </div>
 
+                    <section className="carrito-pago" aria-labelledby="carrito-pago-titulo">
+                        <h4 id="carrito-pago-titulo" className="carrito-pago__titulo">
+                            ¿Cómo quieres pagar?
+                        </h4>
+                        <p className="carrito-pago__ayuda">
+                            Elige una opción activa. Los pagos con tarjeta se realizan al recibir el domicilio; nunca pedimos los datos de tu tarjeta en esta página.
+                        </p>
+                        {cargandoMetodos && <p role="status">Cargando métodos de pago...</p>}
+                        {errorMetodos && <p className="carrito-error" role="alert">{errorMetodos}</p>}
+                        {!cargandoMetodos && !errorMetodos && metodosPago.length === 0 && user && (
+                            <p className="carrito-error" role="alert">No hay métodos de pago disponibles. Contacta al café para realizar tu pedido.</p>
+                        )}
+                        <div className="carrito-pago__opciones" role="radiogroup" aria-labelledby="carrito-pago-titulo">
+                            {metodosPago.map((metodo) => {
+                                const seleccionado = metodoPagoId === metodo.id
+                                const esEfectivo = /efectivo|contra\s*entrega/i.test(metodo.nombre)
+                                return (
+                                    <label
+                                        key={metodo.id}
+                                        className={`carrito-pago__opcion${seleccionado ? ' is-selected' : ''}`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="metodoPago"
+                                            value={metodo.id}
+                                            checked={seleccionado}
+                                            onChange={() => {
+                                                setMetodoPagoId(metodo.id)
+                                                setErrorPedido('')
+                                            }}
+                                            disabled={cargandoMetodos || guardando}
+                                        />
+                                        <span className="carrito-pago__icono" aria-hidden="true">
+                                            {esEfectivo ? <FaMoneyBillWave /> : <FaCreditCard />}
+                                        </span>
+                                        <span className="carrito-pago__texto">
+                                            <strong>{metodo.nombre}</strong>
+                                            {metodo.descripcion && <small>{metodo.descripcion}</small>}
+                                        </span>
+                                    </label>
+                                )
+                            })}
+                        </div>
+                    </section>
+
                     {/* TOTAL */}
                     <div className="carrito-formulario__total">
                         <div className="carrito-formulario__total-linea"></div>
@@ -317,6 +415,7 @@ const CarritoFormulario = () => {
             {mostrarModal && (
                 <ResumenPedido
                     formData={formData}
+                    metodoPago={metodosPago.find((metodo) => metodo.id === metodoPagoId)}
                     onEditar={() => setMostrarModal(false)}
                     onConfirmar={handleConfirmar}
                     guardando={guardando}

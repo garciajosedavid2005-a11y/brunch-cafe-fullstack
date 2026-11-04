@@ -10,6 +10,7 @@ import Reserva from '../models/reserva.model.js';
 import Estado from '../models/estado.model.js';
 import Producto from '../models/producto.model.js';
 import { crearComentario, listarMisComentarios } from '../controllers/comentario.controller.js';
+import { ensureOrderPaymentMethods, ensureOrderStates } from '../libs/ensureOrderOptions.js';
 
 const router = Router();
 router.use(validateToken);
@@ -47,6 +48,7 @@ const orderSchema = z.object({
   hora: z.string().regex(/^(?:(?:0[8-9]|1[0-5]):[0-5]\d|16:00)$/),
   barrio: z.string().trim().min(3).max(40),
   indicaciones: z.string().trim().max(120).default(''),
+  metodoPagoId: z.string().refine(mongoose.isValidObjectId, 'Selecciona un método de pago válido.'),
 });
 
 const availableReservationTimes = (date) => {
@@ -119,7 +121,7 @@ const validateReservationDate = (reservation) => {
 const orderStatus = (stateName = '') => {
   const name = stateName.toLowerCase();
   if (name.includes('cancel')) return 'cancelled';
-  if (name.includes('entreg')) return 'delivered';
+  if (name.includes('entreg') || name.includes('recibid')) return 'delivered';
   if (name.includes('prepar')) return 'preparing';
   if (name.includes('list')) return 'ready';
   if (name.includes('confirm') || name.includes('acept')) return 'confirmed';
@@ -130,6 +132,8 @@ const serializeOrder = (order, details) => ({
   _id: order._id,
   orderNumber: order._id.toString().slice(-6).toUpperCase(),
   status: orderStatus(order.estado?.nombre),
+  statusLabel: order.estado?.nombre || 'Pendiente',
+  paymentMethod: order.metodoPago?.nombre || '',
   total: order.total,
   createdAt: order.createdAt,
   delivery: {
@@ -209,6 +213,7 @@ router.get('/orders', async (req, res, next) => {
   try {
     const orders = await Pedido.find({ usuario: req.usuario.id })
       .populate('estado')
+      .populate('metodoPago', 'nombre')
       .sort({ createdAt: -1 })
       .lean();
     const ids = orders.map((order) => order._id);
@@ -222,6 +227,22 @@ router.get('/orders', async (req, res, next) => {
     return res.json({
       orders: orders.map((order) => serializeOrder(order, detailsByOrder.get(order._id.toString()) || [])),
     });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get('/payment-methods', async (req, res, next) => {
+  try {
+    await ensureOrderPaymentMethods();
+    const methods = await MetodoPago.find({ activo: { $ne: false } })
+      .sort({ nombre: 1 })
+      .select('nombre descripcion');
+    return res.json(methods.map((method) => ({
+      id: method._id,
+      nombre: method.nombre,
+      descripcion: method.descripcion || '',
+    })));
   } catch (error) {
     return next(error);
   }
@@ -253,18 +274,13 @@ router.post('/orders', async (req, res, next) => {
   }
 
   try {
+    await Promise.all([ensureOrderStates(), ensureOrderPaymentMethods()]);
     const [pending, paymentMethod] = await Promise.all([
-      Estado.findOneAndUpdate(
-        { nombre: 'Pendiente', tipo: 'pedido' },
-        { $setOnInsert: { nombre: 'Pendiente', tipo: 'pedido' } },
-        { new: true, upsert: true, setDefaultsOnInsert: true }
-      ),
-      MetodoPago.findOneAndUpdate(
-        { nombre: 'Contra Entrega' },
-        { $setOnInsert: { nombre: 'Contra Entrega', descripcion: 'Pago al recibir el pedido' } },
-        { new: true, upsert: true, setDefaultsOnInsert: true }
-      ),
+      Estado.findOne({ nombre: 'Pendiente', tipo: 'pedido' }),
+      MetodoPago.findOne({ _id: parsed.data.metodoPagoId, activo: { $ne: false } }),
     ]);
+    if (!pending) return res.status(500).json({ message: 'No se pudo preparar el estado inicial del pedido.' });
+    if (!paymentMethod) return res.status(400).json({ message: 'El método de pago ya no está disponible. Actualiza la página y elige otro.' });
 
     const order = await Pedido.create({
       usuario: req.usuario.id,
@@ -295,7 +311,10 @@ router.post('/orders', async (req, res, next) => {
       throw error;
     }
 
-    const populatedOrder = await Pedido.findById(order._id).populate('estado', 'nombre').lean();
+    const populatedOrder = await Pedido.findById(order._id)
+      .populate('estado', 'nombre')
+      .populate('metodoPago', 'nombre')
+      .lean();
     return res.status(201).json({ order: serializeOrder(populatedOrder, details) });
   } catch (error) {
     return next(error);
@@ -309,6 +328,7 @@ router.get('/orders/:id', async (req, res, next) => {
   try {
     const order = await Pedido.findOne({ _id: req.params.id, usuario: req.usuario.id })
       .populate('estado')
+      .populate('metodoPago', 'nombre')
       .lean();
     if (!order) return res.status(404).json({ message: 'No se encontró el pedido.' });
     const details = await DetallePedido.find({ pedido: order._id }).lean();

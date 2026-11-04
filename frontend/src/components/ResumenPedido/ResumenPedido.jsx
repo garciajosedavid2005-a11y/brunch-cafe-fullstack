@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { useCarrito } from '../../context/CarritoContext'
 import { FaShoppingCart, FaMapMarkerAlt, FaClock, FaUser, FaHome, FaStickyNote } from 'react-icons/fa'
 
-const ResumenPedido = ({ formData, onEditar, onConfirmar, guardando = false, error = '' }) => {
+const ResumenPedido = ({ formData, metodoPago, onEditar, onConfirmar, guardando = false, error = '' }) => {
 
     const { productos, calcularTotal } = useCarrito()
 
@@ -96,6 +96,16 @@ const ResumenPedido = ({ formData, onEditar, onConfirmar, guardando = false, err
                         </div>
                     )}
                 </div>
+
+                {metodoPago && (
+                    <div className="resumen-pedido__seccion">
+                        <h3 className="resumen-pedido__seccion-titulo">Método de pago</h3>
+                        <p className="resumen-pedido__dato-valor">{metodoPago.nombre}</p>
+                        {metodoPago.descripcion && (
+                            <p className="resumen-pedido__header-subtitulo">{metodoPago.descripcion}</p>
+                        )}
+                    </div>
+                )}
 
                 {/* Total */}
                 <div className="resumen-pedido__total">

@@ -118,6 +118,82 @@
     margin-top: 1.5rem;
 } 
 
+.carrito-pago {
+    margin-top: 1.5rem;
+}
+
+.carrito-pago__titulo {
+    margin: 0 0 0.35rem;
+    color: var(--color-oscuro);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.carrito-pago__ayuda {
+    margin: 0 0 0.9rem;
+    color: #75645d;
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+.carrito-pago__opciones {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0.7rem;
+}
+
+.carrito-pago__opcion {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    min-height: 80px;
+    padding: 0.85rem;
+    border: 1px solid var(--color-suave);
+    border-radius: 14px;
+    background: var(--color-blanco);
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.carrito-pago__opcion:hover,
+.carrito-pago__opcion.is-selected {
+    border-color: var(--color-primario);
+    box-shadow: 0 4px 14px var(--color-sombra);
+}
+
+.carrito-pago__opcion.is-selected {
+    transform: translateY(-1px);
+}
+
+.carrito-pago__opcion input {
+    margin: 0.2rem 0 0;
+    accent-color: var(--color-primario);
+}
+
+.carrito-pago__icono {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    border-radius: 10px;
+    background: #faf0ed;
+    color: var(--color-primario);
+}
+
+.carrito-pago__texto {
+    display: grid;
+    gap: 0.25rem;
+    color: var(--color-oscuro);
+    font-size: 0.86rem;
+}
+
+.carrito-pago__texto small {
+    color: #75645d;
+    font-size: 0.74rem;
+    line-height: 1.4;
+}
+
 .carrito-formulario__total-linea { 
     flex: 1; 
     height: 1.5px; 

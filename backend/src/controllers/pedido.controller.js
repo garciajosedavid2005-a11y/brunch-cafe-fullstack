@@ -7,7 +7,7 @@ import { manejarError } from '../libs/manejarError.js'
 const formato = (pedido, detalles) => ({
     id: pedido._id,
     codigo: `PED-${pedido._id.toString().slice(-6).toUpperCase()}`,
-    cliente: [pedido.usuario?.nombre, pedido.usuario?.apellido].filter(Boolean).join(' ') || pedido.nombreEntrega || 'Cliente',
+    cliente: pedido.nombreEntrega || [pedido.usuario?.nombre, pedido.usuario?.apellido].filter(Boolean).join(' ') || 'Cliente',
     correo: pedido.usuario?.correo || '',
     telefono: pedido.usuario?.telefono || '',
     direccion: pedido.direccion || '',
@@ -65,17 +65,30 @@ export const cambiarEstadoPedido = async (req, res) => {
         if (!nuevoEstado) {
             return res.status(400).json({ message: 'El estado enviado no existe o no es de tipo pedido' })
         }
-        const pedido = await Pedido.findByIdAndUpdate(
-            req.params.id,
-            { estado: nuevoEstado._id },
-            { new: true }
-        )
-            .populate('usuario', 'nombre apellido correo telefono')
-            .populate('estado', 'nombre')
-            .populate('metodoPago', 'nombre')
-            .lean()
+        const pedidoActual = await Pedido.findById(req.params.id).populate('estado', 'nombre esFinal')
+        if (!pedidoActual) return res.status(404).json({ message: 'Pedido no encontrado' })
+        if (pedidoActual.estado?.esFinal && String(pedidoActual.estado._id) !== String(nuevoEstado._id)) {
+            return res.status(409).json({ message: 'El pedido ya llegó a un estado final y no puede modificarse.' })
+        }
 
-        if (!pedido) return res.status(404).json({ message: 'Pedido no encontrado' })
+        const etapas = ['Pendiente', 'Confirmado', 'Recibido']
+        const etapaActual = etapas.indexOf(pedidoActual.estado?.nombre)
+        const etapaNueva = etapas.indexOf(nuevoEstado.nombre)
+        if (
+            etapaActual !== -1 &&
+            etapaNueva !== -1 &&
+            etapaNueva !== etapaActual &&
+            etapaNueva !== etapaActual + 1
+        ) {
+            return res.status(409).json({ message: 'El pedido debe avanzar en orden: Pendiente, Confirmado y Recibido.' })
+        }
+
+        pedidoActual.estado = nuevoEstado._id
+        await pedidoActual.save()
+        await pedidoActual.populate('usuario', 'nombre apellido correo telefono')
+        await pedidoActual.populate('estado', 'nombre')
+        await pedidoActual.populate('metodoPago', 'nombre')
+        const pedido = pedidoActual.toObject()
         const detalles = await DetallePedido.find({ pedido: pedido._id }).lean()
         res.json(formato(pedido, detalles))
     } catch (error) {

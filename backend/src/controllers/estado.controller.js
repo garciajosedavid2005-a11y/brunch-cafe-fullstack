@@ -3,6 +3,7 @@ import Pedido from '../models/pedido.model.js'
 import Reserva from '../models/reserva.model.js'
 import { manejarError } from '../libs/manejarError.js'
 import { sinUndefined } from '../libs/utils.js'
+import { ensureOrderStates } from '../libs/ensureOrderOptions.js'
 
 const COMPARACION = { locale: 'es', strength: 1 }
 const TIPOS = ['pedido', 'reserva']
@@ -45,10 +46,22 @@ export const listarEstados = async (req, res) => {
             filtro.tipo = req.query.tipo
         }
 
+        if (!filtro.tipo || filtro.tipo === 'pedido') {
+            await ensureOrderStates()
+        }
+
         const [estados, usos] = await Promise.all([
             Estado.find(filtro).sort({ tipo: 1, createdAt: 1 }),
             contarUsos(),
         ])
+
+        if (filtro.tipo === 'pedido') {
+            const ordenPedido = new Map(['Pendiente', 'Confirmado', 'Recibido'].map((nombre, index) => [nombre, index]))
+            estados.sort((a, b) =>
+                (ordenPedido.get(a.nombre) ?? ordenPedido.size) -
+                (ordenPedido.get(b.nombre) ?? ordenPedido.size)
+            )
+        }
 
         res.json(estados.map((e) => formato(e, usos.get(String(e._id)) || 0)))
     } catch (error) {

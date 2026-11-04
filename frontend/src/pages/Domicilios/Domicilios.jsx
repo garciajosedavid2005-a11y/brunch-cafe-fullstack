@@ -10,11 +10,7 @@ const Domicilios = () => {
         <main className="carrito-pagina">
             <div className="grid-container">
                 <section ref={productosRef} className="animar carrito-productos">
-                  <CarritoProducto
-                      imagen="https://via.placeholder.com/300x200"
-                      nombre="Nombre del Producto..."
-                      descripcion="Breve Descripción del producto"
-                  />
+                  <CarritoProducto />
                 </section>
                 <section ref={formularioRef} className="animar carrito-formulario">
                   <CarritoFormulario />

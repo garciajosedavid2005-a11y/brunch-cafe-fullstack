@@ -47,7 +47,9 @@ export default function OrdersSection() {
                 <span className="dashboard-card__eyebrow">PEDIDO {order.orderNumber}</span>
                 <h3>{dateLabel(order.createdAt)}</h3>
               </div>
-              <span className={`dashboard-status status-${order.status}`}>{orderStatus[order.status] || order.status}</span>
+              <span className={`dashboard-status status-${order.status}`}>
+                {order.statusLabel || orderStatus[order.status] || order.status}
+              </span>
             </div>
             <div className="dashboard-order-items">
               {(order.items || []).map((item, index) => (
@@ -63,6 +65,7 @@ export default function OrdersSection() {
                 <p>{order.delivery.nombre} · {order.delivery.direccion}, {order.delivery.barrio}</p>
                 <p>Hora solicitada: {order.delivery.hora}</p>
                 {order.delivery.indicaciones && <p>Indicaciones: {order.delivery.indicaciones}</p>}
+                {order.paymentMethod && <p>Método de pago: {order.paymentMethod}</p>}
               </div>
             )}
             <div className="dashboard-card__total"><span>Total</span><strong>{money(order.total)}</strong></div>
