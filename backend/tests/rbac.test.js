@@ -269,6 +269,36 @@ describe('Protecciones de roles', () => {
         expect((await sesion.delete(`/api/roles/${creado.body.id}`)).status).toBe(200)
     })
 
+    it('ninguno de los 9 roles de sistema se puede eliminar (0.7b)', async () => {
+        const { sesion } = await crearConSesion('admin')
+        const sistema = ['admin', 'cliente', 'mesero', 'anfitrion', 'cocina', 'barista', 'cajero', 'repartidor', 'compras']
+        const lista = (await sesion.get('/api/roles')).body
+        for (const codigo of sistema) {
+            const rol = lista.find((r) => r.codigo === codigo)
+            expect(rol, codigo).toMatchObject({ esSistema: true, eliminable: false })
+            const res = await sesion.delete(`/api/roles/${rol.id}`)
+            expect(res.status, codigo).toBe(403)
+            expect(res.body.error.code).toBe('ROL_PROTEGIDO')
+        }
+        expect(await Rol.countDocuments({ nombre: { $in: sistema } })).toBe(9)
+    })
+
+    it('rol con usuarios: 409 ROL_CON_USUARIOS con plural correcto (0.7b)', async () => {
+        const { sesion } = await crearConSesion('admin')
+        const creado = await sesion.post('/api/roles').send({ nombre: 'Supervisor', permisos: [] })
+        await Usuario.create({ nombre: 'S', apellido: 'U', correo: 'sup1@example.com', contraseña: 'x', rol: creado.body.id })
+        const uno = await sesion.delete(`/api/roles/${creado.body.id}`)
+        expect(uno.status).toBe(409)
+        expect(uno.body.error).toMatchObject({ code: 'ROL_CON_USUARIOS', details: { usuariosAsignados: 1 } })
+        expect(uno.body.error.message).toBe('No se puede eliminar: tiene 1 usuario asignado.')
+
+        await Usuario.create({ nombre: 'S', apellido: 'U', correo: 'sup2@example.com', contraseña: 'x', rol: creado.body.id })
+        const dos = await sesion.delete(`/api/roles/${creado.body.id}`)
+        expect(dos.body.error.message).toBe('No se puede eliminar: tiene 2 usuarios asignados.')
+        const enLista = (await sesion.get('/api/roles')).body.find((r) => r.id === creado.body.id)
+        expect(enLista).toMatchObject({ usuariosAsignados: 2, eliminable: false, esSistema: false })
+    })
+
     it('GET /api/permisos devuelve el catálogo con reservados marcados', async () => {
         const { sesion } = await crearConSesion('admin')
         const res = await sesion.get('/api/permisos')

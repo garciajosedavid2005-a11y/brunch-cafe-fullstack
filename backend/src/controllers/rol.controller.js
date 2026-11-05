@@ -84,7 +84,8 @@ export const eliminarRol = async (req, res) => {
     }
     const asignados = await Usuario.countDocuments({ rol: rol._id })
     if (asignados > 0) {
-        throw conflict(`No se puede eliminar: hay ${asignados} usuario(s) con este rol`, { usuariosAsignados: asignados })
+        const texto = asignados === 1 ? '1 usuario asignado' : `${asignados} usuarios asignados`
+        throw new AppError(409, 'ROL_CON_USUARIOS', `No se puede eliminar: tiene ${texto}.`, { usuariosAsignados: asignados })
     }
 
     await rol.deleteOne()

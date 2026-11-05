@@ -1903,3 +1903,38 @@
   margin: 0 !important;
   min-width: 150px;
 }
+
+/* ---- Roles: protegidos y eliminar (0.7b) ---- */
+.admin-roles__protegido,
+.admin-roles__eliminar {
+  display: grid;
+  gap: 0.3rem;
+  max-width: 200px;
+}
+
+.admin-roles__protegido .admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+}
+
+.admin-roles__protegido small,
+.admin-roles__eliminar small {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #5c4540;
+  white-space: normal;
+}
+
+.admin-button--secondary-sm.admin-button--peligro-sm {
+  color: #a1261e !important;
+  border-color: #a1261e !important;
+}
+
+.admin-button--secondary-sm.admin-button--peligro-sm:disabled {
+  color: #6b6b6b !important;
+  border-color: #c4c4c4 !important;
+  background: #f3f3f3 !important;
+  cursor: not-allowed !important;
+}

@@ -5,15 +5,14 @@ import {
   Edit2,
   Trash2,
   Search,
-  CheckCircle,
-  AlertCircle,
   Users,
   Lock,
   X,
-  ShieldAlert,
 } from "lucide-react";
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
+import { useDialogo } from "../../../context/useDialogo";
+import { plural } from "../adminFormat";
 
 export default function RolesSection() {
   const { items: roles, cargando, error, guardando, cargar, crear, actualizar, eliminar } =
@@ -23,7 +22,7 @@ export default function RolesSection() {
   const [busqueda, setBusqueda] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [rolEnEdicion, setRolEnEdicion] = useState(null);
-  const [rolAEliminar, setRolAEliminar] = useState(null);
+  const { confirmar } = useDialogo();
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -83,9 +82,17 @@ export default function RolesSection() {
     if (guardado) setModalAbierto(false);
   };
 
-  const handleEliminar = async () => {
-    if (!rolAEliminar || rolAEliminar.esSistema) return;
-    if (await eliminar(rolAEliminar.id)) setRolAEliminar(null);
+  // Solo roles personalizados sin usuarios; el backend vuelve a validarlo (ROL_PROTEGIDO / ROL_CON_USUARIOS)
+  const handleEliminar = async (rol) => {
+    const { confirmado } = await confirmar({
+      titulo: "Eliminar rol",
+      mensaje: "¿Estás seguro de que deseas eliminar este rol? Esta acción no se puede deshacer.",
+      detalle: <strong>{rol.nombre}</strong>,
+      confirmarTexto: "Eliminar rol",
+      cancelarTexto: "Cancelar",
+      peligroso: true,
+    });
+    if (confirmado && (await eliminar(rol.id))) await cargar();
   };
 
   const rolesFiltrados = roles.filter(
@@ -175,7 +182,7 @@ export default function RolesSection() {
                     <td>
                       <span className="admin-badge admin-badge--neutral">
                         <Users size={12} style={{ display: "inline", marginRight: "4px" }} />
-                        {rol.usuariosAsignados} usuarios
+                        {plural(rol.usuariosAsignados, "usuario")}
                       </span>
                     </td>
                     <td>
@@ -212,12 +219,7 @@ export default function RolesSection() {
                     </td>
                     <td>
                       <div className="admin-table__actions-row">
-                        {rol.editable === false ? (
-                          <span className="admin-badge admin-badge--neutral" title="El rol administrador no se puede modificar">
-                            <Lock size={12} style={{ display: "inline", marginRight: "4px" }} />
-                            Protegido
-                          </span>
-                        ) : (
+                        {rol.editable !== false && (
                           <button
                             type="button"
                             className="admin-button--secondary-sm"
@@ -228,15 +230,31 @@ export default function RolesSection() {
                             <span>Editar</span>
                           </button>
                         )}
-                        {!rol.esSistema && rol.eliminable !== false && (
-                          <button
-                            type="button"
-                            className="admin-button--icon-danger"
-                            onClick={() => setRolAEliminar(rol)}
-                            title="Eliminar rol"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                        {rol.esSistema ? (
+                          <div className="admin-roles__protegido">
+                            <span className="admin-badge admin-badge--neutral">
+                              <Lock size={12} aria-hidden="true" /> Protegido
+                            </span>
+                            <small>Rol de sistema: no se puede eliminar.</small>
+                          </div>
+                        ) : (
+                          <div className="admin-roles__eliminar">
+                            <button
+                              type="button"
+                              className="admin-button--secondary-sm admin-button--peligro-sm"
+                              disabled={rol.usuariosAsignados > 0 || guardando}
+                              onClick={() => handleEliminar(rol)}
+                              aria-describedby={rol.usuariosAsignados > 0 ? `motivo-${rol.id}` : undefined}
+                            >
+                              <Trash2 size={14} aria-hidden="true" />
+                              <span>Eliminar</span>
+                            </button>
+                            {rol.usuariosAsignados > 0 && (
+                              <small id={`motivo-${rol.id}`}>
+                                Tiene {plural(rol.usuariosAsignados, "usuario asignado", "usuarios asignados")}
+                              </small>
+                            )}
+                          </div>
                         )}
                       </div>
                     </td>
@@ -359,45 +377,6 @@ export default function RolesSection() {
         </div>
       )}
 
-      {/* MODAL ELIMINAR */}
-      {rolAEliminar && (
-        <div className="admin-modal-overlay" onClick={() => setRolAEliminar(null)}>
-          <div
-            className="admin-modal-container admin-modal-container--sm"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-          >
-            <div className="admin-modal-header">
-              <h3 className="admin-modal-title">¿Eliminar Rol?</h3>
-            </div>
-            <div className="admin-modal-body">
-              <div className="admin-delete-alert">
-                <AlertCircle size={28} className="admin-delete-alert__icon" />
-                <p>
-                  Estás a punto de eliminar el rol{" "}
-                  <strong>{rolAEliminar.nombre}</strong>. Esta acción no se puede deshacer.
-                </p>
-              </div>
-            </div>
-            <div className="admin-modal-footer">
-              <button
-                type="button"
-                className="admin-button--modal-cancel"
-                onClick={() => setRolAEliminar(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="admin-button--danger"
-                onClick={handleEliminar}
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
