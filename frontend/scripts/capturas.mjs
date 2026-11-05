@@ -57,6 +57,24 @@ const VISTAS = {
       await p.locator(".admin-modal-container").evaluate((el) => el.scrollTo(0, el.scrollHeight));
     },
   },
+  // Carrito con dos productos (uno con cantidad 2). El carrito vive en memoria:
+  // se llega a /domicilios con el enlace del navbar, sin recargar la página.
+  carrito: {
+    usuario: "cliente",
+    preparar: async (p) => {
+      await p.goto(`${FRONT}/menu`);
+      await p.waitForLoadState("networkidle");
+      const agregar = p.getByRole("button", { name: "Agregar al carrito" });
+      await agregar.nth(0).click({ force: true });
+      await agregar.nth(0).click({ force: true });
+      await agregar.nth(1).click({ force: true });
+      const enlace = p.locator(".menu__item-carrito a");
+      if (!(await enlace.isVisible())) await p.locator(".navbar__hamburger").click(); // navbar colapsado
+      await enlace.click();
+      await p.waitForLoadState("networkidle");
+    },
+  },
+  "admin-productos": { usuario: "admin", preparar: abrirPestanaAdmin("Productos") },
   "admin-roles": { usuario: "admin", preparar: abrirPestanaAdmin("Roles") },
   "admin-usuarios": { usuario: "admin", preparar: abrirPestanaAdmin("Usuarios") },
   "admin-estados": { usuario: "admin", preparar: abrirPestanaAdmin("Estados") },
