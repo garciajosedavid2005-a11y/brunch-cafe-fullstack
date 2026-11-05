@@ -52,7 +52,8 @@ export const register = async (req, res) => {
         throw error
     }
 
-    const token = await generarToken({ id: usuarioGuardado._id, rol: rolCliente.nombre })
+    // El token solo identifica al usuario; rol y permisos se leen de la BD en cada petición
+    const token = await generarToken({ id: usuarioGuardado._id })
     ponerCookieSesion(res, token)
     res.json(usuarioPublico(usuarioGuardado, rolCliente.nombre))
 }
@@ -65,8 +66,12 @@ export const login = async (req, res) => {
     if (!usuario || !coincide || !usuario.rol) {
         throw new AppError(401, 'CREDENCIALES_INVALIDAS', MENSAJE_LOGIN)
     }
+    // Solo se informa después de validar la contraseña
+    if (usuario.activo === false) {
+        throw new AppError(403, 'ACCOUNT_DISABLED', 'Tu cuenta está desactivada. Contacta al administrador.')
+    }
 
-    const token = await generarToken({ id: usuario._id, rol: usuario.rol.nombre })
+    const token = await generarToken({ id: usuario._id })
     ponerCookieSesion(res, token)
     res.json(usuarioPublico(usuario, usuario.rol.nombre))
 }

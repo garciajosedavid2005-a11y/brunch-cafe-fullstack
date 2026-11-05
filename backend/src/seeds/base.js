@@ -2,27 +2,51 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import Rol from '../models/rol.model.js'
 import Usuario from '../models/usuario.model.js'
+import Permiso from '../models/permiso.model.js'
+import { COMODIN, PERMISOS, ROLES_STAFF, ROL_ADMIN, ROL_CLIENTE } from '../libs/permisos.js'
 
-// Roles mínimos para que el sistema funcione. Los roles de staff (mesero, cocina…)
-// se agregan en 0.4 junto con sus permisos.
+// Roles con reglas fijas: admin siempre tiene "*" y cliente nunca tiene permisos de staff
 export const ROLES_BASE = [
-    { nombre: 'admin', etiqueta: 'Administrador', descripcion: 'Acceso total al sistema.' },
-    { nombre: 'cliente', etiqueta: 'Cliente', descripcion: 'Cliente registrado en el sitio web.' },
+    { nombre: ROL_ADMIN, etiqueta: 'Administrador', descripcion: 'Acceso total al sistema.', permisos: [COMODIN] },
+    { nombre: ROL_CLIENTE, etiqueta: 'Cliente', descripcion: 'Cliente registrado en el sitio web.', permisos: [] },
 ]
+
+/** Refleja el catálogo de permisos del código en la colección Permiso. Idempotente. */
+export const sembrarPermisos = async () => {
+    await Permiso.bulkWrite(PERMISOS.map(({ clave, modulo, descripcion, reservado = false }) => ({
+        updateOne: {
+            filter: { clave },
+            update: { $set: { modulo, descripcion, reservado } },
+            upsert: true,
+        },
+    })))
+    // Claves que ya no existen en el código se eliminan del reflejo (no de los roles)
+    await Permiso.deleteMany({ clave: { $nin: PERMISOS.map((p) => p.clave) } })
+}
 
 // Nombres con los que alguien pudo crear el rol admin a mano en su BD
 const ALIAS_ADMIN = /^(admin|administrador|administrator)$/i
 
 /**
- * Crea los roles base si no existen y los marca como de sistema.
- * No sobrescribe etiqueta ni descripción si el admin ya las editó. Idempotente.
+ * Crea los roles base y de staff si no existen y los marca como de sistema.
+ * - admin y cliente: sus permisos se fuerzan siempre (["*"] y []).
+ * - staff: los permisos mínimos solo se asignan al crear el rol; luego los edita el admin.
+ * No sobrescribe etiqueta ni descripción editadas. Idempotente.
  */
 export const sembrarRoles = async () => {
+    await sembrarPermisos()
     const roles = {}
-    for (const { nombre, ...valores } of ROLES_BASE) {
+    for (const { nombre, permisos, ...valores } of ROLES_BASE) {
         roles[nombre] = await Rol.findOneAndUpdate(
             { nombre },
-            { $setOnInsert: { nombre, ...valores }, $set: { esSistema: true } },
+            { $setOnInsert: { nombre, ...valores }, $set: { esSistema: true, permisos } },
+            { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
+        )
+    }
+    for (const { nombre, permisos, ...valores } of ROLES_STAFF) {
+        roles[nombre] = await Rol.findOneAndUpdate(
+            { nombre },
+            { $setOnInsert: { nombre, permisos, ...valores }, $set: { esSistema: true } },
             { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
         )
     }

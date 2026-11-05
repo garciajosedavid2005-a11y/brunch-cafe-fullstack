@@ -1,8 +1,7 @@
 import mongoose from 'mongoose'
 
 const rolSchema = new mongoose.Schema({
-    // Identificador del rol ("admin", "cliente"). Es el valor que viaja en el token
-    // y el que compara authorizeRole, por eso no se debe cambiar en los roles de sistema.
+    // Identificador del rol ("admin", "cliente", "mesero"...). No cambia después de creado.
     nombre: {
         type: String,
         required: true,
@@ -21,12 +20,13 @@ const rolSchema = new mongoose.Schema({
         maxlength: 300,
         default: ''
     },
-    // Lista informativa de lo que puede hacer el rol (no se usa para autorizar)
+    // Claves del catálogo (src/libs/permisos.js) que autorizan las rutas.
+    // El rol admin tiene ["*"] (todos los permisos).
     permisos: {
         type: [String],
         default: []
     },
-    // Los roles de sistema (admin y cliente) no se pueden eliminar
+    // Los roles de sistema (admin, cliente y los de staff sembrados) no se pueden eliminar
     esSistema: {
         type: Boolean,
         default: false

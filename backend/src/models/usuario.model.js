@@ -28,6 +28,11 @@ const usuarioSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    // Usuario desactivado = acceso cortado (los documentos sin el campo cuentan como activos)
+    activo: {
+        type: Boolean,
+        default: true
+    },
     //Se relaciona con el rol del usuario, usando el ObjectId del rol
     rol: {
         type: mongoose.Schema.Types.ObjectId,

@@ -6,14 +6,14 @@ import {
     eliminarRol
 } from '../controllers/rol.controller.js'
 import { validateToken } from '../middlewares/validateToken.js'
-import { authorizeRole } from '../middlewares/authorizeRole.js'
+import { requirePermission } from '../middlewares/requirePermission.js'
 import { validateSchema } from '../middlewares/validator.middleware.js'
 import { crearRolSchema, actualizarRolSchema } from '../schema/rol.schema.js'
 
 const router = Router()
 
-// Todas las rutas de este archivo son solo para admin
-router.use(validateToken, authorizeRole('admin'))
+// Gestión de roles: requiere rol:gestionar
+router.use(validateToken, requirePermission('rol:gestionar'))
 
 router.get('/', listarRoles)
 router.post('/', validateSchema(crearRolSchema), crearRol)

@@ -10,6 +10,8 @@ import estadoRoutes from './estado.routes.js'
 import rolRoutes from './rol.routes.js'
 import productoRoutes from './producto.routes.js'
 import pedidoRoutes from './pedido.routes.js'
+import permisoRoutes from './permiso.routes.js'
+import adminUsuarioRoutes from './adminUsuario.routes.js'
 
 const router = Router()
 
@@ -27,5 +29,7 @@ router.use('/estados', estadoRoutes)
 router.use('/roles', rolRoutes)
 router.use('/productos', productoRoutes)
 router.use('/pedidos', pedidoRoutes)
+router.use('/permisos', permisoRoutes)
+router.use('/admin/usuarios', adminUsuarioRoutes)
 
 export default router

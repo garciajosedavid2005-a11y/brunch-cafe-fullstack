@@ -21,6 +21,8 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
+    const { limpiarCacheSesiones } = await import('../../src/libs/sesiones.js')
+    limpiarCacheSesiones()
     const colecciones = await mongoose.connection.db.collections()
     await Promise.all(colecciones.map((c) => c.deleteMany({})))
 })

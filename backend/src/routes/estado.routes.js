@@ -6,18 +6,18 @@ import {
     eliminarEstado
 } from '../controllers/estado.controller.js'
 import { validateToken } from '../middlewares/validateToken.js'
-import { authorizeRole } from '../middlewares/authorizeRole.js'
+import { requirePermission } from '../middlewares/requirePermission.js'
 import { validateSchema } from '../middlewares/validator.middleware.js'
 import { crearEstadoSchema, actualizarEstadoSchema } from '../schema/estado.schema.js'
 
 const router = Router()
 
-// Todas las rutas de este archivo son solo para admin
-router.use(validateToken, authorizeRole('admin'))
+router.use(validateToken)
 
-router.get('/', listarEstados)
-router.post('/', validateSchema(crearEstadoSchema), crearEstado)
-router.put('/:id', validateSchema(actualizarEstadoSchema), actualizarEstado)
-router.delete('/:id', eliminarEstado)
+// Listar estados lo necesita cualquier staff que vea pedidos o reservas
+router.get('/', requirePermission('estado:editar', 'pedido:ver', 'reserva:ver'), listarEstados)
+router.post('/', requirePermission('estado:editar'), validateSchema(crearEstadoSchema), crearEstado)
+router.put('/:id', requirePermission('estado:editar'), validateSchema(actualizarEstadoSchema), actualizarEstado)
+router.delete('/:id', requirePermission('estado:editar'), eliminarEstado)
 
 export default router

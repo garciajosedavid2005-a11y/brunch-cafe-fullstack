@@ -9,6 +9,7 @@ import {
   CreditCard,
   Sliders,
   Shield,
+  Users,
   UserRound,
   LogOut,
   ShieldCheck,
@@ -24,6 +25,7 @@ import ReviewsSection from "./sections/ReviewsSection";
 import PaymentsSection from "./sections/PaymentsSection";
 import StatesSection from "./sections/StatesSection";
 import RolesSection from "./sections/RolesSection";
+import UsersSection from "./sections/UsersSection";
 import ProfileSection from "./sections/ProfileSection";
 import "./AdminDashboard.css";
 
@@ -36,6 +38,7 @@ const sections = [
   { id: "reviews", label: "Comentarios", icon: MessageSquareQuote },
   { id: "payments", label: "Métodos de Pago", icon: CreditCard },
   { id: "states", label: "Estados", icon: Sliders },
+  { id: "users", label: "Usuarios", icon: Users },
   { id: "roles", label: "Roles", icon: Shield },
   { id: "profile", label: "Mi Perfil", icon: UserRound },
 ];
@@ -74,6 +77,8 @@ export default function AdminDashboard() {
         return <StatesSection />;
       case "roles":
         return <RolesSection />;
+      case "users":
+        return <UsersSection />;
       case "profile":
         return <ProfileSection />;
       default:

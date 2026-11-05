@@ -18,6 +18,8 @@ import AdminStatus from "../components/AdminStatus";
 export default function RolesSection() {
   const { items: roles, cargando, error, guardando, cargar, crear, actualizar, eliminar } =
     useAdminResource("/roles");
+  // Catálogo de permisos (los "reservados" son de fases futuras y aún no se asignan)
+  const { items: catalogo } = useAdminResource("/permisos");
   const [busqueda, setBusqueda] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [rolEnEdicion, setRolEnEdicion] = useState(null);
@@ -26,25 +28,41 @@ export default function RolesSection() {
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
-    permisosTexto: "",
+    permisos: [],
   });
+
+  const etiquetaPermiso = (clave) =>
+    clave === "*" ? "Todos los permisos" : catalogo.find((p) => p.clave === clave)?.descripcion || clave;
+
+  const modulos = [...new Set(catalogo.map((p) => p.modulo))];
+
+  const alternarPermiso = (clave) =>
+    setFormData((actual) => ({
+      ...actual,
+      permisos: actual.permisos.includes(clave)
+        ? actual.permisos.filter((p) => p !== clave)
+        : [...actual.permisos, clave],
+    }));
 
   const abrirModalCrear = () => {
     setRolEnEdicion(null);
     setFormData({
       nombre: "",
       descripcion: "",
-      permisosTexto: "",
+      permisos: [],
     });
     setModalAbierto(true);
   };
 
   const abrirModalEditar = (item) => {
+    if (item.editable === false) return;
     setRolEnEdicion(item);
+    // Solo se conservan claves asignables del catálogo (los textos antiguos se descartan)
+    const asignables = new Set(catalogo.filter((p) => !p.reservado).map((p) => p.clave));
     setFormData({
       nombre: item.nombre,
       descripcion: item.descripcion,
-      permisosTexto: item.permisos ? item.permisos.join("\n") : "",
+      permisos: (item.permisos || []).filter((p) => asignables.has(p)),
     });
     setModalAbierto(true);
   };
@@ -53,15 +71,11 @@ export default function RolesSection() {
     e.preventDefault();
     if (!formData.nombre.trim()) return;
 
-    const listaPermisos = formData.permisosTexto
-      .split("\n")
-      .map((p) => p.trim())
-      .filter(Boolean);
-
+    const permisosEditables = !rolEnEdicion || rolEnEdicion.permisosEditables !== false;
     const datos = {
       nombre: formData.nombre,
       descripcion: formData.descripcion,
-      permisos: listaPermisos,
+      ...(permisosEditables ? { permisos: formData.permisos } : {}),
     };
     const guardado = rolEnEdicion
       ? await actualizar(rolEnEdicion.id, datos)
@@ -173,7 +187,7 @@ export default function RolesSection() {
                               className="admin-badge admin-badge--info"
                               style={{ fontSize: "0.74rem" }}
                             >
-                              {p}
+                              {etiquetaPermiso(p)}
                             </span>
                           ))
                         ) : (
@@ -198,16 +212,23 @@ export default function RolesSection() {
                     </td>
                     <td>
                       <div className="admin-table__actions-row">
-                        <button
-                          type="button"
-                          className="admin-button--secondary-sm"
-                          onClick={() => abrirModalEditar(rol)}
-                          title="Editar rol"
-                        >
-                          <Edit2 size={14} />
-                          <span>Editar</span>
-                        </button>
-                        {!rol.esSistema && (
+                        {rol.editable === false ? (
+                          <span className="admin-badge admin-badge--neutral" title="El rol administrador no se puede modificar">
+                            <Lock size={12} style={{ display: "inline", marginRight: "4px" }} />
+                            Protegido
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="admin-button--secondary-sm"
+                            onClick={() => abrirModalEditar(rol)}
+                            title="Editar rol"
+                          >
+                            <Edit2 size={14} />
+                            <span>Editar</span>
+                          </button>
+                        )}
+                        {!rol.esSistema && rol.eliminable !== false && (
                           <button
                             type="button"
                             className="admin-button--icon-danger"
@@ -284,16 +305,40 @@ export default function RolesSection() {
                 </div>
 
                 <div className="admin-form-group">
-                  <label className="admin-form-label">Permisos (un permiso por línea)</label>
-                  <textarea
-                    rows={4}
-                    className="admin-form-textarea"
-                    placeholder="Crear pedidos&#10;Consultar reservas&#10;Ver reportes"
-                    value={formData.permisosTexto}
-                    onChange={(e) =>
-                      setFormData({ ...formData, permisosTexto: e.target.value })
-                    }
-                  />
+                  <label className="admin-form-label">Permisos</label>
+                  {rolEnEdicion && rolEnEdicion.permisosEditables === false ? (
+                    <p style={{ fontSize: "0.85rem", color: "#8c726c" }}>
+                      Este rol no puede tener permisos de staff. Solo se editan el nombre y la descripción.
+                    </p>
+                  ) : (
+                    modulos.map((modulo) => (
+                      <fieldset key={modulo} style={{ border: "none", padding: 0, margin: "0 0 0.6rem" }}>
+                        <legend style={{ fontSize: "0.78rem", fontWeight: 600, textTransform: "capitalize", color: "#55332e" }}>
+                          {modulo}
+                        </legend>
+                        {catalogo
+                          .filter((p) => p.modulo === modulo)
+                          .map((permiso) => (
+                            <label
+                              key={permiso.clave}
+                              className="admin-checkbox-label"
+                              style={{ opacity: permiso.reservado ? 0.55 : 1 }}
+                            >
+                              <input
+                                type="checkbox"
+                                disabled={permiso.reservado}
+                                checked={formData.permisos.includes(permiso.clave)}
+                                onChange={() => alternarPermiso(permiso.clave)}
+                              />
+                              <span>
+                                {permiso.descripcion}
+                                {permiso.reservado && " (próximas fases)"}
+                              </span>
+                            </label>
+                          ))}
+                      </fieldset>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -330,7 +375,7 @@ export default function RolesSection() {
                 <AlertCircle size={28} className="admin-delete-alert__icon" />
                 <p>
                   Estás a punto de eliminar el rol{" "}
-                  <strong>{rolAEliminar.nombre}</strong>. Los usuarios que tengan este rol perderán sus accesos asociados.
+                  <strong>{rolAEliminar.nombre}</strong>. Esta acción no se puede deshacer.
                 </p>
               </div>
             </div>

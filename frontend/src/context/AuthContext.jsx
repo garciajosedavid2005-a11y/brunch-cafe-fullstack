@@ -11,6 +11,7 @@ function normalizeUser(user) {
     email: user.email || user.correo,
     telefono: user.telefono || "",
     role: user.role || user.rol?.nombre || user.rol,
+    permisos: user.permisos || [],
   };
 }
 

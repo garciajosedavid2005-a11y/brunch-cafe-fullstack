@@ -12,12 +12,29 @@ const ENV = {
 }
 
 describe('Seed de roles base', () => {
-    it('crea admin y cliente como roles de sistema y es idempotente', async () => {
+    it('crea admin, cliente y los roles de staff como roles de sistema y es idempotente', async () => {
         await sembrarRoles()
         await sembrarRoles()
         const roles = await Rol.find().sort({ nombre: 1 }).lean()
-        expect(roles.map((r) => r.nombre)).toEqual(['admin', 'cliente'])
+        expect(roles.map((r) => r.nombre)).toEqual(
+            ['admin', 'anfitrion', 'barista', 'cajero', 'cliente', 'cocina', 'compras', 'mesero', 'repartidor']
+        )
         expect(roles.every((r) => r.esSistema)).toBe(true)
+        const porNombre = Object.fromEntries(roles.map((r) => [r.nombre, r.permisos]))
+        expect(porNombre.admin).toEqual(['*'])
+        expect(porNombre.cliente).toEqual([])
+        expect(porNombre.mesero).toEqual(['pedido:ver', 'pedido:cambiar_estado'])
+        expect(porNombre.compras).toEqual([])
+    })
+
+    it('fuerza los permisos de admin y cliente, pero respeta los editados en roles de staff', async () => {
+        await Rol.updateOne({ nombre: 'admin' }, { $set: { permisos: ['pedido:ver'] } })
+        await Rol.updateOne({ nombre: 'cliente' }, { $set: { permisos: ['pedido:ver'] } })
+        await Rol.updateOne({ nombre: 'mesero' }, { $set: { permisos: ['pedido:ver'] } })
+        await sembrarRoles()
+        expect((await Rol.findOne({ nombre: 'admin' })).permisos).toEqual(['*'])
+        expect((await Rol.findOne({ nombre: 'cliente' })).permisos).toEqual([])
+        expect((await Rol.findOne({ nombre: 'mesero' })).permisos).toEqual(['pedido:ver'])
     })
 
     it('no pisa la etiqueta ni la descripción editadas por el admin', async () => {
