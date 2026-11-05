@@ -1,0 +1,246 @@
+{
+  "categorias": [
+    {
+      "nombre": "Desayunos",
+      "descripcion": "Platos tradicionales y gourmet para empezar la mañana con energía."
+    },
+    {
+      "nombre": "Postres",
+      "descripcion": "Delicias dulces y artesanales preparadas a diario."
+    },
+    {
+      "nombre": "Pancakes y Waffles",
+      "descripcion": "Esponjosos y crujientes con toppings dulces y salados."
+    },
+    {
+      "nombre": "Tostadas",
+      "descripcion": "Tostadas en pan artesanal de masa madre con ingredientes frescos."
+    },
+    {
+      "nombre": "Bowls Saludables",
+      "descripcion": "Opciones frescas, nutritivas y balanceadas para cada momento."
+    },
+    {
+      "nombre": "Bebidas",
+      "descripcion": "Café de especialidad, bebidas frías naturales y smoothies."
+    }
+  ],
+  "productos": [
+    {
+      "codigo": 1,
+      "nombre": "Desayuno clásico gourmet",
+      "descripcion": "Huevos al gusto, con tocineta crujiente, tostadas artesanales y aguacate fresco.",
+      "precio": 18000,
+      "categoria": "Desayunos",
+      "imagen": "desayuno-clasico-gourmet.png",
+      "destacado": true
+    },
+    {
+      "codigo": 2,
+      "nombre": "Tostada de aguacate gourmet",
+      "descripcion": "Pan artesanal con aguacate fresco, huevo pochado, semillas y ensalada de temporada.",
+      "precio": 20000,
+      "categoria": "Desayunos",
+      "imagen": "tostada-aguacate.png",
+      "destacado": true
+    },
+    {
+      "codigo": 3,
+      "nombre": "Omelette de espárragos y queso de cabra",
+      "descripcion": "Omelette suave con espárragos al dente, queso de cabra y hierbas frescas.",
+      "precio": 22000,
+      "categoria": "Desayunos",
+      "imagen": "omelette-esparragos.png",
+      "destacado": false
+    },
+    {
+      "codigo": 4,
+      "nombre": "Bowl de granola con frutos rojos",
+      "descripcion": "Granola casera, yogur griego, miel de abeja y una mezcla fresca de berries.",
+      "precio": 16000,
+      "categoria": "Desayunos",
+      "imagen": "bowl-granola-frutos-rojos.png",
+      "destacado": false
+    },
+    {
+      "codigo": 5,
+      "nombre": "Cheesecake de frutos rojos",
+      "descripcion": "Suave cheesecake cremoso con coulis de frutos rojos y frutas frescas.",
+      "precio": 16000,
+      "categoria": "Postres",
+      "imagen": "cheesecake-frutos-rojos.png",
+      "destacado": true
+    },
+    {
+      "codigo": 6,
+      "nombre": "Volcán de chocolate con helado",
+      "descripcion": "Delicioso volcán de chocolate caliente con helado de vainilla artesanal.",
+      "precio": 18000,
+      "categoria": "Postres",
+      "imagen": "volcan-chocolate.png",
+      "destacado": true
+    },
+    {
+      "codigo": 7,
+      "nombre": "Panna cotta de vainilla y frutos",
+      "descripcion": "Panna cotta delicada con salsa de frutos rojos y crocante de pistacho.",
+      "precio": 15000,
+      "categoria": "Postres",
+      "imagen": "panna-cotta.png",
+      "destacado": false
+    },
+    {
+      "codigo": 8,
+      "nombre": "Crepas de mascarpone y frutos",
+      "descripcion": "Crepas ligeras rellenas de mascarpone, fresas y un toque de miel.",
+      "precio": 17000,
+      "categoria": "Postres",
+      "imagen": "crepas-mascarpone.png",
+      "destacado": false
+    },
+    {
+      "codigo": 9,
+      "nombre": "Pancakes de banana con nueces",
+      "descripcion": "Pancakes esponjosos con rodajas de banana caramelizada y nueces tostadas.",
+      "precio": 19000,
+      "categoria": "Pancakes y Waffles",
+      "imagen": "pancakes-banana.png",
+      "destacado": true
+    },
+    {
+      "codigo": 10,
+      "nombre": "Waffles belga con caramelo salado",
+      "descripcion": "Waffles crujientes con salsa de caramelo salado, crema batida y almendras.",
+      "precio": 20000,
+      "categoria": "Pancakes y Waffles",
+      "imagen": "waffles-belga.png",
+      "destacado": true
+    },
+    {
+      "codigo": 11,
+      "nombre": "Pancakes de matcha y chía",
+      "descripcion": "Pancakes verdes con matcha, semillas de chía y crema de coco.",
+      "precio": 19000,
+      "categoria": "Pancakes y Waffles",
+      "imagen": "pancakes-matcha.png",
+      "destacado": false
+    },
+    {
+      "codigo": 12,
+      "nombre": "Waffles de queso brie y pera",
+      "descripcion": "Waffles salados con brie fundido, pera caramelizada y nueces.",
+      "precio": 22000,
+      "categoria": "Pancakes y Waffles",
+      "imagen": "waffles-brie.png",
+      "destacado": false
+    },
+    {
+      "codigo": 13,
+      "nombre": "Tostadas francesas con berries",
+      "descripcion": "Tostadas francesas esponjosas con compota de berries y sirope de maple.",
+      "precio": 18000,
+      "categoria": "Tostadas",
+      "imagen": "tostadas-francesas.png",
+      "destacado": true
+    },
+    {
+      "codigo": 14,
+      "nombre": "Tostada de salmón ahumado",
+      "descripcion": "Pan artesanal con queso crema, salmón ahumado, alcaparras y eneldo.",
+      "precio": 22000,
+      "categoria": "Tostadas",
+      "imagen": "tostada-salmon.png",
+      "destacado": true
+    },
+    {
+      "codigo": 15,
+      "nombre": "Tostada campesina con huevo",
+      "descripcion": "Pan rústico, aguacate, huevo pocheado, espinacas y tomates cherry.",
+      "precio": 21000,
+      "categoria": "Tostadas",
+      "imagen": "tostada-campesina.png",
+      "destacado": false
+    },
+    {
+      "codigo": 16,
+      "nombre": "Tostadas de ricotta y miel",
+      "descripcion": "Tostadas dulces con ricotta cremosa, miel de abeja y almendras.",
+      "precio": 17000,
+      "categoria": "Tostadas",
+      "imagen": "tostadas-ricotta.png",
+      "destacado": false
+    },
+    {
+      "codigo": 17,
+      "nombre": "Bowl de açaí energético",
+      "descripcion": "Açaí natural, banana, granola, semillas y frutos rojos.",
+      "precio": 18000,
+      "categoria": "Bowls Saludables",
+      "imagen": "bowl-acai.png",
+      "destacado": true
+    },
+    {
+      "codigo": 18,
+      "nombre": "Bowl mediterráneo con quinoa",
+      "descripcion": "Quinoa, hummus, espinacas, pepino, tomates y aderezo de limón.",
+      "precio": 22000,
+      "categoria": "Bowls Saludables",
+      "imagen": "bowl-mediterraneo.png",
+      "destacado": false
+    },
+    {
+      "codigo": 19,
+      "nombre": "Bowl detox de kale y manzana",
+      "descripcion": "Kale, manzana verde, aguacate, almendras y aderezo de jengibre.",
+      "precio": 21000,
+      "categoria": "Bowls Saludables",
+      "imagen": "bowl-detox.png",
+      "destacado": false
+    },
+    {
+      "codigo": 20,
+      "nombre": "Bowl de yogur griego y frutos secos",
+      "descripcion": "Yogur griego, frutos secos, miel y granola crujiente.",
+      "precio": 17000,
+      "categoria": "Bowls Saludables",
+      "imagen": "bowl-yogur.png",
+      "destacado": false
+    },
+    {
+      "codigo": 21,
+      "nombre": "Limonada de hierbabuena",
+      "descripcion": "Refrescante limonada natural con hierbabuena fresca y hielo artesanal.",
+      "precio": 8000,
+      "categoria": "Bebidas",
+      "imagen": "limonada-hierbabuena.png",
+      "destacado": true
+    },
+    {
+      "codigo": 22,
+      "nombre": "Latte frío artesanal",
+      "descripcion": "Café frío con leche cremosa, hielo y un toque suave de cacao.",
+      "precio": 11000,
+      "categoria": "Bebidas",
+      "imagen": "latte-frio.png",
+      "destacado": true
+    },
+    {
+      "codigo": 23,
+      "nombre": "Té helado de jazmín",
+      "descripcion": "Té helado delicado con notas florales de jazmín y lima.",
+      "precio": 9000,
+      "categoria": "Bebidas",
+      "imagen": "te-jazmin-helado.png",
+      "destacado": false
+    },
+    {
+      "codigo": 24,
+      "nombre": "Smoothie de mango y jengibre",
+      "descripcion": "Smoothie cremoso de mango, jengibre fresco y leche de almendras.",
+      "precio": 10000,
+      "categoria": "Bebidas",
+      "imagen": "smoothie-mango.png",
+      "destacado": false
+    }
+  ]
+}
