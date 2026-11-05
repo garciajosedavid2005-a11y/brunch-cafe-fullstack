@@ -15,13 +15,14 @@ const MENSAJE_REGISTRO = 'No fue posible completar el registro con esos datos. S
 // Hash fijo para comparar aunque el correo no exista (tiempo de respuesta similar)
 const HASH_FICTICIO = bcrypt.hashSync('contraseña-ficticia-para-tiempo-constante', 10)
 
-const usuarioPublico = (usuario, rolNombre) => ({
+const usuarioPublico = (usuario, rol) => ({
     id: usuario._id,
     nombre: usuario.nombre,
     apellido: usuario.apellido,
     correo: usuario.correo,
     telefono: usuario.telefono,
-    rol: rolNombre,
+    rol: rol.nombre,
+    rolEtiqueta: rol.etiqueta || rol.nombre,
     createdAt: usuario.createdAt,
     updatedAt: usuario.updatedAt,
 })
@@ -55,7 +56,7 @@ export const register = async (req, res) => {
     // El token solo identifica al usuario; rol y permisos se leen de la BD en cada petición
     const token = await generarToken({ id: usuarioGuardado._id })
     ponerCookieSesion(res, token)
-    res.json(usuarioPublico(usuarioGuardado, rolCliente.nombre))
+    res.json(usuarioPublico(usuarioGuardado, rolCliente))
 }
 
 export const login = async (req, res) => {
@@ -73,7 +74,7 @@ export const login = async (req, res) => {
 
     const token = await generarToken({ id: usuario._id })
     ponerCookieSesion(res, token)
-    res.json(usuarioPublico(usuario, usuario.rol.nombre))
+    res.json(usuarioPublico(usuario, usuario.rol))
 }
 
 export const logout = (req, res) => {

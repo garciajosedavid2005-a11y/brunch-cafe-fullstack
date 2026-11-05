@@ -35,3 +35,13 @@ describe('Mi cuenta', () => {
         expect((await agente().put('/api/usuarios/perfil/contrasena').send({ actual: 'a', nueva: 'b12345' })).status).toBe(401)
     })
 })
+
+describe('Etiqueta del rol en la sesión (0.7b)', () => {
+    it('/auth/me y el login incluyen la etiqueta del rol', async () => {
+        const { usuario, sesion } = await crearConSesion('mesero')
+        const me = await sesion.get('/api/auth/me')
+        expect(me.body.user).toMatchObject({ role: 'mesero', roleLabel: 'Mesero' })
+        const login = await agente().post('/api/auth/login').send({ correo: usuario.correo, contraseña: 'secreta123' })
+        expect(login.body).toMatchObject({ rol: 'mesero', rolEtiqueta: 'Mesero' })
+    })
+})

@@ -11,6 +11,8 @@ function normalizeUser(user) {
     email: user.email || user.correo,
     telefono: user.telefono || "",
     role: user.role || user.rol?.nombre || user.rol,
+    // Etiqueta visible del rol ("Mesero"); la envían /auth/me (roleLabel) y el login (rolEtiqueta)
+    roleLabel: user.roleLabel || user.rolEtiqueta || user.rol?.etiqueta || "",
     permisos: user.permisos || [],
   };
 }

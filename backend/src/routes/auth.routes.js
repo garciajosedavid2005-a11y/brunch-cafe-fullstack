@@ -25,6 +25,7 @@ router.get('/me', validateToken, async (req, res) => {
       email: usuario.correo,
       telefono: usuario.telefono,
       role: usuario.rol?.nombre,
+      roleLabel: usuario.rol?.etiqueta || usuario.rol?.nombre,
       permisos: req.usuario.permisos,
     },
   })
