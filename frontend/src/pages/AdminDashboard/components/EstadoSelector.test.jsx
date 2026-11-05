@@ -21,6 +21,16 @@ describe("EstadoSelector", () => {
     expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["Pendiente", "→ Confirmada", "→ Cancelada"]);
   });
 
+  it("parece un selector: texto neutro y el color del estado va en un punto aparte (0.7c)", () => {
+    montar(vi.fn());
+    const select = screen.getByRole("combobox", { name: /estado actual: pendiente/i });
+    expect(select).toHaveClass("estado-selector__select");
+    expect(select.className).not.toMatch(/admin-badge--/);
+    const punto = select.parentElement.querySelector(".estado-selector__punto");
+    expect(punto).toHaveClass("admin-badge--warning");
+    expect(punto).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("sin motivo requerido cambia directamente", async () => {
     const onCambiar = vi.fn();
     montar(onCambiar);

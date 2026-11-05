@@ -15,20 +15,25 @@ export default function EstadoSelector({ item, onCambiar, disabled = false }) {
     onCambiar(transicion.codigo, motivo);
   };
 
+  // El select va con estilo neutro; el color del estado actual se muestra como un punto al lado
   return (
-    <select
-      className={`admin-select-status ${claseEstado(item.estadoCodigo)}`}
-      value={item.estadoCodigo || ""}
-      onChange={handleChange}
-      disabled={disabled || transiciones.length === 0}
-      title={transiciones.length === 0 ? (item.esFinal ? "Estado final" : "Sin cambios disponibles para tu rol") : undefined}
-    >
-      <option value={item.estadoCodigo || ""}>{item.estado}</option>
-      {transiciones.map((t) => (
-        <option key={t.codigo} value={t.codigo}>
-          → {t.nombre}
-        </option>
-      ))}
-    </select>
+    <span className="estado-selector">
+      <span className={`estado-selector__punto ${claseEstado(item.estadoCodigo)}`} aria-hidden="true" />
+      <select
+        className="estado-selector__select"
+        aria-label={`Estado actual: ${item.estado}. Cambiar estado`}
+        value={item.estadoCodigo || ""}
+        onChange={handleChange}
+        disabled={disabled || transiciones.length === 0}
+        title={transiciones.length === 0 ? (item.esFinal ? "Estado final" : "Sin cambios disponibles para tu rol") : undefined}
+      >
+        <option value={item.estadoCodigo || ""}>{item.estado}</option>
+        {transiciones.map((t) => (
+          <option key={t.codigo} value={t.codigo}>
+            → {t.nombre}
+          </option>
+        ))}
+      </select>
+    </span>
   );
 }

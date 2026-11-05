@@ -3,7 +3,7 @@ import { Search, Eye, X, Filter, ShoppingBag, MapPin, Phone, CreditCard, Clock }
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
 import { adminApi } from "../../../services/adminApi";
-import { formatClock, formatCurrency, formatDate } from "../adminFormat";
+import { formatClock, formatCurrency, formatDate, formatTime } from "../adminFormat";
 import EstadoSelector from "../components/EstadoSelector";
 import { useDialogo } from "../../../context/useDialogo";
 
@@ -170,7 +170,7 @@ export default function OrdersSection() {
                   Pedido {pedidoSeleccionado.codigo}
                 </span>
                 <h3 className="admin-modal-title">Detalle del Pedido</h3>
-                <small className="admin-modal-date">{pedidoSeleccionado.fecha}</small>
+                <small className="admin-modal-date">{formatDate(pedidoSeleccionado.fecha)} · {formatTime(pedidoSeleccionado.fecha)}</small>
               </div>
               <button
                 type="button"
@@ -240,7 +240,7 @@ export default function OrdersSection() {
               <div className="admin-modal-footer-info">
                 <div className="admin-modal-payment">
                   <CreditCard size={18} />
-                  <span>Método de pago: <strong>{pedidoSeleccionado.metodoPago}</strong></span>
+                  <span className="admin-modal-payment__texto">Método de pago: <strong>{pedidoSeleccionado.metodoPago}</strong></span>
                 </div>
                 <div className="admin-modal-total">
                   <span>Total a cobrar:</span>
@@ -250,7 +250,7 @@ export default function OrdersSection() {
 
               {/* Selector de estado dentro del modal */}
               <div className="admin-modal-status-bar">
-                <label>Cambiar estado del pedido:</label>
+                <span className="admin-modal-status-bar__titulo" id="titulo-estado-pedido">Cambiar estado del pedido</span>
                 <EstadoSelector
                   item={pedidoSeleccionado}
                   onCambiar={(codigo, motivo) => handleCambiarEstado(pedidoSeleccionado.id, codigo, motivo)}

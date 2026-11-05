@@ -252,7 +252,7 @@ export default function ReservationsSection() {
 
               {/* Selector de estado */}
               <div className="admin-modal-status-bar">
-                <label>Estado de la reserva:</label>
+                <span className="admin-modal-status-bar__titulo">Estado de la reserva</span>
                 <EstadoSelector
                   item={reservaSeleccionada}
                   onCambiar={(codigo, motivo) => handleCambiarEstado(reservaSeleccionada.id, codigo, motivo)}

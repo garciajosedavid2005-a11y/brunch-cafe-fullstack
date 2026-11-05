@@ -2022,3 +2022,103 @@
 .admin-table td .admin-table__category-desc {
   white-space: normal;
 }
+
+/* ---- Selector de estado (0.7c): parece un selector; el color del estado va en un punto ----
+   Dos clases: Foundation define select:not([multiple]) { padding-top/bottom: 0 } (0,1,1). */
+.estado-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.estado-selector__punto {
+  flex: 0 0 auto;
+  width: 0.7rem;
+  height: 0.7rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 0;
+}
+
+.estado-selector__punto.admin-badge--warning { background: #b78103; }
+.estado-selector__punto.admin-badge--info { background: #1565c0; }
+.estado-selector__punto.admin-badge--success { background: #2e7d32; }
+.estado-selector__punto.admin-badge--danger { background: #c62828; }
+.estado-selector__punto.admin-badge--neutral { background: #757575; }
+
+.estado-selector .estado-selector__select {
+  appearance: none;
+  height: auto;
+  min-width: 170px;
+  margin: 0;
+  padding: 0.5rem 2.2rem 0.5rem 0.8rem;
+  border: 1.5px solid #c9b3ad;
+  border-radius: 10px;
+  background-color: #ffffff;
+  /* Flecha visible (chevron oscuro) */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%232C0703' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.8rem center;
+  background-size: 12px 8px;
+  color: #2c0703;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.estado-selector .estado-selector__select:hover:not(:disabled) {
+  border-color: #8c726c;
+}
+
+.estado-selector .estado-selector__select:focus-visible {
+  outline: 3px solid rgba(137, 6, 32, 0.35);
+  outline-offset: 2px;
+  border-color: var(--color-primario);
+}
+
+.estado-selector .estado-selector__select:disabled {
+  background-color: #f5f5f5;
+  background-image: none;
+  padding-right: 0.8rem;
+  color: #4a4a4a;
+  cursor: not-allowed;
+}
+
+/* ---- Modal de detalle (0.7c) ---- */
+.admin-modal-payment__texto {
+  color: #2c0703; /* 18:1 sobre #fffaf7 */
+}
+
+.admin-modal-status-bar {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.admin-modal-status-bar__titulo {
+  font-weight: 800;
+  font-size: 0.92rem;
+  color: var(--color-primario);
+}
+
+/* Barra de desplazamiento fina con los colores de la marca */
+.admin-modal-container {
+  scrollbar-width: thin;
+  scrollbar-color: #b6465f #f7e7e2;
+}
+
+.admin-modal-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-modal-container::-webkit-scrollbar-track {
+  background: #f7e7e2;
+  border-radius: 0 20px 20px 0;
+}
+
+.admin-modal-container::-webkit-scrollbar-thumb {
+  background: #b6465f;
+  border-radius: 999px;
+}

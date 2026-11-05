@@ -47,12 +47,23 @@ const VISTAS = {
       await p.waitForTimeout(400);
     },
   },
+  "admin-pedido-detalle-final": {
+    usuario: "admin",
+    completa: false,
+    preparar: async (p) => {
+      await abrirPestanaAdmin("Pedidos")(p);
+      await p.getByRole("button", { name: /ver detalle/i }).first().click();
+      await p.waitForTimeout(400);
+      await p.locator(".admin-modal-container").evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    },
+  },
   "admin-roles": { usuario: "admin", preparar: abrirPestanaAdmin("Roles") },
   "admin-usuarios": { usuario: "admin", preparar: abrirPestanaAdmin("Usuarios") },
   "admin-estados": { usuario: "admin", preparar: abrirPestanaAdmin("Estados") },
 };
 
-const navegador = await chromium.launch();
+// Sin --hide-scrollbars (Playwright lo pone por defecto): así se ven las barras de desplazamiento
+const navegador = await chromium.launch({ ignoreDefaultArgs: ["--hide-scrollbars"] });
 await mkdir(SALIDA, { recursive: true });
 const contextos = {};
 
