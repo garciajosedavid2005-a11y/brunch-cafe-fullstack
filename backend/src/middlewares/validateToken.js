@@ -14,7 +14,8 @@ const rechazar = (res, code, message) => {
  * desde la BD (caché de 30 s, invalidación inmediata al cambiar usuario o rol).
  * El rol que pudiera traer el token NO se usa.
  *   req.usuario = { id, nombre, apellido, correo, rol, rolId, permisos, activo }
- * Sin sesión, token inválido/vencido, usuario borrado o desactivado → 401.
+ * Sin sesión, token inválido/vencido, usuario borrado o desactivado, o versión
+ * de sesión antigua (contraseña cambiada) → 401.
  */
 export const autenticar = async (req, res, next) => {
     const token = req.cookies?.[COOKIE_SESION]
@@ -38,6 +39,10 @@ export const autenticar = async (req, res, next) => {
     const sesion = await obtenerSesion(payload.id)
     if (!sesion) return rechazar(res, 'INVALID_TOKEN', 'Sesión inválida. Inicia sesión de nuevo.')
     if (!sesion.activo) return rechazar(res, 'ACCOUNT_DISABLED', 'Tu cuenta está desactivada. Contacta al administrador.')
+    // Token emitido antes de un cambio de contraseña o una desactivación
+    if ((payload.tv || 0) !== sesion.tokenVersion) {
+        return rechazar(res, 'SESSION_REVOKED', 'Tu sesión se cerró por seguridad. Inicia sesión de nuevo.')
+    }
 
     req.usuario = sesion
     next()

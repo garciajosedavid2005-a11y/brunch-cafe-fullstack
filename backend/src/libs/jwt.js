@@ -17,6 +17,10 @@ export function generarToken(payload) {
     })
 }
 
+// Token de sesión: solo el id y la versión de sesiones del usuario
+export const tokenDeSesion = (usuario) =>
+    generarToken({ id: String(usuario._id || usuario.id), tv: usuario.tokenVersion || 0 })
+
 export const verificarToken = (token) => {
     return jwt.verify(token, config.JWT_SECRET)
 }

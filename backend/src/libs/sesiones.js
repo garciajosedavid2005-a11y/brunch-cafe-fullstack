@@ -9,7 +9,7 @@ const cache = new Map() // id usuario → { sesion, expira }
 
 const resolverDesdeBD = async (id) => {
     const usuario = await Usuario.findById(id)
-        .select('nombre apellido correo telefono activo rol')
+        .select('nombre apellido correo telefono activo rol tokenVersion')
         .populate('rol', 'nombre etiqueta permisos')
         .lean()
     if (!usuario) return null
@@ -19,6 +19,7 @@ const resolverDesdeBD = async (id) => {
         apellido: usuario.apellido,
         correo: usuario.correo,
         activo: usuario.activo !== false, // documentos antiguos sin el campo = activos
+        tokenVersion: usuario.tokenVersion || 0,
         rolId: usuario.rol ? String(usuario.rol._id) : null,
         rol: usuario.rol?.nombre || null,
         permisos: usuario.rol?.permisos || [],

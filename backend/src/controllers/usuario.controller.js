@@ -1,5 +1,8 @@
 import Usuario from '../models/usuario.model.js'
 import bcrypt from 'bcryptjs'
+import { tokenDeSesion } from '../libs/jwt.js'
+import { ponerCookieSesion } from '../libs/cookies.js'
+import { invalidarSesionUsuario } from '../libs/sesiones.js'
 
 export const verPerfil = async (req, res) => {
     try {
@@ -51,7 +54,11 @@ export const cambiarContrasena = async (req, res) => {
         if (!coincide) return res.status(400).json({ message: 'La contraseña actual no es correcta.' })
 
         usuario.contraseña = await bcrypt.hash(nueva, 10)
+        // Cierra las demás sesiones; esta recibe un token nuevo
+        usuario.tokenVersion = (usuario.tokenVersion || 0) + 1
         await usuario.save()
+        invalidarSesionUsuario(usuario._id)
+        ponerCookieSesion(res, await tokenDeSesion(usuario))
         return res.json({ message: 'Contraseña actualizada correctamente.' })
     } catch (error) {
         console.log(error)

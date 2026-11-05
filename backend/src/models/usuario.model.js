@@ -29,6 +29,13 @@ const usuarioSchema = new mongoose.Schema({
         trim: true
     },
     // Usuario desactivado = acceso cortado (los documentos sin el campo cuentan como activos)
+    // Versión de las sesiones: subirla invalida todos los JWT emitidos antes
+    // (cambio de contraseña, desactivación). Los tokens sin "tv" valen como 0.
+    tokenVersion: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
     activo: {
         type: Boolean,
         default: true

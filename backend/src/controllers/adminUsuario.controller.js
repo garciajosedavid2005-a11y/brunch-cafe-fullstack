@@ -63,6 +63,9 @@ export const actualizarUsuario = async (req, res) => {
         throw new AppError(409, 'ULTIMO_ADMIN', 'Debe quedar al menos un administrador activo.')
     }
 
+    if (activo === false && usuario.activo !== false) {
+        usuario.tokenVersion = (usuario.tokenVersion || 0) + 1
+    }
     if (activo !== undefined) usuario.activo = activo
     if (rolNuevo) usuario.rol = rolNuevo._id
     await usuario.save()
