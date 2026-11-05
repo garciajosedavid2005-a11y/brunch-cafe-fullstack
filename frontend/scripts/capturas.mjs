@@ -79,7 +79,17 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
       await page.setViewportSize({ width: ancho, height: 900 });
       await vista.preparar(page);
       await page.waitForLoadState("networkidle");
-      await page.waitForTimeout(900); // animaciones de entrada
+      if (vista.completa !== false) {
+        // Recorre la página como un usuario: las secciones con animación de entrada
+        // (IntersectionObserver) solo aparecen al pasar por el viewport
+        const alto = await page.evaluate(() => document.documentElement.scrollHeight);
+        for (let y = 0; y < alto; y += 400) {
+          await page.evaluate((top) => window.scrollTo(0, top), y);
+          await page.waitForTimeout(120);
+        }
+        await page.evaluate(() => window.scrollTo(0, 0));
+      }
+      await page.waitForTimeout(900); // fin de las transiciones
       const archivo = join(SALIDA, `${nombre}-${ancho}.png`);
       await page.screenshot({ path: archivo, fullPage: vista.completa !== false });
       console.log(`✓ ${archivo}${consola.length ? `  (errores de consola: ${consola.join(" | ").slice(0, 200)})` : ""}`);
