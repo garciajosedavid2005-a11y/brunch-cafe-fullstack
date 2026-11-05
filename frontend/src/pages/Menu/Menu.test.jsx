@@ -21,7 +21,7 @@ const PRODUCTOS = [
 // Primera llamada: menú; segunda: calificaciones
 const responder = (menu) => {
   apiRequest.mockImplementation((ruta) =>
-    ruta === "/productos/menu" ? menu() : Promise.resolve({ productRatings: [] })
+    ruta === "/v1/catalogo" ? menu() : Promise.resolve({ productRatings: [] })
   );
 };
 

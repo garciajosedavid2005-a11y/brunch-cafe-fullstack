@@ -38,7 +38,7 @@ const Destacados = () => {
 
   useEffect(() => {
     let active = true;
-    apiRequest("/productos/menu")
+    apiRequest("/v1/catalogo")
       .then(({ productos }) => {
         if (active) setMenu(productos);
       })

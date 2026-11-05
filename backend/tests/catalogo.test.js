@@ -2,6 +2,11 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { api } from './helpers/app.js'
 import Categoria from '../src/models/categoria.model.js'
 import Producto from '../src/models/producto.model.js'
+import MenuImage from '../src/models/menuImage.model.js'
+import { crearConSesion } from './helpers/usuarios.js'
+
+// PNG de 1×1 px
+const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
 
 let bebidas
 
@@ -15,5 +20,77 @@ describe('Menú público', () => {
         const res = await api().get('/api/productos/menu')
         expect(res.status).toBe(200)
         expect(res.body.productos[0].precio).toBe(12000)
+    })
+})
+
+describe('GET /api/v1/catalogo', () => {
+    it('devuelve categorías y productos con precio entero e imagen como URL', async () => {
+        const res = await api().get('/api/v1/catalogo')
+        expect(res.status).toBe(200)
+        expect(res.body.categorias).toEqual(['Bebidas'])
+        expect(res.body.productos).toEqual([{
+            id: 1, codigo: 1, nombre: 'Latte', precio: 12000, categoria: 'Bebidas',
+            descripcion: '', imagen: '/productos/menu/imagenes/latte.png', destacado: false,
+        }])
+    })
+
+    it('nunca envía base64: una imagen incrustada antigua sale vacía', async () => {
+        await Producto.create({ codigo: 2, nombre: 'Waffle', precio: 15000, categoria: bebidas._id, imagen: `data:image/png;base64,${PNG}` })
+        const res = await api().get('/api/v1/catalogo')
+        const waffle = res.body.productos.find((p) => p.codigo === 2)
+        expect(waffle.imagen).toBe('')
+        expect(JSON.stringify(res.body)).not.toContain('base64')
+    })
+
+    it('/api/productos/menu es un alias con la misma respuesta', async () => {
+        const [v1, alias] = await Promise.all([api().get('/api/v1/catalogo'), api().get('/api/productos/menu')])
+        expect(alias.status).toBe(200)
+        expect(alias.body).toEqual(v1.body)
+    })
+})
+
+describe('Imágenes subidas desde el admin', () => {
+    it('se guardan aparte y el producto queda con una URL que sirve la imagen', async () => {
+        const { sesion } = await crearConSesion('admin')
+        const res = await sesion.post('/api/productos').send({
+            nombre: 'Mocca', precio: 11000, categoriaId: String(bebidas._id), imagen: `data:image/png;base64,${PNG}`,
+        })
+        expect(res.status).toBe(201)
+        expect(res.body.imagen).toMatch(/^\/productos\/menu\/imagenes\/producto-\d+-[\w-]+\.png$/)
+        expect((await Producto.findById(res.body.id).lean()).imagen).toBe(res.body.imagen)
+
+        const imagen = await api().get(`/api${res.body.imagen}`)
+        expect(imagen.status).toBe(200)
+        expect(imagen.headers['content-type']).toBe('image/png')
+        expect(Buffer.compare(imagen.body, Buffer.from(PNG, 'base64'))).toBe(0)
+    })
+
+    it('al reemplazar o borrar, elimina la imagen subida anterior (no las del seed)', async () => {
+        const { sesion } = await crearConSesion('admin')
+        const creado = await sesion.post('/api/productos').send({
+            nombre: 'Mocca', precio: 11000, categoriaId: String(bebidas._id), imagen: `data:image/png;base64,${PNG}`,
+        })
+        const editado = await sesion.put(`/api/productos/${creado.body.id}`).send({ imagen: `data:image/png;base64,${PNG}` })
+        expect(editado.status).toBe(200)
+        expect(editado.body.imagen).not.toBe(creado.body.imagen)
+        const nombre = (url) => decodeURIComponent(url.split('/').pop())
+        expect(await MenuImage.exists({ nombre: nombre(creado.body.imagen) })).toBeNull()
+
+        await sesion.delete(`/api/productos/${creado.body.id}`)
+        expect(await MenuImage.exists({ nombre: nombre(editado.body.imagen) })).toBeNull()
+
+        // El producto del seed conserva su imagen al quitarle la imagen
+        await MenuImage.create({ nombre: 'latte.png', contentType: 'image/png', data: Buffer.from(PNG, 'base64') })
+        const latte = await Producto.findOne({ codigo: 1 })
+        await sesion.put(`/api/productos/${latte._id}`).send({ imagen: '' })
+        expect(await MenuImage.exists({ nombre: 'latte.png' })).not.toBeNull()
+    })
+
+    it('rechaza imágenes que no son una URL del menú ni una imagen incrustada', async () => {
+        const { sesion } = await crearConSesion('admin')
+        const res = await sesion.post('/api/productos').send({
+            nombre: 'Mocca', precio: 11000, categoriaId: String(bebidas._id), imagen: 'javascript:alert(1)',
+        })
+        expect(res.status).toBe(400)
     })
 })

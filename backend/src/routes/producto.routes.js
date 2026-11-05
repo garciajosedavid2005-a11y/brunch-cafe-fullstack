@@ -4,7 +4,7 @@ import {
     crearProducto,
     actualizarProducto,
     eliminarProducto,
-    listarMenuPublico,
+    listarCatalogo,
     obtenerImagenMenu,
 } from '../controllers/producto.controller.js'
 import { validateToken } from '../middlewares/validateToken.js'
@@ -14,7 +14,8 @@ import { crearProductoSchema, actualizarProductoSchema } from '../schema/product
 
 const router = Router()
 
-router.get('/menu', listarMenuPublico)
+// Alias de GET /api/v1/catalogo hasta que no quede ningún cliente usándolo (0.12)
+router.get('/menu', listarCatalogo)
 router.get('/menu/imagenes/:nombre', obtenerImagenMenu)
 
 router.use(validateToken, requirePermission('catalogo:gestionar'))

@@ -1,8 +1,13 @@
 import { z } from 'zod'
 import { texto, textoOpcional, booleano, requerido } from './comunes.js'
+import { DATA_URL, esUrlDelMenu } from '../libs/imagenesProducto.js'
 
+// '' (sin imagen), la URL que ya tenía (/productos/menu/imagenes/...) o una imagen nueva incrustada
 const imagen = z.string(requerido('La imagen'))
     .max(5_000_000, { error: 'La imagen no puede superar 5 MB' })
+    .refine((v) => v === '' || esUrlDelMenu(v) || DATA_URL.test(v), {
+        error: 'La imagen debe ser PNG, JPG, WEBP o GIF.',
+    })
     .optional()
 
 export const crearProductoSchema = z.object({

@@ -4,6 +4,7 @@ import Producto from '../models/producto.model.js'
 import MenuImage from '../models/menuImage.model.js'
 import { manejarError } from '../libs/manejarError.js'
 import { sinUndefined } from '../libs/utils.js'
+import { urlPublica, esDataUrl, guardarImagenSubida, borrarImagenSubida } from '../libs/imagenesProducto.js'
 
 const formato = (producto) => ({
     id: producto._id,
@@ -11,13 +12,18 @@ const formato = (producto) => ({
     nombre: producto.nombre,
     precio: producto.precio,
     descripcion: producto.descripcion || '',
-    imagen: producto.imagen || '',
+    imagen: urlPublica(producto.imagen),
     destacado: Boolean(producto.destacado),
     categoria: producto.categoria?.nombre || '',
     categoriaId: producto.categoria?._id || producto.categoria,
 })
 
-export const listarMenuPublico = async (req, res) => {
+/**
+ * Catálogo público (GET /api/v1/catalogo y su alias GET /api/productos/menu).
+ * `id` es el código numérico del producto (lo usan el carrito y los pedidos).
+ * Precio entero en COP; imagen siempre como URL (nunca base64).
+ */
+export const listarCatalogo = async (req, res) => {
     try {
         const [productos, categorias] = await Promise.all([
             Producto.find().populate('categoria', 'nombre').sort({ codigo: 1, nombre: 1 }).lean(),
@@ -33,7 +39,7 @@ export const listarMenuPublico = async (req, res) => {
                 precio: producto.precio, // entero en COP; el frontend lo formatea
                 categoria: producto.categoria?.nombre || '',
                 descripcion: producto.descripcion || '',
-                imagen: producto.imagen || '',
+                imagen: urlPublica(producto.imagen),
                 destacado: Boolean(producto.destacado),
             })),
         })
@@ -78,11 +84,15 @@ export const crearProducto = async (req, res) => {
         if (!categoria) return res.status(400).json({ message: 'La categoría seleccionada no existe' })
 
         const ultimo = await Producto.findOne({ codigo: { $type: 'number' } }).sort({ codigo: -1 }).select('codigo')
-        const producto = await new Producto({
-            ...datos,
-            codigo: (ultimo?.codigo || 0) + 1,
-            categoria: categoria._id,
-        }).save()
+        const codigo = (ultimo?.codigo || 0) + 1
+        const imagen = esDataUrl(datos.imagen) ? await guardarImagenSubida(datos.imagen, codigo) : datos.imagen
+        let producto
+        try {
+            producto = await new Producto({ ...datos, imagen, codigo, categoria: categoria._id }).save()
+        } catch (error) {
+            await borrarImagenSubida(imagen) // no dejar la imagen huérfana
+            throw error
+        }
         await producto.populate('categoria', 'nombre')
 
         res.status(201).json(formato(producto))
@@ -107,8 +117,16 @@ export const actualizarProducto = async (req, res) => {
             cambios.categoria = categoria._id
         }
 
+        const imagenAnterior = producto.imagen
+        if (esDataUrl(cambios.imagen)) cambios.imagen = await guardarImagenSubida(cambios.imagen, producto.codigo)
         producto.set(sinUndefined(cambios))
-        await producto.save()
+        try {
+            await producto.save()
+        } catch (error) {
+            if (cambios.imagen !== imagenAnterior) await borrarImagenSubida(cambios.imagen)
+            throw error
+        }
+        if (cambios.imagen !== undefined && cambios.imagen !== imagenAnterior) await borrarImagenSubida(imagenAnterior)
         await producto.populate('categoria', 'nombre')
         res.json(formato(producto))
     } catch (error) {
@@ -121,6 +139,7 @@ export const eliminarProducto = async (req, res) => {
         const producto = await Producto.findById(req.params.id)
         if (!producto) return res.status(404).json({ message: 'Producto no encontrado' })
         await producto.deleteOne()
+        await borrarImagenSubida(producto.imagen)
         res.json({ message: 'Producto eliminado' })
     } catch (error) {
         manejarError(res, error)

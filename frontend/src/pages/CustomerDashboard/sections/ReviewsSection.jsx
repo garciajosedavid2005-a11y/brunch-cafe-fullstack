@@ -24,7 +24,7 @@ export default function ReviewsSection() {
   }, []);
 
   useEffect(() => {
-    apiRequest("/productos/menu")
+    apiRequest("/v1/catalogo")
       .then(({ productos }) => setMenu(productos))
       .catch((error) => setNotice({ message: error.message, error: true }));
   }, []);

@@ -6,6 +6,7 @@ import { pinoHttp } from 'pino-http'
 import { config } from './config.js'
 import { logger } from './libs/logger.js'
 import routes from './routes/index.routes.js'
+import v1Routes from './routes/v1.routes.js'
 import {
     manejadorErrores,
     normalizarErroresLegados,
@@ -47,6 +48,7 @@ export const createApp = () => {
     })
 
     // Todas las rutas de la API se montan desde index.routes.js
+    app.use('/api/v1', v1Routes)
     app.use('/api', routes)
 
     app.use(rutaNoEncontrada)

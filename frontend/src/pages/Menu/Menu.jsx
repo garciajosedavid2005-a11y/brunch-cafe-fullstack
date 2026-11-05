@@ -31,7 +31,7 @@ const Menu = () => {
 
   useEffect(() => {
     let active = true;
-    apiRequest("/productos/menu")
+    apiRequest("/v1/catalogo")
       .then(({ productos, categorias: categoriasMenu }) => {
         if (!active) return;
         setMenu(productos);
