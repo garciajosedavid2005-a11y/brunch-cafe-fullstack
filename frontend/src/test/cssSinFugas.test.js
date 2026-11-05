@@ -4,10 +4,11 @@
 import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import process from "node:process";
+import { fileURLToPath } from "node:url";
 import { reglasCss, esSelectorGlobal } from "./selectoresGlobales";
 
-const SRC = join(process.cwd(), "src");
+// Ruta de src/ a partir de este archivo (no depende del directorio desde el que se ejecuta)
+const SRC = fileURLToPath(new URL("..", import.meta.url));
 const ARCHIVOS_BASE = ["styles/index.css", "styles/variables.css"];
 const rutaRelativa = (archivo) => relative(SRC, archivo).split(sep).join("/");
 const hojasCss = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
