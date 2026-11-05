@@ -1,0 +1,95 @@
+// Capturas de pantalla para revisión visual (npm run capturas -- <etiqueta>).
+// Requiere backend y frontend levantados y los usuarios de `npm run seed:dev` (backend).
+// La contraseña de prueba se lee de DEV_USUARIOS_PASSWORD (no está en el código).
+//   FRONT_URL (por defecto http://localhost:5173) · API_URL (por defecto http://localhost:4000/api)
+import { chromium } from "playwright";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import process from "node:process";
+
+const FRONT = process.env.FRONT_URL || "http://localhost:5173";
+const API = process.env.API_URL || "http://localhost:4000/api";
+const CLAVE = process.env.DEV_USUARIOS_PASSWORD;
+const ETIQUETA = process.argv[2] || "actual";
+const ANCHOS = (process.env.ANCHOS || "1280,1024,768").split(",").map(Number);
+const SOLO = process.env.SOLO ? process.env.SOLO.split(",") : null;
+const SALIDA = join(process.cwd(), "capturas", ETIQUETA);
+
+if (!CLAVE) {
+  console.error("Define DEV_USUARIOS_PASSWORD (la misma que usaste en `npm run seed:dev`).");
+  process.exit(1);
+}
+
+const USUARIOS = {
+  admin: "admin.dev@brunchcafe.test",
+  cliente: "cliente.dev@brunchcafe.test",
+  mesero: "mesero.dev@brunchcafe.test",
+};
+
+const abrirPestanaAdmin = (nombre) => async (page) => {
+  await page.goto(`${FRONT}/admin`);
+  await page.getByRole("button", { name: nombre, exact: true }).first().click();
+  await page.waitForLoadState("networkidle");
+};
+
+// nombre → { usuario, preparar(page), completa }
+const VISTAS = {
+  inicio: { preparar: (p) => p.goto(`${FRONT}/`) },
+  menu: { preparar: (p) => p.goto(`${FRONT}/menu`) },
+  "cuenta-cliente": { usuario: "cliente", preparar: (p) => p.goto(`${FRONT}/cuenta`) },
+  "cuenta-mesero": { usuario: "mesero", preparar: (p) => p.goto(`${FRONT}/cuenta`) },
+  "admin-pedido-detalle": {
+    usuario: "admin",
+    completa: false,
+    preparar: async (p) => {
+      await abrirPestanaAdmin("Pedidos")(p);
+      await p.getByRole("button", { name: /ver detalle/i }).first().click();
+      await p.waitForTimeout(400);
+    },
+  },
+  "admin-roles": { usuario: "admin", preparar: abrirPestanaAdmin("Roles") },
+  "admin-usuarios": { usuario: "admin", preparar: abrirPestanaAdmin("Usuarios") },
+  "admin-estados": { usuario: "admin", preparar: abrirPestanaAdmin("Estados") },
+};
+
+const navegador = await chromium.launch();
+await mkdir(SALIDA, { recursive: true });
+const contextos = {};
+
+const contextoDe = async (usuario) => {
+  const clave = usuario || "invitado";
+  if (contextos[clave]) return contextos[clave];
+  const contexto = await navegador.newContext({ locale: "es-CO", timezoneId: "America/Bogota" });
+  if (usuario) {
+    const res = await contexto.request.post(`${API}/auth/login`, { data: { correo: USUARIOS[usuario], contraseña: CLAVE } });
+    if (!res.ok()) throw new Error(`Login de prueba falló para ${usuario}: ${res.status()} (¿ejecutaste npm run seed:dev?)`);
+  }
+  contextos[clave] = contexto;
+  return contexto;
+};
+
+let errores = 0;
+for (const [nombre, vista] of Object.entries(VISTAS)) {
+  if (SOLO && !SOLO.includes(nombre)) continue;
+  for (const ancho of ANCHOS) {
+    const page = await (await contextoDe(vista.usuario)).newPage();
+    const consola = [];
+    page.on("console", (m) => m.type() === "error" && consola.push(m.text()));
+    try {
+      await page.setViewportSize({ width: ancho, height: 900 });
+      await vista.preparar(page);
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(900); // animaciones de entrada
+      const archivo = join(SALIDA, `${nombre}-${ancho}.png`);
+      await page.screenshot({ path: archivo, fullPage: vista.completa !== false });
+      console.log(`✓ ${archivo}${consola.length ? `  (errores de consola: ${consola.join(" | ").slice(0, 200)})` : ""}`);
+    } catch (error) {
+      errores += 1;
+      console.error(`✗ ${nombre} ${ancho}px: ${error.message.split("\n")[0]}`);
+    } finally {
+      await page.close();
+    }
+  }
+}
+await navegador.close();
+process.exitCode = errores ? 1 : 0;
