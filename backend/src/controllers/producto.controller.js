@@ -4,6 +4,7 @@ import Producto from '../models/producto.model.js'
 import MenuImage from '../models/menuImage.model.js'
 import { manejarError } from '../libs/manejarError.js'
 import { sinUndefined } from '../libs/utils.js'
+import { siguienteValor } from '../libs/contadores.js'
 import { urlPublica, esDataUrl, guardarImagenSubida, borrarImagenSubida } from '../libs/imagenesProducto.js'
 
 const formato = (producto) => ({
@@ -85,8 +86,9 @@ export const crearProducto = async (req, res) => {
         const categoria = await Categoria.findById(categoriaId)
         if (!categoria) return res.status(400).json({ message: 'La categoría seleccionada no existe' })
 
+        // Código numérico (lo usan carrito y pedidos): contador atómico, sin carreras
         const ultimo = await Producto.findOne({ codigo: { $type: 'number' } }).sort({ codigo: -1 }).select('codigo')
-        const codigo = (ultimo?.codigo || 0) + 1
+        const codigo = await siguienteValor('producto', ultimo?.codigo || 0)
         const imagen = esDataUrl(datos.imagen) ? await guardarImagenSubida(datos.imagen, codigo) : datos.imagen
         let producto
         try {

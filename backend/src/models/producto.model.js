@@ -2,7 +2,7 @@ import mongoose from 'mongoose'
 
 const productoSchema = new mongoose.Schema({
     // Número del producto en el menú original (1, 2, 3...). Los productos nuevos
-    // reciben el siguiente número desde el controlador. Permite que los pedidos
+    // reciben el siguiente número del contador atómico "producto" (colección counters). Permite que los pedidos
     // y comentarios que ya usan ese número sigan funcionando.
     codigo: {
         type: Number,
