@@ -7,7 +7,7 @@ import { contraste, variablesCss, resolverColor } from "../../test/contraste";
 
 const SRC = join(import.meta.dirname, "..", "..");
 const variables = variablesCss(readFileSync(join(SRC, "styles/variables.css"), "utf8"));
-const navbar = readFileSync(join(SRC, "components/Navbar/Navbar.css"), "utf8");
+const navbar = readFileSync(join(SRC, "components/Navbar/navbar.css"), "utf8");
 // Reglas de escritorio: lo anterior al primer @media
 const escritorio = navbar.slice(0, navbar.indexOf("@media"));
 
