@@ -1,27 +1,39 @@
-// Regresión: el CSS de componentes y páginas no puede tener reglas de elemento sueltas
-// (p. ej. `span { color: … }` en footer.css teñía de rosa claro todos los <span> de la app).
+// Regresión: solo los archivos base pueden tener selectores globales (de elemento sin clase,
+// id ni atributo). Ej.: `span { color: … }` en footer.css teñía de rosa claro todos los <span>.
 // Se lee con fs: con `css: false` Vitest entrega los .css vacíos.
 import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import process from "node:process";
+import { reglasCss, esSelectorGlobal } from "./selectoresGlobales";
 
 const SRC = join(process.cwd(), "src");
+const ARCHIVOS_BASE = ["styles/index.css", "styles/variables.css"];
+const rutaRelativa = (archivo) => relative(SRC, archivo).split(sep).join("/");
 const hojasCss = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
   e.isDirectory() ? hojasCss(join(dir, e.name)) : e.name.endsWith(".css") ? [join(dir, e.name)] : []
 );
-const ELEMENTO_SUELTO = /^(span|p|a|label|div|li|ul|ol|h[1-6]|button|input|select|textarea|legend|small|strong|img)\s*(,|\{)/;
 
 describe("CSS sin reglas globales", () => {
-  it("ninguna hoja de componente o página define estilos para un elemento sin clase", () => {
-    const archivos = [...hojasCss(join(SRC, "components")), ...hojasCss(join(SRC, "pages"))];
+  it("el analizador detecta selectores globales y respeta los encapsulados", () => {
+    const css = [
+      "/* span { } */",
+      ".a span { color: red }",
+      "span, .b { color: red }",
+      "@media (max-width: 9px) { ul li { margin: 0 } }",
+      "@keyframes x { from { opacity: 0 } 50% { opacity: .5 } }",
+      'input[type="x"] { }',
+    ].join("\n");
+    expect(reglasCss(css).filter(esSelectorGlobal).map((r) => r.selector)).toEqual(["span", "ul li"]);
+  });
+
+  it("fuera de los archivos base no hay selectores globales", () => {
+    const archivos = hojasCss(SRC).filter((f) => !ARCHIVOS_BASE.includes(rutaRelativa(f)));
     const fugas = archivos.flatMap((archivo) =>
-      readFileSync(archivo, "utf8").split("\n")
-        .map((linea, i) => ({ linea: i + 1, texto: linea.trim() }))
-        .filter(({ texto }) => ELEMENTO_SUELTO.test(texto))
-        .map(({ linea, texto }) => `${archivo.replace(SRC, "src")}:${linea} ${texto}`)
+      reglasCss(readFileSync(archivo, "utf8")).filter(esSelectorGlobal)
+        .map(({ selector, linea }) => `${rutaRelativa(archivo)}:${linea} ${selector}`)
     );
-    expect(archivos.length).toBeGreaterThan(10);
+    expect(archivos.length).toBeGreaterThan(25);
     expect(fugas).toEqual([]);
   });
 });
