@@ -414,7 +414,7 @@
 
 .dashboard-rating button.is-selected,
 .dashboard-stars {
-  color: #cc8a20;
+  color: #9a6408; /* antes #cc8a20: 2.9:1 */
 }
 
 .dashboard-character-count {

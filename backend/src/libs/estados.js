@@ -13,7 +13,7 @@ export const TIPOS_ESTADO = ['pedido', 'reserva']
 const estado = (codigo, nombre, descripcion, badgeType, color, bg, esFinal = false) =>
     ({ codigo, nombre, descripcion, badgeType, color, bg, esFinal })
 
-const AMARILLO = ['warning', '#b78103', '#fff8e1']
+const AMARILLO = ['warning', '#7a5000', '#fff8e1'] // texto ≥ 6:1
 const AZUL = ['info', '#345b88', '#eaf1fa']
 const VERDE = ['success', '#346d34', '#e8f4e8']
 const ROJO = ['danger', '#a33a3a', '#fdecec']

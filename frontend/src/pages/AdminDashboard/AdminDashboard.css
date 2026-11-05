@@ -358,7 +358,7 @@
 
 .admin-kpi-card__icon--gold {
   background: #fffde7;
-  color: #f57f17;
+  color: #b35400; /* antes #f57f17: 2.6:1 */
 }
 
 .admin-kpi-card__info {
@@ -641,7 +641,7 @@
 
 .admin-badge--warning {
   background: #fff8e1;
-  color: #b78103;
+  color: #7a5000; /* antes #b78103: 3.2:1; ahora ≥ 6:1 */
   border: 1.5px solid #ffe082;
 }
 
@@ -754,7 +754,7 @@
 }
 
 .admin-input-search::placeholder {
-  color: #8c726c;
+  color: #75605a; /* antes #8c726c: 4.4:1 */
 }
 
 .admin-filter-tabs {
@@ -996,7 +996,7 @@
 }
 
 .admin-review-item__stars {
-  color: #f57f17;
+  color: #b35400; /* antes #f57f17: 2.6:1 */
   font-size: 1.05rem;
 }
 
@@ -1937,4 +1937,88 @@
   border-color: #c4c4c4 !important;
   background: #f3f3f3 !important;
   cursor: not-allowed !important;
+}
+
+/* ---- Roles: permisos legibles (0.7b) ---- */
+.admin-permisos__grupo {
+  border: none;
+  padding: 0;
+  margin: 0 0 0.8rem;
+}
+
+.admin-permisos__grupo legend {
+  margin-bottom: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #55332e;
+}
+
+.admin-permiso {
+  flex-wrap: wrap;
+  margin: 0 0 0.35rem;
+  line-height: 1.4;
+}
+
+/* Texto de permiso con el color normal (antes heredaba un rosa claro ilegible) */
+.admin-permiso .admin-permiso__texto {
+  color: #2c0703;
+  font-size: 0.9rem;
+}
+
+.admin-permiso--proximo {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.admin-permiso--proximo input[type="checkbox"] {
+  cursor: not-allowed;
+}
+
+.admin-permiso--proximo .admin-permiso__texto {
+  color: #595959; /* gris distinguible, 7:1 sobre blanco */
+}
+
+.admin-permiso__proximamente {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid #c4c4c4;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #404040;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.admin-roles__nota,
+.admin-roles__sin-permisos {
+  font-size: 0.82rem;
+  color: #6b4f49;
+}
+
+/* Etiquetas de permisos: hacen salto de línea dentro de su celda */
+.admin-roles__permisos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  max-width: 260px;
+  min-width: 140px;
+}
+
+.admin-badge.admin-roles__permiso {
+  max-width: 100%;
+  font-size: 0.74rem;
+  line-height: 1.3;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.admin-table td.admin-roles__celda-permisos {
+  white-space: normal;
+  min-width: 160px;
+  max-width: 280px;
+}
+
+/* La descripción del rol también puede ocupar varias líneas */
+.admin-table td .admin-table__category-desc {
+  white-space: normal;
 }

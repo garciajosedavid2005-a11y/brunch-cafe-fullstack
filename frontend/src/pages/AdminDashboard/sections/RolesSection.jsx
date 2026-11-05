@@ -14,6 +14,20 @@ import AdminStatus from "../components/AdminStatus";
 import { useDialogo } from "../../../context/useDialogo";
 import { plural } from "../adminFormat";
 
+// Títulos de los grupos de permisos (las claves del backend no llevan tildes)
+const TITULO_MODULO = {
+  catalogo: "Catálogo",
+  pedidos: "Pedidos",
+  reservas: "Reservas",
+  resenas: "Reseñas",
+  configuracion: "Configuración",
+  identidad: "Usuarios y roles",
+  caja: "Caja",
+  inventario: "Inventario",
+  reportes: "Reportes",
+};
+const tituloModulo = (modulo) => TITULO_MODULO[modulo] || modulo.charAt(0).toUpperCase() + modulo.slice(1);
+
 export default function RolesSection() {
   const { items: roles, cargando, error, guardando, cargar, crear, actualizar, eliminar } =
     useAdminResource("/roles");
@@ -134,7 +148,7 @@ export default function RolesSection() {
           />
         </div>
         <div className="admin-toolbar__count">
-          <strong>{rolesFiltrados.length}</strong> roles configurados
+          {plural(rolesFiltrados.length, "rol configurado", "roles configurados")}
         </div>
       </div>
 
@@ -185,26 +199,19 @@ export default function RolesSection() {
                         {plural(rol.usuariosAsignados, "usuario")}
                       </span>
                     </td>
-                    <td>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem", maxWidth: "280px" }}>
+                    <td className="admin-roles__celda-permisos">
+                      <div className="admin-roles__permisos">
                         {rol.permisos && rol.permisos.length > 0 ? (
                           rol.permisos.slice(0, 3).map((p, idx) => (
-                            <span
-                              key={idx}
-                              className="admin-badge admin-badge--info"
-                              style={{ fontSize: "0.74rem" }}
-                            >
+                            <span key={idx} className="admin-badge admin-badge--info admin-roles__permiso">
                               {etiquetaPermiso(p)}
                             </span>
                           ))
                         ) : (
-                          <span style={{ fontSize: "0.8rem", color: "#8c726c" }}>Sin permisos</span>
+                          <span className="admin-roles__sin-permisos">Sin permisos</span>
                         )}
                         {rol.permisos && rol.permisos.length > 3 && (
-                          <span
-                            className="admin-badge admin-badge--neutral"
-                            style={{ fontSize: "0.74rem" }}
-                          >
+                          <span className="admin-badge admin-badge--neutral admin-roles__permiso">
                             +{rol.permisos.length - 3} más
                           </span>
                         )}
@@ -325,22 +332,20 @@ export default function RolesSection() {
                 <div className="admin-form-group">
                   <label className="admin-form-label">Permisos</label>
                   {rolEnEdicion && rolEnEdicion.permisosEditables === false ? (
-                    <p style={{ fontSize: "0.85rem", color: "#8c726c" }}>
+                    <p className="admin-roles__nota">
                       Este rol no puede tener permisos de staff. Solo se editan el nombre y la descripción.
                     </p>
                   ) : (
                     modulos.map((modulo) => (
-                      <fieldset key={modulo} style={{ border: "none", padding: 0, margin: "0 0 0.6rem" }}>
-                        <legend style={{ fontSize: "0.78rem", fontWeight: 600, textTransform: "capitalize", color: "#55332e" }}>
-                          {modulo}
-                        </legend>
+                      <fieldset key={modulo} className="admin-permisos__grupo">
+                        <legend>{tituloModulo(modulo)}</legend>
                         {catalogo
                           .filter((p) => p.modulo === modulo)
                           .map((permiso) => (
                             <label
                               key={permiso.clave}
-                              className="admin-checkbox-label"
-                              style={{ opacity: permiso.reservado ? 0.55 : 1 }}
+                              className={`admin-checkbox-label admin-permiso ${permiso.reservado ? "admin-permiso--proximo" : ""}`}
+                              title={permiso.reservado ? "Disponible en próximas fases" : undefined}
                             >
                               <input
                                 type="checkbox"
@@ -348,10 +353,8 @@ export default function RolesSection() {
                                 checked={formData.permisos.includes(permiso.clave)}
                                 onChange={() => alternarPermiso(permiso.clave)}
                               />
-                              <span>
-                                {permiso.descripcion}
-                                {permiso.reservado && " (próximas fases)"}
-                              </span>
+                              <span className="admin-permiso__texto">{permiso.descripcion}</span>
+                              {permiso.reservado && <span className="admin-permiso__proximamente">Próximamente</span>}
                             </label>
                           ))}
                       </fieldset>

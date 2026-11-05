@@ -229,7 +229,7 @@ export default function ReviewsSection() {
                     <td>
                       <div className="admin-stars-display" style={{ color: "#b78103", fontWeight: 800 }}>
                         {"★".repeat(item.calificacion)}
-                        <span style={{ color: "#dec7be" }}>
+                        <span style={{ color: "#a3908a" }}>
                           {"★".repeat(5 - item.calificacion)}
                         </span>
                         <span style={{ marginLeft: "0.4rem", color: "#2C0703", fontSize: "0.85rem" }}>

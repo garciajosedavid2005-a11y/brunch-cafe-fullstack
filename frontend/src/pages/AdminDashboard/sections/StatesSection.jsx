@@ -15,7 +15,7 @@ export default function StatesSection() {
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
-    color: "#b78103",
+    color: "#7a5000",
     bg: "#fff8e1",
   });
 
@@ -259,7 +259,7 @@ export default function StatesSection() {
                   </div>
                 </div>
 
-                <p style={{ fontSize: "0.8rem", color: "#8c726c", margin: 0 }}>
+                <p style={{ fontSize: "0.8rem", color: "#6b4f49", margin: 0 }}>
                   Código <code>{estadoEnEdicion?.codigo}</code> · {estadoEnEdicion?.esFinal ? "Estado final" : "En proceso"} (lo define el sistema).
                 </p>
               </div>
