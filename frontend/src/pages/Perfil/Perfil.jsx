@@ -20,7 +20,7 @@ const Perfil = () => {
 
         const data = await res.json();
         setUsuario(data);
-      } catch (err) {
+      } catch {
         navigate('/login');
       } finally {
         setCargando(false);
