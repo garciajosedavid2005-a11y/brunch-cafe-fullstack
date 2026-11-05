@@ -1,4 +1,4 @@
-import { inject, beforeAll, afterAll, afterEach } from 'vitest'
+import { inject, beforeAll, beforeEach, afterAll, afterEach } from 'vitest'
 import mongoose from 'mongoose'
 
 // Variables de entorno antes de que cualquier módulo importe src/config.js
@@ -12,6 +12,12 @@ const dbName = `test_${process.env.VITEST_POOL_ID || process.env.VITEST_WORKER_I
 
 beforeAll(async () => {
     await mongoose.connect(process.env.MONGO_URI, { dbName })
+})
+
+// Datos base que el servidor siembra al arrancar (roles)
+beforeEach(async () => {
+    const { sembrarRoles } = await import('../../src/seeds/base.js')
+    await sembrarRoles()
 })
 
 afterEach(async () => {

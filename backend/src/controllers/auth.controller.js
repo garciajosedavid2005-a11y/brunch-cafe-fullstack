@@ -32,12 +32,9 @@ export const register = async (req, res) => {
     const existe = await Usuario.exists({ correo }).collation(SIN_MAYUSCULAS)
     if (existe) throw new AppError(400, 'REGISTRO_NO_DISPONIBLE', MENSAJE_REGISTRO)
 
-    // El rol "cliente" lo crea el seed (0.3); se conserva el upsert como respaldo
-    const rolCliente = await Rol.findOneAndUpdate(
-        { nombre: 'cliente' },
-        { $setOnInsert: { nombre: 'cliente' } },
-        { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
-    )
+    // El rol "cliente" lo crea sembrarRoles() al arrancar (sin upserts en peticiones)
+    const rolCliente = await Rol.findOne({ nombre: 'cliente' })
+    if (!rolCliente) throw new Error('Falta el rol "cliente": ejecuta npm run seed:base')
 
     let usuarioGuardado
     try {

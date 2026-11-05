@@ -7,7 +7,7 @@ import Usuario from '../src/models/usuario.model.js'
 import Rol from '../src/models/rol.model.js'
 
 const crearUsuario = async (correo) => {
-    const rol = await Rol.create({ nombre: 'cliente' })
+    const rol = await Rol.findOne({ nombre: 'cliente' })
     return Usuario.create({
         nombre: 'Test', apellido: 'Rate', correo, contraseña: await bcrypt.hash('secreta123', 4), rol: rol._id,
     })

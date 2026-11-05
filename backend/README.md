@@ -4,8 +4,10 @@
 
 1. Copia `.env.example` a `.env` y configura `MONGO_URI` y un `JWT_SECRET` aleatorio.
 2. Ejecuta `npm install` si todavía no están instaladas las dependencias.
-3. Inicia MongoDB y ejecuta `npm run dev`.
-4. En `frontend`, copia `.env.example` a `.env` y ejecuta `npm run dev`.
+3. Define `ADMIN_EMAIL`, `ADMIN_PASSWORD` (≥ 10 caracteres) y `ADMIN_NOMBRE` en `.env` y ejecuta `npm run seed:base` para crear los roles base y el primer administrador.
+4. (Opcional) `npm run seed:menu` para cargar el menú inicial.
+5. Inicia MongoDB y ejecuta `npm run dev`.
+6. En `frontend`, copia `.env.example` a `.env` y ejecuta `npm run dev`.
 
 El backend escucha por defecto en `http://localhost:4000`; el cliente usa cookies con credenciales habilitadas. En producción, frontend y API deben servirse por HTTPS y `CLIENT_URL` debe apuntar al origen exacto del frontend.
 
@@ -22,6 +24,14 @@ El backend escucha por defecto en `http://localhost:4000`; el cliente usa cookie
 - La primera ejecución de `npm test` descarga el binario de `mongod` (~100 MB) y lo deja en caché; no necesita un Mongo instalado.
 - `src/app.js` construye la app de Express (lo usan los tests); `src/index.js` conecta a MongoDB y escucha.
 - Logs con pino: legibles en desarrollo (`pino-pretty`), JSON en producción y silenciados en tests. Cookies, cabeceras de autorización y contraseñas nunca se registran. Nivel configurable con `LOG_LEVEL`.
+
+### Datos base (`npm run seed:base`)
+
+Idempotente: se puede ejecutar las veces que quieras.
+
+- Asegura los roles de sistema `admin` y `cliente` (no pisa etiqueta ni descripción editadas). El servidor también los asegura al arrancar, así que el registro nunca crea roles durante una petición.
+- Crea el primer administrador con `ADMIN_EMAIL`, `ADMIN_PASSWORD` y `ADMIN_NOMBRE` ("Nombre Apellido"). Si el correo ya existe, **no cambia su contraseña ni sus datos**: solo le asigna el rol `admin`. Sin esas variables, este paso se omite.
+- Si en la BD hay roles creados a mano como `Admin` o `Administrador`, sus usuarios pasan al rol canónico `admin` (el rol viejo se conserva).
 
 ### Seguridad de la sesión
 
