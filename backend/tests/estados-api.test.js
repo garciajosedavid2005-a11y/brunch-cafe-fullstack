@@ -156,6 +156,21 @@ describe('Reservas: transiciones', () => {
         expect(lista.body.reservations[0]).toMatchObject({ status: 'completed', codigo: 'completada' })
     })
 
+    it('check-in sin confirmar deja Evento con su motivo (0.7b)', async () => {
+        const res = await cambiar(anfitrion.sesion, 'sentada')
+        expect(res.status).toBe(200)
+        expect((await eventosDe(reservaId)).at(-1)).toMatchObject({ de: 'pendiente', a: 'sentada', motivo: 'check-in sin confirmar' })
+    })
+
+    it('staff cancela una reserva solo con motivo (0.7b)', async () => {
+        const sinMotivo = await cambiar(anfitrion.sesion, 'cancelada')
+        expect(sinMotivo.status).toBe(400)
+        expect(sinMotivo.body.error.code).toBe('MOTIVO_REQUERIDO')
+        const ok = await cambiar(anfitrion.sesion, 'cancelada', { motivo: 'Sin cupo' })
+        expect(ok.status).toBe(200)
+        expect((await eventosDe(reservaId)).at(-1)).toMatchObject({ a: 'cancelada', motivo: 'Sin cupo' })
+    })
+
     it('no_show solo desde confirmada', async () => {
         expect((await cambiar(anfitrion.sesion, 'no_show')).status).toBe(409)
         await cambiar(anfitrion.sesion, 'confirmada')

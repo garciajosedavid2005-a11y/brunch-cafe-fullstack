@@ -118,9 +118,29 @@ describe('Transiciones de reserva', () => {
         expect(() => validarTransicion('reserva', 'confirmada', 'no_show', { permisos: ANFITRION })).not.toThrow()
         expect(codigoError(() => validarTransicion('reserva', 'pendiente', 'no_show', { permisos: ANFITRION })))
             .toEqual({ status: 409, code: 'TRANSICION_INVALIDA' })
-        expect(() => validarTransicion('reserva', 'confirmada', 'cancelada', { permisos: ANFITRION })).not.toThrow()
-        expect(codigoError(() => validarTransicion('reserva', 'sentada', 'cancelada', { permisos: ANFITRION })))
+        expect(() => validarTransicion('reserva', 'confirmada', 'cancelada', { permisos: ANFITRION, motivo: 'Llamó a cancelar' })).not.toThrow()
+        expect(codigoError(() => validarTransicion('reserva', 'sentada', 'cancelada', { permisos: ANFITRION, motivo: 'x' })))
             .toEqual({ status: 409, code: 'TRANSICION_INVALIDA' })
+    })
+
+    it('staff cancela una reserva solo con motivo (0.7b)', () => {
+        for (const de of ['pendiente', 'confirmada']) {
+            expect(codigoError(() => validarTransicion('reserva', de, 'cancelada', { permisos: ANFITRION })))
+                .toEqual({ status: 400, code: 'MOTIVO_REQUERIDO' })
+        }
+    })
+
+    it('check-in sin confirmar: pendiente → sentada (staff) con motivo por defecto (0.7b)', () => {
+        expect(validarTransicion('reserva', 'pendiente', 'sentada', { permisos: ANFITRION }).motivo).toBe('check-in sin confirmar')
+        expect(codigoError(() => validarTransicion('reserva', 'pendiente', 'sentada', { permisos: ['reserva:ver'] })))
+            .toEqual({ status: 403, code: 'FORBIDDEN' })
+        expect(codigoError(() => validarTransicion('reserva', 'pendiente', 'sentada', { actor: 'cliente' })))
+            .toEqual({ status: 409, code: 'TRANSICION_INVALIDA' })
+        // No se permiten otros saltos
+        for (const [de, a] of [['pendiente', 'completada'], ['confirmada', 'completada']]) {
+            expect(codigoError(() => validarTransicion('reserva', de, a, { permisos: ['*'] })))
+                .toEqual({ status: 409, code: 'TRANSICION_INVALIDA' })
+        }
     })
 
     it('sin reserva:cambiar_estado → 403', () => {
