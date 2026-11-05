@@ -1,8 +1,8 @@
 import Reserva from '../models/reserva.model.js'
-import { forbidden, notFound } from '../libs/errors.js'
+import { notFound } from '../libs/errors.js'
 import { esEstadoFinal } from '../libs/estados.js'
 import {
-    cambiarEstado, codigoDestino, estadoPorCodigo, estadosDelTipo, opcionesDeCambio, registrarEvento,
+    cambiarEstado, codigoDestino, estadosDelTipo, opcionesDeCambio,
 } from '../services/estados.service.js'
 
 const formatoAdmin = (reserva, { permisos, estados }) => {
@@ -27,56 +27,7 @@ const formatoAdmin = (reserva, { permisos, estados }) => {
     }
 }
 
-// Acciones del cliente (rutas antiguas /api/reservas; el portal usa /api/customer/reservations)
-
-export const crearReserva = async (req, res) => {
-    const { cantidadPersonas, fecha, hora, observaciones, nombre, correo, motivo } = req.body
-    const pendiente = await estadoPorCodigo('reserva', 'pendiente')
-
-    const reserva = await Reserva.create({
-        usuario: req.usuario.id,
-        estado: pendiente._id,
-        cantidadPersonas,
-        fecha,
-        hora,
-        observaciones,
-        nombre,
-        correo,
-        motivo,
-    })
-    await registrarEvento({
-        entidad: 'reserva', entidadId: reserva._id, a: 'pendiente', usuario: req.usuario.id, actor: req.usuario.rol || 'cliente',
-    })
-    await reserva.populate('estado')
-    res.json(reserva)
-}
-
-export const misReservas = async (req, res) => {
-    const reservas = await Reserva.find({ usuario: req.usuario.id })
-        .populate('estado')
-        .sort({ fecha: -1 })
-    res.json(reservas)
-}
-
-export const cancelarReserva = async (req, res) => {
-    const reserva = await Reserva.findById(req.params.id).populate('estado', 'codigo')
-    if (!reserva) throw notFound('Reserva no encontrada')
-    if (reserva.usuario.toString() !== req.usuario.id) {
-        throw forbidden('No puedes cancelar una reserva que no es tuya')
-    }
-
-    const actualizada = await cambiarEstado({
-        tipo: 'reserva',
-        Modelo: Reserva,
-        documento: reserva,
-        a: 'cancelada',
-        actor: 'cliente',
-        sesion: req.usuario,
-        filtro: { usuario: req.usuario.id },
-    })
-    await actualizada.populate('estado')
-    res.json(actualizada)
-}
+// Las acciones del cliente viven en src/modulos/salon/reservas.* (0.8).
 
 // Acciones del staff
 

@@ -83,7 +83,7 @@ export default function FormularioReservas() {
   const handleConfirmar = async () => {
     setGuardando(true);
     try {
-      await apiRequest("/customer/reservations", {
+      await apiRequest("/v1/cliente/reservas", {
         method: "POST",
         body: JSON.stringify({ ...formData, personas: Number(formData.personas) }),
       });

@@ -41,7 +41,7 @@ describe("Mis reservas: cancelar", () => {
   it("'Sí, cancelar reserva' cancela", async () => {
     await montar();
     fireEvent.click(screen.getByRole("button", { name: "Sí, cancelar reserva" }));
-    await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/customer/reservations/r1/cancel", { method: "PATCH" }));
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/v1/cliente/reservas/r1/cancelar", { method: "PATCH" }));
     expect(await screen.findByText("La reserva fue cancelada.")).toBeInTheDocument();
   });
 });

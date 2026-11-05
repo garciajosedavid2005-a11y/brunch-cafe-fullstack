@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { listarCatalogo } from '../controllers/producto.controller.js'
 import clienteRoutes from './v1/cliente.routes.js'
+import staffRoutes from './v1/staff.routes.js'
 
 // API versionada. Las rutas sin versión (/api/...) se irán migrando aquí (0.8).
 const router = Router()
@@ -9,5 +10,6 @@ const router = Router()
 router.get('/catalogo', listarCatalogo)
 
 router.use('/cliente', clienteRoutes)
+router.use('/staff', staffRoutes)
 
 export default router

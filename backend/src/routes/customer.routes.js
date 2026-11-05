@@ -7,32 +7,18 @@ import { legadoVerCustomer, legadoEditarCustomer } from '../modulos/identidad/pe
 import Pedido from '../models/pedido.model.js';
 import DetallePedido from '../models/detallePedido.model.js';
 import MetodoPago from '../models/metodoPago.model.js';
-import Reserva from '../models/reserva.model.js';
+import * as reservas from '../modulos/salon/reservas.controller.js';
 import Producto from '../models/producto.model.js';
 import { crearComentario, listarMisComentarios } from '../controllers/comentario.controller.js';
 import { STATUS_CLIENTE } from '../libs/estados.js';
 import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../services/estados.service.js';
 import { validateSchema } from '../middlewares/validator.middleware.js';
 import { cuerpoError } from '../libs/errors.js';
-import { instanteLocal, inicioReserva, diaSemana } from '../libs/fechas.js';
 import { referenciaProducto, unaReferencia, MENSAJE_REFERENCIA, resolverProductos } from '../schema/referenciaProducto.js';
 import { cancelacionClienteSchema } from '../schema/cambioEstado.schema.js';
 
 const router = Router();
 router.use(validateToken);
-
-const reservationSchema = z.object({
-  nombre: z.string().trim().min(3).max(120),
-  correo: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
-  motivo: z.string().trim().min(3).max(120),
-  personas: z.coerce.number().int().min(1).max(20),
-  fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
-    const date = new Date(`${value}T00:00:00Z`);
-    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
-  }),
-  hora: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-  observaciones: z.string().trim().max(200).default(''),
-});
 
 const orderSchema = z.object({
   items: z.array(z.object({
@@ -50,58 +36,10 @@ const orderSchema = z.object({
   metodoPagoId: z.string().refine(mongoose.isValidObjectId, 'Selecciona un método de pago válido.'),
 });
 
-const availableReservationTimes = (date) => {
-  const day = diaSemana(date);
-  const lastHour = day === 0 || day === 6 ? 11 : 12;
-  return Array.from({ length: lastHour - 7 }, (_, index) =>
-    `${String(index + 8).padStart(2, '0')}:00`
-  );
-};
-
 
 // El status del portal sale del código del estado (sin adivinar por el texto)
 const statusCliente = (tipo, estado) => STATUS_CLIENTE[tipo][estado?.codigo] || 'pending';
 const POBLAR_ESTADO = 'nombre codigo';
-// Estados en los que el cliente todavía puede editar o cancelar su reserva
-const RESERVA_EDITABLE = ['pendiente', 'confirmada'];
-
-const serializeReservation = (reservation) => {
-  const owner = reservation.usuario && typeof reservation.usuario === 'object'
-    ? reservation.usuario
-    : null;
-  return {
-    _id: reservation._id,
-    nombre: reservation.nombre || [owner?.nombre, owner?.apellido].filter(Boolean).join(' '),
-    correo: reservation.correo || owner?.correo || '',
-    motivo: reservation.motivo || '',
-    personas: reservation.cantidadPersonas,
-    fecha: reservation.fecha,
-    hora: reservation.hora,
-    inicio: reservation.inicio || null,
-    observaciones: reservation.observaciones || '',
-    status: statusCliente('reserva', reservation.estado),
-    statusLabel: reservation.estado?.nombre || '',
-    codigo: reservation.estado?.codigo || '',
-    createdAt: reservation.createdAt,
-    user: owner ? {
-      nombre: owner.nombre,
-      apellido: owner.apellido,
-      email: owner.correo,
-    } : undefined,
-  };
-};
-
-const validateReservationDate = (reservation) => {
-  const startsAt = instanteLocal(reservation.fecha, reservation.hora);
-  if (startsAt <= new Date()) {
-    return 'La fecha y hora de la reserva deben ser futuras.';
-  }
-  if (!availableReservationTimes(reservation.fecha).includes(reservation.hora)) {
-    return 'La hora debe respetar el horario del café: lunes a viernes de 8:00 a 12:00 y fines de semana de 8:00 a 11:00.';
-  }
-  return null;
-};
-
 const serializeOrder = (order, details) => ({
   _id: order._id,
   orderNumber: order._id.toString().slice(-6).toUpperCase(),
@@ -295,145 +233,12 @@ router.patch('/orders/:id/cancel', validateSchema(cancelacionClienteSchema), asy
   return res.json({ order: serializeOrder(updated, details) });
 });
 
-router.get('/reservations', async (req, res, next) => {
-  try {
-    const reservations = await Reserva.find({ usuario: req.usuario.id })
-      .populate('usuario', 'nombre apellido correo')
-      .populate('estado', POBLAR_ESTADO)
-      .sort({ fecha: -1, hora: -1 })
-      .lean();
-    return res.json({ reservations: reservations.map(serializeReservation) });
-  } catch (error) {
-    return next(error);
-  }
-});
-
-router.post('/reservations', async (req, res, next) => {
-  const parsed = reservationSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ message: 'Revisa los datos de la reserva.', errors: parsed.error.flatten() });
-  }
-  const dateError = validateReservationDate(parsed.data);
-  if (dateError) return res.status(400).json({ message: dateError });
-
-  try {
-    const pending = await estadoPorCodigo('reserva', 'pendiente');
-
-    const reservation = await Reserva.create({
-      usuario: req.usuario.id,
-      estado: pending._id,
-      cantidadPersonas: parsed.data.personas,
-      fecha: new Date(`${parsed.data.fecha}T12:00:00Z`),
-      hora: parsed.data.hora,
-      observaciones: parsed.data.observaciones,
-      nombre: parsed.data.nombre,
-      correo: parsed.data.correo,
-      motivo: parsed.data.motivo,
-    });
-    await registrarEvento({
-      entidad: 'reserva', entidadId: reservation._id, a: 'pendiente', usuario: req.usuario.id, actor: req.usuario.rol || 'cliente',
-    });
-    const populated = await Reserva.findById(reservation._id)
-      .populate('usuario', 'nombre apellido correo')
-      .populate('estado', POBLAR_ESTADO)
-      .lean();
-    return res.status(201).json({ reservation: serializeReservation(populated) });
-  } catch (error) {
-    return next(error);
-  }
-});
-
-router.patch('/reservations/:id', async (req, res, next) => {
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(404).json({ message: 'No se encontró la reserva.' });
-  }
-  const parsed = reservationSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ message: 'Revisa los datos de la reserva.', errors: parsed.error.flatten() });
-  }
-  const dateError = validateReservationDate(parsed.data);
-  if (dateError) return res.status(400).json({ message: dateError });
-
-  try {
-    const reservation = await Reserva.findOne({ _id: req.params.id, usuario: req.usuario.id })
-      .populate('estado', 'codigo');
-    if (!reservation || !RESERVA_EDITABLE.includes(reservation.estado?.codigo)) {
-      return res.status(404).json({ message: 'No se encontró una reserva activa que puedas editar.' });
-    }
-
-    const cambios = {
-      cantidadPersonas: parsed.data.personas,
-      fecha: new Date(`${parsed.data.fecha}T12:00:00Z`),
-      hora: parsed.data.hora,
-      // cambiarEstado escribe con findOneAndUpdate (sin hooks): el instante va explícito
-      inicio: instanteLocal(parsed.data.fecha, parsed.data.hora),
-      observaciones: parsed.data.observaciones,
-      nombre: parsed.data.nombre,
-      correo: parsed.data.correo,
-      motivo: parsed.data.motivo,
-    };
-    if (reservation.estado.codigo === 'confirmada') {
-      // Una reserva confirmada vuelve a pendiente de aprobación (queda en Evento)
-      await cambiarEstado({
-        tipo: 'reserva',
-        Modelo: Reserva,
-        documento: reservation,
-        a: 'pendiente',
-        actor: 'cliente',
-        sesion: req.usuario,
-        cambios,
-        filtro: { usuario: req.usuario.id },
-      });
-    } else {
-      reservation.set(cambios);
-      await reservation.save();
-    }
-    const updated = await Reserva.findById(reservation._id)
-      .populate('usuario', 'nombre apellido correo')
-      .populate('estado', POBLAR_ESTADO)
-      .lean();
-
-    return res.json({ reservation: serializeReservation(updated) });
-  } catch (error) {
-    return next(error);
-  }
-});
-
-router.patch('/reservations/:id/cancel', async (req, res, next) => {
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(404).json({ message: 'No se encontró la reserva.' });
-  }
-  try {
-    const reservation = await Reserva.findOne({ _id: req.params.id, usuario: req.usuario.id })
-      .populate('estado', 'codigo');
-    if (!reservation) return res.status(404).json({ message: 'No se encontró la reserva.' });
-    if (reservation.estado?.codigo === 'cancelada') {
-      return res.status(409).json({ message: 'Esta reserva ya fue cancelada.' });
-    }
-
-    const inicio = reservation.inicio || inicioReserva(reservation.fecha, reservation.hora);
-    if (inicio <= new Date()) {
-      return res.status(409).json({ message: 'No es posible cancelar una reserva que ya inició.' });
-    }
-
-    await cambiarEstado({
-      tipo: 'reserva',
-      Modelo: Reserva,
-      documento: reservation,
-      a: 'cancelada',
-      actor: 'cliente',
-      sesion: req.usuario,
-      filtro: { usuario: req.usuario.id },
-    });
-    const updated = await Reserva.findById(reservation._id)
-      .populate('usuario', 'nombre apellido correo')
-      .populate('estado', POBLAR_ESTADO)
-      .lean();
-    return res.json({ reservation: serializeReservation(updated) });
-  } catch (error) {
-    return next(error);
-  }
-});
+// Reservas: alias deprecados de /api/v1/cliente/reservas (mismo servicio y validaciones)
+const aliasReservas = deprecado('/api/v1/cliente/reservas');
+router.get('/reservations', aliasReservas, reservas.listar);
+router.post('/reservations', aliasReservas, reservas.crear);
+router.patch('/reservations/:id', aliasReservas, reservas.editar);
+router.patch('/reservations/:id/cancel', aliasReservas, reservas.cancelar);
 
 router.get(['/reviews', '/comentarios'], listarMisComentarios);
 router.post(['/reviews', '/comentarios'], crearComentario);

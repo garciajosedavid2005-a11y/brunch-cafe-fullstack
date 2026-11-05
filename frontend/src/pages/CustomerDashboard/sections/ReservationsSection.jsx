@@ -54,7 +54,7 @@ export default function ReservationsSection() {
   const { confirmar } = useDialogo();
 
   useEffect(() => {
-    apiRequest("/customer/reservations")
+    apiRequest("/v1/cliente/reservas")
       .then(({ reservations: customerReservations }) => setReservations(customerReservations))
       .catch((error) => setNotice({ message: error.message, error: true }))
       .finally(() => setLoading(false));
@@ -76,7 +76,7 @@ export default function ReservationsSection() {
     setSaving(true);
     setNotice({ message: "", error: false });
     try {
-      const { reservation } = await apiRequest(`/customer/reservations/${editingId}`, {
+      const { reservation } = await apiRequest(`/v1/cliente/reservas/${editingId}`, {
         method: "PATCH",
         body: JSON.stringify({ ...editForm, personas: Number(editForm.personas) }),
       });
@@ -102,7 +102,7 @@ export default function ReservationsSection() {
     if (!confirmado) return;
     setNotice({ message: "", error: false });
     try {
-      const { reservation } = await apiRequest(`/customer/reservations/${id}/cancel`, { method: "PATCH" });
+      const { reservation } = await apiRequest(`/v1/cliente/reservas/${id}/cancelar`, { method: "PATCH" });
       setReservations((current) => current.map((item) => item._id === id ? reservation : item));
       if (editingId === id) {
         setEditingId("");

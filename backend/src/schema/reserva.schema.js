@@ -1,3 +1,4 @@
+// SIN USO desde 0.8: la validación de reservas vive en src/modulos/salon/reservas.schema.js. Se propone eliminarlo en 0.12.
 import { z } from 'zod'
 
 export const crearReservaSchema = z.object({
