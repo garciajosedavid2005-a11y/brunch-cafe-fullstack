@@ -1,16 +1,25 @@
 import { verificarToken } from '../libs/jwt.js'
+import { COOKIE_SESION, borrarCookieSesion } from '../libs/cookies.js'
 
+// Sin token, token inválido o vencido → 401 (la cookie inválida se borra)
 export const validateToken = (req, res, next) => {
-    const { token } = req.cookies
+    const token = req.cookies?.[COOKIE_SESION]
 
-    if (!token)
-        return res.status(401).json({ message: "No hay token, autorizacion denegada" })
+    if (!token) {
+        return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'No hay sesión activa. Inicia sesión.' } })
+    }
 
     try {
-        const usuario = verificarToken(token)
-        req.usuario = usuario
+        req.usuario = verificarToken(token)
         next()
     } catch (error) {
-        return res.status(403).json({ message: "Token invalido" })
+        borrarCookieSesion(res)
+        const vencido = error?.name === 'TokenExpiredError'
+        return res.status(401).json({
+            error: {
+                code: vencido ? 'SESSION_EXPIRED' : 'INVALID_TOKEN',
+                message: vencido ? 'Tu sesión expiró. Inicia sesión de nuevo.' : 'Sesión inválida. Inicia sesión de nuevo.',
+            },
+        })
     }
 }

@@ -9,7 +9,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
-    "seed:menu": "node scripts/seed-menu.js"
+    "seed:menu": "node scripts/seed-menu.js",
+    "report:correos": "node scripts/reportar-correos-duplicados.js"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +22,8 @@
     "cors": "^2.8.6",
     "dotenv": "^18.0.5",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.3",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.10.3",
     "pino": "^10.4.0",

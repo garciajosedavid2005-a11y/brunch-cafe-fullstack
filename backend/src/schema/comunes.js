@@ -2,8 +2,11 @@ import { z } from 'zod'
 
 // En Zod 4 el mensaje personalizado va en "error" ("required_error" ya no existe).
 // Esta función distingue entre "falta el campo" y "el campo tiene un tipo incorrecto".
-export const requerido = (campo) => ({
-    error: (iss) => (iss.input === undefined ? `${campo} es requerido` : `${campo} no es válido`),
+// Con { femenino: true } concuerda el género: "La contraseña es requerida".
+export const requerido = (campo, { femenino = false } = {}) => ({
+    error: (iss) => (iss.input === undefined
+        ? `${campo} es ${femenino ? 'requerida' : 'requerido'}`
+        : `${campo} no es ${femenino ? 'válida' : 'válido'}`),
 })
 
 export const texto = (campo, min, max) =>

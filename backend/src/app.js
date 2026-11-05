@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
 import { pinoHttp } from 'pino-http'
 import { config } from './config.js'
@@ -26,7 +27,17 @@ export const createApp = () => {
             res: (res) => ({ statusCode: res.statusCode }),
         },
     }))
-    app.use(cors({ origin: config.CLIENT_URL, credentials: true }))
+    if (config.TRUST_PROXY) app.set('trust proxy', config.TRUST_PROXY)
+    app.disable('x-powered-by')
+
+    // API JSON: CORP "same-site" por defecto; la ruta de imágenes del menú lo
+    // sobrescribe a "cross-origin" para que el frontend pueda mostrarlas
+    app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site' } }))
+    // CORS explícito: solo los orígenes de CLIENT_URL, con credenciales (cookie)
+    app.use(cors({
+        origin: (origin, callback) => callback(null, !origin || config.CLIENT_URLS.includes(origin)),
+        credentials: true,
+    }))
     app.use(express.json({ limit: '6mb' }))
     app.use(cookieParser())
     app.use(normalizarErroresLegados)

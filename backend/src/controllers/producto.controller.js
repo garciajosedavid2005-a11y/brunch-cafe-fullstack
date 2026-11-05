@@ -49,6 +49,7 @@ export const obtenerImagenMenu = async (req, res) => {
 
         res.set('Content-Type', imagen.contentType)
             .set('Cache-Control', 'public, max-age=3600')
+            .set('Cross-Origin-Resource-Policy', 'cross-origin')
             .send(imagen.data)
     } catch (error) {
         manejarError(res, error)

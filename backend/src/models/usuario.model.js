@@ -11,10 +11,13 @@ const usuarioSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    // Normalizado: sin espacios y en minúsculas (los registros antiguos pueden
+    // tenerlo con mayúsculas; ver scripts/reportar-correos-duplicados.js)
     correo: {
         type: String,
         required: true,
         trim: true,
+        lowercase: true,
         unique: true
     },
     contraseña: {

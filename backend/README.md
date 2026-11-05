@@ -23,6 +23,15 @@ El backend escucha por defecto en `http://localhost:4000`; el cliente usa cookie
 - `src/app.js` construye la app de Express (lo usan los tests); `src/index.js` conecta a MongoDB y escucha.
 - Logs con pino: legibles en desarrollo (`pino-pretty`), JSON en producción y silenciados en tests. Cookies, cabeceras de autorización y contraseñas nunca se registran. Nivel configurable con `LOG_LEVEL`.
 
+### Seguridad de la sesión
+
+- Sesión en cookie `token` **httpOnly**, `sameSite` configurable (`lax` por defecto) y `secure` automático en producción; dura lo mismo que el JWT (`JWT_EXPIRES_IN`, **2 h** por defecto).
+- Token ausente, inválido o vencido → `401` (`UNAUTHORIZED`, `INVALID_TOKEN` o `SESSION_EXPIRED`); la cookie inválida se borra.
+- Login y registro responden con mensajes genéricos (no revelan si un correo está registrado).
+- Rate limit en memoria (una sola instancia): login 5 intentos **fallidos** cada 15 min por IP + correo; registro 10 por hora por IP → `429 TOO_MANY_REQUESTS`. Detrás de un proxy configura `TRUST_PROXY`.
+- `helmet` activo; CORS solo para los orígenes de `CLIENT_URL` (lista separada por comas).
+- Correos normalizados (trim + minúsculas). Para revisar cuentas antiguas: `npm run report:correos` (solo reporta, no modifica).
+
 ### Formato de errores
 
 Todas las respuestas de error usan el mismo formato:

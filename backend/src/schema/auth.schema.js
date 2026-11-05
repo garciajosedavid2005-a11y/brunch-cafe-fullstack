@@ -1,34 +1,29 @@
 import { z } from 'zod'
+import { requerido, texto } from './comunes.js'
+
+// Correo normalizado: sin espacios y en minúsculas (N2)
+export const correo = z
+    .string(requerido('El correo'))
+    .trim()
+    .toLowerCase()
+    .pipe(z.email({ error: 'Correo inválido' }))
+    .refine((valor) => valor.length <= 254, { error: 'El correo no puede superar 254 caracteres' })
 
 export const registroSchema = z.object({
-    nombre: z.string({
-        required_error: "El nombre es requerido"
-    }),
-    apellido: z.string({
-        required_error: "El apellido es requerido"
-    }),
-    correo: z.string({
-        required_error: "El correo es requerido"
-    }).email({
-        message: "Correo invalido"
-    }),
-    contraseña: z.string({
-        required_error: "La contraseña es requerida"
-    }).min(6, {
-        message: "La contraseña debe tener al menos 6 caracteres"
-    }),
-    telefono: z.string().optional()
+    nombre: texto('El nombre', 1, 60),
+    apellido: texto('El apellido', 1, 60),
+    correo,
+    contraseña: z
+        .string(requerido('La contraseña', { femenino: true }))
+        .min(6, { error: 'La contraseña debe tener al menos 6 caracteres' })
+        .max(128, { error: 'La contraseña no puede superar 128 caracteres' }),
+    telefono: z.string(requerido('El teléfono')).trim().max(30, { error: 'El teléfono no puede superar 30 caracteres' }).optional(),
 })
 
 export const loginSchema = z.object({
-    correo: z.string({
-        required_error: "El correo es requerido"
-    }).email({
-        message: "Correo invalido"
-    }),
-    contraseña: z.string({
-        required_error: "La contraseña es requerida"
-    }).min(6, {
-        message: "La contraseña debe tener al menos 6 caracteres"
-    })
+    correo,
+    contraseña: z
+        .string(requerido('La contraseña', { femenino: true }))
+        .min(1, { error: 'La contraseña es requerida' })
+        .max(128, { error: 'La contraseña no puede superar 128 caracteres' }),
 })
