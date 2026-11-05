@@ -14,10 +14,12 @@ beforeAll(async () => {
     await mongoose.connect(process.env.MONGO_URI, { dbName })
 })
 
-// Datos base que el servidor siembra al arrancar (roles)
+// Datos base que el servidor siembra al arrancar (roles y estados)
 beforeEach(async () => {
     const { sembrarRoles } = await import('../../src/seeds/base.js')
+    const { sembrarEstados } = await import('../../src/seeds/estados.js')
     await sembrarRoles()
+    await sembrarEstados()
 })
 
 afterEach(async () => {

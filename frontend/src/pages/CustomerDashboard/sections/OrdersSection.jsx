@@ -7,6 +7,7 @@ const orderStatus = {
   confirmed: "Confirmado",
   preparing: "En preparación",
   ready: "Listo",
+  on_the_way: "En camino",
   delivered: "Entregado",
   cancelled: "Cancelado",
 };
@@ -21,6 +22,7 @@ export default function OrdersSection() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cancelando, setCancelando] = useState("");
 
   useEffect(() => {
     apiRequest("/customer/orders")
@@ -28,6 +30,21 @@ export default function OrdersSection() {
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
   }, []);
+
+  // Solo se puede cancelar mientras el pedido sigue pendiente
+  const cancelOrder = async (id) => {
+    if (!window.confirm("¿Seguro que quieres cancelar este pedido?")) return;
+    setCancelando(id);
+    setError("");
+    try {
+      const { order } = await apiRequest(`/customer/orders/${id}/cancel`, { method: "PATCH", body: JSON.stringify({}) });
+      setOrders((current) => current.map((item) => (item._id === id ? order : item)));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setCancelando("");
+    }
+  };
 
   return (
     <div>
@@ -69,6 +86,18 @@ export default function OrdersSection() {
               </div>
             )}
             <div className="dashboard-card__total"><span>Total</span><strong>{money(order.total)}</strong></div>
+            {order.status === "pending" && (
+              <div className="dashboard-reservation__actions">
+                <button
+                  className="dashboard-button dashboard-button--secondary"
+                  type="button"
+                  disabled={cancelando === order._id}
+                  onClick={() => cancelOrder(order._id)}
+                >
+                  Cancelar pedido
+                </button>
+              </div>
+            )}
           </article>
         ))}
       </div>

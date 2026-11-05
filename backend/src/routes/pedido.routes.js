@@ -9,7 +9,13 @@ const router = Router()
 
 router.use(validateToken)
 router.get('/', requirePermission('pedido:ver'), listarPedidos)
-// 0.7: cada transición declarará su propio permiso; por ahora basta pedido:cambiar_estado
-router.patch('/:id/estado', requirePermission('pedido:cambiar_estado'), validateSchema(cambiarEstadoPedidoSchema), cambiarEstadoPedido)
+// Basta con uno de los dos permisos para entrar; cada transición exige el suyo
+// (avanzar → pedido:cambiar_estado, cancelar → pedido:cancelar). Ver src/libs/estados.js
+router.patch(
+    '/:id/estado',
+    requirePermission('pedido:cambiar_estado', 'pedido:cancelar'),
+    validateSchema(cambiarEstadoPedidoSchema),
+    cambiarEstadoPedido
+)
 
 export default router

@@ -7,10 +7,13 @@ import Pedido from '../models/pedido.model.js';
 import DetallePedido from '../models/detallePedido.model.js';
 import MetodoPago from '../models/metodoPago.model.js';
 import Reserva from '../models/reserva.model.js';
-import Estado from '../models/estado.model.js';
 import Producto from '../models/producto.model.js';
 import { crearComentario, listarMisComentarios } from '../controllers/comentario.controller.js';
-import { ensureOrderPaymentMethods, ensureOrderStates } from '../libs/ensureOrderOptions.js';
+import { ensureOrderPaymentMethods } from '../libs/ensureOrderOptions.js';
+import { STATUS_CLIENTE } from '../libs/estados.js';
+import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../services/estados.service.js';
+import { validateSchema } from '../middlewares/validator.middleware.js';
+import { cancelacionClienteSchema } from '../schema/cambioEstado.schema.js';
 
 const router = Router();
 router.use(validateToken);
@@ -61,12 +64,11 @@ const availableReservationTimes = (date) => {
 
 const reservationDateTime = (date, time) => new Date(`${date}T${time}:00-05:00`);
 
-const estadoReserva = (estado) => {
-  const name = estado?.nombre?.toLowerCase() || '';
-  if (name.includes('cancel')) return 'cancelled';
-  if (name.includes('confirm') || name.includes('aprob')) return 'confirmed';
-  return 'pending';
-};
+// El status del portal sale del código del estado (sin adivinar por el texto)
+const statusCliente = (tipo, estado) => STATUS_CLIENTE[tipo][estado?.codigo] || 'pending';
+const POBLAR_ESTADO = 'nombre codigo';
+// Estados en los que el cliente todavía puede editar o cancelar su reserva
+const RESERVA_EDITABLE = ['pendiente', 'confirmada'];
 
 const serializeReservation = (reservation) => {
   const owner = reservation.usuario && typeof reservation.usuario === 'object'
@@ -81,7 +83,9 @@ const serializeReservation = (reservation) => {
     fecha: reservation.fecha,
     hora: reservation.hora,
     observaciones: reservation.observaciones || '',
-    status: estadoReserva(reservation.estado),
+    status: statusCliente('reserva', reservation.estado),
+    statusLabel: reservation.estado?.nombre || '',
+    codigo: reservation.estado?.codigo || '',
     createdAt: reservation.createdAt,
     user: owner ? {
       nombre: owner.nombre,
@@ -89,22 +93,6 @@ const serializeReservation = (reservation) => {
       email: owner.correo,
     } : undefined,
   };
-};
-
-const getReservationStates = async () => {
-  const [pending, cancelled] = await Promise.all([
-    Estado.findOneAndUpdate(
-      { nombre: 'Pendiente', tipo: 'reserva' },
-      { $setOnInsert: { nombre: 'Pendiente', tipo: 'reserva' } },
-      { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
-    ),
-    Estado.findOneAndUpdate(
-      { nombre: 'Cancelada', tipo: 'reserva' },
-      { $setOnInsert: { nombre: 'Cancelada', tipo: 'reserva' } },
-      { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
-    ),
-  ]);
-  return { pending, cancelled };
 };
 
 const validateReservationDate = (reservation) => {
@@ -118,21 +106,12 @@ const validateReservationDate = (reservation) => {
   return null;
 };
 
-const orderStatus = (stateName = '') => {
-  const name = stateName.toLowerCase();
-  if (name.includes('cancel')) return 'cancelled';
-  if (name.includes('entreg') || name.includes('recibid')) return 'delivered';
-  if (name.includes('prepar')) return 'preparing';
-  if (name.includes('list')) return 'ready';
-  if (name.includes('confirm') || name.includes('acept')) return 'confirmed';
-  return 'pending';
-};
-
 const serializeOrder = (order, details) => ({
   _id: order._id,
   orderNumber: order._id.toString().slice(-6).toUpperCase(),
-  status: orderStatus(order.estado?.nombre),
+  status: statusCliente('pedido', order.estado),
   statusLabel: order.estado?.nombre || 'Pendiente',
+  codigo: order.estado?.codigo || '',
   paymentMethod: order.metodoPago?.nombre || '',
   total: order.total,
   createdAt: order.createdAt,
@@ -212,7 +191,7 @@ router.patch('/profile', async (req, res, next) => {
 router.get('/orders', async (req, res, next) => {
   try {
     const orders = await Pedido.find({ usuario: req.usuario.id })
-      .populate('estado')
+      .populate('estado', POBLAR_ESTADO)
       .populate('metodoPago', 'nombre')
       .sort({ createdAt: -1 })
       .lean();
@@ -274,12 +253,11 @@ router.post('/orders', async (req, res, next) => {
   }
 
   try {
-    await Promise.all([ensureOrderStates(), ensureOrderPaymentMethods()]);
+    await ensureOrderPaymentMethods();
     const [pending, paymentMethod] = await Promise.all([
-      Estado.findOne({ nombre: 'Pendiente', tipo: 'pedido' }),
+      estadoPorCodigo('pedido', 'pendiente'),
       MetodoPago.findOne({ _id: parsed.data.metodoPagoId, activo: { $ne: false } }),
     ]);
-    if (!pending) return res.status(500).json({ message: 'No se pudo preparar el estado inicial del pedido.' });
     if (!paymentMethod) return res.status(400).json({ message: 'El método de pago ya no está disponible. Actualiza la página y elige otro.' });
 
     const order = await Pedido.create({
@@ -310,9 +288,12 @@ router.post('/orders', async (req, res, next) => {
       await Pedido.findByIdAndDelete(order._id);
       throw error;
     }
+    await registrarEvento({
+      entidad: 'pedido', entidadId: order._id, a: 'pendiente', usuario: req.usuario.id, actor: req.usuario.rol || 'cliente',
+    });
 
     const populatedOrder = await Pedido.findById(order._id)
-      .populate('estado', 'nombre')
+      .populate('estado', POBLAR_ESTADO)
       .populate('metodoPago', 'nombre')
       .lean();
     return res.status(201).json({ order: serializeOrder(populatedOrder, details) });
@@ -327,7 +308,7 @@ router.get('/orders/:id', async (req, res, next) => {
   }
   try {
     const order = await Pedido.findOne({ _id: req.params.id, usuario: req.usuario.id })
-      .populate('estado')
+      .populate('estado', POBLAR_ESTADO)
       .populate('metodoPago', 'nombre')
       .lean();
     if (!order) return res.status(404).json({ message: 'No se encontró el pedido.' });
@@ -338,11 +319,37 @@ router.get('/orders/:id', async (req, res, next) => {
   }
 });
 
+// El cliente solo puede cancelar su pedido mientras está pendiente
+router.patch('/orders/:id/cancel', validateSchema(cancelacionClienteSchema), async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(404).json({ message: 'No se encontró el pedido.' });
+  }
+  const order = await Pedido.findOne({ _id: req.params.id, usuario: req.usuario.id }).populate('estado', 'codigo');
+  if (!order) return res.status(404).json({ message: 'No se encontró el pedido.' });
+
+  await cambiarEstado({
+    tipo: 'pedido',
+    Modelo: Pedido,
+    documento: order,
+    a: 'cancelado',
+    actor: 'cliente',
+    sesion: req.usuario,
+    motivo: req.validado?.motivo,
+    filtro: { usuario: req.usuario.id },
+  });
+  const updated = await Pedido.findById(order._id)
+    .populate('estado', POBLAR_ESTADO)
+    .populate('metodoPago', 'nombre')
+    .lean();
+  const details = await DetallePedido.find({ pedido: order._id }).lean();
+  return res.json({ order: serializeOrder(updated, details) });
+});
+
 router.get('/reservations', async (req, res, next) => {
   try {
     const reservations = await Reserva.find({ usuario: req.usuario.id })
       .populate('usuario', 'nombre apellido correo')
-      .populate('estado', 'nombre')
+      .populate('estado', POBLAR_ESTADO)
       .sort({ fecha: -1, hora: -1 })
       .lean();
     return res.json({ reservations: reservations.map(serializeReservation) });
@@ -360,8 +367,7 @@ router.post('/reservations', async (req, res, next) => {
   if (dateError) return res.status(400).json({ message: dateError });
 
   try {
-    const { pending } = await getReservationStates();
-    if (!pending) return res.status(500).json({ message: "No existe el estado 'Pendiente' de tipo reserva." });
+    const pending = await estadoPorCodigo('reserva', 'pendiente');
 
     const reservation = await Reserva.create({
       usuario: req.usuario.id,
@@ -374,9 +380,12 @@ router.post('/reservations', async (req, res, next) => {
       correo: parsed.data.correo,
       motivo: parsed.data.motivo,
     });
+    await registrarEvento({
+      entidad: 'reserva', entidadId: reservation._id, a: 'pendiente', usuario: req.usuario.id, actor: req.usuario.rol || 'cliente',
+    });
     const populated = await Reserva.findById(reservation._id)
       .populate('usuario', 'nombre apellido correo')
-      .populate('estado', 'nombre')
+      .populate('estado', POBLAR_ESTADO)
       .lean();
     return res.status(201).json({ reservation: serializeReservation(populated) });
   } catch (error) {
@@ -396,16 +405,13 @@ router.patch('/reservations/:id', async (req, res, next) => {
   if (dateError) return res.status(400).json({ message: dateError });
 
   try {
-    const { pending } = await getReservationStates();
-    if (!pending) return res.status(500).json({ message: "No existe el estado 'Pendiente' de tipo reserva." });
-
     const reservation = await Reserva.findOne({ _id: req.params.id, usuario: req.usuario.id })
-      .populate('estado', 'nombre');
-    if (!reservation || estadoReserva(reservation.estado) === 'cancelled') {
+      .populate('estado', 'codigo');
+    if (!reservation || !RESERVA_EDITABLE.includes(reservation.estado?.codigo)) {
       return res.status(404).json({ message: 'No se encontró una reserva activa que puedas editar.' });
     }
 
-    reservation.set({
+    const cambios = {
       cantidadPersonas: parsed.data.personas,
       fecha: new Date(`${parsed.data.fecha}T12:00:00Z`),
       hora: parsed.data.hora,
@@ -413,13 +419,29 @@ router.patch('/reservations/:id', async (req, res, next) => {
       nombre: parsed.data.nombre,
       correo: parsed.data.correo,
       motivo: parsed.data.motivo,
-      estado: pending._id,
-    });
-    await reservation.save();
-    await reservation.populate('usuario', 'nombre apellido correo');
-    await reservation.populate('estado', 'nombre');
+    };
+    if (reservation.estado.codigo === 'confirmada') {
+      // Una reserva confirmada vuelve a pendiente de aprobación (queda en Evento)
+      await cambiarEstado({
+        tipo: 'reserva',
+        Modelo: Reserva,
+        documento: reservation,
+        a: 'pendiente',
+        actor: 'cliente',
+        sesion: req.usuario,
+        cambios,
+        filtro: { usuario: req.usuario.id },
+      });
+    } else {
+      reservation.set(cambios);
+      await reservation.save();
+    }
+    const updated = await Reserva.findById(reservation._id)
+      .populate('usuario', 'nombre apellido correo')
+      .populate('estado', POBLAR_ESTADO)
+      .lean();
 
-    return res.json({ reservation: serializeReservation(reservation) });
+    return res.json({ reservation: serializeReservation(updated) });
   } catch (error) {
     return next(error);
   }
@@ -431,9 +453,9 @@ router.patch('/reservations/:id/cancel', async (req, res, next) => {
   }
   try {
     const reservation = await Reserva.findOne({ _id: req.params.id, usuario: req.usuario.id })
-      .populate('estado', 'nombre');
+      .populate('estado', 'codigo');
     if (!reservation) return res.status(404).json({ message: 'No se encontró la reserva.' });
-    if (estadoReserva(reservation.estado) === 'cancelled') {
+    if (reservation.estado?.codigo === 'cancelada') {
       return res.status(409).json({ message: 'Esta reserva ya fue cancelada.' });
     }
 
@@ -442,16 +464,18 @@ router.patch('/reservations/:id/cancel', async (req, res, next) => {
       return res.status(409).json({ message: 'No es posible cancelar una reserva que ya inició.' });
     }
 
-    const { cancelled } = await getReservationStates();
-    if (!cancelled) return res.status(500).json({ message: "No existe el estado 'Cancelada' de tipo reserva." });
-
-    const updated = await Reserva.findOneAndUpdate(
-      { _id: reservation._id, usuario: req.usuario.id },
-      { $set: { estado: cancelled._id } },
-      { returnDocument: 'after' }
-    )
+    await cambiarEstado({
+      tipo: 'reserva',
+      Modelo: Reserva,
+      documento: reservation,
+      a: 'cancelada',
+      actor: 'cliente',
+      sesion: req.usuario,
+      filtro: { usuario: req.usuario.id },
+    });
+    const updated = await Reserva.findById(reservation._id)
       .populate('usuario', 'nombre apellido correo')
-      .populate('estado', 'nombre')
+      .populate('estado', POBLAR_ESTADO)
       .lean();
     return res.json({ reservation: serializeReservation(updated) });
   } catch (error) {

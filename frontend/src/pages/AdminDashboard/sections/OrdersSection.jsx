@@ -4,6 +4,7 @@ import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
 import { adminApi } from "../../../services/adminApi";
 import { formatClock, formatCurrency, formatDate } from "../adminFormat";
+import EstadoSelector from "../components/EstadoSelector";
 
 export default function OrdersSection() {
   const { items: pedidos, cargando, error, cargar } = useAdminResource("/pedidos");
@@ -14,11 +15,10 @@ export default function OrdersSection() {
 
   const estadosDisponibles = ["Todos", ...new Set(estadosResource.items.map((estado) => estado.nombre))];
 
-  const handleCambiarEstado = async (id, nuevoEstado) => {
-    const estado = estadosResource.items.find((item) => item.nombre === nuevoEstado);
-    if (!estado) return;
+  // Envía el código de destino; el backend valida la transición, el permiso y el motivo
+  const handleCambiarEstado = async (id, codigo, motivo) => {
     try {
-      const actualizado = await adminApi.patch(`/pedidos/${id}/estado`, { estado: estado.id });
+      const actualizado = await adminApi.patch(`/pedidos/${id}/estado`, { codigo, ...(motivo ? { motivo } : {}) });
       if (pedidoSeleccionado?.id === id) setPedidoSeleccionado(actualizado);
       await cargar();
     } catch (requestError) {
@@ -36,24 +36,6 @@ export default function OrdersSection() {
       pedido.barrio.toLowerCase().includes(busqueda.toLowerCase());
     return coincideEstado && coincideBusqueda;
   });
-
-  const getBadgeClass = (estado) => {
-    switch (estado) {
-      case "Pendiente":
-        return "admin-badge--warning";
-      case "Confirmado":
-      case "En preparación":
-        return "admin-badge--info";
-      case "Recibido":
-      case "Listo":
-      case "Entregado":
-        return "admin-badge--success";
-      case "Cancelado":
-        return "admin-badge--danger";
-      default:
-        return "admin-badge--neutral";
-    }
-  };
 
   return (
     <div className="admin-section">
@@ -144,16 +126,8 @@ export default function OrdersSection() {
                       <span className="admin-table__payment">{pedido.metodoPago}</span>
                     </td>
                     <td>
-                      {/* SELECTOR INTERACTIVO DE ESTADO */}
-                      <select
-                        className={`admin-select-status ${getBadgeClass(pedido.estado)}`}
-                        value={pedido.estado}
-                        onChange={(e) => handleCambiarEstado(pedido.id, e.target.value)}
-                      >
-                        {estadosResource.items.map((estado) => (
-                          <option key={estado.id} value={estado.nombre}>{estado.nombre}</option>
-                        ))}
-                      </select>
+                      {/* SELECTOR DE ESTADO: solo los cambios permitidos */}
+                      <EstadoSelector item={pedido} onCambiar={(codigo, motivo) => handleCambiarEstado(pedido.id, codigo, motivo)} />
                     </td>
                     <td>
                       <button
@@ -275,17 +249,10 @@ export default function OrdersSection() {
               {/* Selector de estado dentro del modal */}
               <div className="admin-modal-status-bar">
                 <label>Cambiar estado del pedido:</label>
-                <select
-                  className={`admin-select-status ${getBadgeClass(pedidoSeleccionado.estado)}`}
-                  value={pedidoSeleccionado.estado}
-                  onChange={(e) =>
-                    handleCambiarEstado(pedidoSeleccionado.id, e.target.value)
-                  }
-                >
-                  {estadosResource.items.map((estado) => (
-                    <option key={estado.id} value={estado.nombre}>{estado.nombre}</option>
-                  ))}
-                </select>
+                <EstadoSelector
+                  item={pedidoSeleccionado}
+                  onCambiar={(codigo, motivo) => handleCambiarEstado(pedidoSeleccionado.id, codigo, motivo)}
+                />
               </div>
             </div>
 

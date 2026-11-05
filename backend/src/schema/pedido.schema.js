@@ -1,6 +1,2 @@
-import { z } from 'zod'
-import { requerido } from './comunes.js'
-
-export const cambiarEstadoPedidoSchema = z.object({
-    estado: z.string(requerido('El estado')).min(1, { error: 'El estado es requerido' }),
-})
+// El cambio de estado de pedidos usa el esquema común (codigo | estado, motivo)
+export { cambioEstadoSchema as cambiarEstadoPedidoSchema } from './cambioEstado.schema.js'

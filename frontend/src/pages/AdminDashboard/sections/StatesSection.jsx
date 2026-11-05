@@ -1,15 +1,5 @@
 import { useState } from "react";
-import {
-  Sliders,
-  Plus,
-  Edit2,
-  Trash2,
-  Search,
-  AlertCircle,
-  X,
-  ShoppingBag,
-  CalendarDays,
-} from "lucide-react";
+import { Edit2, Search, X, ShoppingBag, CalendarDays } from "lucide-react";
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
 
@@ -21,32 +11,16 @@ export default function StatesSection() {
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [estadoEnEdicion, setEstadoEnEdicion] = useState(null);
-  const [estadoAEliminar, setEstadoAEliminar] = useState(null);
 
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
     color: "#b78103",
     bg: "#fff8e1",
-    badgeType: "warning",
-    esFinal: false,
   });
 
   const recursoActual = tipoActivo === "pedidos" ? pedidosResource : reservasResource;
   const listaActual = recursoActual.items;
-
-  const abrirModalCrear = () => {
-    setEstadoEnEdicion(null);
-    setFormData({
-      nombre: "",
-      descripcion: "",
-      color: "#b78103",
-      bg: "#fff8e1",
-      badgeType: "warning",
-      esFinal: false,
-    });
-    setModalAbierto(true);
-  };
 
   const abrirModalEditar = (item) => {
     setEstadoEnEdicion(item);
@@ -55,29 +29,16 @@ export default function StatesSection() {
       descripcion: item.descripcion,
       color: item.color || "#b78103",
       bg: item.bg || "#fff8e1",
-      badgeType: item.badgeType || "warning",
-      esFinal: item.esFinal || false,
     });
     setModalAbierto(true);
   };
 
+  // Solo se edita la presentación; el código, el tipo y si es final los fija el sistema
   const handleGuardar = async (e) => {
     e.preventDefault();
-    if (!formData.nombre.trim()) return;
-
-    const datos = {
-      ...formData,
-      ...(estadoEnEdicion ? {} : { tipo: tipoActivo === "pedidos" ? "pedido" : "reserva" }),
-    };
-    const guardado = estadoEnEdicion
-      ? await recursoActual.actualizar(estadoEnEdicion.id, datos)
-      : await recursoActual.crear(datos);
+    if (!estadoEnEdicion || !formData.nombre.trim()) return;
+    const guardado = await recursoActual.actualizar(estadoEnEdicion.id, formData);
     if (guardado) setModalAbierto(false);
-  };
-
-  const handleEliminar = async () => {
-    if (!estadoAEliminar) return;
-    if (await recursoActual.eliminar(estadoAEliminar.id)) setEstadoAEliminar(null);
   };
 
   const estadosFiltrados = listaActual.filter(
@@ -93,17 +54,9 @@ export default function StatesSection() {
         <div>
           <h2 className="admin-section__title">Catálogo de Estados</h2>
           <p className="admin-section__subtitle">
-            Administra el ciclo de vida y los estados por los que pasan los pedidos de domicilios y las reservas.
+            Los estados y sus transiciones son fijos. Aquí puedes cambiar la etiqueta, la descripción y los colores con que se muestran.
           </p>
         </div>
-        <button
-          type="button"
-          className="admin-button--primary"
-          onClick={abrirModalCrear}
-        >
-          <Plus size={18} />
-          <span>Nuevo Estado ({tipoActivo === "pedidos" ? "Pedido" : "Reserva"})</span>
-        </button>
       </div>
 
       {/* SELECTOR DE PESTAÑAS (PEDIDOS VS RESERVAS) */}
@@ -161,7 +114,8 @@ export default function StatesSection() {
             <thead>
               <tr>
                 <th>Vista de Etiqueta (Badge)</th>
-                <th>Nombre del Estado</th>
+                <th>Etiqueta</th>
+                <th>Código</th>
                 <th>Descripción / Significado</th>
                 <th>Etapa</th>
                 <th>Acciones</th>
@@ -189,6 +143,9 @@ export default function StatesSection() {
                       <strong className="admin-table__client-name">{item.nombre}</strong>
                     </td>
                     <td>
+                      <code>{item.codigo}</code>
+                    </td>
+                    <td>
                       <span className="admin-table__category-desc">{item.descripcion}</span>
                     </td>
                     <td>
@@ -209,21 +166,13 @@ export default function StatesSection() {
                           <Edit2 size={14} />
                           <span>Editar</span>
                         </button>
-                        <button
-                          type="button"
-                          className="admin-button--icon-danger"
-                          onClick={() => setEstadoAEliminar(item)}
-                          title="Eliminar estado"
-                        >
-                          <Trash2 size={16} />
-                        </button>
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="admin-table__empty">
+                  <td colSpan="6" className="admin-table__empty">
                     No se encontraron estados para {tipoActivo}.
                   </td>
                 </tr>
@@ -243,9 +192,7 @@ export default function StatesSection() {
           >
             <div className="admin-modal-header">
               <h3 className="admin-modal-title">
-                {estadoEnEdicion
-                  ? `Editar Estado de ${tipoActivo === "pedidos" ? "Pedido" : "Reserva"}`
-                  : `Nuevo Estado de ${tipoActivo === "pedidos" ? "Pedido" : "Reserva"}`}
+                {`Editar Estado de ${tipoActivo === "pedidos" ? "Pedido" : "Reserva"}`}
               </h3>
               <button
                 type="button"
@@ -259,11 +206,11 @@ export default function StatesSection() {
             <form onSubmit={handleGuardar}>
               <div className="admin-modal-body">
                 <div className="admin-form-group">
-                  <label className="admin-form-label">Nombre del Estado *</label>
+                  <label className="admin-form-label">Etiqueta *</label>
                   <input
                     type="text"
                     className="admin-form-input"
-                    placeholder="Ej. En reparto, En espera..."
+                    placeholder="Ej. En reparto"
                     required
                     value={formData.nombre}
                     onChange={(e) =>
@@ -312,18 +259,9 @@ export default function StatesSection() {
                   </div>
                 </div>
 
-                <div className="admin-form-checkbox-row">
-                  <label className="admin-checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={formData.esFinal}
-                      onChange={(e) =>
-                        setFormData({ ...formData, esFinal: e.target.checked })
-                      }
-                    />
-                    <span>¿Es un estado final? (Cierra el pedido o reserva)</span>
-                  </label>
-                </div>
+                <p style={{ fontSize: "0.8rem", color: "#8c726c", margin: 0 }}>
+                  Código <code>{estadoEnEdicion?.codigo}</code> · {estadoEnEdicion?.esFinal ? "Estado final" : "En proceso"} (lo define el sistema).
+                </p>
               </div>
 
               <div className="admin-modal-footer">
@@ -335,7 +273,7 @@ export default function StatesSection() {
                   Cancelar
                 </button>
                 <button type="submit" className="admin-button--primary" disabled={recursoActual.guardando}>
-                  {estadoEnEdicion ? "Guardar Cambios" : "Crear Estado"}
+                  Guardar Cambios
                 </button>
               </div>
             </form>
@@ -343,45 +281,6 @@ export default function StatesSection() {
         </div>
       )}
 
-      {/* MODAL ELIMINAR */}
-      {estadoAEliminar && (
-        <div className="admin-modal-overlay" onClick={() => setEstadoAEliminar(null)}>
-          <div
-            className="admin-modal-container admin-modal-container--sm"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-          >
-            <div className="admin-modal-header">
-              <h3 className="admin-modal-title">¿Eliminar Estado?</h3>
-            </div>
-            <div className="admin-modal-body">
-              <div className="admin-delete-alert">
-                <AlertCircle size={28} className="admin-delete-alert__icon" />
-                <p>
-                  Estás a punto de eliminar el estado{" "}
-                  <strong>{estadoAEliminar.nombre}</strong> del catálogo de {tipoActivo}.
-                </p>
-              </div>
-            </div>
-            <div className="admin-modal-footer">
-              <button
-                type="button"
-                className="admin-button--modal-cancel"
-                onClick={() => setEstadoAEliminar(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="admin-button--danger"
-                onClick={handleEliminar}
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

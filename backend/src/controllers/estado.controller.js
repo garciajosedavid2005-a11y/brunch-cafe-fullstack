@@ -1,22 +1,23 @@
 import Estado from '../models/estado.model.js'
 import Pedido from '../models/pedido.model.js'
 import Reserva from '../models/reserva.model.js'
-import { manejarError } from '../libs/manejarError.js'
-import { sinUndefined } from '../libs/utils.js'
-import { ensureOrderStates } from '../libs/ensureOrderOptions.js'
+import { AppError, badRequest, conflict, notFound } from '../libs/errors.js'
+import { TIPOS_ESTADO, esEstadoFinal } from '../libs/estados.js'
 
 const COMPARACION = { locale: 'es', strength: 1 }
-const TIPOS = ['pedido', 'reserva']
 
 const formato = (estado, usosAsociados = 0) => ({
     id: estado._id,
-    nombre: estado.nombre,
+    codigo: estado.codigo,
     tipo: estado.tipo,
+    nombre: estado.nombre,
+    etiqueta: estado.nombre,
     descripcion: estado.descripcion || '',
     color: estado.color || '#b78103',
     bg: estado.bg || '#fff8e1',
     badgeType: estado.badgeType || 'warning',
-    esFinal: Boolean(estado.esFinal),
+    esFinal: esEstadoFinal(estado.tipo, estado.codigo),
+    orden: estado.orden || 0,
     usosAsociados,
 })
 
@@ -26,7 +27,6 @@ const contarUsos = async () => {
         Pedido.aggregate([{ $group: { _id: '$estado', total: { $sum: 1 } } }]),
         Reserva.aggregate([{ $group: { _id: '$estado', total: { $sum: 1 } } }]),
     ])
-
     const usos = new Map()
     for (const fila of [...enPedidos, ...enReservas]) {
         usos.set(String(fila._id), (usos.get(String(fila._id)) || 0) + fila.total)
@@ -34,110 +34,40 @@ const contarUsos = async () => {
     return usos
 }
 
-// GET /api/estados  ó  GET /api/estados?tipo=reserva
+// GET /api/estados  ó  GET /api/estados?tipo=reserva   (ordenados según el flujo)
 export const listarEstados = async (req, res) => {
-    try {
-        const filtro = {}
-
-        if (req.query.tipo !== undefined) {
-            if (!TIPOS.includes(req.query.tipo)) {
-                return res.status(400).json({ message: 'El tipo debe ser "pedido" o "reserva"' })
-            }
-            filtro.tipo = req.query.tipo
-        }
-
-        if (!filtro.tipo || filtro.tipo === 'pedido') {
-            await ensureOrderStates()
-        }
-
-        const [estados, usos] = await Promise.all([
-            Estado.find(filtro).sort({ tipo: 1, createdAt: 1 }),
-            contarUsos(),
-        ])
-
-        if (filtro.tipo === 'pedido') {
-            const ordenPedido = new Map(['Pendiente', 'Confirmado', 'Recibido'].map((nombre, index) => [nombre, index]))
-            estados.sort((a, b) =>
-                (ordenPedido.get(a.nombre) ?? ordenPedido.size) -
-                (ordenPedido.get(b.nombre) ?? ordenPedido.size)
-            )
-        }
-
-        res.json(estados.map((e) => formato(e, usos.get(String(e._id)) || 0)))
-    } catch (error) {
-        manejarError(res, error)
+    const filtro = {}
+    if (req.query.tipo !== undefined) {
+        if (!TIPOS_ESTADO.includes(req.query.tipo)) throw badRequest('El tipo debe ser "pedido" o "reserva"')
+        filtro.tipo = req.query.tipo
     }
+    const [estados, usos] = await Promise.all([
+        Estado.find(filtro).sort({ tipo: 1, orden: 1 }),
+        contarUsos(),
+    ])
+    res.json(estados.map((e) => formato(e, usos.get(String(e._id)) || 0)))
 }
 
-export const crearEstado = async (req, res) => {
-    try {
-        const { nombre, tipo, descripcion, color, bg, badgeType, esFinal } = req.body
-
-        const existe = await Estado.findOne({ nombre, tipo }).collation(COMPARACION)
-        if (existe) {
-            return res.status(409).json({ message: `Ya existe el estado '${nombre}' de tipo ${tipo}` })
-        }
-
-        const estado = await new Estado({ nombre, tipo, descripcion, color, bg, badgeType, esFinal }).save()
-
-        res.status(201).json(formato(estado))
-    } catch (error) {
-        manejarError(res, error)
-    }
-}
-
+// PUT /api/estados/:id  — solo presentación: nombre (etiqueta), descripción y colores
 export const actualizarEstado = async (req, res) => {
-    try {
-        const estado = await Estado.findById(req.params.id)
-        if (!estado) return res.status(404).json({ message: 'Estado no encontrado' })
+    const estado = await Estado.findById(req.params.id)
+    if (!estado) throw notFound('Estado no encontrado')
 
-        // El tipo no se puede cambiar: solo se editan estos campos
-        const { nombre, descripcion, color, bg, badgeType, esFinal } = req.body
-
-        if (nombre !== undefined) {
-            const existe = await Estado.findOne({
-                nombre,
-                tipo: estado.tipo,
-                _id: { $ne: estado._id },
-            }).collation(COMPARACION)
-
-            if (existe) {
-                return res.status(409).json({ message: `Ya existe el estado '${nombre}' de tipo ${estado.tipo}` })
-            }
-        }
-
-        estado.set(sinUndefined({ nombre, descripcion, color, bg, badgeType, esFinal }))
-        await estado.save()
-
-        const usos = await contarUsos()
-
-        res.json(formato(estado, usos.get(String(estado._id)) || 0))
-    } catch (error) {
-        manejarError(res, error)
+    const { nombre, descripcion, color, bg, badgeType } = req.validado
+    if (nombre !== undefined) {
+        const existe = await Estado.findOne({ nombre, tipo: estado.tipo, _id: { $ne: estado._id } }).collation(COMPARACION)
+        if (existe) throw conflict(`Ya existe el estado '${nombre}' de tipo ${estado.tipo}`)
     }
+    for (const [campo, valor] of Object.entries({ nombre, descripcion, color, bg, badgeType })) {
+        if (valor !== undefined) estado[campo] = valor
+    }
+    await estado.save()
+
+    const usos = await contarUsos()
+    res.json(formato(estado, usos.get(String(estado._id)) || 0))
 }
 
-export const eliminarEstado = async (req, res) => {
-    try {
-        const estado = await Estado.findById(req.params.id)
-        if (!estado) return res.status(404).json({ message: 'Estado no encontrado' })
-
-        // No se puede borrar un estado que ya está asignado a pedidos o reservas
-        const [enPedidos, enReservas] = await Promise.all([
-            Pedido.countDocuments({ estado: estado._id }),
-            Reserva.countDocuments({ estado: estado._id }),
-        ])
-
-        if (enPedidos + enReservas > 0) {
-            return res.status(400).json({
-                message: `No se puede eliminar: está en uso (${enPedidos} pedido(s), ${enReservas} reserva(s))`,
-            })
-        }
-
-        await estado.deleteOne()
-
-        res.json({ message: 'Estado eliminado' })
-    } catch (error) {
-        manejarError(res, error)
-    }
+// Los estados son fijos (los define src/libs/estados.js): no se crean ni se borran
+export const estadosFijos = () => {
+    throw new AppError(405, 'ESTADOS_FIJOS', 'Los estados son fijos: solo puedes editar su etiqueta, descripción y colores.')
 }

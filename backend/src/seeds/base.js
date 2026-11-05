@@ -4,6 +4,7 @@ import Rol from '../models/rol.model.js'
 import Usuario from '../models/usuario.model.js'
 import Permiso from '../models/permiso.model.js'
 import { COMODIN, PERMISOS, ROLES_STAFF, ROL_ADMIN, ROL_CLIENTE } from '../libs/permisos.js'
+import { sembrarEstados } from './estados.js'
 
 // Roles con reglas fijas: admin siempre tiene "*" y cliente nunca tiene permisos de staff
 export const ROLES_BASE = [
@@ -114,5 +115,6 @@ export const sembrarBase = async (env = process.env) => {
     const roles = await sembrarRoles()
     const unificacion = await unificarRolesAdmin(roles.admin)
     const admin = await sembrarAdmin(roles.admin, env)
-    return { roles: Object.keys(roles), unificacion, admin }
+    const estados = await sembrarEstados()
+    return { roles: Object.keys(roles), unificacion, admin, estados }
 }

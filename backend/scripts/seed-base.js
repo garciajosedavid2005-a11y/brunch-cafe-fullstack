@@ -6,9 +6,10 @@ import { sembrarBase } from '../src/seeds/base.js'
 
 try {
     await mongoose.connect(config.MONGO_URI)
-    const { roles, unificacion, admin } = await sembrarBase()
+    const { roles, unificacion, admin, estados } = await sembrarBase()
 
     console.log(`Roles base asegurados: ${roles.join(', ')}`)
+    console.log(`Estados asegurados: ${estados.join(', ')}`)
     if (unificacion.usuariosReasignados || unificacion.rolesAlias.length) {
         console.log(`Roles alias de admin encontrados: ${unificacion.rolesAlias.join(', ')} → ${unificacion.usuariosReasignados} usuario(s) reasignados al rol "admin" (los roles viejos se conservan)`)
     }

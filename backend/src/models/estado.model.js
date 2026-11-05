@@ -1,6 +1,20 @@
 import mongoose from 'mongoose'
 
 const estadoSchema = new mongoose.Schema({
+    // Código fijo que usa la máquina de transiciones (src/libs/estados.js).
+    // No se edita desde el dashboard.
+    codigo: {
+        type: String,
+        required: true,
+        trim: true,
+        immutable: true
+    },
+    // Posición en el flujo (para ordenar listas)
+    orden: {
+        type: Number,
+        default: 0
+    },
+    // Etiqueta visible (editable por el admin)
     nombre: {
         type: String,
         required: true,
@@ -33,7 +47,7 @@ const estadoSchema = new mongoose.Schema({
         trim: true,
         default: 'warning'
     },
-    // Estado final: el pedido o la reserva ya no cambia después de este estado
+    // Estado final: lo fija el catálogo; el pedido o la reserva ya no cambia después
     esFinal: {
         type: Boolean,
         default: false
@@ -45,5 +59,10 @@ const estadoSchema = new mongoose.Schema({
 // El mismo nombre puede existir una vez como "pedido" y otra como "reserva"
 // (ej. "Pendiente"), pero no repetido dentro del mismo tipo
 estadoSchema.index({ nombre: 1, tipo: 1 }, { unique: true })
+// Un código por tipo (parcial: tolera documentos anteriores a la migración 0.7)
+estadoSchema.index(
+    { tipo: 1, codigo: 1 },
+    { unique: true, partialFilterExpression: { codigo: { $type: 'string' } } }
+)
 
 export default mongoose.model('Estado', estadoSchema)

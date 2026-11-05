@@ -3,6 +3,8 @@ import { Search, Eye, Check, X, CalendarDays, Users, Clock, Mail, Phone, Message
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
 import { formatClock, formatDate } from "../adminFormat";
+import EstadoSelector from "../components/EstadoSelector";
+import { pedirMotivo } from "../components/estadoUtils";
 
 export default function ReservationsSection() {
   const { items: reservas, cargando, error, cargar, parchear } = useAdminResource("/reservas");
@@ -13,12 +15,20 @@ export default function ReservationsSection() {
 
   const estadosDisponibles = ["Todas", ...new Set(estadosResource.items.map((estado) => estado.nombre))];
 
-  const handleCambiarEstado = async (id, nuevoEstado) => {
-    const estado = estadosResource.items.find((item) => item.nombre === nuevoEstado);
-    if (!estado) return;
-    const actualizada = await parchear(id, { estado: estado.id }, "/estado");
+  const handleCambiarEstado = async (id, codigo, motivo) => {
+    const actualizada = await parchear(id, { codigo, ...(motivo ? { motivo } : {}) }, "/estado");
     if (actualizada && reservaSeleccionada?.id === id) setReservaSeleccionada(actualizada);
   };
+
+  // Botones rápidos (confirmar / cancelar) solo si la transición está permitida
+  const accionRapida = (reserva, codigo) => {
+    const transicion = (reserva.transiciones || []).find((t) => t.codigo === codigo);
+    if (!transicion) return;
+    const motivo = pedirMotivo(transicion);
+    if (motivo === null) return;
+    handleCambiarEstado(reserva.id, codigo, motivo);
+  };
+  const puede = (reserva, codigo) => (reserva.transiciones || []).some((t) => t.codigo === codigo);
 
   // Filtrar reservas
   const reservasFiltradas = reservas.filter((reserva) => {
@@ -31,19 +41,6 @@ export default function ReservationsSection() {
       reserva.correo.toLowerCase().includes(busqueda.toLowerCase());
     return coincideEstado && coincideBusqueda;
   });
-
-  const getBadgeClass = (estado) => {
-    switch (estado) {
-      case "Pendiente":
-        return "admin-badge--warning";
-      case "Confirmada":
-        return "admin-badge--success";
-      case "Cancelada":
-        return "admin-badge--danger";
-      default:
-        return "admin-badge--neutral";
-    }
-  };
 
   return (
     <div className="admin-section">
@@ -140,25 +137,17 @@ export default function ReservationsSection() {
                       <span className="admin-table__reason">{reserva.motivo}</span>
                     </td>
                     <td>
-                      <select
-                        className={`admin-select-status ${getBadgeClass(reserva.estado)}`}
-                        value={reserva.estado}
-                        onChange={(e) => handleCambiarEstado(reserva.id, e.target.value)}
-                      >
-                        {estadosResource.items.map((estado) => (
-                          <option key={estado.id} value={estado.nombre}>{estado.nombre}</option>
-                        ))}
-                      </select>
+                      <EstadoSelector item={reserva} onCambiar={(codigo, motivo) => handleCambiarEstado(reserva.id, codigo, motivo)} />
                     </td>
                     <td>
                       <div className="admin-table__actions-row">
-                        {reserva.estado === "Pendiente" && (
+                        {(puede(reserva, "confirmada") || puede(reserva, "cancelada")) && reserva.estadoCodigo === "pendiente" && (
                           <>
                             <button
                               type="button"
                               className="admin-button--icon-success"
                               title="Confirmar reserva"
-                              onClick={() => handleCambiarEstado(reserva.id, "Confirmada")}
+                              onClick={() => accionRapida(reserva, "confirmada")}
                             >
                               <Check size={16} />
                             </button>
@@ -166,7 +155,7 @@ export default function ReservationsSection() {
                               type="button"
                               className="admin-button--icon-danger"
                               title="Rechazar/Cancelar reserva"
-                              onClick={() => handleCambiarEstado(reserva.id, "Cancelada")}
+                              onClick={() => accionRapida(reserva, "cancelada")}
                             >
                               <X size={16} />
                             </button>
@@ -262,17 +251,10 @@ export default function ReservationsSection() {
               {/* Selector de estado */}
               <div className="admin-modal-status-bar">
                 <label>Estado de la reserva:</label>
-                <select
-                  className={`admin-select-status ${getBadgeClass(reservaSeleccionada.estado)}`}
-                  value={reservaSeleccionada.estado}
-                  onChange={(e) =>
-                    handleCambiarEstado(reservaSeleccionada.id, e.target.value)
-                  }
-                >
-                  {estadosResource.items.map((estado) => (
-                    <option key={estado.id} value={estado.nombre}>{estado.nombre}</option>
-                  ))}
-                </select>
+                <EstadoSelector
+                  item={reservaSeleccionada}
+                  onCambiar={(codigo, motivo) => handleCambiarEstado(reservaSeleccionada.id, codigo, motivo)}
+                />
               </div>
             </div>
 

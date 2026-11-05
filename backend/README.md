@@ -20,6 +20,7 @@ El backend escucha por defecto en `http://localhost:4000`; el cliente usa cookie
 | `npm test` | Suite de tests (Vitest + Supertest + mongodb-memory-server en replica set) |
 | `npm run test:watch` | Tests en modo observación |
 | `npm run lint` | ESLint 9 (flat config) |
+| `npm run migrate:0.7` | Migración de estados (ver abajo) |
 
 - La primera ejecución de `npm test` descarga el binario de `mongod` (~100 MB) y lo deja en caché; no necesita un Mongo instalado.
 - `src/app.js` construye la app de Express (lo usan los tests); `src/index.js` conecta a MongoDB y escucha.
@@ -52,6 +53,22 @@ Idempotente: se puede ejecutar las veces que quieras.
 - `GET /api/permisos` (permiso `rol:gestionar`) alimenta las casillas de la pantalla de Roles. No se borra un rol con usuarios asignados.
 - Limitación: la caché de sesiones y el rate limit son por proceso (una sola instancia del backend).
 
+### Estados y transiciones
+
+- El catálogo de estados y la máquina de transiciones viven en `src/libs/estados.js` (fuente de verdad). Cada `Estado` tiene un `codigo` fijo; el admin solo edita etiqueta (`nombre`), descripción y colores (`PUT /api/estados/:id`). Crear o borrar estados responde `405 ESTADOS_FIJOS`.
+- Pedido: `pendiente → confirmado → en_preparacion → listo → en_camino → entregado`, más `cancelado`. Reserva: `pendiente → confirmada → sentada → completada`, más `cancelada` y `no_show`. Los estados finales no se reabren.
+- Cada transición declara quién la hace y qué permiso exige: avanzar un pedido → `pedido:cambiar_estado`; cancelarlo (solo en `pendiente`/`confirmado`) → `pedido:cancelar` + motivo obligatorio; reservas → `reserva:cambiar_estado`. El cliente cancela su pedido solo en `pendiente` y su reserva en `pendiente`/`confirmada`; si edita una confirmada, vuelve a `pendiente`.
+- `PATCH /api/pedidos/:id/estado` y `PATCH /api/reservas/:id/estado` reciben `{ codigo, motivo? }` (o `{ estado: <_id> }` por compatibilidad). Errores: `400 ESTADO_INVALIDO | MOTIVO_REQUERIDO`, `403 FORBIDDEN`, `409 TRANSICION_INVALIDA | ESTADO_FINAL | CONFLICTO_ESTADO`. Los listados de staff incluyen `estadoCodigo`, `esFinal` y `transiciones` (las que el usuario puede hacer).
+- Cada cambio (y la creación) queda en la colección `eventos` (`de`, `a`, `motivo`, `usuario`, `actor`).
+- El servidor siembra los estados al arrancar; si encuentra estados sin `codigo` (BD anterior a 0.7) no arranca y pide ejecutar la migración.
+
+### Migraciones y respaldo
+
+1. Respaldo (carpeta `backups/`, ignorada por git). Con MongoDB Database Tools: `mongodump --uri "$MONGO_URI" --out backups/<nombre>`. Sin ellas, con Docker:
+   `docker run --rm -v "<ruta-del-repo>/backups:/backups" mongo:7 mongodump --uri "mongodb://host.docker.internal:27017/brunch-cafe" --out /backups/<nombre>`
+2. Simulacro: `npm run migrate:0.7 -- --dry-run` (cuántos documentos cambiarían por colección y tabla de equivalencias estado viejo → código). Si algún estado no encaja, se lista y no se escribe nada.
+3. Aplicar: `npm run migrate:0.7`. Revertir: `npm run migrate:0.7 -- --down` (también admite `--dry-run`); no revierte si un estado nuevo ya está en uso.
+
 ### Formato de errores
 
 Todas las respuestas de error usan el mismo formato:
@@ -76,10 +93,11 @@ La autenticación conserva las cuentas existentes de `Usuario` y `Rol`; no crea 
 | GET, POST | `/api/customer/orders` | Consultar historial propio y crear un pedido con artículos y entrega validados |
 | GET | `/api/customer/orders/:id` | Consultar detalle de un pedido propio |
 | GET, POST | `/api/customer/reservations` | Listar y crear reservas |
+| PATCH | `/api/customer/orders/:id/cancel` | Cancelar un pedido propio mientras está pendiente |
 | PATCH | `/api/customer/reservations/:id` | Editar una reserva propia y volverla a pendiente de aprobación |
 | PATCH | `/api/customer/reservations/:id/cancel` | Cancelar una reserva propia futura |
 | GET, POST | `/api/customer/reviews` | Consultar y publicar los comentarios propios |
 | GET | `/api/reviews` | Listar comentarios públicos publicados desde el dashboard |
 | GET | `/api/reviews/product-ratings` | Consultar promedios públicos de calificación por producto |
 
-Los pedidos se guardan en `Pedido` y `DetallePedido`. El backend valida los IDs contra `frontend/src/data/menu.json` y calcula precios y total desde el catálogo, sin confiar en importes del navegador; guarda también los datos de entrega para el historial. Las reservas se almacenan en `Reserva` y `Estado`, y se crean desde la página protegida `/reservas`; los estados `Pendiente` y `Cancelada` se inicializan cuando se necesitan. Nombre y correo se precargan desde la cuenta y pueden ajustarse como datos de contacto de esa reserva. Editar una reserva activa la devuelve a `Pendiente` para una nueva aprobación. Las reservas aceptan horas en punto de 8:00 a 12:00 entre semana y de 8:00 a 11:00 los fines de semana, además de requerir un motivo. Los comentarios se guardan en la colección `Review`: el dashboard es el único formulario para publicarlos, y la página pública de comentarios muestra las reseñas reales sin permitir publicaciones duplicadas. Pueden ser generales o asociarse a un producto; las calificaciones de producto se agregan en el endpoint público de promedios.
+Los pedidos se guardan en `Pedido` y `DetallePedido`. El backend valida los IDs contra `frontend/src/data/menu.json` y calcula precios y total desde el catálogo, sin confiar en importes del navegador; guarda también los datos de entrega para el historial. Las reservas se almacenan en `Reserva` y referencian un `Estado` del catálogo fijo, y se crean desde la página protegida `/reservas`. Nombre y correo se precargan desde la cuenta y pueden ajustarse como datos de contacto de esa reserva. Editar una reserva activa la devuelve a `Pendiente` para una nueva aprobación. Las reservas aceptan horas en punto de 8:00 a 12:00 entre semana y de 8:00 a 11:00 los fines de semana, además de requerir un motivo. Los comentarios se guardan en la colección `Review`: el dashboard es el único formulario para publicarlos, y la página pública de comentarios muestra las reseñas reales sin permitir publicaciones duplicadas. Pueden ser generales o asociarse a un producto; las calificaciones de producto se agregan en el endpoint público de promedios.

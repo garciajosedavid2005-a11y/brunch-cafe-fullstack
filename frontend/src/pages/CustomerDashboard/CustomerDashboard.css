@@ -261,7 +261,14 @@
   color: #346d34;
 }
 
-.status-preparing {
+.status-completed {
+  background: #e8f4e8;
+  color: #346d34;
+}
+
+.status-preparing,
+.status-on_the_way,
+.status-seated {
   background: #eaf1fa;
   color: #345b88;
 }
@@ -269,6 +276,11 @@
 .status-cancelled {
   background: #fbe9e8;
   color: #a23c36;
+}
+
+.status-no_show {
+  background: #f0f0f0;
+  color: #5f5f5f;
 }
 
 .dashboard-order-items {

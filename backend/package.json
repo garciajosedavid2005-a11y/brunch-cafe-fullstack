@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "seed:menu": "node scripts/seed-menu.js",
     "report:correos": "node scripts/reportar-correos-duplicados.js",
-    "seed:base": "node scripts/seed-base.js"
+    "seed:base": "node scripts/seed-base.js",
+    "migrate:0.7": "node scripts/migrar-0.7-estados.js"
   },
   "keywords": [],
   "author": "",

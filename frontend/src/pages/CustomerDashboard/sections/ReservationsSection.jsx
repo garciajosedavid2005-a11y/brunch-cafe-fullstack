@@ -6,7 +6,16 @@ import SectionHeading from "../SectionHeading";
 
 const today = new Date();
 const minimumDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-const reservationStatus = { pending: "Pendiente de aprobación", confirmed: "Confirmada", cancelled: "Cancelada" };
+const reservationStatus = {
+  pending: "Pendiente de aprobación",
+  confirmed: "Confirmada",
+  seated: "En curso",
+  completed: "Completada",
+  cancelled: "Cancelada",
+  no_show: "No asistió",
+};
+// El cliente solo puede editar o cancelar mientras la reserva está pendiente o confirmada
+const editableStatuses = ["pending", "confirmed"];
 
 function getAvailableTimes(date) {
   if (!date) return [];
@@ -117,7 +126,7 @@ export default function ReservationsSection() {
                 <p>{reservation.nombre || `${reservation.user?.nombre || user?.nombre || ""} ${reservation.user?.apellido || user?.apellido || ""}`.trim()} · {reservation.correo || reservation.user?.email || user?.email}</p>
                 <p><strong>Motivo:</strong> {reservation.motivo || "No especificado"} · {reservation.personas} {reservation.personas === 1 ? "persona" : "personas"}{reservation.observaciones ? ` · ${reservation.observaciones}` : ""}</p>
               </div>
-              {reservation.status !== "cancelled" && (
+              {editableStatuses.includes(reservation.status) && (
                 <div className="dashboard-reservation__actions">
                   <button className="dashboard-button dashboard-button--secondary" type="button" onClick={() => beginEditing(reservation)}>
                     Editar
