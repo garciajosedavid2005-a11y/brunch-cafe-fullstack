@@ -1,3 +1,4 @@
+// SIN USO desde 0.8: el perfil vive en src/modulos/identidad/. Se propone eliminarlo en 0.12.
 import Usuario from '../models/usuario.model.js'
 import bcrypt from 'bcryptjs'
 import { tokenDeSesion } from '../libs/jwt.js'

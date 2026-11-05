@@ -17,10 +17,10 @@ const montar = () => render(
 
 describe("/perfil", () => {
   it("muestra los datos usando el cliente HTTP común", async () => {
-    apiRequest.mockResolvedValue({ nombre: "Ana", apellido: "Pérez", correo: "ana@example.com", telefono: "300", rol: { nombre: "cliente" } });
+    apiRequest.mockResolvedValue({ perfil: { nombre: "Ana", apellido: "Pérez", correo: "ana@example.com", telefono: "300", rol: { nombre: "cliente", etiqueta: "Cliente" } } });
     montar();
     expect(await screen.findByText("ana@example.com")).toBeInTheDocument();
-    expect(apiRequest).toHaveBeenCalledWith("/usuarios/perfil");
+    expect(apiRequest).toHaveBeenCalledWith("/v1/cliente/perfil");
   });
 
   it("si falla, lleva al login", async () => {

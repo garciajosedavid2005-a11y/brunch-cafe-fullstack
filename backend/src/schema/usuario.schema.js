@@ -1,3 +1,4 @@
+// SIN USO desde 0.8: el perfil vive en src/modulos/identidad/. Se propone eliminarlo en 0.12.
 import { z } from 'zod'
 
 export const actualizarPerfilSchema = z.object({

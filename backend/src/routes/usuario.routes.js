@@ -1,13 +1,14 @@
 import { Router } from 'express'
-import { verPerfil, actualizarPerfil, cambiarContrasena } from '../controllers/usuario.controller.js'
 import { validateToken } from '../middlewares/validateToken.js'
-import { validateSchema } from '../middlewares/validator.middleware.js'
-import { actualizarPerfilSchema } from '../schema/usuario.schema.js'
+import { deprecado } from '../middlewares/deprecado.js'
+import { legadoVerUsuario, legadoEditarUsuario, cambiarMiContrasena } from '../modulos/identidad/perfil.controller.js'
 
+// Alias deprecados de /api/v1/cliente/perfil (se retiran en 0.12)
 const router = Router()
+const alias = deprecado('/api/v1/cliente/perfil')
 
-router.get('/perfil', validateToken, verPerfil)
-router.put('/perfil', validateToken, validateSchema(actualizarPerfilSchema), actualizarPerfil)
-router.put('/perfil/contrasena', validateToken, cambiarContrasena)
+router.get('/perfil', validateToken, alias, legadoVerUsuario)
+router.put('/perfil', validateToken, alias, legadoEditarUsuario)
+router.put('/perfil/contrasena', validateToken, deprecado('/api/v1/cliente/perfil/contrasena'), cambiarMiContrasena)
 
 export default router

@@ -2,7 +2,8 @@ import { Router } from 'express';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import { validateToken } from '../middlewares/validateToken.js';
-import Usuario from '../models/usuario.model.js';
+import { deprecado } from '../middlewares/deprecado.js';
+import { legadoVerCustomer, legadoEditarCustomer } from '../modulos/identidad/perfil.controller.js';
 import Pedido from '../models/pedido.model.js';
 import DetallePedido from '../models/detallePedido.model.js';
 import MetodoPago from '../models/metodoPago.model.js';
@@ -19,13 +20,6 @@ import { cancelacionClienteSchema } from '../schema/cambioEstado.schema.js';
 
 const router = Router();
 router.use(validateToken);
-
-const profileSchema = z.object({
-  nombre: z.string().trim().min(1).max(60),
-  apellido: z.string().trim().min(1).max(60),
-  email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
-  telefono: z.string().trim().min(7).max(30),
-});
 
 const reservationSchema = z.object({
   nombre: z.string().trim().min(3).max(120),
@@ -133,63 +127,9 @@ const serializeOrder = (order, details) => ({
   })),
 });
 
-router.get('/profile', async (req, res, next) => {
-  try {
-    const profile = await Usuario.findById(req.usuario.id).select('nombre apellido correo telefono');
-    if (!profile) return res.status(404).json({ message: 'No se encontró el perfil.' });
-    return res.json({
-      profile: {
-        nombre: profile.nombre,
-        apellido: profile.apellido,
-        email: profile.correo,
-        telefono: profile.telefono || '',
-      },
-    });
-  } catch (error) {
-    return next(error);
-  }
-});
-
-router.patch('/profile', async (req, res, next) => {
-  const parsed = profileSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ message: 'Revisa los datos del perfil.', errors: parsed.error.flatten() });
-  }
-
-  try {
-    const duplicate = await Usuario.findOne({
-      correo: parsed.data.email,
-      _id: { $ne: req.usuario.id },
-    });
-    if (duplicate) return res.status(409).json({ message: 'Ese correo ya está asociado a otra cuenta.' });
-
-    const profile = await Usuario.findByIdAndUpdate(
-      req.usuario.id,
-      {
-        nombre: parsed.data.nombre,
-        apellido: parsed.data.apellido,
-        correo: parsed.data.email,
-        telefono: parsed.data.telefono,
-      },
-      { returnDocument: 'after', runValidators: true, select: 'nombre apellido correo telefono' }
-    );
-    if (!profile) return res.status(404).json({ message: 'No se encontró el perfil.' });
-
-    return res.json({
-      profile: {
-        nombre: profile.nombre,
-        apellido: profile.apellido,
-        email: profile.correo,
-        telefono: profile.telefono || '',
-      },
-    });
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(409).json({ message: 'Ese correo ya está asociado a otra cuenta.' });
-    }
-    return next(error);
-  }
-});
+// Perfil: alias deprecados de /api/v1/cliente/perfil (mismo servicio y validaciones)
+router.get('/profile', deprecado('/api/v1/cliente/perfil'), legadoVerCustomer);
+router.patch('/profile', deprecado('/api/v1/cliente/perfil'), legadoEditarCustomer);
 
 router.get('/orders', async (req, res, next) => {
   try {

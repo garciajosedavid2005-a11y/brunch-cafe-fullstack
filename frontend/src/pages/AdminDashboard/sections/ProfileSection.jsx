@@ -33,8 +33,8 @@ export default function ProfileSection() {
 
   useEffect(() => {
     let active = true;
-    apiRequest("/usuarios/perfil")
-      .then((profile) => {
+    apiRequest("/v1/cliente/perfil")
+      .then(({ perfil: profile }) => {
         if (!active) return;
         setPerfilData({
           nombre: profile.nombre || "",
@@ -61,8 +61,8 @@ export default function ProfileSection() {
     setMensajePerfil("");
     setErrorPerfil("");
     try {
-      const profile = await apiRequest("/usuarios/perfil", {
-        method: "PUT",
+      const { perfil: profile } = await apiRequest("/v1/cliente/perfil", {
+        method: "PATCH",
         body: JSON.stringify({
           nombre: perfilData.nombre,
           apellido: perfilData.apellido,

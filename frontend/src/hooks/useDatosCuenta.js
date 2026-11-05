@@ -3,7 +3,7 @@ import { apiRequest } from "../services/api";
 import { formatearFecha } from "../utils/fechas";
 
 /**
- * Datos de la cuenta de la sesión (GET /usuarios/perfil): nombre, correo,
+ * Datos de la cuenta de la sesión (GET /v1/cliente/perfil): nombre, correo,
  * teléfono, rol y fecha de registro. Lo usan /perfil y "Seguridad y configuración".
  */
 export default function useDatosCuenta() {
@@ -13,8 +13,8 @@ export default function useDatosCuenta() {
 
   useEffect(() => {
     let activo = true;
-    apiRequest("/usuarios/perfil")
-      .then((datos) => activo && setCuenta(datos))
+    apiRequest("/v1/cliente/perfil")
+      .then(({ perfil }) => activo && setCuenta(perfil))
       .catch((e) => activo && setError(e))
       .finally(() => activo && setCargando(false));
     return () => {

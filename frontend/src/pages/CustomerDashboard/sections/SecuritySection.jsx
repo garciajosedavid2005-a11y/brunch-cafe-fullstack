@@ -27,7 +27,7 @@ function CampoContrasena({ id, etiqueta, valor, onChange, error, autoComplete })
 }
 
 // Seguridad y configuración: datos de la cuenta, cambio de contraseña y cierre de sesión.
-// Solo lo que el backend ya soporta (GET /usuarios/perfil y PUT /usuarios/perfil/contrasena).
+// Solo lo que el backend ya soporta (GET /v1/cliente/perfil y PUT /v1/cliente/perfil/contrasena).
 export default function SecuritySection() {
   const { logout } = useAuth();
   const navigate = useNavigate();

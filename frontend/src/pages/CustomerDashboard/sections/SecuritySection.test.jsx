@@ -30,7 +30,7 @@ describe("Mi cuenta · Seguridad y configuración", () => {
     apiRequest.mockReset();
     logout.mockReset();
     apiRequest.mockImplementation((ruta, opciones) =>
-      opciones?.method === "PUT" ? Promise.resolve({ message: "ok" }) : Promise.resolve(PERFIL)
+      opciones?.method === "PUT" ? Promise.resolve({ message: "ok" }) : Promise.resolve({ perfil: PERFIL })
     );
   });
 
@@ -55,7 +55,7 @@ describe("Mi cuenta · Seguridad y configuración", () => {
     await montar();
     llenar("secreta123", "nueva12345", "nueva12345");
     fireEvent.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
-    await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/usuarios/perfil/contrasena", {
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/v1/cliente/perfil/contrasena", {
       method: "PUT", body: JSON.stringify({ actual: "secreta123", nueva: "nueva12345" }),
     }));
     expect(await screen.findByText("Contraseña actualizada correctamente.")).toBeInTheDocument();
@@ -64,7 +64,7 @@ describe("Mi cuenta · Seguridad y configuración", () => {
 
   it("muestra el error del backend (contraseña actual incorrecta)", async () => {
     apiRequest.mockImplementation((ruta, opciones) =>
-      opciones?.method === "PUT" ? Promise.reject(new Error("La contraseña actual no es correcta.")) : Promise.resolve(PERFIL)
+      opciones?.method === "PUT" ? Promise.reject(new Error("La contraseña actual no es correcta.")) : Promise.resolve({ perfil: PERFIL })
     );
     await montar();
     llenar("mala", "nueva12345", "nueva12345");

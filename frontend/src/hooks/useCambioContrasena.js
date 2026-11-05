@@ -15,7 +15,7 @@ export const validarCambioContrasena = ({ actual, nueva, confirmar }) => {
   return errores;
 };
 
-/** Estado y envío del cambio de contraseña (PUT /usuarios/perfil/contrasena). */
+/** Estado y envío del cambio de contraseña (PUT /v1/cliente/perfil/contrasena). */
 export default function useCambioContrasena() {
   const [datos, setDatos] = useState(VACIO);
   const [errores, setErrores] = useState({});
@@ -38,7 +38,7 @@ export default function useCambioContrasena() {
 
     setGuardando(true);
     try {
-      await apiRequest("/usuarios/perfil/contrasena", {
+      await apiRequest("/v1/cliente/perfil/contrasena", {
         method: "PUT",
         body: JSON.stringify({ actual: datos.actual, nueva: datos.nueva }),
       });
