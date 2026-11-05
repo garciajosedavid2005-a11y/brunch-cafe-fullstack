@@ -27,8 +27,8 @@ const entrarEnPantalla = () => act(() => {
 });
 
 const PRODUCTOS = [
-  { id: 1, nombre: "Waffle", precio: "$15.000", categoria: "Postres", descripcion: "", imagen: "", destacado: true },
-  { id: 2, nombre: "Latte", precio: "$9.000", categoria: "Bebidas", descripcion: "", imagen: "", destacado: false },
+  { id: 1, nombre: "Waffle", precio: 15000, categoria: "Postres", descripcion: "", imagen: "", destacado: true },
+  { id: 2, nombre: "Latte", precio: 9000, categoria: "Bebidas", descripcion: "", imagen: "", destacado: false },
 ];
 
 describe("Destacados (inicio)", () => {

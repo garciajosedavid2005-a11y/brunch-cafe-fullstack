@@ -1,6 +1,7 @@
 import "./CarritoProducto.css"
 import { useCarrito } from '../../context/CarritoContext'
 import { useNavigate } from 'react-router-dom'
+import { formatearCOP } from '../../utils/moneda'
 
 const CarritoProducto = () => {
 
@@ -36,8 +37,7 @@ const CarritoProducto = () => {
 
             {/* Lista de productos */}
             {productos.map(producto => {
-                const precio = parseInt(producto.precio.replace(/[^0-9]/g, ''))
-                const subtotal = precio * producto.cantidad
+                const subtotal = producto.precio * producto.cantidad
 
                 return (
                     <div key={producto.id} className="carrito-producto__item">
@@ -57,7 +57,7 @@ const CarritoProducto = () => {
                                 <h3 className="carrito-producto__nombre">{producto.nombre}</h3>
                                 <div className="carrito-producto__linea"></div>
                                 <p className="carrito-producto__descripcion">{producto.descripcion}</p>
-                                <p className="carrito-producto__precio-unitario">{producto.precio}</p>
+                                <p className="carrito-producto__precio-unitario">{formatearCOP(producto.precio)}</p>
 
                                 {/* Contador */}
                                 <div className="carrito-producto__contador">
@@ -73,7 +73,7 @@ const CarritoProducto = () => {
                                 </div>
 
                                 <p className="carrito-producto__total">
-                                    Total: ${subtotal.toLocaleString('es-CO')}
+                                    Total: {formatearCOP(subtotal)}
                                 </p>
 
                                 {/* Eliminar */}

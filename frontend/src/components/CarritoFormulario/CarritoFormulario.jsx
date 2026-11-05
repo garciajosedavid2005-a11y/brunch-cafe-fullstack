@@ -7,6 +7,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/useAuth'
 import { apiRequest } from '../../services/api'
 import ResumenPedido from '../ResumenPedido/ResumenPedido'
+import { formatearCOP } from '../../utils/moneda'
 
 const CarritoFormulario = () => {
 
@@ -392,8 +393,8 @@ const CarritoFormulario = () => {
                     <div className="carrito-formulario__total">
                         <div className="carrito-formulario__total-linea"></div>
                         <p className="carrito-formulario__total-texto">
-                            TOTAL ESTIMADO:
-                            ${calcularTotal().toLocaleString('es-CO')}
+                            TOTAL ESTIMADO:{" "}
+                            {formatearCOP(calcularTotal())}
                         </p>
                         <div className="carrito-formulario__total-linea"></div>
                     </div>

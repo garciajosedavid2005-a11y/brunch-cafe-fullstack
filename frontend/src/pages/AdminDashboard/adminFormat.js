@@ -1,9 +1,7 @@
-export const formatCurrency = (value) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(Number(value) || 0);
+import { formatearCOP } from "../../utils/moneda";
+
+// Montos del dashboard: enteros en COP (misma utilidad que el resto del sitio)
+export const formatCurrency = (value) => formatearCOP(Number(value) || 0);
 
 export const formatDate = (value) => {
   const date = new Date(value);

@@ -5,6 +5,7 @@
  */
 
 import { useCarrito } from '../../context/CarritoContext';
+import { formatearCOP } from "../../utils/moneda";
 
 /* ════════════════════════════════
    Placeholder
@@ -102,7 +103,7 @@ const TarjetaDestacado = ({
         <footer className="tarjeta-destacado__pie">
 
           <span className="tarjeta-destacado__precio">
-            {precio}
+            {formatearCOP(precio)}
           </span>
 
           <span

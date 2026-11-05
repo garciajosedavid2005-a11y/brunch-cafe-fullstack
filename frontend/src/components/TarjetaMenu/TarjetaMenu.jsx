@@ -1,5 +1,6 @@
 import "./TarjetaMenu.css";
 import { useCarrito } from '../../context/CarritoContext'
+import { formatearCOP } from "../../utils/moneda";
 
 const TarjetaMenu = ({ id, nombre, descripcion, precio, imagen, rating = 5, ratingCount = 0, delay }) => {
   const { agregarProducto } = useCarrito();
@@ -59,7 +60,7 @@ const TarjetaMenu = ({ id, nombre, descripcion, precio, imagen, rating = 5, rati
           {ratingCount ? `${rating.toFixed(1)} · ${ratingCount} ${ratingCount === 1 ? "opinión" : "opiniones"}` : "5.0 · Sin opiniones"}
         </span>
 
-        <span className="tarjeta-menu__precio">{precio}</span>
+        <span className="tarjeta-menu__precio">{formatearCOP(precio)}</span>
       </div>
     </article>
   );

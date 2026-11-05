@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { apiRequest } from "../../../services/api";
 import SectionHeading from "../SectionHeading";
 import { useDialogo } from "../../../context/useDialogo";
+import { formatearCOP } from "../../../utils/moneda";
 
 const orderStatus = {
   pending: "Pendiente",
@@ -13,8 +14,7 @@ const orderStatus = {
   cancelled: "Cancelado",
 };
 
-const money = (value) =>
-  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(value || 0);
+const money = (value) => formatearCOP(Number(value) || 0);
 
 const dateLabel = (value) =>
   new Intl.DateTimeFormat("es-CO", { dateStyle: "long" }).format(new Date(value));

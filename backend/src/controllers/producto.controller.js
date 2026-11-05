@@ -30,7 +30,7 @@ export const listarMenuPublico = async (req, res) => {
                 id: producto.codigo,
                 codigo: producto.codigo,
                 nombre: producto.nombre,
-                precio: `$${Number(producto.precio).toLocaleString('es-CO')}`,
+                precio: producto.precio, // entero en COP; el frontend lo formatea
                 categoria: producto.categoria?.nombre || '',
                 descripcion: producto.descripcion || '',
                 imagen: producto.imagen || '',

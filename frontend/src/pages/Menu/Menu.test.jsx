@@ -14,8 +14,8 @@ import { apiRequest } from "../../services/api";
 import Menu from "./Menu";
 
 const PRODUCTOS = [
-  { id: 1, nombre: "Latte", precio: "$9.000", categoria: "Bebidas", descripcion: "Café con leche", imagen: "" },
-  { id: 2, nombre: "Waffle", precio: "$15.000", categoria: "Postres", descripcion: "Con frutas", imagen: "" },
+  { id: 1, nombre: "Latte", precio: 9000, categoria: "Bebidas", descripcion: "Café con leche", imagen: "" },
+  { id: 2, nombre: "Waffle", precio: 15000, categoria: "Postres", descripcion: "Con frutas", imagen: "" },
 ];
 
 // Primera llamada: menú; segunda: calificaciones
@@ -36,6 +36,8 @@ describe("Menú", () => {
     expect(await screen.findByText("Latte")).toBeInTheDocument();
     expect(screen.getByText("Waffle")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Bebidas" })).toBeInTheDocument();
+    // El precio llega como entero y se formatea en COP
+    expect(screen.getByText((_, el) => el?.className === "tarjeta-menu__precio" && /^\$\s9\.000$/.test(el.textContent))).toBeInTheDocument();
   });
 
   it("menú vacío: lo dice claramente (no como 'sin productos en esta categoría')", async () => {
