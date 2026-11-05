@@ -18,7 +18,7 @@ const PRODUCTOS = [producto("p1", "Latte"), producto("p2", "Waffle", { disponibl
 
 const montar = () => {
   adminApi.get.mockImplementation((ruta) =>
-    Promise.resolve(ruta === "/categorias" ? [{ id: "c1", nombre: "Bebidas" }] : PRODUCTOS));
+    Promise.resolve(ruta === "/v1/admin/categorias" ? [{ id: "c1", nombre: "Bebidas" }] : PRODUCTOS));
   adminApi.put.mockImplementation((ruta, datos) =>
     Promise.resolve({ ...PRODUCTOS.find((p) => ruta.endsWith(p.id)), ...datos }));
   return render(<DialogoProvider><ProductsSection /></DialogoProvider>);
@@ -42,7 +42,7 @@ describe("Productos: disponibilidad", () => {
     montar();
     const interruptor = within(await fila("Latte")).getByRole("switch", { name: /disponible/i });
     fireEvent.click(interruptor);
-    await waitFor(() => expect(adminApi.put).toHaveBeenCalledWith("/productos/p1", { disponible: false }));
+    await waitFor(() => expect(adminApi.put).toHaveBeenCalledWith("/v1/admin/productos/p1", { disponible: false }));
     await waitFor(() => expect(interruptor).toHaveAttribute("aria-checked", "false"));
   });
 });
@@ -86,7 +86,7 @@ describe("Productos: precio", () => {
 
   it.each([["22000"], ["22.000"], ["$22.000"], ["$ 22.000"]])("acepta %s como 22000", async (texto) => {
     await guardarCon(texto);
-    await waitFor(() => expect(adminApi.post).toHaveBeenCalledWith("/productos", expect.objectContaining({ precio: 22000 })));
+    await waitFor(() => expect(adminApi.post).toHaveBeenCalledWith("/v1/admin/productos", expect.objectContaining({ precio: 22000 })));
   });
 
   it.each([["12.500,5"], ["12,5"], ["-3000"], ["doce mil"]])("rechaza %s con un mensaje (no lo convierte a otro número)", async (texto) => {

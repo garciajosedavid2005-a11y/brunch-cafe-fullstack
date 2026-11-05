@@ -1,0 +1,33 @@
+import { Router } from 'express'
+import { validateToken } from '../../middlewares/validateToken.js'
+import { requirePermission } from '../../middlewares/requirePermission.js'
+import { validateSchema } from '../../middlewares/validator.middleware.js'
+import { visibilidadComentarioSchema } from '../../schema/comentario.schema.js'
+import { listarComentariosAdmin, cambiarVisibilidadComentario, eliminarComentario } from '../../controllers/comentario.controller.js'
+import categoriaRoutes from '../categorias.routes.js'
+import metodoPagoRoutes from '../metodoPago.routes.js'
+import estadoRoutes from '../estado.routes.js'
+import rolRoutes from '../rol.routes.js'
+import permisoRoutes from '../permiso.routes.js'
+import adminUsuarioRoutes from '../adminUsuario.routes.js'
+import { productosAdminRouter } from '../producto.routes.js'
+
+// /api/v1/admin: configuración del negocio. Cada router exige su permiso (no el rol).
+const router = Router()
+
+router.use('/categorias', categoriaRoutes)
+router.use('/productos', productosAdminRouter)
+router.use('/estados', estadoRoutes)
+router.use('/roles', rolRoutes)
+router.use('/permisos', permisoRoutes)
+router.use('/metodos-pago', metodoPagoRoutes)
+router.use('/usuarios', adminUsuarioRoutes)
+
+const comentarios = Router()
+comentarios.use(validateToken, requirePermission('resena:moderar'))
+comentarios.get('/', listarComentariosAdmin)
+comentarios.patch('/:id/visibilidad', validateSchema(visibilidadComentarioSchema), cambiarVisibilidadComentario)
+comentarios.delete('/:id', eliminarComentario)
+router.use('/comentarios', comentarios)
+
+export default router

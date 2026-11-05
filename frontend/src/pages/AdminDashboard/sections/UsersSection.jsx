@@ -12,8 +12,8 @@ const etiquetaRol = (rol) => rol?.etiqueta || rol?.nombre || "Sin rol";
 // Las protecciones (último admin, auto-bloqueo) las aplica el backend; aquí se confirman las acciones.
 export default function UsersSection() {
   const { items: usuarios, cargando, error, guardando, cargar, parchear } =
-    useAdminResource("/admin/usuarios");
-  const { items: roles } = useAdminResource("/roles");
+    useAdminResource("/v1/admin/usuarios");
+  const { items: roles } = useAdminResource("/v1/admin/roles");
   const { user } = useAuth();
   const { confirmar } = useDialogo();
   const [busqueda, setBusqueda] = useState("");

@@ -6,9 +6,9 @@ import { formatClock, formatCurrency, formatDate, formatCalendarDate } from "../
 import { hoyLocal, fechaLocal } from "../../../utils/fechas";
 
 const cargarDatosResumen = () => Promise.all([
-  adminApi.get("/pedidos"),
-  adminApi.get("/reservas"),
-  adminApi.get("/comentarios/admin"),
+  adminApi.get("/v1/staff/pedidos"),
+  adminApi.get("/v1/staff/reservas"),
+  adminApi.get("/v1/admin/comentarios"),
 ]);
 
 export default function OverviewSection({ onNavigateTab }) {

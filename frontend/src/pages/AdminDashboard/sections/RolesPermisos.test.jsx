@@ -36,7 +36,7 @@ const montar = async () => {
     return respuesta;
   });
   adminApi.get.mockImplementation((ruta) =>
-    Promise.resolve(ruta === "/permisos" ? CATALOGO : ROLES.filter((r) => !borrados.has(r.id))));
+    Promise.resolve(ruta === "/v1/admin/permisos" ? CATALOGO : ROLES.filter((r) => !borrados.has(r.id))));
   render(<DialogoProvider><RolesSection /></DialogoProvider>);
   await screen.findByText("Temporal");
 };

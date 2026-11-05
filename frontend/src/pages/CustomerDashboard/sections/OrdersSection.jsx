@@ -28,7 +28,7 @@ export default function OrdersSection() {
   const { confirmar } = useDialogo();
 
   useEffect(() => {
-    apiRequest("/customer/orders")
+    apiRequest("/v1/cliente/pedidos")
       .then(({ orders: customerOrders }) => setOrders(customerOrders))
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
@@ -47,7 +47,7 @@ export default function OrdersSection() {
     setCancelando(id);
     setError("");
     try {
-      const { order } = await apiRequest(`/customer/orders/${id}/cancel`, { method: "PATCH", body: JSON.stringify({}) });
+      const { order } = await apiRequest(`/v1/cliente/pedidos/${id}/cancelar`, { method: "PATCH", body: JSON.stringify({}) });
       setOrders((current) => current.map((item) => (item._id === id ? order : item)));
     } catch (requestError) {
       setError(requestError.message);

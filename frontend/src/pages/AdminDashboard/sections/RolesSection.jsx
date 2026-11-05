@@ -33,9 +33,9 @@ const MOTIVO_SISTEMA = "Rol de sistema: no se puede eliminar";
 
 export default function RolesSection() {
   const { items: roles, cargando, error, guardando, cargar, crear, actualizar, eliminar } =
-    useAdminResource("/roles");
+    useAdminResource("/v1/admin/roles");
   // Catálogo de permisos (los "reservados" son de fases futuras y aún no se asignan)
-  const { items: catalogo } = useAdminResource("/permisos");
+  const { items: catalogo } = useAdminResource("/v1/admin/permisos");
   const [busqueda, setBusqueda] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [rolEnEdicion, setRolEnEdicion] = useState(null);

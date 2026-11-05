@@ -17,7 +17,7 @@ import { useDialogo } from "../../../context/useDialogo";
 
 export default function ReviewsSection() {
   const { items: comentarios, setItems, cargando, error, cargar } =
-    useAdminResource("/comentarios/admin");
+    useAdminResource("/v1/admin/comentarios");
   const [busqueda, setBusqueda] = useState("");
   const [filtroCalificacion, setFiltroCalificacion] = useState("todas");
   const [filtroTipo, setFiltroTipo] = useState("todos");
@@ -28,7 +28,7 @@ export default function ReviewsSection() {
   // Alternar visibilidad (moderar)
   const handleToggleVisibilidad = async (item) => {
     try {
-      const { visible } = await adminApi.patch(`/comentarios/${item.id}/visibility`, {
+      const { visible } = await adminApi.patch(`/v1/admin/comentarios/${item.id}/visibilidad`, {
         visible: !item.visible,
       });
       setItems((prev) => prev.map((comment) => (comment.id === item.id ? { ...comment, visible } : comment)));
@@ -41,7 +41,7 @@ export default function ReviewsSection() {
   const handleEliminar = async () => {
     if (!comentarioAEliminar) return;
     try {
-      await adminApi.delete(`/comentarios/${comentarioAEliminar.id}`);
+      await adminApi.delete(`/v1/admin/comentarios/${comentarioAEliminar.id}`);
       setItems((prev) => prev.filter((comment) => comment.id !== comentarioAEliminar.id));
       setComentarioAEliminar(null);
     } catch (requestError) {

@@ -52,7 +52,7 @@ const Menu = () => {
   }, [location.hash, intento]);
 
   useEffect(() => {
-    apiRequest("/comentarios/product-ratings")
+    apiRequest("/v1/comentarios/calificaciones")
       .then(({ productRatings: ratings }) => {
         // Indexadas por el ObjectId del producto (el `id` del catálogo)
         setProductRatings(Object.fromEntries(ratings.map(({ productoRef, average, count }) => [

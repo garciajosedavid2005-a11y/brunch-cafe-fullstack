@@ -8,8 +8,8 @@ import EstadoSelector from "../components/EstadoSelector";
 import { useDialogo } from "../../../context/useDialogo";
 
 export default function OrdersSection() {
-  const { items: pedidos, cargando, error, cargar } = useAdminResource("/pedidos");
-  const estadosResource = useAdminResource("/estados?tipo=pedido");
+  const { items: pedidos, cargando, error, cargar } = useAdminResource("/v1/staff/pedidos");
+  const estadosResource = useAdminResource("/v1/admin/estados?tipo=pedido");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   const [busqueda, setBusqueda] = useState("");
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
@@ -20,7 +20,7 @@ export default function OrdersSection() {
   // Envía el código de destino; el backend valida la transición, el permiso y el motivo
   const handleCambiarEstado = async (id, codigo, motivo) => {
     try {
-      const actualizado = await adminApi.patch(`/pedidos/${id}/estado`, { codigo, ...(motivo ? { motivo } : {}) });
+      const actualizado = await adminApi.patch(`/v1/staff/pedidos/${id}/estado`, { codigo, ...(motivo ? { motivo } : {}) });
       if (pedidoSeleccionado?.id === id) setPedidoSeleccionado(actualizado);
       await cargar();
     } catch (requestError) {
@@ -89,14 +89,12 @@ export default function OrdersSection() {
       {/* TABLA DE PEDIDOS */}
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table">
+          <table className="admin-table admin-table--compacta admin-pedidos__tabla">
             <thead>
               <tr>
-                <th>Código</th>
-                <th>Cliente</th>
-                <th>Entrega / Dirección</th>
+                <th>Pedido</th>
+                <th>Entrega</th>
                 <th>Total</th>
-                <th>Método de Pago</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
@@ -106,13 +104,13 @@ export default function OrdersSection() {
                 pedidosFiltrados.map((pedido) => (
                   <tr key={pedido.id}>
                     <td>
-                      <span className="admin-table__code">{pedido.codigo}</span>
-                      <small className="admin-table__date">{formatDate(pedido.fecha)} · {formatTime(pedido.fecha)}</small>
-                    </td>
-                    <td>
-                      <div className="admin-table__client">
-                        <strong>{pedido.cliente}</strong>
-                        <span>{pedido.telefono}</span>
+                      <div className="admin-pedidos__pedido">
+                        <span className="admin-table__code">{pedido.codigo}</span>
+                        <small className="admin-table__date">{formatDate(pedido.fecha)} · {formatTime(pedido.fecha)}</small>
+                        <div className="admin-table__client">
+                          <strong>{pedido.cliente}</strong>
+                          <span>{pedido.telefono}</span>
+                        </div>
                       </div>
                     </td>
                     <td>
@@ -122,10 +120,10 @@ export default function OrdersSection() {
                       </div>
                     </td>
                     <td>
-                      <span className="admin-table__amount">{formatCurrency(pedido.total)}</span>
-                    </td>
-                    <td>
-                      <span className="admin-table__payment">{pedido.metodoPago}</span>
+                      <div className="admin-pedidos__total">
+                        <span className="admin-table__amount">{formatCurrency(pedido.total)}</span>
+                        <small className="admin-pedidos__pago">{pedido.metodoPago}</small>
+                      </div>
                     </td>
                     <td>
                       {/* SELECTOR DE ESTADO: solo los cambios permitidos */}
@@ -145,7 +143,7 @@ export default function OrdersSection() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="admin-table__empty">
+                  <td colSpan="5" className="admin-table__empty">
                     No se encontraron pedidos con los filtros aplicados.
                   </td>
                 </tr>

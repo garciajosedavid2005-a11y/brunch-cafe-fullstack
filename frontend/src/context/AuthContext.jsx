@@ -23,7 +23,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let active = true;
-    apiRequest("/auth/me")
+    apiRequest("/v1/auth/me")
       .then(({ user: currentUser }) => {
         if (active) setUser(normalizeUser(currentUser));
       })
@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async ({ email, password }) => {
-    const authenticatedUser = await apiRequest("/auth/login", {
+    const authenticatedUser = await apiRequest("/v1/auth/login", {
       method: "POST",
       body: JSON.stringify({ correo: email, contraseña: password }),
     });
@@ -52,7 +52,7 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (data) => {
-    const registeredUser = await apiRequest("/auth/registro", {
+    const registeredUser = await apiRequest("/v1/auth/registro", {
       method: "POST",
       body: JSON.stringify({
         nombre: data.nombre,
@@ -68,7 +68,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    await apiRequest("/auth/logout", { method: "POST" });
+    await apiRequest("/v1/auth/logout", { method: "POST" });
     setUser(null);
   };
 

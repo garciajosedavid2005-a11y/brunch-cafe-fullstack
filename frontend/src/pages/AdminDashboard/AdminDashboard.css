@@ -2316,3 +2316,46 @@
   padding-left: 0.6rem;
   padding-right: 0.6rem;
 }
+
+/* Reservas a 1280 px: cliente, código y motivo en una celda; personas junto a la fecha */
+.admin-reservas__reserva {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  white-space: normal;
+  max-width: 220px;
+}
+
+.admin-reservas__motivo {
+  font-size: 0.82rem;
+  color: #4a3531;
+  line-height: 1.35;
+}
+
+.admin-reservas__tabla .admin-table__schedule .admin-table__capacity {
+  margin-top: 0.2rem;
+}
+
+/* Pedidos a 1280 px: código, fecha y cliente en una celda; método de pago bajo el total */
+.admin-pedidos__pedido {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.admin-pedidos__total {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.admin-pedidos__pago {
+  font-size: 0.82rem;
+  color: #4a3531;
+}
+
+.admin-pedidos__tabla .admin-table__address {
+  white-space: normal;
+  max-width: 220px;
+}

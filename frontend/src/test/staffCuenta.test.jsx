@@ -11,7 +11,7 @@ const usuario = (role, roleLabel) => ({
 });
 
 const responder = (user) => apiRequest.mockImplementation((ruta) => {
-  if (ruta === "/auth/me") return Promise.resolve({ user });
+  if (ruta === "/v1/auth/me") return Promise.resolve({ user });
   if (ruta === "/v1/cliente/perfil") return Promise.resolve({ perfil: { nombre: user.nombre, apellido: user.apellido, correo: user.email, telefono: user.telefono } });
   return Promise.resolve({});
 });

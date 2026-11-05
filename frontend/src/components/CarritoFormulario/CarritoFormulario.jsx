@@ -48,7 +48,7 @@ const CarritoFormulario = () => {
         if (!user?.id) return undefined
 
         let activo = true
-        apiRequest('/customer/payment-methods')
+        apiRequest('/v1/cliente/metodos-pago')
             .then((metodos) => {
                 if (!activo) return
                 setMetodosPagoEstado({ usuarioId: user.id, metodos, error: '' })
@@ -164,7 +164,7 @@ const CarritoFormulario = () => {
         setErrorPedido('')
         try {
             const metodoPago = metodosPago.find((metodo) => metodo.id === metodoPagoId)
-            const { order } = await apiRequest('/customer/orders', {
+            const { order } = await apiRequest('/v1/cliente/pedidos', {
                 method: 'POST',
                 body: JSON.stringify({
                     ...formData,

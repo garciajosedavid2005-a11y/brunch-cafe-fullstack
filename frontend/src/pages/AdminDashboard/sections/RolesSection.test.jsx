@@ -37,7 +37,7 @@ const montar = async () => {
     return respuesta;
   });
   adminApi.get.mockImplementation((ruta) =>
-    Promise.resolve(ruta === "/permisos" ? CATALOGO : ROLES.filter((r) => !borrados.has(r.id))));
+    Promise.resolve(ruta === "/v1/admin/permisos" ? CATALOGO : ROLES.filter((r) => !borrados.has(r.id))));
   render(<DialogoProvider><RolesSection /></DialogoProvider>);
   await screen.findByText("Temporal");
 };
@@ -88,7 +88,7 @@ describe("Roles: eliminar", () => {
     const dialogo = screen.getByRole("dialog");
     expect(dialogo).toHaveTextContent("Temporal");
     fireEvent.click(within(dialogo).getByRole("button", { name: "Eliminar rol" }));
-    await waitFor(() => expect(adminApi.delete).toHaveBeenCalledWith("/roles/id-temporal"));
+    await waitFor(() => expect(adminApi.delete).toHaveBeenCalledWith("/v1/admin/roles/id-temporal"));
     await waitFor(() => expect(screen.queryByText("Temporal", { selector: "strong" })).not.toBeInTheDocument());
   });
 

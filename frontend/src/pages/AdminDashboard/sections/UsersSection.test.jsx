@@ -26,7 +26,7 @@ const USUARIOS = [
 ];
 
 const montar = async () => {
-  adminApi.get.mockImplementation((ruta) => Promise.resolve(ruta === "/roles" ? ROLES : USUARIOS));
+  adminApi.get.mockImplementation((ruta) => Promise.resolve(ruta === "/v1/admin/roles" ? ROLES : USUARIOS));
   render(<DialogoProvider><UsersSection /></DialogoProvider>);
   await screen.findByText("ana@example.com");
 };
@@ -64,14 +64,14 @@ describe("Usuarios (admin)", () => {
     const confirmar = screen.getByRole("button", { name: "Desactivar usuario" });
     expect(confirmar).toHaveClass("dialogo__boton--peligro");
     fireEvent.click(confirmar);
-    await waitFor(() => expect(adminApi.patch).toHaveBeenCalledWith("/admin/usuarios/ana", { activo: false }));
+    await waitFor(() => expect(adminApi.patch).toHaveBeenCalledWith("/v1/admin/usuarios/ana", { activo: false }));
   });
 
   it("reactivar no pide confirmación", async () => {
     await montar();
     fireEvent.click(within(fila("luis@example.com")).getByRole("button", { name: "Activar" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    await waitFor(() => expect(adminApi.patch).toHaveBeenCalledWith("/admin/usuarios/luis", { activo: true }));
+    await waitFor(() => expect(adminApi.patch).toHaveBeenCalledWith("/v1/admin/usuarios/luis", { activo: true }));
   });
 
   it("cambiar rol muestra actual → nuevo; al cancelar el desplegable vuelve al anterior", async () => {
@@ -91,7 +91,7 @@ describe("Usuarios (admin)", () => {
     await montar();
     fireEvent.change(within(fila("ana@example.com")).getByRole("combobox"), { target: { value: "r-mesero" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirmar cambio" }));
-    await waitFor(() => expect(adminApi.patch).toHaveBeenCalledWith("/admin/usuarios/ana", { rolId: "r-mesero" }));
+    await waitFor(() => expect(adminApi.patch).toHaveBeenCalledWith("/v1/admin/usuarios/ana", { rolId: "r-mesero" }));
   });
 
   it("error de protección del backend se muestra en el diálogo", async () => {

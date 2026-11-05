@@ -5,8 +5,8 @@ import AdminStatus from "../components/AdminStatus";
 
 export default function StatesSection() {
   const [tipoActivo, setTipoActivo] = useState("pedidos"); // "pedidos" | "reservas"
-  const pedidosResource = useAdminResource("/estados?tipo=pedido");
-  const reservasResource = useAdminResource("/estados?tipo=reserva");
+  const pedidosResource = useAdminResource("/v1/admin/estados?tipo=pedido");
+  const reservasResource = useAdminResource("/v1/admin/estados?tipo=reserva");
   const [busqueda, setBusqueda] = useState("");
 
   const [modalAbierto, setModalAbierto] = useState(false);

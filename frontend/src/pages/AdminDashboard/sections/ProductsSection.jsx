@@ -19,13 +19,13 @@ const megas = (bytes) => (bytes / (1024 * 1024)).toLocaleString("es-CO", { maxim
 
 export default function ProductsSection() {
   const { items: productos, cargando, error, guardando, cargar, crear, actualizar, eliminar } =
-    useAdminResource("/productos");
+    useAdminResource("/v1/admin/productos");
   const {
     items: categorias,
     cargando: cargandoCategorias,
     error: errorCategorias,
     cargar: cargarCategorias,
-  } = useAdminResource("/categorias");
+  } = useAdminResource("/v1/admin/categorias");
   const [busqueda, setBusqueda] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("Todas");
   const [modalAbierto, setModalAbierto] = useState(false);

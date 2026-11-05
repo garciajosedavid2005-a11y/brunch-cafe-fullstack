@@ -8,8 +8,8 @@ import { pedirMotivo } from "../components/estadoUtils";
 import { useDialogo } from "../../../context/useDialogo";
 
 export default function ReservationsSection() {
-  const { items: reservas, cargando, error, cargar, parchear } = useAdminResource("/reservas");
-  const estadosResource = useAdminResource("/estados?tipo=reserva");
+  const { items: reservas, cargando, error, cargar, parchear } = useAdminResource("/v1/staff/reservas");
+  const estadosResource = useAdminResource("/v1/admin/estados?tipo=reserva");
   const [filtroEstado, setFiltroEstado] = useState("Todas");
   const [busqueda, setBusqueda] = useState("");
   const [reservaSeleccionada, setReservaSeleccionada] = useState(null);
@@ -94,15 +94,12 @@ export default function ReservationsSection() {
       {/* TABLA DE RESERVAS */}
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table">
+          <table className="admin-table admin-table--compacta admin-reservas__tabla">
             <thead>
               <tr>
-                <th>Código</th>
-                <th>Cliente</th>
+                <th>Reserva</th>
                 <th>Contacto</th>
-                <th>Fecha y Hora</th>
-                <th>Personas</th>
-                <th>Motivo</th>
+                <th>Fecha y hora</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
@@ -112,10 +109,11 @@ export default function ReservationsSection() {
                 reservasFiltradas.map((reserva) => (
                   <tr key={reserva.id}>
                     <td>
-                      <span className="admin-table__code">{reserva.codigo}</span>
-                    </td>
-                    <td>
-                      <strong className="admin-table__client-name">{reserva.cliente}</strong>
+                      <div className="admin-reservas__reserva">
+                        <strong className="admin-table__client-name">{reserva.cliente}</strong>
+                        <span className="admin-table__code">{reserva.codigo}</span>
+                        {reserva.motivo && <span className="admin-reservas__motivo">{reserva.motivo}</span>}
+                      </div>
                     </td>
                     <td>
                       <div className="admin-table__contact">
@@ -127,16 +125,11 @@ export default function ReservationsSection() {
                       <div className="admin-table__schedule">
                         <strong>{formatCalendarDate(reserva.fecha)}</strong>
                         <span>{formatClock(reserva.hora)}</span>
+                        <span className="admin-table__capacity">
+                          <Users size={14} aria-hidden="true" />
+                          {reserva.personas} pers.
+                        </span>
                       </div>
-                    </td>
-                    <td>
-                      <span className="admin-table__capacity">
-                        <Users size={14} />
-                        {reserva.personas} pers.
-                      </span>
-                    </td>
-                    <td>
-                      <span className="admin-table__reason">{reserva.motivo}</span>
                     </td>
                     <td>
                       <EstadoSelector item={reserva} onCambiar={(codigo, motivo) => handleCambiarEstado(reserva.id, codigo, motivo)} />
@@ -149,6 +142,7 @@ export default function ReservationsSection() {
                               type="button"
                               className="admin-button--icon-success"
                               title="Confirmar reserva"
+                              aria-label={`Confirmar reserva de ${reserva.cliente}`}
                               onClick={() => accionRapida(reserva, "confirmada")}
                             >
                               <Check size={16} />
@@ -157,6 +151,7 @@ export default function ReservationsSection() {
                               type="button"
                               className="admin-button--icon-danger"
                               title="Rechazar/Cancelar reserva"
+                              aria-label={`Cancelar reserva de ${reserva.cliente}`}
                               onClick={() => accionRapida(reserva, "cancelada")}
                             >
                               <X size={16} />
@@ -178,7 +173,7 @@ export default function ReservationsSection() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="admin-table__empty">
+                  <td colSpan="5" className="admin-table__empty">
                     No se encontraron reservas con los filtros aplicados.
                   </td>
                 </tr>
