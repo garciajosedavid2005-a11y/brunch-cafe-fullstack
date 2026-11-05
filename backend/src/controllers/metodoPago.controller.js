@@ -2,7 +2,6 @@ import MetodoPago from '../models/metodoPago.model.js'
 import Pedido from '../models/pedido.model.js'
 import { manejarError } from '../libs/manejarError.js'
 import { slug, sinUndefined } from '../libs/utils.js'
-import { ensureOrderPaymentMethods } from '../libs/ensureOrderOptions.js'
 
 const COMPARACION = { locale: 'es', strength: 1 }
 
@@ -19,7 +18,6 @@ const formato = (metodo, pedidosAsociados = 0) => ({
 
 export const listarMetodosPago = async (req, res) => {
     try {
-        await ensureOrderPaymentMethods()
         const [metodos, conteos] = await Promise.all([
             MetodoPago.find().sort({ nombre: 1 }),
             Pedido.aggregate([{ $group: { _id: '$metodoPago', total: { $sum: 1 } } }]),

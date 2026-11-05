@@ -13,7 +13,8 @@ import DetallePedido from '../src/models/detallePedido.model.js'
 import Producto from '../src/models/producto.model.js'
 import { sembrarRoles } from '../src/seeds/base.js'
 import { sembrarEstados } from '../src/seeds/estados.js'
-import { ensureOrderPaymentMethods } from '../src/libs/ensureOrderOptions.js'
+import { sembrarMetodosPago } from '../src/seeds/metodosPago.js'
+import MetodoPago from '../src/models/metodoPago.model.js'
 import { estadoPorCodigo, registrarEvento } from '../src/services/estados.service.js'
 
 export const USUARIOS_DEV = [
@@ -57,7 +58,8 @@ try {
         if (productos.length === 0) {
             console.log('Sin productos: ejecuta npm run seed:menu para crear el pedido de prueba.')
         } else {
-            const [metodo] = await ensureOrderPaymentMethods()
+            await sembrarMetodosPago()
+            const metodo = await MetodoPago.findOne({ codigo: 'contra-entrega' })
             const pendiente = await estadoPorCodigo('pedido', 'pendiente')
             const lineas = productos.map((p) => ({ p, cantidad: 1, subtotal: p.precio }))
             const pedido = await Pedido.create({

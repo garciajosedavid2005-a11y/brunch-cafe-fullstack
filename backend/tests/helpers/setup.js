@@ -14,12 +14,15 @@ beforeAll(async () => {
     await mongoose.connect(process.env.MONGO_URI, { dbName })
 })
 
-// Datos base que el servidor siembra al arrancar (roles y estados)
+// Datos base: roles y estados (los siembra el servidor al arrancar) y métodos de pago (seed:base)
 beforeEach(async () => {
     const { sembrarRoles } = await import('../../src/seeds/base.js')
     const { sembrarEstados } = await import('../../src/seeds/estados.js')
+    const { sembrarMetodosPago } = await import('../../src/seeds/metodosPago.js')
     await sembrarRoles()
     await sembrarEstados()
+    // Lo que deja `npm run seed:base` (las peticiones ya no los crean)
+    await sembrarMetodosPago()
 })
 
 afterEach(async () => {

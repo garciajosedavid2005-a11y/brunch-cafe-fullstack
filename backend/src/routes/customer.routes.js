@@ -9,7 +9,6 @@ import MetodoPago from '../models/metodoPago.model.js';
 import Reserva from '../models/reserva.model.js';
 import Producto from '../models/producto.model.js';
 import { crearComentario, listarMisComentarios } from '../controllers/comentario.controller.js';
-import { ensureOrderPaymentMethods } from '../libs/ensureOrderOptions.js';
 import { STATUS_CLIENTE } from '../libs/estados.js';
 import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../services/estados.service.js';
 import { validateSchema } from '../middlewares/validator.middleware.js';
@@ -214,7 +213,6 @@ router.get('/orders', async (req, res, next) => {
 
 router.get('/payment-methods', async (req, res, next) => {
   try {
-    await ensureOrderPaymentMethods();
     const methods = await MetodoPago.find({ activo: { $ne: false } })
       .sort({ nombre: 1 })
       .select('nombre descripcion');
@@ -264,7 +262,6 @@ router.post('/orders', async (req, res, next) => {
   }
 
   try {
-    await ensureOrderPaymentMethods();
     const [pending, paymentMethod] = await Promise.all([
       estadoPorCodigo('pedido', 'pendiente'),
       MetodoPago.findOne({ _id: parsed.data.metodoPagoId, activo: { $ne: false } }),
