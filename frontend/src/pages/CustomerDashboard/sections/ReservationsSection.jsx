@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { apiRequest } from "../../../services/api";
 import { useAuth } from "../../../context/useAuth";
 import SectionHeading from "../SectionHeading";
+import { useDialogo } from "../../../context/useDialogo";
 
 const today = new Date();
 const minimumDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -50,6 +51,7 @@ export default function ReservationsSection() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState({ message: "", error: false });
+  const { confirmar } = useDialogo();
 
   useEffect(() => {
     apiRequest("/customer/reservations")
@@ -90,6 +92,14 @@ export default function ReservationsSection() {
   };
 
   const cancelReservation = async (id) => {
+    const { confirmado } = await confirmar({
+      titulo: "Cancelar reserva",
+      mensaje: "¿Estás seguro de que deseas cancelar esta reserva?",
+      confirmarTexto: "Sí, cancelar reserva",
+      cancelarTexto: "Volver",
+      peligroso: true,
+    });
+    if (!confirmado) return;
     setNotice({ message: "", error: false });
     try {
       const { reservation } = await apiRequest(`/customer/reservations/${id}/cancel`, { method: "PATCH" });

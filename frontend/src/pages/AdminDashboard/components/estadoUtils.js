@@ -16,9 +16,22 @@ const CLASE_POR_CODIGO = {
 
 export const claseEstado = (codigo) => CLASE_POR_CODIGO[codigo] || "admin-badge--neutral";
 
-// Pide el motivo si la transición lo exige; devuelve null si el usuario desiste
-export const pedirMotivo = (transicion) => {
+const ES_CANCELACION = ["cancelado", "cancelada"];
+
+// Pide el motivo (con el diálogo de la app) si la transición lo exige.
+// Devuelve el motivo ("" si no hace falta) o null si el usuario desiste.
+export const pedirMotivo = async (confirmar, transicion) => {
   if (!transicion?.requiereMotivo) return "";
-  const motivo = window.prompt(`Motivo para pasar a "${transicion.nombre}":`);
-  return motivo && motivo.trim() ? motivo.trim() : null;
+  const cancela = ES_CANCELACION.includes(transicion.codigo);
+  const { confirmado, motivo } = await confirmar({
+    titulo: cancela ? "Cancelar" : `Pasar a "${transicion.nombre}"`,
+    mensaje: cancela
+      ? "Esta acción no se puede deshacer. Indica el motivo de la cancelación."
+      : `Indica el motivo para pasar a "${transicion.nombre}".`,
+    confirmarTexto: cancela ? "Sí, cancelar" : "Confirmar",
+    cancelarTexto: "Volver",
+    peligroso: cancela,
+    motivo: { etiqueta: "Motivo", requerido: true },
+  });
+  return confirmado ? motivo : null;
 };

@@ -1866,3 +1866,40 @@
     justify-content: space-between;
   }
 }
+
+/* ---- Usuarios (0.7b) ---- */
+.admin-users__yo {
+  font-size: 0.75rem;
+  color: #6b4f49;
+}
+
+.admin-users__propia {
+  display: grid;
+  gap: 0.3rem;
+  max-width: 220px;
+}
+
+.admin-users__propia small {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #5c4540;
+  white-space: normal;
+}
+
+.admin-users__propia .admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+}
+
+/* Desplegable de rol: Foundation fija una altura que corta el texto */
+.admin-form-select.admin-select-rol {
+  height: auto !important;
+  min-height: 40px;
+  padding: 0.5rem 2rem 0.5rem 0.75rem !important;
+  line-height: 1.4 !important;
+  font-size: 0.88rem !important;
+  margin: 0 !important;
+  min-width: 150px;
+}

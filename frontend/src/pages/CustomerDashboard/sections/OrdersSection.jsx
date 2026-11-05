@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiRequest } from "../../../services/api";
 import SectionHeading from "../SectionHeading";
+import { useDialogo } from "../../../context/useDialogo";
 
 const orderStatus = {
   pending: "Pendiente",
@@ -23,6 +24,7 @@ export default function OrdersSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cancelando, setCancelando] = useState("");
+  const { confirmar } = useDialogo();
 
   useEffect(() => {
     apiRequest("/customer/orders")
@@ -33,7 +35,14 @@ export default function OrdersSection() {
 
   // Solo se puede cancelar mientras el pedido sigue pendiente
   const cancelOrder = async (id) => {
-    if (!window.confirm("¿Seguro que quieres cancelar este pedido?")) return;
+    const { confirmado } = await confirmar({
+      titulo: "Cancelar pedido",
+      mensaje: "¿Estás seguro de que deseas cancelar este pedido?",
+      confirmarTexto: "Sí, cancelar pedido",
+      cancelarTexto: "Volver",
+      peligroso: true,
+    });
+    if (!confirmado) return;
     setCancelando(id);
     setError("");
     try {

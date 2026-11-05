@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { adminApi } from "../../../services/adminApi";
+import { useDialogo } from "../../../context/useDialogo";
 
 export default function useAdminResource(ruta) {
   const [items, setItems] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const { avisar } = useDialogo();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -39,13 +41,13 @@ export default function useAdminResource(ruta) {
     };
   }, [ruta]);
 
-  // Ejecuta una acción; si falla avisa con el mensaje del backend y devuelve null
+  // Ejecuta una acción; si falla muestra el mensaje del backend en un diálogo y devuelve null
   const ejecutar = async (accion) => {
     setGuardando(true);
     try {
       return await accion();
     } catch (e) {
-      window.alert(e.message);
+      await avisar({ tipo: "error", titulo: "No se pudo completar la acción", mensaje: e.message });
       return null;
     } finally {
       setGuardando(false);

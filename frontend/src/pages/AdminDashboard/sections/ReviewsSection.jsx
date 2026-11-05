@@ -13,6 +13,7 @@ import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
 import { adminApi } from "../../../services/adminApi";
 import { formatDate } from "../adminFormat";
+import { useDialogo } from "../../../context/useDialogo";
 
 export default function ReviewsSection() {
   const { items: comentarios, setItems, cargando, error, cargar } =
@@ -21,6 +22,8 @@ export default function ReviewsSection() {
   const [filtroCalificacion, setFiltroCalificacion] = useState("todas");
   const [filtroTipo, setFiltroTipo] = useState("todos");
   const [comentarioAEliminar, setComentarioAEliminar] = useState(null);
+  const { avisar } = useDialogo();
+  const avisarError = (e) => avisar({ tipo: "error", titulo: "No se pudo completar la acción", mensaje: e.message });
 
   // Alternar visibilidad (moderar)
   const handleToggleVisibilidad = async (item) => {
@@ -30,7 +33,7 @@ export default function ReviewsSection() {
       });
       setItems((prev) => prev.map((comment) => (comment.id === item.id ? { ...comment, visible } : comment)));
     } catch (requestError) {
-      window.alert(requestError.message);
+      avisarError(requestError);
     }
   };
 
@@ -42,7 +45,7 @@ export default function ReviewsSection() {
       setItems((prev) => prev.filter((comment) => comment.id !== comentarioAEliminar.id));
       setComentarioAEliminar(null);
     } catch (requestError) {
-      window.alert(requestError.message);
+      avisarError(requestError);
     }
   };
 

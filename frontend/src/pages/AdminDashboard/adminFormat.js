@@ -25,3 +25,7 @@ export const formatClock = (value) => {
   const suffix = hours >= 12 ? "p. m." : "a. m.";
   return `${hours % 12 || 12}:${String(minutes).padStart(2, "0")} ${suffix}`;
 };
+
+// "1 usuario" / "3 usuarios"
+export const plural = (cantidad, singular, pluralTexto = `${singular}s`) =>
+  `${cantidad} ${cantidad === 1 ? singular : pluralTexto}`;

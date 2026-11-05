@@ -1,16 +1,21 @@
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { Search, Lock } from "lucide-react";
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
 import { useAuth } from "../../../context/useAuth";
+import { useDialogo } from "../../../context/useDialogo";
+import { plural } from "../adminFormat";
+
+const etiquetaRol = (rol) => rol?.etiqueta || rol?.nombre || "Sin rol";
 
 // Pantalla mínima: lista de usuarios, cambio de rol y activar/desactivar.
-// Las protecciones (último admin, auto-bloqueo) las aplica el backend.
+// Las protecciones (último admin, auto-bloqueo) las aplica el backend; aquí se confirman las acciones.
 export default function UsersSection() {
   const { items: usuarios, cargando, error, guardando, cargar, parchear } =
     useAdminResource("/admin/usuarios");
   const { items: roles } = useAdminResource("/roles");
   const { user } = useAuth();
+  const { confirmar } = useDialogo();
   const [busqueda, setBusqueda] = useState("");
 
   const texto = busqueda.toLowerCase();
@@ -18,15 +23,54 @@ export default function UsersSection() {
     `${u.nombre} ${u.apellido} ${u.correo} ${u.rol?.nombre || ""}`.toLowerCase().includes(texto)
   );
 
-  const cambiarRol = (usuario, rolId) => {
-    if (rolId && rolId !== usuario.rol?.id) parchear(usuario.id, { rolId });
+  const nombreCompleto = (usuario) => `${usuario.nombre} ${usuario.apellido}`.trim();
+
+  const resumenUsuario = (usuario, extra) => (
+    <>
+      <strong>{nombreCompleto(usuario)}</strong>
+      <br />
+      {usuario.correo}
+      {extra}
+    </>
+  );
+
+  // El <select> es controlado por usuario.rol.id: si se cancela, vuelve solo al rol anterior
+  const cambiarRol = async (usuario, rolId) => {
+    if (!rolId || rolId === usuario.rol?.id) return;
+    const nuevo = roles.find((rol) => rol.id === rolId);
+    const { confirmado } = await confirmar({
+      titulo: "Cambiar rol",
+      mensaje: "¿Estás seguro de que deseas cambiar el rol de este usuario?",
+      detalle: resumenUsuario(usuario, (
+        <>
+          <br />
+          <span>{usuario.rol?.nombre || "Sin rol"} → {etiquetaRol(nuevo)}</span>
+        </>
+      )),
+      confirmarTexto: "Confirmar cambio",
+      cancelarTexto: "Cancelar",
+    });
+    if (confirmado) await parchear(usuario.id, { rolId });
   };
 
-  const cambiarActivo = (usuario) => {
-    const accion = usuario.activo ? "desactivar" : "activar";
-    if (window.confirm(`¿Seguro que quieres ${accion} a ${usuario.nombre} ${usuario.apellido}?`)) {
-      parchear(usuario.id, { activo: !usuario.activo });
+  const cambiarActivo = async (usuario) => {
+    if (usuario.activo) {
+      const { confirmado } = await confirmar({
+        titulo: "Desactivar usuario",
+        mensaje: "¿Estás seguro de que deseas desactivar esta cuenta?",
+        detalle: resumenUsuario(usuario, (
+          <>
+            <br />
+            <small>Perderá el acceso de inmediato. Podrás reactivarla cuando quieras.</small>
+          </>
+        )),
+        confirmarTexto: "Desactivar usuario",
+        cancelarTexto: "Cancelar",
+        peligroso: true,
+      });
+      if (!confirmado) return;
     }
+    await parchear(usuario.id, { activo: !usuario.activo });
   };
 
   return (
@@ -51,9 +95,7 @@ export default function UsersSection() {
             onChange={(e) => setBusqueda(e.target.value)}
           />
         </div>
-        <div className="admin-toolbar__count">
-          <strong>{filtrados.length}</strong> usuarios
-        </div>
+        <div className="admin-toolbar__count">{plural(filtrados.length, "usuario")}</div>
       </div>
 
       <AdminStatus cargando={cargando} error={error} onReintentar={cargar} />
@@ -76,27 +118,29 @@ export default function UsersSection() {
                   return (
                     <tr key={usuario.id}>
                       <td>
-                        <strong className="admin-table__client-name">
-                          {usuario.nombre} {usuario.apellido}
-                        </strong>
-                        {esYo && <div style={{ fontSize: "0.75rem", color: "#8c726c" }}>(tú)</div>}
+                        <strong className="admin-table__client-name">{nombreCompleto(usuario)}</strong>
+                        {esYo && <div className="admin-users__yo">(tú)</div>}
                       </td>
                       <td>{usuario.correo}</td>
                       <td>
-                        <select
-                          className="admin-form-select"
-                          value={usuario.rol?.id || ""}
-                          disabled={guardando}
-                          onChange={(e) => cambiarRol(usuario, e.target.value)}
-                          aria-label={`Rol de ${usuario.nombre}`}
-                        >
-                          {!usuario.rol && <option value="">Sin rol</option>}
-                          {roles.map((rol) => (
-                            <option key={rol.id} value={rol.id}>
-                              {rol.nombre}
-                            </option>
-                          ))}
-                        </select>
+                        {esYo ? (
+                          <span className="admin-badge admin-badge--neutral">{usuario.rol?.nombre || "Sin rol"}</span>
+                        ) : (
+                          <select
+                            className="admin-form-select admin-select-rol"
+                            value={usuario.rol?.id || ""}
+                            disabled={guardando}
+                            onChange={(e) => cambiarRol(usuario, e.target.value)}
+                            aria-label={`Rol de ${nombreCompleto(usuario)}`}
+                          >
+                            {!usuario.rol && <option value="">Sin rol</option>}
+                            {roles.map((rol) => (
+                              <option key={rol.id} value={rol.id}>
+                                {etiquetaRol(rol)}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </td>
                       <td>
                         <span className={`admin-badge ${usuario.activo ? "admin-badge--success" : "admin-badge--danger"}`}>
@@ -104,14 +148,23 @@ export default function UsersSection() {
                         </span>
                       </td>
                       <td>
-                        <button
-                          type="button"
-                          className="admin-button--secondary-sm"
-                          disabled={guardando}
-                          onClick={() => cambiarActivo(usuario)}
-                        >
-                          {usuario.activo ? "Desactivar" : "Activar"}
-                        </button>
+                        {esYo ? (
+                          <div className="admin-users__propia">
+                            <span className="admin-badge admin-badge--neutral">
+                              <Lock size={12} aria-hidden="true" /> Tu cuenta
+                            </span>
+                            <small>No puedes desactivarte ni cambiar tu propio rol.</small>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="admin-button--secondary-sm"
+                            disabled={guardando}
+                            onClick={() => cambiarActivo(usuario)}
+                          >
+                            {usuario.activo ? "Desactivar" : "Activar"}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

@@ -1,4 +1,5 @@
 import "./CarritoFormulario.css"
+import { useDialogo } from '../../context/useDialogo'
 import { FaUser, FaMapMarkerAlt, FaClock, FaHome, FaStickyNote, FaCreditCard, FaMoneyBillWave } from 'react-icons/fa'
 import { useCarrito } from '../../context/CarritoContext'
 import { useEffect, useState } from 'react'
@@ -10,6 +11,7 @@ import ResumenPedido from '../ResumenPedido/ResumenPedido'
 const CarritoFormulario = () => {
 
     const { calcularTotal, limpiarCarrito, productos } = useCarrito()
+    const { avisar } = useDialogo()
     const { user } = useAuth()
     const navigate = useNavigate()
 
@@ -130,9 +132,7 @@ const CarritoFormulario = () => {
         }
 
         if (productos.length === 0) {
-            alert(
-                'Tu carrito está vacío — agrega productos desde el menú'
-            )
+            avisar({ titulo: 'Tu carrito está vacío', mensaje: 'Agrega productos desde el menú para hacer tu pedido.' })
             return
         }
 
@@ -182,7 +182,11 @@ const CarritoFormulario = () => {
                 barrio: '',
                 indicaciones: ''
             })
-            alert(`¡Pedido ${order.orderNumber} confirmado! Método de pago: ${metodoPago.nombre}.`)
+            // El pedido queda pendiente hasta que el café lo confirme
+            avisar({
+                titulo: `¡Recibimos tu pedido ${order.orderNumber}!`,
+                mensaje: `Te avisaremos cuando el café lo confirme. Método de pago: ${metodoPago.nombre}.`,
+            })
         } catch (error) {
             if (error.status === 401 || error.status === 403) {
                 navigate('/login', { state: { from: '/domicilios' } })

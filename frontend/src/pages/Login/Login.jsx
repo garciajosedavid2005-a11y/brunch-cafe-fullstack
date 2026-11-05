@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useDialogo } from "../../context/useDialogo";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import AuthBanner from "../Auth/AuthBanner";
@@ -6,6 +7,7 @@ import { useAuth } from "../../context/useAuth";
 import "../Auth/Auth.css";
 
 const Login = () => {
+  const { avisar } = useDialogo();
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
@@ -140,7 +142,11 @@ const Login = () => {
                 className="auth-link-olvido"
                 onClick={(e) => {
                   e.preventDefault();
-                  alert("Te enviaremos un correo con las instrucciones para restablecer tu contraseña.");
+                  // La recuperación por correo aún no existe en el backend: se informa sin simularla
+                  avisar({
+                    titulo: "Recuperar contraseña",
+                    mensaje: "La recuperación de contraseña por correo todavía no está disponible. Si no recuerdas tu contraseña, comunícate con Brunch Café para restablecerla.",
+                  });
                 }}
               >
                 ¿Olvidaste tu contraseña?

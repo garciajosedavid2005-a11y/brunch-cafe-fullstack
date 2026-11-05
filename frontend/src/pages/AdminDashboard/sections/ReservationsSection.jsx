@@ -5,6 +5,7 @@ import AdminStatus from "../components/AdminStatus";
 import { formatClock, formatDate } from "../adminFormat";
 import EstadoSelector from "../components/EstadoSelector";
 import { pedirMotivo } from "../components/estadoUtils";
+import { useDialogo } from "../../../context/useDialogo";
 
 export default function ReservationsSection() {
   const { items: reservas, cargando, error, cargar, parchear } = useAdminResource("/reservas");
@@ -12,6 +13,7 @@ export default function ReservationsSection() {
   const [filtroEstado, setFiltroEstado] = useState("Todas");
   const [busqueda, setBusqueda] = useState("");
   const [reservaSeleccionada, setReservaSeleccionada] = useState(null);
+  const { confirmar } = useDialogo();
 
   const estadosDisponibles = ["Todas", ...new Set(estadosResource.items.map((estado) => estado.nombre))];
 
@@ -21,10 +23,10 @@ export default function ReservationsSection() {
   };
 
   // Botones rápidos (confirmar / cancelar) solo si la transición está permitida
-  const accionRapida = (reserva, codigo) => {
+  const accionRapida = async (reserva, codigo) => {
     const transicion = (reserva.transiciones || []).find((t) => t.codigo === codigo);
     if (!transicion) return;
-    const motivo = pedirMotivo(transicion);
+    const motivo = await pedirMotivo(confirmar, transicion);
     if (motivo === null) return;
     handleCambiarEstado(reserva.id, codigo, motivo);
   };

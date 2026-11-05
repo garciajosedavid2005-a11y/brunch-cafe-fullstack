@@ -5,6 +5,7 @@ import AdminStatus from "../components/AdminStatus";
 import { adminApi } from "../../../services/adminApi";
 import { formatClock, formatCurrency, formatDate } from "../adminFormat";
 import EstadoSelector from "../components/EstadoSelector";
+import { useDialogo } from "../../../context/useDialogo";
 
 export default function OrdersSection() {
   const { items: pedidos, cargando, error, cargar } = useAdminResource("/pedidos");
@@ -12,6 +13,7 @@ export default function OrdersSection() {
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   const [busqueda, setBusqueda] = useState("");
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
+  const { avisar } = useDialogo();
 
   const estadosDisponibles = ["Todos", ...new Set(estadosResource.items.map((estado) => estado.nombre))];
 
@@ -22,7 +24,7 @@ export default function OrdersSection() {
       if (pedidoSeleccionado?.id === id) setPedidoSeleccionado(actualizado);
       await cargar();
     } catch (requestError) {
-      window.alert(requestError.message);
+      avisar({ tipo: "error", titulo: "No se pudo cambiar el estado", mensaje: requestError.message });
     }
   };
 
