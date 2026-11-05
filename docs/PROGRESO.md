@@ -8,9 +8,9 @@
 |---|---|---|---|---|---|
 | 0.1 | Infraestructura: tests, lint, errores, logger | FALTA | HECHO | ce1a848 | Vitest+Supertest+MongoMemoryReplSet (17 tests), ESLint 9, `{error:{code,message,details}}`, pino/pino-http (sustituye morgan). `normalizarErroresLegados` es transitorio (se retira en 0.11). Frontend: `api.js` y `adminApi.js` leen el formato nuevo. Mongoose `new:true` → `returnDocument:'after'`. |
 | 0.2 | Seguridad auth | FALTA | HECHO | 5bfaef2 | Cookie httpOnly/sameSite/secure(env), JWT 2 h, mensajes genéricos, rate limit login/registro, helmet, CORS por lista, 401 en token inválido/vencido, N2 (correo normalizado + `report:correos`), N1 en auth. 33 tests. Limitación: el registro aún permite inferir existencia (éxito vs. error); cerrarlo del todo requiere verificación por correo. Rate limit en memoria (1 instancia). |
-| 0.3 | Seed roles + primer admin | FALTA | HECHO | 1e6dc10 | `npm run seed:base` idempotente; roles admin/cliente al arrancar (registro sin upsert); admins existentes respetados y alias `Admin`/`Administrador` unificados. 41 tests. Ejecutado en BD local: roles OK, admin omitido (faltan `ADMIN_*` en `.env`). |
+| 0.3 | Seed roles + primer admin | FALTA | HECHO | 1e6dc10 | `npm run seed:base` idempotente; roles admin/cliente al arrancar (registro sin upsert); admins existentes respetados y alias `Admin`/`Administrador` unificados. 41 tests. Ejecutado en BD local: roles OK; el admin se creó después con `ADMIN_*` (verificado en 0.7). |
 | 0.4 | RBAC con permisos desde BD | FALTA | HECHO | 7dc8bbc | Catálogo `Permiso` (16 claves, 5 reservadas), `autenticar` (BD + caché 30 s, invalidación inmediata), `requirePermission` en todos los routers, roles de staff, `Usuario.activo`, `GET/PATCH /api/admin/usuarios` con protecciones, pantallas Roles (casillas) y Usuarios. 74 tests. |
-| 0.7 | Enums + transiciones + Evento | FALTA | PENDIENTE | — | adelantado |
+| 0.7 | Enums + transiciones + Evento | FALTA | HECHO | 8f8d894 | `Estado.codigo` fijo + catálogo y máquina en `src/libs/estados.js` (cada transición declara actor, permiso y si exige motivo); estados finales no se reabren (pedido y reserva). Modelo `Evento` (cada cambio, incluidas creación y cancelación por cliente). Sin inferencia por texto ni upserts en peticiones; `sembrarEstados` al arrancar (el servidor no arranca si falta migrar). `PATCH /api/customer/orders/:id/cancel` (cliente, solo pendiente). Estados: solo `PUT` de etiqueta/descripción/colores; `POST`/`DELETE` → 405. Migración `npm run migrate:0.7` (`--dry-run`, `--down`) aplicada en BD local tras `mongodump` (`backups/pre-0.7-20261105T182632Z`); up→down→up verificado: 0 diferencias con el respaldo. Frontend: selector solo con transiciones permitidas (pide motivo), StatesSection sin crear/borrar, portal con estados nuevos y botón de cancelar pedido pendiente. 117 tests. |
 | 0.5 | Catálogo en MongoDB (resto) | PARCIAL | PENDIENTE | — | |
 | 0.6 | Referencias ObjectId + migración | PARCIAL | PENDIENTE | — | |
 | 0.10 | Fechas UTC + util America/Bogota | FALTA | PENDIENTE | — | |
@@ -20,137 +20,7 @@
 | 0.12 | Limpieza | FALTA | PENDIENTE | — | |
 | 0.13 | Endpoints staff de pedido | PARCIAL | PENDIENTE | — | |
 
-## Fase A — Diagnóstico (terminada 2026-11-05)
-
-Fecha del diagnóstico: 2026-11-05 · Rama: `Brayan` (commit `a948ca9`) · Informe base: `docs/auditoria/Informe_consolidado_auditoria_Brunch_Cafe.docx` (corte 30-oct-2026).
-
-> El informe está **parcialmente desactualizado**: después del 30-oct se integraron los commits `aab4d0c`/`a948ca9` (dashboard admin, endpoints de pedidos, catálogo en MongoDB). La tabla refleja el código actual.
-
----
-
-## 1. Mapa del repositorio
-
-### Estructura
-```
-backend/   Express 5.2 · Mongoose 9.10 · Zod 4.6 · JWT · bcryptjs · ESM ("type":"module")
-  src/index.js            arranque, CORS, cookie-parser, morgan, error handler básico
-  src/config.js           validación de env con Zod
-  src/db.js               mongoose.connect (sin replica set)
-  src/routes/             11 routers montados en /api (index.routes.js)
-  src/controllers/        9 controladores (auth, usuario, reserva, pedido, producto, categoria, estado, rol, metodoPago, comentario)
-  src/models/             12 modelos (Review.js sin uso)
-  src/schema/             esquemas Zod (+ comunes.js)
-  src/middlewares/        validateToken, authorizeRole, validateSchema
-  src/libs/               jwt, manejarError, utils, ensureOrderOptions (upserts de estados/métodos)
-  scripts/seed-menu.js    importa frontend/src/data/menu.json + imágenes a MongoDB
-frontend/  React 19 · Vite 8 · react-router 7 · ESLint 9
-  src/services/api.js, adminApi.js   dos clientes fetch distintos
-  src/pages/AdminDashboard/          dashboard admin (mockData.js / mockExtraData.js sin uso)
-  src/pages/CustomerDashboard/       cuenta del cliente
-  src/data/menu.json                 24 productos (solo lo usa el seed)
-docs/auditoria/  informe + PROMPT_MAESTRO.md
-```
-
-### Scripts
-| Paquete | Scripts |
-|---|---|
-| backend | `dev` (nodemon), `seed:menu` |
-| frontend | `dev`, `build`, `lint`, `preview` |
-
-**No hay**: tests, lint en backend, Docker/docker-compose, replica set, CI.
-
-### Variables de entorno
-- backend (`backend/.env.example`): `PORT`, `MONGO_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN=7d`, `CLIENT_URL`, `NODE_ENV`.
-- frontend (`frontend/.env.example`): `VITE_API_URL`.
-
-### Rutas montadas (`backend/src/routes/index.routes.js:16-28`)
-| Prefijo | Router | Protección |
-|---|---|---|
-| `/api/auth` | registro, login, logout, me | `me` con token |
-| `/api/usuarios` | `GET/PUT /perfil`, `PUT /perfil/contrasena` | token |
-| `/api/reservas` | POST/GET mias/PATCH cancelar (cliente); GET y PATCH estado (admin) | token / `admin` |
-| `/api/customer` | perfil, pedidos, métodos de pago, reservas, reseñas | token |
-| `/api/comentarios` y `/api/reviews` | **mismo router montado dos veces** | mixto |
-| `/api/categorias`, `/metodos-pago`, `/estados`, `/roles` | CRUD | `admin` |
-| `/api/productos` | `GET /menu`, `GET /menu/imagenes/:nombre` públicos; CRUD | `admin` |
-| `/api/pedidos` | `GET /`, `PATCH /:id/estado` | `admin` |
-
-### Endpoints que consume el frontend (contrato a preservar)
-`/auth/{login,registro,logout,me}` · `/productos/menu` · `/comentarios` · `/comentarios/product-ratings` · `/customer/{profile,orders,payment-methods,reservations,reservations/:id,reservations/:id/cancel,comentarios}` · `/usuarios/perfil` (+ `/contrasena`) · admin: `/pedidos`, `/pedidos/:id/estado`, `/reservas`, `/comentarios/admin`, `/comentarios/:id/visibility`, CRUD de categorías, productos, estados, roles, métodos de pago.
-**No lo usa el frontend:** `POST /api/reservas`, `GET /api/reservas/mias`, `PATCH /api/reservas/:id/cancelar`, `/api/reviews` (alias).
-
----
-
-## 2. Tabla de seguimiento
-
-### Hallazgos técnicos T1–T11
-
-| ID | Ítem | Estado inicial | Estado actual | Commit | Notas / evidencia |
-|---|---|---|---|---|---|
-| T1 | Lado interno del pedido | PARCIAL | PARCIAL | — | Ya existe `GET /api/pedidos` y `PATCH /api/pedidos/:id/estado` (`pedido.routes.js:10-12`, `pedido.controller.js:41-97`). Falta: cancelar con motivo, permisos por rol de staff (solo `admin`), historial. La secuencia Pendiente→Confirmado→Recibido está escrita a mano por nombre (`pedido.controller.js:74-84`). |
-| T2 | Backend lee menu.json y precios desde texto | PARCIAL | PARCIAL | — | En ejecución ya **no** lee menu.json; solo el seed (`scripts/seed-menu.js:12`, convierte a entero en `:48`). Pero `GET /productos/menu` devuelve el precio **como texto** `"$12.000"` (`producto.controller.js:33`) y el frontend lo vuelve a parsear (`CarritoContext.jsx:54`). El README sigue diciendo que se valida contra menu.json (desactualizado). |
-| T3 | producto.model.js no exporta | HECHO | HECHO | — | `producto.model.js:45` exporta el modelo. |
-| T4 | Límite fijo de 24 IDs | PARCIAL | PARCIAL | — | Ya no hay límite de 24 (`comentario.model.js:16-24`, `customer.routes.js:40`). Pero las referencias siguen siendo el número `codigo`, no ObjectId: ítems del pedido (`customer.routes.js:40,258`), `Comentario.productoId: Number` (`comentario.model.js:18`). `DetallePedido` guarda ambos (`detallePedido.model.js:9-16`). El `codigo` nuevo se calcula como máx+1 (`producto.controller.js:79-82`): condición de carrera. |
-| T5 | Rutas duplicadas de reservas y perfil | FALTA | FALTA | — | Reservas: `/api/reservas` (`reserva.routes.js:17-19`) valida con `reserva.schema.js`, sin fecha futura ni horario, y acepta `nombre/correo/motivo` sin validar (`reserva.controller.js:23`). `/api/customer/reservations` sí valida (`customer.routes.js:25-36,110-119`). Perfil: `PUT /usuarios/perfil` usa el campo `correo` y teléfono opcional (`usuario.schema.js:3-8`), mientras que `PATCH /customer/profile` usa `email` y teléfono obligatorio con mín. 7 (`customer.routes.js:18-23`). **El frontend usa los dos perfiles**: admin y `Perfil.jsx` usan `/usuarios/perfil`, y el dashboard del cliente usa `/customer/profile`. `Perfil.jsx:12` tiene escrito `http://localhost:4000`. |
-| T6 | Seguridad de cookie/login, rate limit | FALTA | FALTA | — | `res.cookie("token", token)` sin opciones (`auth.controller.js:34,64,83`). Mensajes distintos "Usuario no encontrado" y "Contraseña incorrecta" (`:57,:60`); el registro también revela si el correo existe (`:11`). No hay rate limit ni helmet. CORS ya es explícito (`index.js:11-16`). Errores 500 devuelven `error.message` (`manejarError.js:20`, `auth.controller.js:48,78`). Token inválido responde 403 en vez de 401 (`validateToken.js:14`). |
-| T7 | Estados por texto, upserts en peticiones, sin transiciones | FALTA | FALTA | — | Inferencia por texto: `customer.routes.js:64-69` (reserva) y `:121-129` (pedido). Upserts durante peticiones: `customer.routes.js:94-108,237,277`, `reserva.controller.js:25-29,75-79`, `estado.controller.js:50`, rol cliente en el registro (`auth.controller.js:13-17`); `ensureOrderPaymentMethods` incluso reescribe descripciones (`ensureOrderOptions.js:71-77`). Los estados son documentos que el admin puede renombrar (`estado.controller.js:89-118`), y renombrarlos rompe la inferencia. El cambio de estado de reservas no tiene transiciones ni comprueba `esFinal` (`reserva.controller.js:110-131`). |
-| T8 | Pedido+detalles sin transacción ni idempotencia | PARCIAL | PARCIAL | — | Ya hay snapshot de nombre y precio por línea (`detallePedido.model.js:17-24`, `customer.routes.js:299-307`). Falta la transacción (el rollback es manual, `customer.routes.js:285-312`) y la cabecera Idempotency-Key. `db.js` conecta sin replica set. |
-| T9 | Lógica concentrada en customer.routes.js | FALTA | FALTA | — | 465 líneas con esquemas, serializadores, reglas y handlers en el mismo archivo (`customer.routes.js:1-465`). |
-| T10 | Sin historial de estados ni tiempo real | FALTA | FALTA | — | No hay modelo de evento ni de historial, y no hay socket/SSE. |
-| T11 | Zona horaria fija -05:00, fecha T12:00Z, hora en texto | FALTA | FALTA | — | `customer.routes.js:62,370,410`; `Reserva.hora: String` (`reserva.model.js:23`); `Pedido.horaEntrega: String` sin fecha (`pedido.model.js:39`). En el frontend se compensa con `timeZone:'UTC'` (`ResumenReserva.jsx:26-34`, `ReservationsSection.jsx:116`). |
-
-### Extras
-
-| ID | Ítem | Estado inicial | Estado actual | Commit | Notas / evidencia |
-|---|---|---|---|---|---|
-| X1 | Modelos Comentario y Review duplicados | PARCIAL | PARCIAL | — | `models/Review.js` no lo importa nadie (código muerto). Solo se usa `Comentario`. El README dice "colección Review" (desactualizado). |
-| X2 | Reseña sin compra verificada ni límite | FALTA | FALTA | — | `comentario.controller.js:119-146` crea sin verificar compra ni duplicados; no hay índice único. |
-| X3 | Seed de roles y primer admin | FALTA | FALTA | — | Solo se hace upsert de `cliente` al registrarse. El rol `admin` y el primer admin hay que crearlos a mano en la BD. |
-| X4 | JWT de 7 días con rol embebido | FALTA | FALTA | — | `JWT_EXPIRES_IN=7d`; payload `{id, rol}` (`auth.controller.js:32,62`); `authorizeRole` confía en el rol del token (`authorizeRole.js:3`). `Rol.permisos` es una lista informativa (`rol.model.js:24-28`). |
-| X5 | UI dice "confirmado" con pedido Pendiente | FALTA | FALTA | — | `CarritoFormulario.jsx:185`: `¡Pedido … confirmado!` |
-| X6 | UI promociona puntos inexistentes | PARCIAL | PARCIAL | — | No encontré textos de "puntos" ni de "lealtad". Solo hay menciones genéricas a "beneficios" (`Login.jsx:63`, `Registro.jsx:91`). |
-
-### Hallazgos nuevos (no estaban en el informe)
-
-| ID | Hallazgo | Evidencia | Severidad |
-|---|---|---|---|
-| N1 | Zod 4 ignora `required_error`/`message` en `auth.schema.js` y `reserva.schema.js`, así que se pierden los mensajes personalizados | `auth.schema.js:4-33`, `reserva.schema.js:4-17` (contrasta con `comunes.js:3-7`) | Baja |
-| N2 | El correo no se normaliza en el registro ni en el login, por lo que son posibles cuentas duplicadas que solo difieren en mayúsculas | `usuario.model.js:14-19`, `auth.controller.js:10,56` | Media |
-| N3 | Precio admin `z.coerce.number().min(0)` acepta decimales (la convención es COP entero) | `producto.schema.js:10` | Baja |
-| N4 | Imágenes en base64 dentro del documento Producto (hasta 5 MB) y `express.json` a 6 MB | `producto.schema.js:4-6`, `index.js:17` | Media |
-| N5 | Dos clientes HTTP distintos en el frontend (`api.js`, `adminApi.js`), además de un `fetch` con URL escrita a mano | `services/*.js`, `Perfil.jsx:12` | Baja |
-| N6 | Datos mock del dashboard sin uso | `AdminDashboard/mockData.js`, `mockExtraData.js` | Baja |
-| N7 | El alias `/api/reviews` monta el mismo router que `/api/comentarios` | `index.routes.js:19-20` | Baja |
-| N8 | `horaEntrega` se valida entre 08:00 y 16:00 sin comparar con la hora actual ni con la fecha | `customer.routes.js:48` | Media |
-
----
-
-## 3. Orden propuesto para la Fase 0
-
-Mantengo el orden del plan con estos ajustes por dependencias:
-
-1. **0.1** Infraestructura (Vitest + Supertest + mongodb-memory-server en replica set, ESLint backend, error handler `{error:{code,message,details}}`, logger). Requiere separar `app.js` de `index.js` para poder testear.
-2. **0.2** Seguridad auth.
-3. **0.3** Seed de roles y primer admin.
-4. **0.4** RBAC con permisos leídos desde la BD.
-5. **0.7** Enums y máquina de transiciones, más el modelo Evento. **Propongo adelantarlo antes de 0.5**, porque 0.8, 0.9 y 0.13 dependen de él y es el riesgo funcional más alto.
-6. **0.5** Catálogo (lo que queda: `/api/v1/catalogo`, precio entero en la respuesta, seed independiente del frontend).
-7. **0.6** Referencias por ObjectId y migración (con tu aprobación).
-8. **0.10** Fechas UTC y utilidad de America/Bogota (antes de unificar reservas, para no hacerlo dos veces).
-9. **0.8** Unificar reservas y perfil, y estructura `/api/v1/*`.
-10. **0.9** Transacción e Idempotency-Key.
-11. **0.11** Refactor por dominios: lo haría **de forma incremental** dentro de 0.8 y 0.9 (cada pieza que se toca se mueve a su módulo), y dejaría en 0.11 solo el cierre.
-12. **0.12** Limpieza (Review, reseñas verificadas, texto "confirmado", "beneficios").
-13. **0.13** Endpoints staff de pedido (listar, transicionar, cancelar con motivo).
-
-## Riesgos principales
-- **R1 · Estados editables vs. enums:** hoy el admin crea y renombra estados desde el dashboard (`StatesSection.jsx`). Pasar a enums cambia ese contrato, así que hay que decidir qué queda editable (solo etiqueta y colores).
-- **R2 · Migración de referencias numéricas:** los pedidos y comentarios existentes apuntan a `codigo`. Hace falta una migración no destructiva (añadir ObjectId y conservar `codigo`).
-- **R3 · Transacciones:** necesitan replica set; hoy no hay Docker y desconozco el despliegue (¿local? ¿Atlas?).
-- **R4 · Cambiar la cookie y el JWT** puede cerrar las sesiones activas (aceptable, pero hay que avisar).
-- **R5 · Sin tests:** cualquier refactor antes de 0.1 sería a ciegas.
-
----
+> El diagnóstico de la Fase A (mapa del repo, hallazgos T1–T11, N1–N8, riesgos) está en [DIAGNOSTICO_FASE_A.md](DIAGNOSTICO_FASE_A.md).
 
 ## Decisiones tomadas (fecha · decisión · quién)
 - 2026-11-05 · Fase A ejecutada sin modificar código; solo se creó este archivo · Claude
@@ -191,11 +61,24 @@ Mantengo el orden del plan con estos ajustes por dependencias:
 - 2026-11-05 · `PATCH /api/admin/usuarios/:id` (activo, rol) + pantalla mínima de Usuarios en el dashboard · Brayan
 - 2026-11-05 · 0.7 dejará que cada transición declare su permiso; por ahora basta `pedido:cambiar_estado` · Brayan
 - 2026-11-05 · Cliente sin permisos de staff; sus rutas se protegen por propiedad · Brayan
+- 2026-11-05 · Respaldo antes de migrar en `backups/` (ignorado por git), con `mongodump` local o el del contenedor Docker · Brayan
+- 2026-11-05 · Toda migración tiene `--dry-run` (conteo por colección + tabla de equivalencias) y `--down`; si hay estados sin equivalencia no se adivinan: se listan y se pregunta. Sin anomalías se aplica, se prueba `--down` y se vuelve a aplicar · Brayan
+- 2026-11-05 · Eventos creados por migraciones: motivo "migracion 0.7", usuario `null` + actor "sistema" · Brayan
+- 2026-11-05 · La regla de transiciones aplica también a reservas (incluido no reabrir un estado final) · Brayan
+- 2026-11-05 · 0.7: "Recibido" se renombra a la etiqueta "Entregado" (código `entregado`); las demás etiquetas existentes se conservan · Claude
+- 2026-11-05 · 0.7: el portal del cliente mantiene `status` en inglés (`pending`, `confirmed`…) y suma `on_the_way`, `seated`, `completed`, `no_show`; las respuestas añaden `codigo` · Claude
+- 2026-11-05 · 0.7: `PATCH .../estado` acepta `codigo` (preferido) o `estado` (_id, compatibilidad); la ruta de pedidos admite `pedido:cambiar_estado` o `pedido:cancelar` y cada transición exige el suyo · Claude
 - 2026-11-05 · T4: `codigo` con contador atómico (colección `counters`, `findOneAndUpdate` + `$inc`) mientras exista `codigo` · Brayan
 
 ## Pendientes / preguntas abiertas
 
-- **Primer admin no creado:** `backend/.env` no contiene `ADMIN_EMAIL`, `ADMIN_PASSWORD` ni `ADMIN_NOMBRE` (verificado de nuevo tras tu mensaje: siguen sin estar; ¿cambios sin guardar?). Al añadirlos: `npm run seed:base`.
+- **Supuestos de 0.7 por confirmar:** (a) `no_show` solo desde `confirmada` (no desde `pendiente`); (b) staff cancela una reserva con motivo **opcional** (en pedidos es obligatorio); (c) no se puede saltar etapas (p. ej. `pendiente → sentada` para un cliente que llega sin confirmar).
+- **Evento sin transacción:** el cambio de estado y su Evento son dos escrituras; si la segunda falla queda el cambio sin evento. Se cierra en 0.9 (transacciones).
+- **Para llevar:** la transición `listo → entregado` está definida, pero se activa cuando el pedido tenga campo de modalidad (hoy todos son domicilio).
+- **Métodos de pago:** `ensureOrderPaymentMethods` aún crea o ajusta métodos durante la petición (`GET /customer/payment-methods`); pasarlo a seed en 0.5.
+- **`PATCH /api/reservas/:id/cancelar` (deprecado):** no valida que la reserva sea futura (el portal usa `/customer/reservations/:id/cancel`, que sí lo valida). Se elimina con el resto de `/api/reservas` del cliente al final de la Fase 0.
+- **Crash intermitente de Vitest en Windows:** en ~1 de cada 10 ejecuciones un worker muere con código nativo `3221226505` (`0xC0000409`) sin fallar ninguna aserción. También ocurre con el código de 0.4 (verificado en un worktree de `d7d8dfc`), así que no lo introdujo 0.7; con `--pool=threads` también pasa. Sospecha: Node 24.15 en Windows. Volver a ejecutar basta; investigar (¿probar Node 22 LTS?) antes de montar CI.
+- **Respaldos:** en `backups/` (ignorado por git). `mongodump` no está instalado en Windows; se usa la imagen Docker `mongo:7` (requiere Docker Desktop encendido).
 - **Carrera en "último admin":** dos degradaciones simultáneas de los dos últimos admins podrían dejar 0 admins (no hay transacción). Se cerrará en 0.9 con transacciones (requiere replica set).
 - **Staff en el frontend:** un usuario con rol de staff (mesero, etc.) que inicia sesión se redirige a `/cuenta` (el frontend solo distingue `admin`). La interfaz de staff llega en la Fase 1.
 - **`authorizeRole.js`:** sin uso desde 0.4, marcado como deprecado; se propondrá eliminarlo en 0.12.
@@ -227,3 +110,5 @@ Mantengo el orden del plan con estos ajustes por dependencias:
 | 15 | Horarios | Configurables en BD; domicilio 08–16; reservas 08–19 (L-V), 08–17 (S-D) |
 | 16 | "Beneficios exclusivos" | Texto neutro "Gestiona tus pedidos y reservas" |
 | 0.4 | Diseño RBAC | Ver decisiones del 2026-11-05 sobre RBAC |
+| 0.4b | ¿Se creó el admin? | Sí: verificado (rol `admin`, `*`, activo, contraseña con hash; 1 admin activo) |
+| 0.7 | Respaldo, simulacro y reversión | Ver decisiones del 2026-11-05 sobre migraciones |
