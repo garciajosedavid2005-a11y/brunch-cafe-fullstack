@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiRequest } from "../../../services/api";
 import SectionHeading from "../SectionHeading";
+import { formatearFecha } from "../../../utils/fechas";
 
-const reviewDate = (value) => new Intl.DateTimeFormat("es-CO", { dateStyle: "medium" }).format(new Date(value));
+const reviewDate = (value) => formatearFecha(value);
 
 export default function ReviewsSection() {
   const [reviews, setReviews] = useState([]);

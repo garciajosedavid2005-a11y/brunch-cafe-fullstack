@@ -3,6 +3,7 @@ import { apiRequest } from "../../../services/api";
 import SectionHeading from "../SectionHeading";
 import { useDialogo } from "../../../context/useDialogo";
 import { formatearCOP } from "../../../utils/moneda";
+import { formatearFecha } from "../../../utils/fechas";
 
 const orderStatus = {
   pending: "Pendiente",
@@ -17,7 +18,7 @@ const orderStatus = {
 const money = (value) => formatearCOP(Number(value) || 0);
 
 const dateLabel = (value) =>
-  new Intl.DateTimeFormat("es-CO", { dateStyle: "long" }).format(new Date(value));
+  formatearFecha(value, "long");
 
 export default function OrdersSection() {
   const [orders, setOrders] = useState([]);

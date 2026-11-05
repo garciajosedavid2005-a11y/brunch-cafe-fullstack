@@ -3,7 +3,7 @@ import { Search, Eye, X, Filter, ShoppingBag, MapPin, Phone, CreditCard, Clock }
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
 import { adminApi } from "../../../services/adminApi";
-import { formatClock, formatCurrency, formatDate, formatTime } from "../adminFormat";
+import { formatCurrency, formatDate, formatTime } from "../adminFormat";
 import EstadoSelector from "../components/EstadoSelector";
 import { useDialogo } from "../../../context/useDialogo";
 
@@ -107,7 +107,7 @@ export default function OrdersSection() {
                   <tr key={pedido.id}>
                     <td>
                       <span className="admin-table__code">{pedido.codigo}</span>
-                      <small className="admin-table__date">{formatDate(pedido.fecha)} · {formatClock(new Date(pedido.fecha).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }))}</small>
+                      <small className="admin-table__date">{formatDate(pedido.fecha)} · {formatTime(pedido.fecha)}</small>
                     </td>
                     <td>
                       <div className="admin-table__client">

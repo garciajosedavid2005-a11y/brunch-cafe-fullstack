@@ -13,6 +13,7 @@ import { STATUS_CLIENTE } from '../libs/estados.js';
 import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../services/estados.service.js';
 import { validateSchema } from '../middlewares/validator.middleware.js';
 import { cuerpoError } from '../libs/errors.js';
+import { instanteLocal, inicioReserva, diaSemana } from '../libs/fechas.js';
 import { referenciaProducto, unaReferencia, MENSAJE_REFERENCIA, resolverProductos } from '../schema/referenciaProducto.js';
 import { cancelacionClienteSchema } from '../schema/cambioEstado.schema.js';
 
@@ -56,14 +57,13 @@ const orderSchema = z.object({
 });
 
 const availableReservationTimes = (date) => {
-  const day = new Date(`${date}T00:00:00Z`).getUTCDay();
+  const day = diaSemana(date);
   const lastHour = day === 0 || day === 6 ? 11 : 12;
   return Array.from({ length: lastHour - 7 }, (_, index) =>
     `${String(index + 8).padStart(2, '0')}:00`
   );
 };
 
-const reservationDateTime = (date, time) => new Date(`${date}T${time}:00-05:00`);
 
 // El status del portal sale del código del estado (sin adivinar por el texto)
 const statusCliente = (tipo, estado) => STATUS_CLIENTE[tipo][estado?.codigo] || 'pending';
@@ -83,6 +83,7 @@ const serializeReservation = (reservation) => {
     personas: reservation.cantidadPersonas,
     fecha: reservation.fecha,
     hora: reservation.hora,
+    inicio: reservation.inicio || null,
     observaciones: reservation.observaciones || '',
     status: statusCliente('reserva', reservation.estado),
     statusLabel: reservation.estado?.nombre || '',
@@ -97,8 +98,8 @@ const serializeReservation = (reservation) => {
 };
 
 const validateReservationDate = (reservation) => {
-  const startsAt = reservationDateTime(reservation.fecha, reservation.hora);
-  if (Number.isNaN(startsAt.getTime()) || startsAt <= new Date()) {
+  const startsAt = instanteLocal(reservation.fecha, reservation.hora);
+  if (startsAt <= new Date()) {
     return 'La fecha y hora de la reserva deben ser futuras.';
   }
   if (!availableReservationTimes(reservation.fecha).includes(reservation.hora)) {
@@ -121,6 +122,7 @@ const serializeOrder = (order, details) => ({
     direccion: order.direccion || '',
     barrio: order.barrio || '',
     hora: order.horaEntrega || '',
+    entregaEn: order.entregaEn || null,
     indicaciones: order.indicaciones || '',
   },
   items: details.map((detail) => ({
@@ -423,6 +425,8 @@ router.patch('/reservations/:id', async (req, res, next) => {
       cantidadPersonas: parsed.data.personas,
       fecha: new Date(`${parsed.data.fecha}T12:00:00Z`),
       hora: parsed.data.hora,
+      // cambiarEstado escribe con findOneAndUpdate (sin hooks): el instante va explícito
+      inicio: instanteLocal(parsed.data.fecha, parsed.data.hora),
       observaciones: parsed.data.observaciones,
       nombre: parsed.data.nombre,
       correo: parsed.data.correo,
@@ -467,8 +471,8 @@ router.patch('/reservations/:id/cancel', async (req, res, next) => {
       return res.status(409).json({ message: 'Esta reserva ya fue cancelada.' });
     }
 
-    const date = new Date(reservation.fecha).toISOString().slice(0, 10);
-    if (reservationDateTime(date, reservation.hora) <= new Date()) {
+    const inicio = reservation.inicio || inicioReserva(reservation.fecha, reservation.hora);
+    if (inicio <= new Date()) {
       return res.status(409).json({ message: 'No es posible cancelar una reserva que ya inició.' });
     }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiRequest } from "../services/api";
+import { formatearFecha } from "../utils/fechas";
 
 /**
  * Datos de la cuenta de la sesión (GET /usuarios/perfil): nombre, correo,
@@ -26,9 +27,4 @@ export default function useDatosCuenta() {
 
 export const etiquetaRolCuenta = (rol) => rol?.etiqueta || rol?.nombre || "";
 
-export const fechaRegistro = (valor) => {
-  const fecha = new Date(valor);
-  return Number.isNaN(fecha.getTime())
-    ? ""
-    : new Intl.DateTimeFormat("es-CO", { dateStyle: "long", timeZone: "America/Bogota" }).format(fecha);
-};
+export const fechaRegistro = (valor) => formatearFecha(valor, "long");

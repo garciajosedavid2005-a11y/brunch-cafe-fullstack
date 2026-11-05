@@ -4,9 +4,9 @@ import { apiRequest } from "../../../services/api";
 import { useAuth } from "../../../context/useAuth";
 import SectionHeading from "../SectionHeading";
 import { useDialogo } from "../../../context/useDialogo";
+import { hoyLocal, formatearFechaCalendario } from "../../../utils/fechas";
 
-const today = new Date();
-const minimumDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+const minimumDate = hoyLocal(); // día de Bogotá
 const reservationStatus = {
   pending: "Pendiente de aprobación",
   confirmed: "Confirmada",
@@ -132,7 +132,7 @@ export default function ReservationsSection() {
             <div className="dashboard-reservation">
               <div>
                 <span className={`dashboard-status status-${reservation.status}`}>{reservationStatus[reservation.status] || reservation.status}</span>
-                <h3>{new Intl.DateTimeFormat("es-CO", { dateStyle: "long", timeZone: "UTC" }).format(new Date(reservation.fecha))} · {formatTime(reservation.hora)}</h3>
+                <h3>{formatearFechaCalendario(reservation.fecha, "long")} · {formatTime(reservation.hora)}</h3>
                 <p>{reservation.nombre || `${reservation.user?.nombre || user?.nombre || ""} ${reservation.user?.apellido || user?.apellido || ""}`.trim()} · {reservation.correo || reservation.user?.email || user?.email}</p>
                 <p><strong>Motivo:</strong> {reservation.motivo || "No especificado"} · {reservation.personas} {reservation.personas === 1 ? "persona" : "personas"}{reservation.observaciones ? ` · ${reservation.observaciones}` : ""}</p>
               </div>

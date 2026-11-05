@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { instanteLocal, fechaLocal, esHoraValida } from '../libs/fechas.js'
 
 const pedidoSchema = new mongoose.Schema({
     usuario: {
@@ -40,6 +41,10 @@ const pedidoSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    // Instante UTC de entrega: día de America/Bogota en que se hizo el pedido + horaEntrega. 0.10.
+    entregaEn: {
+        type: Date
+    },
     indicaciones: {
         type: String,
         trim: true,
@@ -47,6 +52,12 @@ const pedidoSchema = new mongoose.Schema({
     }
 }, {
     timestamps: true
+})
+
+pedidoSchema.pre('validate', function () {
+    if (esHoraValida(this.horaEntrega) && (this.isModified('horaEntrega') || !this.entregaEn)) {
+        this.entregaEn = instanteLocal(fechaLocal(this.createdAt || new Date()), this.horaEntrega)
+    }
 })
 
 export default mongoose.model('Pedido', pedidoSchema)

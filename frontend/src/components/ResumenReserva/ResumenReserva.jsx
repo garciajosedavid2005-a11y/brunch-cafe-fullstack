@@ -10,6 +10,7 @@ import {
     FaFlag
 } from 'react-icons/fa'
 import { useEffect } from 'react'
+import { formatearFechaCalendario, formatearHoraTexto } from '../../utils/fechas'
 
 const ResumenReserva = ({ formData, onEditar, onConfirmar, guardando = false }) => {
     useEffect(() => {
@@ -20,20 +21,8 @@ const ResumenReserva = ({ formData, onEditar, onConfirmar, guardando = false }) 
         }
     }, [])
 
-    const fechaReserva = formData.fecha
-        ? new Intl.DateTimeFormat('es-CO', {
-            dateStyle: 'long',
-            timeZone: 'UTC',
-        }).format(new Date(`${formData.fecha}T12:00:00Z`))
-        : 'No seleccionada'
-
-    const horaReserva = formData.hora
-        ? new Intl.DateTimeFormat('es-CO', {
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZone: 'UTC',
-        }).format(new Date(`1970-01-01T${formData.hora}:00Z`))
-        : 'No seleccionada'
+    const fechaReserva = formData.fecha ? formatearFechaCalendario(formData.fecha, 'long') : 'No seleccionada'
+    const horaReserva = formData.hora ? formatearHoraTexto(formData.hora) : 'No seleccionada'
 
     return (
         <div className="resumen-overlay" onMouseDown={(event) => {

@@ -5,6 +5,7 @@ import { useAuth } from "../../context/useAuth";
 import { apiRequest } from "../../services/api";
 import ResumenReserva from "../ResumenReserva/ResumenReserva";
 import "./FormularioReservas.css";
+import { hoyLocal } from "../../utils/fechas";
 
 function getTimesForDate(date) {
   if (!date) return [];
@@ -22,8 +23,7 @@ function getTimesForDate(date) {
 }
 
 function getToday() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return hoyLocal(); // día de Bogotá, no el del navegador
 }
 
 function initialForm(user) {

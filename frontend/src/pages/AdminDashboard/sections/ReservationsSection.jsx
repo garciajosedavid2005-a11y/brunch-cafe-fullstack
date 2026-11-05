@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Search, Eye, Check, X, CalendarDays, Users, Clock, Mail, Phone, MessageSquare, Info } from "lucide-react";
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
-import { formatClock, formatDate } from "../adminFormat";
+import { formatClock, formatCalendarDate } from "../adminFormat";
 import EstadoSelector from "../components/EstadoSelector";
 import { pedirMotivo } from "../components/estadoUtils";
 import { useDialogo } from "../../../context/useDialogo";
@@ -125,7 +125,7 @@ export default function ReservationsSection() {
                     </td>
                     <td>
                       <div className="admin-table__schedule">
-                        <strong>{formatDate(reserva.fecha)}</strong>
+                        <strong>{formatCalendarDate(reserva.fecha)}</strong>
                         <span>{formatClock(reserva.hora)}</span>
                       </div>
                     </td>

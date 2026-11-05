@@ -2,6 +2,7 @@
 // Requiere backend y frontend levantados y los usuarios de `npm run seed:dev` (backend).
 // La contraseña de prueba se lee de DEV_USUARIOS_PASSWORD (no está en el código).
 //   FRONT_URL (por defecto http://localhost:5173) · API_URL (por defecto http://localhost:4000/api)
+//   ZONA_NAVEGADOR (por defecto America/Bogota): zona del navegador simulado
 import { chromium } from "playwright";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -75,6 +76,9 @@ const VISTAS = {
     },
   },
   "admin-productos": { usuario: "admin", preparar: abrirPestanaAdmin("Productos") },
+  "admin-pedidos": { usuario: "admin", preparar: abrirPestanaAdmin("Pedidos") },
+  "admin-reservas": { usuario: "admin", preparar: abrirPestanaAdmin("Reservas") },
+  "admin-resumen": { usuario: "admin", preparar: abrirPestanaAdmin("Resumen") },
   // Imagen de 3 MB en "Nuevo producto": debe salir el aviso del límite de 2 MB
   "admin-producto-imagen-grande": {
     usuario: "admin",
@@ -100,7 +104,7 @@ const contextos = {};
 const contextoDe = async (usuario) => {
   const clave = usuario || "invitado";
   if (contextos[clave]) return contextos[clave];
-  const contexto = await navegador.newContext({ locale: "es-CO", timezoneId: "America/Bogota" });
+  const contexto = await navegador.newContext({ locale: "es-CO", timezoneId: process.env.ZONA_NAVEGADOR || "America/Bogota" });
   if (usuario) {
     const res = await contexto.request.post(`${API}/auth/login`, { data: { correo: USUARIOS[usuario], contraseña: CLAVE } });
     if (!res.ok()) throw new Error(`Login de prueba falló para ${usuario}: ${res.status()} (¿ejecutaste npm run seed:dev?)`);

@@ -16,6 +16,7 @@ const formatoAdmin = (reserva, { permisos, estados }) => {
         personas: reserva.cantidadPersonas,
         fecha: reserva.fecha,
         hora: reserva.hora,
+        inicio: reserva.inicio || null, // instante UTC (0.10)
         motivo: reserva.motivo || '',
         estado: reserva.estado?.nombre || '',
         estadoId: reserva.estado?._id || reserva.estado,

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { ShoppingBag, CalendarDays, Star, ArrowRight } from "lucide-react";
 import { adminApi } from "../../../services/adminApi";
 import AdminStatus from "../components/AdminStatus";
-import { formatClock, formatCurrency, formatDate } from "../adminFormat";
+import { formatClock, formatCurrency, formatDate, formatCalendarDate } from "../adminFormat";
+import { hoyLocal, fechaLocal } from "../../../utils/fechas";
 
 const cargarDatosResumen = () => Promise.all([
   adminApi.get("/pedidos"),
@@ -45,8 +46,9 @@ export default function OverviewSection({ onNavigateTab }) {
     };
   }, []);
 
-  const hoy = new Date().toLocaleDateString("en-CA");
-  const pedidosHoy = datos.pedidos.filter((pedido) => new Date(pedido.fecha).toLocaleDateString("en-CA") === hoy);
+  // "Hoy" es el día de Bogotá, no el del navegador
+  const hoy = hoyLocal();
+  const pedidosHoy = datos.pedidos.filter((pedido) => fechaLocal(pedido.fecha) === hoy);
   const reservasPendientes = datos.reservas.filter((reserva) => reserva.estado.toLowerCase().includes("pendiente"));
   const promedio = datos.comentarios.length
     ? (datos.comentarios.reduce((total, item) => total + item.calificacion, 0) / datos.comentarios.length).toFixed(1)
@@ -226,7 +228,7 @@ export default function OverviewSection({ onNavigateTab }) {
                       </td>
                       <td>
                         <div className="admin-table__schedule">
-                          <strong>{formatDate(reserva.fecha)}</strong>
+                          <strong>{formatCalendarDate(reserva.fecha)}</strong>
                           <span>{formatClock(reserva.hora)}</span>
                         </div>
                       </td>

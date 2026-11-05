@@ -14,6 +14,7 @@
     "seed:base": "node scripts/seed-base.js",
     "migrate:0.7": "node scripts/migrar-0.7-estados.js",
     "migrate:0.6": "node scripts/migrar-0.6-referencias.js",
+    "migrate:0.10": "node scripts/migrar-0.10-fechas.js",
     "seed:dev": "node scripts/seed-dev.js",
     "recolorear:estados": "node scripts/recolorear-estados.js"
   },

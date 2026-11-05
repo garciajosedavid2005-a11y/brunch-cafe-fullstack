@@ -21,6 +21,7 @@ const formato = (pedido, detalles, { permisos, estados }) => {
         direccion: pedido.direccion || '',
         barrio: pedido.barrio || '',
         hora: pedido.horaEntrega || '',
+        entregaEn: pedido.entregaEn || null, // instante UTC (0.10)
         fecha: pedido.createdAt,
         estado: pedido.estado?.nombre || '',
         estadoId: pedido.estado?._id || pedido.estado,
