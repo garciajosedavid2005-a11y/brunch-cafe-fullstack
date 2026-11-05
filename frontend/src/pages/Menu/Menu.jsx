@@ -23,6 +23,8 @@ const Menu = () => {
   const [categoriaActiva, setCategoriaActiva] = useState("Todo");
   const [visibleCount, setVisibleCount] = useState(ITEMS_POR_PAGINA);
   const [productRatings, setProductRatings] = useState({});
+  // Cambiarlo vuelve a pedir el menú (botón "Reintentar")
+  const [intento, setIntento] = useState(0);
   const heroRef = useAnimacionEntrada();
   const categoriasRef = useAnimacionEntrada();
   const gridRef = useAnimacionEntrada();
@@ -46,7 +48,7 @@ const Menu = () => {
     return () => {
       active = false;
     };
-  }, [location.hash]);
+  }, [location.hash, intento]);
 
   useEffect(() => {
     apiRequest("/comentarios/product-ratings")
@@ -83,6 +85,12 @@ const Menu = () => {
   });
 
   const productosVisibles = productosFiltrados.slice(0, visibleCount);
+
+  const reintentar = () => {
+    setLoadingMenu(true);
+    setMenuError("");
+    setIntento((n) => n + 1);
+  };
 
   const manejarCategoria = (categoria) => {
     setCategoriaActiva(categoria);
@@ -124,8 +132,18 @@ const Menu = () => {
 
       <section ref={gridRef} className="menu-grid animar">
         {loadingMenu && <p role="status">Cargando menú...</p>}
-        {menuError && <p role="alert">{menuError}</p>}
-        {!loadingMenu && !menuError && productosVisibles.length === 0 && (
+        {!loadingMenu && menuError && (
+          <div role="alert">
+            <p>No pudimos cargar el menú. {menuError}</p>
+            <button type="button" className="menu-ver-mas__boton" onClick={reintentar}>
+              Reintentar
+            </button>
+          </div>
+        )}
+        {!loadingMenu && !menuError && menu.length === 0 && (
+          <p role="status">Todavía no hay productos en el menú. Vuelve pronto.</p>
+        )}
+        {!loadingMenu && !menuError && menu.length > 0 && productosVisibles.length === 0 && (
           <p>En este momento no hay productos disponibles en esta categoría.</p>
         )}
         {productosVisibles.map((producto, index) => {

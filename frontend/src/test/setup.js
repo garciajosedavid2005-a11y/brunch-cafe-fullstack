@@ -6,3 +6,12 @@ afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
 })
+
+// jsdom no trae IntersectionObserver (lo usa useAnimacionEntrada)
+if (!globalThis.IntersectionObserver) {
+  globalThis.IntersectionObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+}
