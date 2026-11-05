@@ -64,7 +64,11 @@ export const traducirError = (error) => {
         return { status: 400, code: 'INVALID_JSON', message: 'El cuerpo de la petición no es un JSON válido.' }
     }
     if (error?.type === 'entity.too.large') {
-        return { status: 413, code: 'PAYLOAD_TOO_LARGE', message: 'El cuerpo de la petición es demasiado grande.' }
+        return {
+            status: 413,
+            code: 'PAYLOAD_TOO_LARGE',
+            message: 'La petición es demasiado grande (máximo 3 MB). Si subes una imagen, debe pesar como máximo 2 MB.',
+        }
     }
     const status = Number.isInteger(error?.status) && error.status >= 400 && error.status < 600 ? error.status : 500
     return {

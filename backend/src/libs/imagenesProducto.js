@@ -10,6 +10,15 @@ const PREFIJO_SUBIDA = 'producto-'
 export const DATA_URL = /^data:(image\/(png|jpeg|webp|gif));base64,([A-Za-z0-9+/]+={0,2})$/
 const EXTENSION = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' }
 
+export const MAX_BYTES_IMAGEN = 2 * 1024 * 1024
+
+/** Bytes reales de una imagen incrustada (sin decodificarla). */
+export const bytesDeDataUrl = (dataUrl) => {
+    const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
+    const relleno = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0
+    return (base64.length * 3) / 4 - relleno
+}
+
 export const esDataUrl = (valor) => typeof valor === 'string' && valor.startsWith('data:')
 export const esUrlDelMenu = (valor) =>
     typeof valor === 'string' && valor.startsWith(PREFIJO_URL) && !valor.slice(PREFIJO_URL.length).includes('/')

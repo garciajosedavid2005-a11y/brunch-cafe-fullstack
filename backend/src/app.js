@@ -39,7 +39,8 @@ export const createApp = () => {
         origin: (origin, callback) => callback(null, !origin || config.CLIENT_URLS.includes(origin)),
         credentials: true,
     }))
-    app.use(express.json({ limit: '6mb' }))
+    // 3 MB: una imagen de producto de 2 MB ocupa ~2,7 MB en base64 más el resto de campos
+    app.use(express.json({ limit: '3mb' }))
     app.use(cookieParser())
     app.use(normalizarErroresLegados)
 

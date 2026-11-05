@@ -75,6 +75,18 @@ const VISTAS = {
     },
   },
   "admin-productos": { usuario: "admin", preparar: abrirPestanaAdmin("Productos") },
+  // Imagen de 3 MB en "Nuevo producto": debe salir el aviso del límite de 2 MB
+  "admin-producto-imagen-grande": {
+    usuario: "admin",
+    completa: false,
+    preparar: async (p) => {
+      await abrirPestanaAdmin("Productos")(p);
+      await p.getByRole("button", { name: /nuevo producto/i }).click();
+      await p.getByLabel("Imagen del producto").setInputFiles({
+        name: "foto-grande.png", mimeType: "image/png", buffer: Buffer.alloc(3 * 1024 * 1024, 1),
+      });
+    },
+  },
   "admin-roles": { usuario: "admin", preparar: abrirPestanaAdmin("Roles") },
   "admin-usuarios": { usuario: "admin", preparar: abrirPestanaAdmin("Usuarios") },
   "admin-estados": { usuario: "admin", preparar: abrirPestanaAdmin("Estados") },

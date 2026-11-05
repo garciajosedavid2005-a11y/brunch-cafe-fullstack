@@ -46,3 +46,52 @@ describe("Productos: disponibilidad", () => {
     await waitFor(() => expect(interruptor).toHaveAttribute("aria-checked", "false"));
   });
 });
+
+describe("Productos: imagen", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const subir = async (archivo) => {
+    montar();
+    fireEvent.click(await screen.findByRole("button", { name: /nuevo producto/i }));
+    fireEvent.change(screen.getByLabelText("Imagen del producto"), { target: { files: [archivo] } });
+  };
+
+  it("una imagen de más de 2 MB se rechaza en el navegador con un mensaje claro", async () => {
+    const lector = vi.spyOn(FileReader.prototype, "readAsDataURL");
+    const grande = new File(["x"], "foto.png", { type: "image/png" });
+    Object.defineProperty(grande, "size", { value: 3.4 * 1024 * 1024 });
+    await subir(grande);
+    expect(await screen.findByText(/pesa 3,4 MB.*máximo.*2 MB/i)).toBeInTheDocument();
+    expect(lector).not.toHaveBeenCalled();
+    lector.mockRestore();
+  });
+
+  it("un archivo que no es imagen PNG/JPG/WEBP/GIF se rechaza", async () => {
+    await subir(new File(["x"], "menu.pdf", { type: "application/pdf" }));
+    expect(await screen.findByText(/debe ser una imagen png, jpg, webp o gif/i)).toBeInTheDocument();
+  });
+});
+
+describe("Productos: precio", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const guardarCon = async (precio) => {
+    montar();
+    adminApi.post.mockResolvedValue(producto("p9", "Mocca"));
+    fireEvent.click(await screen.findByRole("button", { name: /nuevo producto/i }));
+    fireEvent.change(screen.getByLabelText(/nombre/i), { target: { value: "Mocca" } });
+    fireEvent.change(screen.getByLabelText(/precio/i), { target: { value: precio } });
+    fireEvent.submit(screen.getByLabelText(/precio/i).closest("form"));
+  };
+
+  it.each([["22000"], ["22.000"], ["$22.000"], ["$ 22.000"]])("acepta %s como 22000", async (texto) => {
+    await guardarCon(texto);
+    await waitFor(() => expect(adminApi.post).toHaveBeenCalledWith("/productos", expect.objectContaining({ precio: 22000 })));
+  });
+
+  it.each([["12.500,5"], ["12,5"], ["-3000"], ["doce mil"]])("rechaza %s con un mensaje (no lo convierte a otro número)", async (texto) => {
+    await guardarCon(texto);
+    expect(await screen.findByText(/número entero de pesos/i)).toBeInTheDocument();
+    expect(adminApi.post).not.toHaveBeenCalled();
+  });
+});

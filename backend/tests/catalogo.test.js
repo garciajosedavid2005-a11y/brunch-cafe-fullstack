@@ -138,3 +138,37 @@ describe('Productos no disponibles (agotados)', () => {
         expect(res.body.error.details).toEqual({ productos: [2] })
     })
 })
+
+describe('Validación de producto (N3) e imágenes', () => {
+    const datos = (extra) => ({ nombre: 'Mocca', precio: 11000, categoriaId: String(bebidas._id), ...extra })
+    // Imagen PNG incrustada de `bytes` bytes (cabecera PNG + relleno)
+    const pngDe = (bytes) => `data:image/png;base64,${Buffer.alloc(bytes, 1).toString('base64')}`
+
+    it('precio: entero ≥ 0 (acepta "12000" como número; rechaza decimales y negativos)', async () => {
+        const { sesion } = await crearConSesion('admin')
+        expect((await sesion.post('/api/productos').send(datos({ precio: '12000' }))).body.precio).toBe(12000)
+        for (const precio of [12000.5, -1, 'doce mil']) {
+            const res = await sesion.post('/api/productos').send(datos({ nombre: `P ${precio}`, precio }))
+            expect(res.status, `precio ${precio}`).toBe(400)
+            expect(res.body.error.code).toBe('VALIDATION_ERROR')
+        }
+    })
+
+    it('imagen de hasta 2 MB se acepta; más de 2 MB → 400 con mensaje claro', async () => {
+        const { sesion } = await crearConSesion('admin')
+        const ok = await sesion.post('/api/productos').send(datos({ imagen: pngDe(2 * 1024 * 1024) }))
+        expect(ok.status).toBe(201)
+
+        const grande = await sesion.post('/api/productos').send(datos({ nombre: 'Grande', imagen: pngDe(2 * 1024 * 1024 + 1) }))
+        expect(grande.status).toBe(400)
+        expect(grande.body.error.message).toBe('La imagen no puede superar 2 MB.')
+    })
+
+    it('cuerpo de más de 3 MB → 413 con un mensaje que menciona el límite de la imagen', async () => {
+        const { sesion } = await crearConSesion('admin')
+        const res = await sesion.post('/api/productos').send(datos({ imagen: pngDe(2.5 * 1024 * 1024) }))
+        expect(res.status).toBe(413)
+        expect(res.body.error.code).toBe('PAYLOAD_TOO_LARGE')
+        expect(res.body.error.message).toMatch(/2 MB/)
+    })
+})
