@@ -110,10 +110,9 @@ export default function StatesSection() {
       />
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table">
+          <table className="admin-table admin-table--compacta">
             <thead>
               <tr>
-                <th>Vista de Etiqueta (Badge)</th>
                 <th>Etiqueta</th>
                 <th>Código</th>
                 <th>Descripción / Significado</th>
@@ -138,9 +137,6 @@ export default function StatesSection() {
                       >
                         {item.nombre}
                       </span>
-                    </td>
-                    <td>
-                      <strong className="admin-table__client-name">{item.nombre}</strong>
                     </td>
                     <td>
                       <code>{item.codigo}</code>
@@ -172,7 +168,7 @@ export default function StatesSection() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="admin-table__empty">
+                  <td colSpan="5" className="admin-table__empty">
                     No se encontraron estados para {tipoActivo}.
                   </td>
                 </tr>
