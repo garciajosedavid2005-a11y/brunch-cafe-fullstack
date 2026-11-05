@@ -25,7 +25,7 @@ export const crearReserva = async (req, res) => {
         const estadoPendiente = await Estado.findOneAndUpdate(
             { nombre: 'Pendiente', tipo: 'reserva' },
             { $setOnInsert: { nombre: 'Pendiente', tipo: 'reserva' } },
-            { new: true, upsert: true, setDefaultsOnInsert: true }
+            { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
         )
 
         const nuevaReserva = new Reserva({
@@ -75,13 +75,13 @@ export const cancelarReserva = async (req, res) => {
         const estadoCancelada = await Estado.findOneAndUpdate(
             { nombre: 'Cancelada', tipo: 'reserva' },
             { $setOnInsert: { nombre: 'Cancelada', tipo: 'reserva' } },
-            { new: true, upsert: true, setDefaultsOnInsert: true }
+            { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
         )
 
         const reservaActualizada = await Reserva.findOneAndUpdate(
             { _id: reserva._id, usuario: req.usuario.id },
             { $set: { estado: estadoCancelada._id } },
-            { new: true }
+            { returnDocument: 'after' }
         ).populate('estado')
 
         res.json(reservaActualizada)
@@ -119,7 +119,7 @@ export const cambiarEstadoReserva = async (req, res) => {
         const reservaActualizada = await Reserva.findByIdAndUpdate(
             req.params.id,
             { estado },
-            { new: true }
+            { returnDocument: 'after' }
         ).populate('usuario', '-contraseña').populate('estado')
 
         if (!reservaActualizada) return res.status(404).json({ message: "Reserva no encontrada" })

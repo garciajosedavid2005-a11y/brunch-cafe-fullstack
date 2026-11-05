@@ -25,7 +25,7 @@ export const actualizarPerfil = async (req, res) => {
         const usuarioActualizado = await Usuario.findByIdAndUpdate(
             req.usuario.id,
             { nombre, apellido, correo, telefono },
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         ).select('-contraseña').populate('rol')
         if (!usuarioActualizado) return res.status(404).json({ message: "Usuario no encontrado" })
         res.json(usuarioActualizado)

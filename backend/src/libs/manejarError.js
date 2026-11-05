@@ -1,21 +1,11 @@
+import { cuerpoError } from './errors.js'
+import { logger } from './logger.js'
+import { traducirError } from '../middlewares/errorHandler.js'
+
+// Usado por los controladores del dashboard dentro de try/catch.
+// Delega en el traductor central para mantener el formato único de errores.
 export const manejarError = (res, error) => {
-    // ID con formato inválido (ej. /api/productos/abc)
-    if (error.name === 'CastError') {
-        return res.status(400).json({ message: 'ID inválido' })
-    }
-
-    // Falló una validación del modelo (campo requerido, enum, min, max...)
-    if (error.name === 'ValidationError') {
-        const mensajes = Object.values(error.errors).map((e) => e.message)
-        return res.status(400).json({ message: mensajes[0] })
-    }
-
-    // Valor duplicado en un campo único (ej. nombre de categoría repetido)
-    if (error.code === 11000) {
-        const campo = Object.keys(error.keyValue || {})[0] || 'valor'
-        return res.status(409).json({ message: `Ya existe un registro con ese ${campo}` })
-    }
-
-    console.log(error)
-    return res.status(500).json({ message: error.message })
+    const { status, code, message, details } = traducirError(error)
+    if (status >= 500) logger.error({ err: error }, 'Error en controlador')
+    return res.status(status).json(cuerpoError(code, message, details))
 }

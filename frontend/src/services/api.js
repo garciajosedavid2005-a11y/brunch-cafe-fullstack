@@ -19,7 +19,9 @@ export async function apiRequest(path, options = {}) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(payload.message || "No fue posible completar la solicitud.");
+    const error = new Error(payload.error?.message || payload.message || "No fue posible completar la solicitud.");
+    error.code = payload.error?.code;
+    error.details = payload.error?.details;
     error.status = response.status;
     throw error;
   }

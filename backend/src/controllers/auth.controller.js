@@ -13,7 +13,7 @@ export const register = async (req, res) => {
         const rolCliente = await Rol.findOneAndUpdate(
             { nombre: 'cliente' },
             { $setOnInsert: { nombre: 'cliente' } },
-            { new: true, upsert: true, setDefaultsOnInsert: true }
+            { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
         )
         if (!rolCliente) return res.status(500).json({ message: "No existe el rol 'cliente' en la base de datos, crealo primero" })
 

@@ -96,12 +96,12 @@ const getReservationStates = async () => {
     Estado.findOneAndUpdate(
       { nombre: 'Pendiente', tipo: 'reserva' },
       { $setOnInsert: { nombre: 'Pendiente', tipo: 'reserva' } },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
     ),
     Estado.findOneAndUpdate(
       { nombre: 'Cancelada', tipo: 'reserva' },
       { $setOnInsert: { nombre: 'Cancelada', tipo: 'reserva' } },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
     ),
   ]);
   return { pending, cancelled };
@@ -189,7 +189,7 @@ router.patch('/profile', async (req, res, next) => {
         correo: parsed.data.email,
         telefono: parsed.data.telefono,
       },
-      { new: true, runValidators: true, select: 'nombre apellido correo telefono' }
+      { returnDocument: 'after', runValidators: true, select: 'nombre apellido correo telefono' }
     );
     if (!profile) return res.status(404).json({ message: 'No se encontró el perfil.' });
 
@@ -448,7 +448,7 @@ router.patch('/reservations/:id/cancel', async (req, res, next) => {
     const updated = await Reserva.findOneAndUpdate(
       { _id: reservation._id, usuario: req.usuario.id },
       { $set: { estado: cancelled._id } },
-      { new: true }
+      { returnDocument: 'after' }
     )
       .populate('usuario', 'nombre apellido correo')
       .populate('estado', 'nombre')

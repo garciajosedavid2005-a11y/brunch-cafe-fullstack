@@ -82,7 +82,7 @@ export const cambiarVisibilidadComentario = async (req, res, next) => {
     const comentario = await Comentario.findByIdAndUpdate(
       req.params.id,
       { visible: req.body.visible },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
     if (!comentario) return res.status(404).json({ message: 'Comentario no encontrado.' });
     return res.json({ id: comentario._id, visible: comentario.visible });

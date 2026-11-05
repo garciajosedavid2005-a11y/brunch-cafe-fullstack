@@ -21,7 +21,9 @@ const pedir = async (ruta, opciones = {}) => {
   }
 
   if (!respuesta.ok) {
-    const error = new Error(datos?.message || "No fue posible completar la solicitud.");
+    const error = new Error(datos?.error?.message || datos?.message || "No fue posible completar la solicitud.");
+    error.code = datos?.error?.code;
+    error.details = datos?.error?.details;
     error.status = respuesta.status;
     throw error;
   }
