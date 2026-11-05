@@ -2,24 +2,29 @@ import Estado from '../models/estado.model.js'
 import Pedido from '../models/pedido.model.js'
 import Reserva from '../models/reserva.model.js'
 import { AppError, badRequest, conflict, notFound } from '../libs/errors.js'
-import { TIPOS_ESTADO, esEstadoFinal } from '../libs/estados.js'
+import { TIPOS_ESTADO, esEstadoFinal, definicionEstado } from '../libs/estados.js'
 
 const COMPARACION = { locale: 'es', strength: 1 }
 
-const formato = (estado, usosAsociados = 0) => ({
+// Lo que el estado no tenga guardado se toma del catálogo de su código
+// (antes era un amarillo fijo: hasta "Cancelada" salía amarilla)
+const formato = (estado, usosAsociados = 0) => {
+    const catalogo = definicionEstado(estado.tipo, estado.codigo) || {}
+    return {
     id: estado._id,
     codigo: estado.codigo,
     tipo: estado.tipo,
     nombre: estado.nombre,
     etiqueta: estado.nombre,
     descripcion: estado.descripcion || '',
-    color: estado.color || '#b78103',
-    bg: estado.bg || '#fff8e1',
-    badgeType: estado.badgeType || 'warning',
+    color: estado.color || catalogo.color || '#5f5f5f',
+    bg: estado.bg || catalogo.bg || '#f0f0f0',
+    badgeType: estado.badgeType || catalogo.badgeType || 'neutral',
     esFinal: esEstadoFinal(estado.tipo, estado.codigo),
     orden: estado.orden || 0,
     usosAsociados,
-})
+    }
+}
 
 // Cuenta cuántos pedidos y reservas usan cada estado
 const contarUsos = async () => {

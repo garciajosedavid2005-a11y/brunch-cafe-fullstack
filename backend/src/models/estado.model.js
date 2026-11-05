@@ -31,21 +31,20 @@ const estadoSchema = new mongoose.Schema({
         maxlength: 200,
         default: ''
     },
-    // Colores de la etiqueta que muestra el dashboard
+    // Colores de la etiqueta que muestra el dashboard. Sin valor por defecto:
+    // si faltan, la API usa los del catálogo del código (src/libs/estados.js).
+    // (Antes el default #b78103 se aplicaba al leer y teñía de amarillo hasta "Cancelada".)
     color: {
         type: String,
-        trim: true,
-        default: '#b78103'
+        trim: true
     },
     bg: {
         type: String,
-        trim: true,
-        default: '#fff8e1'
+        trim: true
     },
     badgeType: {
         type: String,
-        trim: true,
-        default: 'warning'
+        trim: true
     },
     // Estado final: lo fija el catálogo; el pedido o la reserva ya no cambia después
     esFinal: {

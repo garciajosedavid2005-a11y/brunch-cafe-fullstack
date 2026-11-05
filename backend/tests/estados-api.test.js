@@ -248,6 +248,15 @@ describe('Catálogo de estados por API', () => {
         expect((await admin.delete(`/api/estados/${pendiente.id}`)).status).toBe(405)
     })
 
+    it('un estado sin colores guardados usa los del catálogo, no el amarillo fijo (0.7c)', async () => {
+        await Estado.collection.updateOne({ tipo: 'reserva', codigo: 'cancelada' }, { $unset: { color: '', bg: '', badgeType: '' } })
+        await Estado.collection.updateOne({ tipo: 'pedido', codigo: 'pendiente' }, { $unset: { color: '', bg: '', badgeType: '' } })
+        const reservas = (await admin.get('/api/estados?tipo=reserva')).body
+        expect(reservas.find((e) => e.codigo === 'cancelada')).toMatchObject({ color: '#a33a3a', bg: '#fdecec', badgeType: 'danger' })
+        const pedidos = (await admin.get('/api/estados?tipo=pedido')).body
+        expect(pedidos.find((e) => e.codigo === 'pendiente')).toMatchObject({ color: '#7a5000', bg: '#fff8e1', badgeType: 'warning' })
+    })
+
     it('el seed respeta etiquetas editadas y vuelve a fijar esFinal', async () => {
         const { sembrarEstados } = await import('../src/seeds/estados.js')
         await Estado.updateOne({ tipo: 'pedido', codigo: 'entregado' }, { nombre: 'Recibido', esFinal: false })
