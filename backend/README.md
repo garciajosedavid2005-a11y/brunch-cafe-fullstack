@@ -4,8 +4,8 @@
 
 1. Copia `.env.example` a `.env` y configura `MONGO_URI` y un `JWT_SECRET` aleatorio.
 2. Ejecuta `npm install` si todavía no están instaladas las dependencias.
-3. Define `ADMIN_EMAIL`, `ADMIN_PASSWORD` (≥ 10 caracteres) y `ADMIN_NOMBRE` en `.env` y ejecuta `npm run seed:base` para crear los roles base y el primer administrador.
-4. (Opcional) `npm run seed:menu` para cargar el menú inicial.
+3. Define `ADMIN_EMAIL`, `ADMIN_PASSWORD` (≥ 10 caracteres) y `ADMIN_NOMBRE` en `.env` y ejecuta `npm run seed:base` para crear los roles base, el primer administrador y los métodos de pago.
+4. `npm run seed:menu` para cargar el menú inicial (categorías, productos e imágenes de `seed-data/`).
 5. Inicia MongoDB y ejecuta `npm run dev`.
 6. En `frontend`, copia `.env.example` a `.env` y ejecuta `npm run dev`.
 
@@ -21,6 +21,9 @@ El backend escucha por defecto en `http://localhost:4000`; el cliente usa cookie
 | `npm run test:watch` | Tests en modo observación |
 | `npm run lint` | ESLint 9 (flat config) |
 | `npm run migrate:0.7` | Migración de estados (ver abajo) |
+| `npm run seed:base` | Roles, primer admin, estados y métodos de pago (ver abajo) |
+| `npm run seed:menu` | Menú inicial desde `seed-data/` (ver abajo) |
+| `npm run seed:dev` | Usuarios de prueba `*.dev@brunchcafe.test` (solo desarrollo; contraseña en `DEV_USUARIOS_PASSWORD`) |
 
 - La primera ejecución de `npm test` descarga el binario de `mongod` (~100 MB) y lo deja en caché; no necesita un Mongo instalado.
 - `src/app.js` construye la app de Express (lo usan los tests); `src/index.js` conecta a MongoDB y escucha.
@@ -33,6 +36,23 @@ Idempotente: se puede ejecutar las veces que quieras.
 - Asegura los roles de sistema `admin` y `cliente` (no pisa etiqueta ni descripción editadas). El servidor también los asegura al arrancar, así que el registro nunca crea roles durante una petición.
 - Crea el primer administrador con `ADMIN_EMAIL`, `ADMIN_PASSWORD` y `ADMIN_NOMBRE` ("Nombre Apellido"). Si el correo ya existe, **no cambia su contraseña ni sus datos**: solo le asigna el rol `admin`. Sin esas variables, este paso se omite.
 - Si en la BD hay roles creados a mano como `Admin` o `Administrador`, sus usuarios pasan al rol canónico `admin` (el rol viejo se conserva).
+- Pone la etiqueta del catálogo ("Cliente", "Mesero"…) a los roles cuya etiqueta guardada es el código, vacía o ausente.
+- Crea los métodos de pago que falten (Contra Entrega, Tarjeta débito, Tarjeta crédito). Las peticiones ya no los crean: un método que el admin borre no reaparece hasta volver a ejecutar el seed.
+
+### Menú inicial (`npm run seed:menu`)
+
+Lee `seed-data/menu.json` (categorías con descripción y productos con `codigo`, precio entero en COP y nombre de archivo de imagen) y las imágenes de `seed-data/imagenes/`. No depende de la carpeta del frontend.
+
+- Valida todo el archivo antes de escribir (precios enteros, categorías existentes, imágenes presentes, códigos únicos).
+- Idempotente y conservador: crea las categorías, imágenes y productos que falten y **no modifica** los existentes (precio, descripción, disponibilidad o destacado editados en el admin se respetan).
+
+### Catálogo
+
+- `GET /api/v1/catalogo` (público): categorías y productos **disponibles**, precio entero en COP (el frontend lo formatea) e imagen siempre como URL (`/productos/menu/imagenes/...`), nunca base64. `GET /api/productos/menu` es un alias con la misma respuesta mientras queden clientes que lo usen.
+- `Producto.disponible` (por defecto `true`): los agotados no salen en el catálogo y `POST /api/customer/orders` los rechaza con `409 PRODUCT_UNAVAILABLE` (indica cuáles). El admin los sigue viendo y los activa con un interruptor.
+- Imágenes subidas desde el admin: máximo 2 MB (PNG, JPG, WEBP o GIF); se guardan en `MenuImage` y el producto guarda su URL. El cuerpo JSON admite hasta 3 MB (`413 PAYLOAD_TOO_LARGE`).
+- Precio: entero ≥ 0 (`"12000"` se acepta; decimales y negativos no).
+- `codigo` (número que usan carrito y pedidos) sale de un contador atómico (colección `counters`); nunca se repite ni se reutiliza.
 
 ### Seguridad de la sesión
 
@@ -99,5 +119,6 @@ La autenticación conserva las cuentas existentes de `Usuario` y `Rol`; no crea 
 | GET, POST | `/api/customer/reviews` | Consultar y publicar los comentarios propios |
 | GET | `/api/reviews` | Listar comentarios públicos publicados desde el dashboard |
 | GET | `/api/reviews/product-ratings` | Consultar promedios públicos de calificación por producto |
+| GET | `/api/v1/catalogo` | Catálogo público (alias: `/api/productos/menu`) |
 
-Los pedidos se guardan en `Pedido` y `DetallePedido`. El backend valida los IDs contra `frontend/src/data/menu.json` y calcula precios y total desde el catálogo, sin confiar en importes del navegador; guarda también los datos de entrega para el historial. Las reservas se almacenan en `Reserva` y referencian un `Estado` del catálogo fijo, y se crean desde la página protegida `/reservas`. Nombre y correo se precargan desde la cuenta y pueden ajustarse como datos de contacto de esa reserva. Editar una reserva activa la devuelve a `Pendiente` para una nueva aprobación. Las reservas aceptan horas en punto de 8:00 a 12:00 entre semana y de 8:00 a 11:00 los fines de semana, además de requerir un motivo. Los comentarios se guardan en la colección `Review`: el dashboard es el único formulario para publicarlos, y la página pública de comentarios muestra las reseñas reales sin permitir publicaciones duplicadas. Pueden ser generales o asociarse a un producto; las calificaciones de producto se agregan en el endpoint público de promedios.
+Los pedidos se guardan en `Pedido` y `DetallePedido`. El backend valida los productos contra el catálogo en MongoDB (existentes y disponibles) y calcula precios y total desde allí, sin confiar en importes del navegador; guarda también los datos de entrega para el historial. Las reservas se almacenan en `Reserva` y referencian un `Estado` del catálogo fijo, y se crean desde la página protegida `/reservas`. Nombre y correo se precargan desde la cuenta y pueden ajustarse como datos de contacto de esa reserva. Editar una reserva activa la devuelve a `Pendiente` para una nueva aprobación. Las reservas aceptan horas en punto de 8:00 a 12:00 entre semana y de 8:00 a 11:00 los fines de semana, además de requerir un motivo. Los comentarios se guardan en la colección `Review`: el dashboard es el único formulario para publicarlos, y la página pública de comentarios muestra las reseñas reales sin permitir publicaciones duplicadas. Pueden ser generales o asociarse a un producto; las calificaciones de producto se agregan en el endpoint público de promedios.
