@@ -9,7 +9,7 @@
 | 0.1 | Infraestructura: tests, lint, errores, logger | FALTA | HECHO | ce1a848 | Vitest+Supertest+MongoMemoryReplSet (17 tests), ESLint 9, `{error:{code,message,details}}`, pino/pino-http (sustituye morgan). `normalizarErroresLegados` es transitorio (se retira en 0.11). Frontend: `api.js` y `adminApi.js` leen el formato nuevo. Mongoose `new:true` → `returnDocument:'after'`. |
 | 0.2 | Seguridad auth | FALTA | HECHO | 5bfaef2 | Cookie httpOnly/sameSite/secure(env), JWT 2 h, mensajes genéricos, rate limit login/registro, helmet, CORS por lista, 401 en token inválido/vencido, N2 (correo normalizado + `report:correos`), N1 en auth. 33 tests. Limitación: el registro aún permite inferir existencia (éxito vs. error); cerrarlo del todo requiere verificación por correo. Rate limit en memoria (1 instancia). |
 | 0.3 | Seed roles + primer admin | FALTA | HECHO | 1e6dc10 | `npm run seed:base` idempotente; roles admin/cliente al arrancar (registro sin upsert); admins existentes respetados y alias `Admin`/`Administrador` unificados. 41 tests. Ejecutado en BD local: roles OK, admin omitido (faltan `ADMIN_*` en `.env`). |
-| 0.4 | RBAC con permisos desde BD | FALTA | PENDIENTE | — | |
+| 0.4 | RBAC con permisos desde BD | FALTA | HECHO | 7dc8bbc | Catálogo `Permiso` (16 claves, 5 reservadas), `autenticar` (BD + caché 30 s, invalidación inmediata), `requirePermission` en todos los routers, roles de staff, `Usuario.activo`, `GET/PATCH /api/admin/usuarios` con protecciones, pantallas Roles (casillas) y Usuarios. 74 tests. |
 | 0.7 | Enums + transiciones + Evento | FALTA | PENDIENTE | — | adelantado |
 | 0.5 | Catálogo en MongoDB (resto) | PARCIAL | PENDIENTE | — | |
 | 0.6 | Referencias ObjectId + migración | PARCIAL | PENDIENTE | — | |
@@ -195,7 +195,10 @@ Mantengo el orden del plan con estos ajustes por dependencias:
 
 ## Pendientes / preguntas abiertas
 
-- **Primer admin no creado:** `backend/.env` no contiene `ADMIN_EMAIL`, `ADMIN_PASSWORD` ni `ADMIN_NOMBRE` (última modificación 10:30, ¿cambios sin guardar?). Al añadirlos: `npm run seed:base`.
+- **Primer admin no creado:** `backend/.env` no contiene `ADMIN_EMAIL`, `ADMIN_PASSWORD` ni `ADMIN_NOMBRE` (verificado de nuevo tras tu mensaje: siguen sin estar; ¿cambios sin guardar?). Al añadirlos: `npm run seed:base`.
+- **Carrera en "último admin":** dos degradaciones simultáneas de los dos últimos admins podrían dejar 0 admins (no hay transacción). Se cerrará en 0.9 con transacciones (requiere replica set).
+- **Staff en el frontend:** un usuario con rol de staff (mesero, etc.) que inicia sesión se redirige a `/cuenta` (el frontend solo distingue `admin`). La interfaz de staff llega en la Fase 1.
+- **`authorizeRole.js`:** sin uso desde 0.4, marcado como deprecado; se propondrá eliminarlo en 0.12.
 - **Colecciones heredadas** en la BD local (`users`, `orders`, `reservations`, `reviews`): no se tocan; en 0.12 se propondrá eliminarlas con `mongodump` previo y confirmación.
 - **Registro:** aún permite inferir si un correo existe (éxito vs. error). Cerrarlo del todo requiere verificación por correo (fuera de alcance de la Fase 0).
 
