@@ -32,10 +32,15 @@ const ALIAS_ADMIN = /^(admin|administrador|administrator)$/i
  * Crea los roles base y de staff si no existen y los marca como de sistema.
  * - admin y cliente: sus permisos se fuerzan siempre (["*"] y []).
  * - staff: los permisos mínimos solo se asignan al crear el rol; luego los edita el admin.
- * No sobrescribe etiqueta ni descripción editadas. Idempotente.
+ * No sobrescribe etiqueta ni descripción editadas (salvo una etiqueta igual al código o vacía). Idempotente.
  */
 export const sembrarRoles = async () => {
     await sembrarPermisos()
+    // Etiqueta igual al código ("cliente"), vacía o ausente (la UI mostraba el código)
+    // → la del catálogo ("Cliente"). Una etiqueta personalizada no se toca.
+    await Rol.bulkWrite([...ROLES_BASE, ...ROLES_STAFF].map(({ nombre, etiqueta }) => ({
+        updateOne: { filter: { nombre, etiqueta: { $in: [nombre, '', null] } }, update: { $set: { etiqueta } } },
+    })))
     const roles = {}
     for (const { nombre, permisos, ...valores } of ROLES_BASE) {
         roles[nombre] = await Rol.findOneAndUpdate(

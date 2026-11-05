@@ -43,6 +43,25 @@ describe('Seed de roles base', () => {
         const admin = await Rol.findOne({ nombre: 'admin' }).lean()
         expect(admin).toMatchObject({ etiqueta: 'Gerencia', descripcion: 'Editada' })
     })
+
+    it('pone la etiqueta del catálogo si la guardada es el código, vacía o ausente, sin pisar las personalizadas', async () => {
+        await sembrarRoles()
+        await Rol.updateOne({ nombre: 'cliente' }, { $set: { etiqueta: 'cliente' } })
+        await Rol.updateOne({ nombre: 'anfitrion' }, { $set: { etiqueta: 'anfitrion' } })
+        await Rol.updateOne({ nombre: 'mesero' }, { $set: { etiqueta: 'mesero de sala' } })
+        await Rol.updateOne({ nombre: 'cocina' }, { $set: { etiqueta: 'COCINA' } })
+        // Rol creado antes de que existiera el campo: sin etiqueta (la UI mostraba el código)
+        await Rol.updateOne({ nombre: 'barista' }, { $unset: { etiqueta: 1 } })
+        await Rol.updateOne({ nombre: 'cajero' }, { $set: { etiqueta: '' } })
+        await sembrarRoles()
+        const etiquetas = Object.fromEntries((await Rol.find().lean()).map((r) => [r.nombre, r.etiqueta]))
+        expect(etiquetas.cliente).toBe('Cliente')
+        expect(etiquetas.anfitrion).toBe('Anfitrión')
+        expect(etiquetas.mesero).toBe('mesero de sala')
+        expect(etiquetas.cocina).toBe('COCINA')
+        expect(etiquetas.barista).toBe('Barista')
+        expect(etiquetas.cajero).toBe('Cajero')
+    })
 })
 
 describe('Seed del primer administrador', () => {
