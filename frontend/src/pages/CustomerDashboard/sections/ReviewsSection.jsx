@@ -9,7 +9,7 @@ export default function ReviewsSection() {
   const [reviews, setReviews] = useState([]);
   const [menu, setMenu] = useState([]);
   const [tipo, setTipo] = useState("general");
-  const [productoId, setProductoId] = useState("");
+  const [productoRef, setProductoRef] = useState("");
   const [calificacion, setCalificacion] = useState(0);
   const [comentario, setComentario] = useState("");
   const [loading, setLoading] = useState(true);
@@ -39,14 +39,14 @@ export default function ReviewsSection() {
         body: JSON.stringify({
           tipo,
           ...(tipo === "producto"
-            ? { productoId: Number(productoId) }
+            ? { productoRef }
             : {}),
           calificacion,
           comentario,
         }),
       });
       setReviews((current) => [review, ...current]);
-      setProductoId("");
+      setProductoRef("");
       setCalificacion(0);
       setComentario("");
       setNotice({ message: "Tu comentario fue publicado.", error: false });
@@ -78,7 +78,7 @@ export default function ReviewsSection() {
         {tipo === "producto" && (
           <label className="dashboard-form__wide">
             Producto del menú
-            <select value={productoId} onChange={(event) => setProductoId(event.target.value)} required>
+            <select value={productoRef} onChange={(event) => setProductoRef(event.target.value)} required>
               <option value="">Selecciona el platillo o producto</option>
               {menu.map((product) => (
                 <option key={product.id} value={product.id}>{product.nombre}</option>
@@ -127,7 +127,7 @@ export default function ReviewsSection() {
             {review.tipo === "producto" && (
               <p className="dashboard-review__product">
                 Producto: <Link to={`/menu#producto-${review.productoId}`}>
-                  {menu.find((product) => product.id === review.productoId)?.nombre || `Producto ${review.productoId}`}
+                  {menu.find((product) => product.codigo === review.productoId)?.nombre || `Producto ${review.productoId}`}
                 </Link>
               </p>
             )}

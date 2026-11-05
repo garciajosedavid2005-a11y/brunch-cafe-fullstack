@@ -22,7 +22,8 @@ const formato = (producto) => ({
 
 /**
  * Catálogo público (GET /api/v1/catalogo y su alias GET /api/productos/menu).
- * `id` es el código numérico del producto (lo usan el carrito y los pedidos).
+ * `id` es el ObjectId del producto (0.6: carrito, pedidos y reseñas lo envían como
+ * `productoRef`); `codigo` es el número visible (enlaces /menu#producto-<codigo>).
  * Precio entero en COP; imagen siempre como URL (nunca base64).
  */
 export const listarCatalogo = async (req, res) => {
@@ -36,7 +37,7 @@ export const listarCatalogo = async (req, res) => {
         res.json({
             categorias: categorias.map(({ nombre }) => nombre),
             productos: productos.map((producto) => ({
-                id: producto.codigo,
+                id: String(producto._id),
                 codigo: producto.codigo,
                 nombre: producto.nombre,
                 precio: producto.precio, // entero en COP; el frontend lo formatea

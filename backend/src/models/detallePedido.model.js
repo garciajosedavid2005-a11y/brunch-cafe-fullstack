@@ -6,10 +6,13 @@ const detallePedidoSchema = new mongoose.Schema({
         ref: 'Pedido',
         required: true
     },
+    // Referencia real al producto (0.6). Las líneas antiguas la reciben con migrate:0.6.
     producto: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Producto'
+        ref: 'Producto',
+        required: true
     },
+    // Código numérico del producto en el momento del pedido (se conserva)
     productoId: {
         type: Number,
         min: 1,

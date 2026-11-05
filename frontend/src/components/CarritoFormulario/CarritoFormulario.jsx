@@ -8,6 +8,7 @@ import { useAuth } from '../../context/useAuth'
 import { apiRequest } from '../../services/api'
 import ResumenPedido from '../ResumenPedido/ResumenPedido'
 import { formatearCOP } from '../../utils/moneda'
+import { itemsDelPedido } from '../../utils/pedido'
 
 const CarritoFormulario = () => {
 
@@ -168,10 +169,7 @@ const CarritoFormulario = () => {
                 body: JSON.stringify({
                     ...formData,
                     metodoPagoId,
-                    items: productos.map(({ id, cantidad }) => ({
-                        productoId: id,
-                        cantidad
-                    }))
+                    items: itemsDelPedido(productos)
                 })
             })
             setMostrarModal(false)

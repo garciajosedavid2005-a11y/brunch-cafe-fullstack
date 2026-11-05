@@ -14,8 +14,8 @@ import { apiRequest } from "../../services/api";
 import Menu from "./Menu";
 
 const PRODUCTOS = [
-  { id: 1, nombre: "Latte", precio: 9000, categoria: "Bebidas", descripcion: "Café con leche", imagen: "" },
-  { id: 2, nombre: "Waffle", precio: 15000, categoria: "Postres", descripcion: "Con frutas", imagen: "" },
+  { id: "a".repeat(24), codigo: 1, nombre: "Latte", precio: 9000, categoria: "Bebidas", descripcion: "Café con leche", imagen: "" },
+  { id: "b".repeat(24), codigo: 2, nombre: "Waffle", precio: 15000, categoria: "Postres", descripcion: "Con frutas", imagen: "" },
 ];
 
 // Primera llamada: menú; segunda: calificaciones
@@ -67,5 +67,17 @@ describe("Menú", () => {
     falla = false;
     fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
     expect(await screen.findByText("Latte")).toBeInTheDocument();
+  });
+
+  it("ids por ObjectId: el ancla del menú usa el código y las calificaciones se cruzan por productoRef", async () => {
+    apiRequest.mockImplementation((ruta) =>
+      ruta === "/v1/catalogo"
+        ? Promise.resolve({ productos: PRODUCTOS, categorias: [] })
+        : Promise.resolve({ productRatings: [{ productoRef: "b".repeat(24), productoId: 2, average: 3, count: 4 }] })
+    );
+    const { container } = renderMenu();
+    await screen.findByText("Waffle");
+    expect(container.querySelector("#producto-2")).not.toBeNull();
+    expect(await screen.findByLabelText(/3\.0 de 5 estrellas, basada en 4 comentarios/)).toBeInTheDocument();
   });
 });

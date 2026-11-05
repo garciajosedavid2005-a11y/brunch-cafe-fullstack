@@ -7,9 +7,10 @@ import "./Menu.css";
 
 const ITEMS_POR_PAGINA = 8;
 
+// Los enlaces /menu#producto-<codigo> usan el código visible del producto
 function getVisibleCountForHash(hash, menu) {
-  const productId = Number(hash.replace("#producto-", ""));
-  const productIndex = menu.findIndex((product) => product.id === productId);
+  const codigo = Number(hash.replace("#producto-", ""));
+  const productIndex = menu.findIndex((product) => product.codigo === codigo);
   if (productIndex === -1) return ITEMS_POR_PAGINA;
   return Math.ceil((productIndex + 1) / ITEMS_POR_PAGINA) * ITEMS_POR_PAGINA;
 }
@@ -53,8 +54,9 @@ const Menu = () => {
   useEffect(() => {
     apiRequest("/comentarios/product-ratings")
       .then(({ productRatings: ratings }) => {
-        setProductRatings(Object.fromEntries(ratings.map(({ productoId, average, count }) => [
-          productoId,
+        // Indexadas por el ObjectId del producto (el `id` del catálogo)
+        setProductRatings(Object.fromEntries(ratings.map(({ productoRef, average, count }) => [
+          productoRef,
           { average, count },
         ])));
       })
@@ -151,6 +153,7 @@ const Menu = () => {
             <TarjetaMenu
               key={producto.id}
               id={producto.id}
+              codigo={producto.codigo}
               nombre={producto.nombre}
               descripcion={producto.descripcion}
               precio={producto.precio}

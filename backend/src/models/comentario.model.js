@@ -13,8 +13,15 @@ const comentarioSchema = new mongoose.Schema(
       default: 'general',
       required: true,
     },
-    // Corresponde al "codigo" del producto. Se quitó el máximo de 24 para que
-    // los productos nuevos creados desde el dashboard también se puedan comentar.
+    // Referencia real al producto (0.6). Los comentarios antiguos la reciben con migrate:0.6.
+    producto: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Producto',
+      required: function () {
+        return this.tipo === 'producto';
+      },
+    },
+    // Código numérico del producto (se conserva; las calificaciones públicas lo incluyen).
     productoId: {
       type: Number,
       min: 1,

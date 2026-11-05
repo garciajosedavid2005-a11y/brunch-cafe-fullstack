@@ -2,6 +2,7 @@ import { z } from 'zod';
 import Comentario from '../models/comentario.model.js';
 import Producto from '../models/producto.model.js';
 import mongoose from 'mongoose';
+import { referenciaProducto, unaReferencia, MENSAJE_REFERENCIA, resolverProductos } from '../schema/referenciaProducto.js';
 
 const comentarioSchema = z.discriminatedUnion('tipo', [
   z.object({
@@ -11,10 +12,10 @@ const comentarioSchema = z.discriminatedUnion('tipo', [
   }),
   z.object({
     tipo: z.literal('producto'),
-    productoId: z.coerce.number().int().min(1),
+    ...referenciaProducto,
     calificacion: z.coerce.number().int().min(1).max(5),
     comentario: z.string().trim().min(10).max(300),
-  }),
+  }).refine(unaReferencia, { error: MENSAJE_REFERENCIA }),
 ]);
 
 export const listarComentariosPublicos = async (req, res, next) => {
@@ -37,6 +38,7 @@ export const listarComentariosPublicos = async (req, res, next) => {
             .join(' ') || 'Cliente',
         tipo: comentario.tipo,
         productoId: comentario.productoId,
+        productoRef: comentario.producto || null,
         producto: nombrePorCodigo.get(comentario.productoId) || '',
         calificacion: comentario.calificacion,
         comentario: comentario.comentario,
@@ -127,15 +129,20 @@ export const crearComentario = async (req, res, next) => {
   }
 
   try {
-    if (parsed.data.tipo === 'producto') {
-      const existe = await Producto.exists({ codigo: parsed.data.productoId });
-      if (!existe) {
+    // productoRef solo sirve para encontrar el producto; se guardan producto (ObjectId) y productoId (código)
+    const datos = { ...parsed.data };
+    delete datos.productoRef;
+    if (datos.tipo === 'producto') {
+      const producto = (await resolverProductos(Producto, [parsed.data]))(parsed.data);
+      if (!producto) {
         return res.status(400).json({ message: 'El producto seleccionado no existe en el menú.' });
       }
+      datos.producto = producto._id;
+      datos.productoId = producto.codigo;
     }
 
     const comentario = await Comentario.create({
-      ...parsed.data,
+      ...datos,
       usuario: req.usuario.id,
     });
 
@@ -166,8 +173,13 @@ export const obtenerCalificacionesProductos = async (req, res, next) => {
       },
       { $sort: { productoId: 1 } },
     ]);
+    // productoRef: ObjectId del producto (el catálogo identifica los productos por él)
+    const productos = await Producto.find({ codigo: { $in: productRatings.map((r) => r.productoId) } }).select('codigo').lean();
+    const idPorCodigo = new Map(productos.map((p) => [p.codigo, String(p._id)]));
 
-    return res.json({ productRatings });
+    return res.json({
+      productRatings: productRatings.map((r) => ({ productoRef: idPorCodigo.get(r.productoId) || null, ...r })),
+    });
   } catch (error) {
     return next(error);
   }

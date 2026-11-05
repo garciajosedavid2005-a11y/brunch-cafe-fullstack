@@ -13,6 +13,7 @@ import { STATUS_CLIENTE } from '../libs/estados.js';
 import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../services/estados.service.js';
 import { validateSchema } from '../middlewares/validator.middleware.js';
 import { cuerpoError } from '../libs/errors.js';
+import { referenciaProducto, unaReferencia, MENSAJE_REFERENCIA, resolverProductos } from '../schema/referenciaProducto.js';
 import { cancelacionClienteSchema } from '../schema/cambioEstado.schema.js';
 
 const router = Router();
@@ -40,9 +41,9 @@ const reservationSchema = z.object({
 
 const orderSchema = z.object({
   items: z.array(z.object({
-    productoId: z.coerce.number().int().min(1),
+    ...referenciaProducto,
     cantidad: z.coerce.number().int().min(1).max(20),
-  })).min(1).max(50),
+  }).refine(unaReferencia, { error: MENSAJE_REFERENCIA })).min(1).max(50),
   nombre: z.string().trim().min(3).max(50),
   direccion: z.string().trim().min(5).max(60).regex(
     /^(calle|cl|carrera|cra|avenida|av|transversal|tv|diagonal|dg)\s*\d+[a-zA-Z]?\s*(sur|norte|este|oeste)?\s*#\s*\d+[a-zA-Z]?\s*-\s*\d+[a-zA-Z]?$/i,
@@ -232,11 +233,10 @@ router.post('/orders', async (req, res, next) => {
     return res.status(400).json({ message: 'Revisa los productos y datos de entrega.', errors: parsed.error.flatten() });
   }
 
-  const productCodes = parsed.data.items.map((item) => item.productoId);
-  const products = await Producto.find({ codigo: { $in: productCodes } }).lean();
-  const productByCode = new Map(products.map((product) => [product.codigo, product]));
+  const productoDe = await resolverProductos(Producto, parsed.data.items);
+  const products = parsed.data.items.map(productoDe).filter(Boolean);
   const lines = parsed.data.items.map((item) => {
-    const product = productByCode.get(item.productoId);
+    const product = productoDe(item);
     if (!product) return null;
     return {
       productId: product.codigo,

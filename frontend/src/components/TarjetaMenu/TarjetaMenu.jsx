@@ -2,7 +2,7 @@ import "./TarjetaMenu.css";
 import { useCarrito } from '../../context/CarritoContext'
 import { formatearCOP } from "../../utils/moneda";
 
-const TarjetaMenu = ({ id, nombre, descripcion, precio, imagen, rating = 5, ratingCount = 0, delay }) => {
+const TarjetaMenu = ({ id, codigo, nombre, descripcion, precio, imagen, rating = 5, ratingCount = 0, delay }) => {
   const { agregarProducto } = useCarrito();
 
   const handleAgregar = () => {
@@ -10,7 +10,7 @@ const TarjetaMenu = ({ id, nombre, descripcion, precio, imagen, rating = 5, rati
   };
 
   return (
-    <article id={`producto-${id}`} className={`tarjeta-menu ${delay ? `delay-${delay}` : ""}`} data-id={id}>
+    <article id={`producto-${codigo}`} className={`tarjeta-menu ${delay ? `delay-${delay}` : ""}`} data-id={id}>
       <div className="tarjeta-menu__imagen-wrap">
         {imagen ? (
           <img

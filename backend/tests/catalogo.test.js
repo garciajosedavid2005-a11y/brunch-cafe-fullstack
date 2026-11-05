@@ -29,7 +29,7 @@ describe('GET /api/v1/catalogo', () => {
         expect(res.status).toBe(200)
         expect(res.body.categorias).toEqual(['Bebidas'])
         expect(res.body.productos).toEqual([{
-            id: 1, codigo: 1, nombre: 'Latte', precio: 12000, categoria: 'Bebidas',
+            id: expect.stringMatching(/^[0-9a-f]{24}$/), codigo: 1, nombre: 'Latte', precio: 12000, categoria: 'Bebidas',
             descripcion: '', imagen: '/productos/menu/imagenes/latte.png', destacado: false,
         }])
     })
