@@ -39,6 +39,14 @@ const VISTAS = {
   menu: { preparar: (p) => p.goto(`${FRONT}/menu`) },
   "cuenta-cliente": { usuario: "cliente", preparar: (p) => p.goto(`${FRONT}/cuenta`) },
   "cuenta-mesero": { usuario: "mesero", preparar: (p) => p.goto(`${FRONT}/cuenta`) },
+  "cuenta-cliente-pedidos": { usuario: "cliente", preparar: async (p) => {
+    await p.goto(`${FRONT}/cuenta`);
+    await p.getByRole("button", { name: /mis pedidos/i }).click();
+  } },
+  "cuenta-cliente-reservas": { usuario: "cliente", preparar: async (p) => {
+    await p.goto(`${FRONT}/cuenta`);
+    await p.getByRole("button", { name: /mis reservas/i }).click();
+  } },
   "admin-pedido-detalle": {
     usuario: "admin",
     completa: false,
