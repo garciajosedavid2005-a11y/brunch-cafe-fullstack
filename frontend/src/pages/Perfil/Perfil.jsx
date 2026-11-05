@@ -1,34 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useDatosCuenta, { etiquetaRolCuenta } from '../../hooks/useDatosCuenta';
 
+// Vista simple de /perfil (se mantiene; usa el mismo cliente HTTP que el resto de la app)
 const Perfil = () => {
-  const [usuario, setUsuario] = useState(null);
-  const [cargando, setCargando] = useState(true);
+  const { cuenta: usuario, cargando, error } = useDatosCuenta();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const obtenerPerfil = async () => {
-      try {
-        const res = await fetch('http://localhost:4000/api/usuarios/perfil', {
-          credentials: 'include', // IMPORTANTE: manda la cookie del token
-        });
-
-        if (!res.ok) {
-          navigate('/login');
-          return;
-        }
-
-        const data = await res.json();
-        setUsuario(data);
-      } catch {
-        navigate('/login');
-      } finally {
-        setCargando(false);
-      }
-    };
-
-    obtenerPerfil();
-  }, [navigate]);
+    if (error) navigate('/login');
+  }, [error, navigate]);
 
   if (cargando) return <p>Cargando...</p>;
   if (!usuario) return null;
@@ -39,7 +20,7 @@ const Perfil = () => {
       <p><strong>Nombre:</strong> {usuario.nombre} {usuario.apellido}</p>
       <p><strong>Correo:</strong> {usuario.correo}</p>
       <p><strong>Teléfono:</strong> {usuario.telefono}</p>
-      <p><strong>Rol:</strong> {usuario.rol?.nombre}</p>
+      <p><strong>Rol:</strong> {etiquetaRolCuenta(usuario.rol)}</p>
     </div>
   );
 };

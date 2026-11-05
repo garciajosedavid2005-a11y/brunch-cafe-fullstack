@@ -4,6 +4,7 @@ import {
   CalendarDays,
   MessageSquareText,
   PackageCheck,
+  ShieldCheck,
   UserRound,
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
@@ -11,6 +12,7 @@ import ProfileSection from "./sections/ProfileSection";
 import OrdersSection from "./sections/OrdersSection";
 import ReservationsSection from "./sections/ReservationsSection";
 import ReviewsSection from "./sections/ReviewsSection";
+import SecuritySection from "./sections/SecuritySection";
 import "./CustomerDashboard.css";
 
 const sections = [
@@ -18,6 +20,7 @@ const sections = [
   { id: "orders", label: "Mis pedidos", icon: PackageCheck },
   { id: "reservations", label: "Mis reservas", icon: CalendarDays },
   { id: "reviews", label: "Mis comentarios", icon: MessageSquareText },
+  { id: "security", label: "Seguridad y configuración", icon: ShieldCheck },
 ];
 
 const sectionContent = {
@@ -25,6 +28,7 @@ const sectionContent = {
   orders: OrdersSection,
   reservations: ReservationsSection,
   reviews: ReviewsSection,
+  security: SecuritySection,
 };
 
 export default function CustomerDashboard() {

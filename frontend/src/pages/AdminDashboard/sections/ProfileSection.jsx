@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../../context/useAuth";
 import { apiRequest } from "../../../services/api";
+import useCambioContrasena from "../../../hooks/useCambioContrasena";
 
 export default function ProfileSection() {
   const { user, setUser } = useAuth();
@@ -25,20 +26,10 @@ export default function ProfileSection() {
     rol: "Administrador del Sistema",
   });
 
-  // Datos de cambio de contraseña
-  const [passwordData, setPasswordData] = useState({
-    actual: "",
-    nueva: "",
-    confirmar: "",
-  });
-
   const [mensajePerfil, setMensajePerfil] = useState("");
   const [errorPerfil, setErrorPerfil] = useState("");
-  const [mensajePass, setMensajePass] = useState("");
-  const [errorPass, setErrorPass] = useState("");
   const [cargando, setCargando] = useState(true);
   const [guardandoPerfil, setGuardandoPerfil] = useState(false);
-  const [guardandoPass, setGuardandoPass] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -102,40 +93,10 @@ export default function ProfileSection() {
     }
   };
 
-  const handleCambiarPassword = async (e) => {
-    e.preventDefault();
-    setErrorPass("");
-    setMensajePass("");
-
-    if (!passwordData.actual) {
-      setErrorPass("Debes ingresar tu contraseña actual.");
-      return;
-    }
-
-    if (passwordData.nueva.length < 6) {
-      setErrorPass("La nueva contraseña debe tener al menos 6 caracteres.");
-      return;
-    }
-
-    if (passwordData.nueva !== passwordData.confirmar) {
-      setErrorPass("La confirmación de contraseña no coincide.");
-      return;
-    }
-
-    setGuardandoPass(true);
-    try {
-      await apiRequest("/usuarios/perfil/contrasena", {
-        method: "PUT",
-        body: JSON.stringify({ actual: passwordData.actual, nueva: passwordData.nueva }),
-      });
-      setMensajePass("¡Contraseña actualizada con éxito!");
-      setPasswordData({ actual: "", nueva: "", confirmar: "" });
-    } catch (error) {
-      setErrorPass(error.message);
-    } finally {
-      setGuardandoPass(false);
-    }
-  };
+  // Misma lógica que "Seguridad y configuración" del cliente (hooks/useCambioContrasena)
+  const cambio = useCambioContrasena();
+  const errorPass = cambio.errorServidor || Object.values(cambio.errores)[0] || "";
+  const mensajePass = cambio.mensaje;
 
   return (
     <div className="admin-section">
@@ -285,7 +246,7 @@ export default function ProfileSection() {
             </div>
           )}
 
-          <form onSubmit={handleCambiarPassword} className="admin-form">
+          <form onSubmit={cambio.enviar} className="admin-form" noValidate>
             <div className="admin-form-group">
               <label className="admin-form-label">
                 Contraseña Actual
@@ -296,10 +257,8 @@ export default function ProfileSection() {
                   type="password"
                   className="admin-form-input admin-input--with-icon"
                   placeholder="••••••••"
-                  value={passwordData.actual}
-                  onChange={(e) =>
-                    setPasswordData({ ...passwordData, actual: e.target.value })
-                  }
+                  value={cambio.datos.actual}
+                    onChange={cambio.cambiar("actual")}
                   required
                 />
               </div>
@@ -316,10 +275,8 @@ export default function ProfileSection() {
                     type="password"
                     className="admin-form-input admin-input--with-icon"
                     placeholder="Mínimo 6 caracteres"
-                    value={passwordData.nueva}
-                    onChange={(e) =>
-                      setPasswordData({ ...passwordData, nueva: e.target.value })
-                    }
+                    value={cambio.datos.nueva}
+                    onChange={cambio.cambiar("nueva")}
                     required
                   />
                 </div>
@@ -335,10 +292,8 @@ export default function ProfileSection() {
                     type="password"
                     className="admin-form-input admin-input--with-icon"
                     placeholder="Repite la contraseña"
-                    value={passwordData.confirmar}
-                    onChange={(e) =>
-                      setPasswordData({ ...passwordData, confirmar: e.target.value })
-                    }
+                    value={cambio.datos.confirmar}
+                    onChange={cambio.cambiar("confirmar")}
                     required
                   />
                 </div>
@@ -346,7 +301,7 @@ export default function ProfileSection() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
-              <button type="submit" className="admin-button--secondary-sm" disabled={guardandoPass} style={{ height: "42px", padding: "0 1.25rem" }}>
+              <button type="submit" className="admin-button--secondary-sm" disabled={cambio.guardando} style={{ height: "42px", padding: "0 1.25rem" }}>
                 <KeyRound size={16} />
                 <span>Actualizar Contraseña</span>
               </button>

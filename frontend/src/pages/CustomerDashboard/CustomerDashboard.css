@@ -597,3 +597,53 @@
     flex-direction: column;
   }
 }
+
+/* ---- Seguridad y configuración (0.7b) ---- */
+.dashboard-account {
+  margin-bottom: 1.2rem;
+}
+
+.dashboard-account h3 {
+  margin: 0 0 0.8rem;
+  font-size: 1.05rem;
+  color: #2c0703;
+}
+
+.dashboard-account__datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.8rem 1.4rem;
+  margin: 0;
+}
+
+.dashboard-account__datos dt {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b4f49;
+}
+
+.dashboard-account__datos dd {
+  margin: 0.15rem 0 0;
+  color: #2c0703;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-account__ayuda {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #5c4540;
+}
+
+.dashboard-field-error {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #a1261e;
+}
+
+.dashboard-form input[aria-invalid="true"] {
+  border-color: #a1261e;
+}
