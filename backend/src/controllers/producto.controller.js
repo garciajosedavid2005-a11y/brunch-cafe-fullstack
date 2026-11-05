@@ -14,6 +14,7 @@ const formato = (producto) => ({
     descripcion: producto.descripcion || '',
     imagen: urlPublica(producto.imagen),
     destacado: Boolean(producto.destacado),
+    disponible: producto.disponible !== false,
     categoria: producto.categoria?.nombre || '',
     categoriaId: producto.categoria?._id || producto.categoria,
 })
@@ -26,7 +27,8 @@ const formato = (producto) => ({
 export const listarCatalogo = async (req, res) => {
     try {
         const [productos, categorias] = await Promise.all([
-            Producto.find().populate('categoria', 'nombre').sort({ codigo: 1, nombre: 1 }).lean(),
+            // $ne: false también incluye documentos antiguos sin el campo
+            Producto.find({ disponible: { $ne: false } }).populate('categoria', 'nombre').sort({ codigo: 1, nombre: 1 }).lean(),
             Categoria.find().sort({ nombre: 1 }).select('nombre').lean(),
         ])
 

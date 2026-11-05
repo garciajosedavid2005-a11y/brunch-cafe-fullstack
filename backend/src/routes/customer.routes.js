@@ -13,6 +13,7 @@ import { ensureOrderPaymentMethods } from '../libs/ensureOrderOptions.js';
 import { STATUS_CLIENTE } from '../libs/estados.js';
 import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../services/estados.service.js';
 import { validateSchema } from '../middlewares/validator.middleware.js';
+import { cuerpoError } from '../libs/errors.js';
 import { cancelacionClienteSchema } from '../schema/cambioEstado.schema.js';
 
 const router = Router();
@@ -250,6 +251,16 @@ router.post('/orders', async (req, res, next) => {
   });
   if (lines.some((line) => !line)) {
     return res.status(400).json({ message: 'Uno o más productos ya no están disponibles en el menú.' });
+  }
+  // Agotados: existen pero no se pueden pedir (el carrito pudo llenarse antes de que se agotaran)
+  const agotados = products.filter((product) => product.disponible === false);
+  if (agotados.length) {
+    const nombres = agotados.map((product) => product.nombre).join(', ');
+    return res.status(409).json(cuerpoError(
+      'PRODUCT_UNAVAILABLE',
+      `${agotados.length === 1 ? 'Este producto está agotado' : 'Estos productos están agotados'}: ${nombres}. ${agotados.length === 1 ? 'Quítalo' : 'Quítalos'} del carrito para continuar.`,
+      { productos: agotados.map((product) => product.codigo) },
+    ));
   }
 
   try {

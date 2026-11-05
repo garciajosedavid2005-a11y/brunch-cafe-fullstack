@@ -16,6 +16,7 @@ export const crearProductoSchema = z.object({
     descripcion: textoOpcional('La descripción', 500),
     imagen,
     destacado: booleano('El campo destacado').optional(),
+    disponible: booleano('El campo disponible').optional(),
     categoriaId: z.string(requerido('La categoría')).min(1, { error: 'La categoría es requerida' }),
 })
 

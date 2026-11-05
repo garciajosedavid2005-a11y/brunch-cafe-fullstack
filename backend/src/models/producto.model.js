@@ -27,6 +27,12 @@ const productoSchema = new mongoose.Schema({
     imagen: {
         type: String
     },
+    // false = agotado: no sale en el catálogo ni se puede pedir (el admin lo ve igual).
+    // Los productos anteriores a este campo se leen como disponibles (default).
+    disponible: {
+        type: Boolean,
+        default: true
+    },
     // Producto destacado (se muestra en la portada)
     destacado: {
         type: Boolean,

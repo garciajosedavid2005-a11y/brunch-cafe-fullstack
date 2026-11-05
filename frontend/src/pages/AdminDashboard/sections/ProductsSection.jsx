@@ -108,6 +108,11 @@ export default function ProductsSection() {
     await actualizar(producto.id, { destacado: !producto.destacado });
   };
 
+  // Agotado ↔ disponible (el backend lo saca del menú y rechaza pedidos con él)
+  const handleToggleDisponible = async (producto) => {
+    await actualizar(producto.id, { disponible: !producto.disponible });
+  };
+
   // Filtrado
   const productosFiltrados = productos.filter((prod) => {
     const coincideCat =
@@ -179,12 +184,12 @@ export default function ProductsSection() {
       {/* TABLA DE PRODUCTOS */}
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table">
+          <table className="admin-table admin-table--compacta admin-products__tabla">
             <thead>
               <tr>
                 <th>Plato / Producto</th>
-                <th>Categoría</th>
                 <th>Precio</th>
+                <th>Disponible</th>
                 <th>Destacado</th>
                 <th>Acciones</th>
               </tr>
@@ -192,7 +197,7 @@ export default function ProductsSection() {
             <tbody>
               {productosFiltrados.length > 0 ? (
                 productosFiltrados.map((prod) => (
-                  <tr key={prod.id}>
+                  <tr key={prod.id} className={prod.disponible ? "" : "admin-products__fila--agotada"}>
                     <td>
                       <div className="admin-product-cell">
                         {prod.imagen ? (
@@ -214,16 +219,32 @@ export default function ProductsSection() {
                           <span className="admin-product-desc-preview">
                             {prod.descripcion}
                           </span>
+                          <span className="admin-products__etiquetas">
+                            <span className="admin-badge admin-badge--neutral">{prod.categoria}</span>
+                            {!prod.disponible && <span className="admin-badge admin-badge--danger">Agotado</span>}
+                          </span>
                         </div>
                       </div>
                     </td>
                     <td>
-                      <span className="admin-badge admin-badge--neutral">
-                        {prod.categoria}
-                      </span>
+                      <span className="admin-table__amount">{formatCurrency(prod.precio)}</span>
                     </td>
                     <td>
-                      <span className="admin-table__amount">{formatCurrency(prod.precio)}</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={prod.disponible}
+                        aria-label={`Disponible: ${prod.nombre}`}
+                        title={prod.disponible ? "Marcar como agotado (sale del menú)" : "Marcar como disponible (vuelve al menú)"}
+                        className="admin-switch"
+                        disabled={guardando}
+                        onClick={() => handleToggleDisponible(prod)}
+                      >
+                        <span className="admin-switch__pista" aria-hidden="true">
+                          <span className="admin-switch__perilla" />
+                        </span>
+                        <span className="admin-switch__texto">{prod.disponible ? "Sí" : "No"}</span>
+                      </button>
                     </td>
                     <td>
                       <button
