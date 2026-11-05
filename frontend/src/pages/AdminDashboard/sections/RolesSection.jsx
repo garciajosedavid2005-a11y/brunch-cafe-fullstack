@@ -28,6 +28,9 @@ const TITULO_MODULO = {
 };
 const tituloModulo = (modulo) => TITULO_MODULO[modulo] || modulo.charAt(0).toUpperCase() + modulo.slice(1);
 
+const PERMISOS_VISIBLES = 2;
+const MOTIVO_SISTEMA = "Rol de sistema: no se puede eliminar";
+
 export default function RolesSection() {
   const { items: roles, cargando, error, guardando, cargar, crear, actualizar, eliminar } =
     useAdminResource("/roles");
@@ -37,6 +40,15 @@ export default function RolesSection() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [rolEnEdicion, setRolEnEdicion] = useState(null);
   const { confirmar } = useDialogo();
+  // Filas con la lista de permisos desplegada ("+N más")
+  const [desplegados, setDesplegados] = useState(() => new Set());
+  const alternarDesplegado = (id) =>
+    setDesplegados((actual) => {
+      const nuevo = new Set(actual);
+      if (nuevo.has(id)) nuevo.delete(id);
+      else nuevo.add(id);
+      return nuevo;
+    });
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -154,16 +166,22 @@ export default function RolesSection() {
 
       {/* GRID / TABLA DE ROLES */}
       <AdminStatus cargando={cargando} error={error} onReintentar={cargar} />
+      <p className="admin-roles__nota-sistema">
+        <Lock size={14} aria-hidden="true" />
+        <span>
+          Los roles de sistema (administrador, cliente y los del personal) son necesarios para que la app funcione:
+          puedes editar su descripción y permisos (salvo el administrador), pero no eliminarlos.
+        </span>
+      </p>
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table">
+          <table className="admin-table admin-table--compacta">
             <thead>
               <tr>
                 <th>Rol</th>
                 <th>Descripción</th>
-                <th>Usuarios Asignados</th>
-                <th>Permisos Otorgados</th>
-                <th>Tipo</th>
+                <th>Usuarios</th>
+                <th>Permisos</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -174,7 +192,7 @@ export default function RolesSection() {
                     <td>
                       <div className="admin-product-cell">
                         <div
-                          className="admin-product-thumbnail-placeholder"
+                          className="admin-product-thumbnail-placeholder admin-roles__icono"
                           style={{
                             background: rol.codigo === "admin" ? "#890620" : "#eedfd9",
                             color: rol.codigo === "admin" ? "#ffffff" : "#2C0703",
@@ -184,9 +202,10 @@ export default function RolesSection() {
                         </div>
                         <div>
                           <strong className="admin-table__client-name">{rol.nombre}</strong>
-                          <div style={{ fontSize: "0.75rem", color: "#55332e", fontFamily: "monospace" }}>
-                            slug: {rol.codigo}
-                          </div>
+                          <div className="admin-roles__slug">{rol.codigo}</div>
+                          <span className={`admin-badge admin-roles__tipo ${rol.esSistema ? "admin-badge--warning" : "admin-badge--neutral"}`}>
+                            {rol.esSistema ? "Sistema" : "Personalizado"}
+                          </span>
                         </div>
                       </div>
                     </td>
@@ -200,29 +219,28 @@ export default function RolesSection() {
                       </span>
                     </td>
                     <td className="admin-roles__celda-permisos">
-                      <div className="admin-roles__permisos">
+                      <div className="admin-roles__permisos" id={`permisos-${rol.id}`}>
                         {rol.permisos && rol.permisos.length > 0 ? (
-                          rol.permisos.slice(0, 3).map((p, idx) => (
-                            <span key={idx} className="admin-badge admin-badge--info admin-roles__permiso">
+                          (desplegados.has(rol.id) ? rol.permisos : rol.permisos.slice(0, PERMISOS_VISIBLES)).map((p) => (
+                            <span key={p} className="admin-badge admin-badge--info admin-roles__permiso">
                               {etiquetaPermiso(p)}
                             </span>
                           ))
                         ) : (
                           <span className="admin-roles__sin-permisos">Sin permisos</span>
                         )}
-                        {rol.permisos && rol.permisos.length > 3 && (
-                          <span className="admin-badge admin-badge--neutral admin-roles__permiso">
-                            +{rol.permisos.length - 3} más
-                          </span>
+                        {rol.permisos && rol.permisos.length > PERMISOS_VISIBLES && (
+                          <button
+                            type="button"
+                            className="admin-roles__mas"
+                            aria-expanded={desplegados.has(rol.id)}
+                            aria-controls={`permisos-${rol.id}`}
+                            onClick={() => alternarDesplegado(rol.id)}
+                          >
+                            {desplegados.has(rol.id) ? "Ver menos" : `+${rol.permisos.length - PERMISOS_VISIBLES} más`}
+                          </button>
                         )}
                       </div>
-                    </td>
-                    <td>
-                      {rol.esSistema ? (
-                        <span className="admin-badge admin-badge--warning">Sistema</span>
-                      ) : (
-                        <span className="admin-badge admin-badge--neutral">Personalizado</span>
-                      )}
                     </td>
                     <td>
                       <div className="admin-table__actions-row">
@@ -238,12 +256,15 @@ export default function RolesSection() {
                           </button>
                         )}
                         {rol.esSistema ? (
-                          <div className="admin-roles__protegido">
-                            <span className="admin-badge admin-badge--neutral">
-                              <Lock size={12} aria-hidden="true" /> Protegido
-                            </span>
-                            <small>Rol de sistema: no se puede eliminar.</small>
-                          </div>
+                          <button
+                            type="button"
+                            className="admin-roles__candado"
+                            disabled
+                            aria-label={MOTIVO_SISTEMA}
+                            title={MOTIVO_SISTEMA}
+                          >
+                            <Lock size={16} aria-hidden="true" />
+                          </button>
                         ) : (
                           <div className="admin-roles__eliminar">
                             <button
@@ -269,7 +290,7 @@ export default function RolesSection() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="admin-table__empty">
+                  <td colSpan="5" className="admin-table__empty">
                     No se encontraron roles configurados.
                   </td>
                 </tr>

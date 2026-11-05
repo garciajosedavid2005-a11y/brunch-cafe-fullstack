@@ -1905,21 +1905,12 @@
 }
 
 /* ---- Roles: protegidos y eliminar (0.7b) ---- */
-.admin-roles__protegido,
 .admin-roles__eliminar {
   display: grid;
   gap: 0.3rem;
   max-width: 200px;
 }
 
-.admin-roles__protegido .admin-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  width: fit-content;
-}
-
-.admin-roles__protegido small,
 .admin-roles__eliminar small {
   font-size: 0.75rem;
   line-height: 1.35;
@@ -2121,4 +2112,120 @@
 .admin-modal-container::-webkit-scrollbar-thumb {
   background: #b6465f;
   border-radius: 999px;
+}
+
+/* ---- Roles: tabla compacta (0.7c) ---- */
+.admin-roles__nota-sistema {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #dec7be;
+  border-radius: 12px;
+  background: #fffaf7;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: #4a2a24;
+}
+
+.admin-roles__nota-sistema svg {
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+  color: var(--color-primario);
+}
+
+.admin-roles__slug {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #55332e;
+}
+
+.admin-badge.admin-roles__tipo {
+  margin-top: 0.3rem;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.68rem;
+}
+
+.admin-roles__mas {
+  margin: 0;
+  padding: 0.2rem 0.55rem;
+  border: 1px dashed #8c726c;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #4a2a24;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-roles__mas:hover {
+  border-style: solid;
+  color: var(--color-primario);
+}
+
+.admin-roles__mas:focus-visible,
+.admin-roles__candado:focus-visible {
+  outline: 3px solid rgba(137, 6, 32, 0.35);
+  outline-offset: 2px;
+}
+
+/* Candado de rol de sistema: botón deshabilitado con aspecto neutro (no de "peligro") */
+.admin-roles__candado {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid #c9b3ad;
+  border-radius: 8px;
+  background: #f5efe6;
+  color: #6b4f49;
+  cursor: not-allowed;
+}
+
+/* Celdas más compactas en Roles y Usuarios para que quepan a 1280 px */
+.admin-table--compacta th,
+.admin-table--compacta td {
+  padding: 0.75rem 0.7rem;
+}
+
+.admin-table--compacta .admin-table__category-desc {
+  display: block;
+  max-width: 190px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+/* Si no caben (1024/768 px) desplazan dentro de su contenedor, con barra visible */
+.admin-table-container {
+  scrollbar-width: thin;
+  scrollbar-color: #b6465f #f7e7e2;
+}
+
+.admin-table-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.admin-table-container::-webkit-scrollbar-track {
+  background: #f7e7e2;
+}
+
+.admin-table-container::-webkit-scrollbar-thumb {
+  background: #b6465f;
+  border-radius: 999px;
+}
+
+.admin-product-thumbnail-placeholder.admin-roles__icono {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+}
+
+.admin-users__correo {
+  margin-top: 0.15rem;
+  font-size: 0.82rem;
+  color: #55332e;
 }

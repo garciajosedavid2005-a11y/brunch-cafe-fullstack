@@ -101,11 +101,10 @@ export default function UsersSection() {
       <AdminStatus cargando={cargando} error={error} onReintentar={cargar} />
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table">
+          <table className="admin-table admin-table--compacta">
             <thead>
               <tr>
                 <th>Usuario</th>
-                <th>Correo</th>
                 <th>Rol</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -119,9 +118,9 @@ export default function UsersSection() {
                     <tr key={usuario.id}>
                       <td>
                         <strong className="admin-table__client-name">{nombreCompleto(usuario)}</strong>
-                        {esYo && <div className="admin-users__yo">(tú)</div>}
+                        {esYo && <span className="admin-users__yo"> (tú)</span>}
+                        <div className="admin-users__correo">{usuario.correo}</div>
                       </td>
-                      <td>{usuario.correo}</td>
                       <td>
                         {esYo ? (
                           <span className="admin-badge admin-badge--neutral">{usuario.rol?.nombre || "Sin rol"}</span>
@@ -171,7 +170,7 @@ export default function UsersSection() {
                 })
               ) : (
                 <tr>
-                  <td colSpan="5" className="admin-table__empty">
+                  <td colSpan="4" className="admin-table__empty">
                     No se encontraron usuarios.
                   </td>
                 </tr>

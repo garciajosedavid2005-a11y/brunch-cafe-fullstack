@@ -16,10 +16,11 @@ const rol = (codigo, extra) => ({
 const ROLES = [
   rol("admin", { nombre: "Administrador", esSistema: true, editable: false, permisosEditables: false, eliminable: false, permisos: ["*"], usuariosAsignados: 1 }),
   rol("mesero", { nombre: "Mesero", esSistema: true, eliminable: false, permisos: ["pedido:ver"] }),
-  rol("supervisor", { nombre: "Supervisor", usuariosAsignados: 2, eliminable: false }),
+  rol("supervisor", { nombre: "Supervisor", usuariosAsignados: 2, eliminable: false, permisos: ["p1", "p2", "p3", "p4"] }),
   rol("temporal", { nombre: "Temporal" }),
 ];
 const CATALOGO = [
+  ...[1, 2, 3, 4].map((n) => ({ clave: `p${n}`, modulo: "pedidos", descripcion: `Permiso ${n}` })),
   { clave: "pedido:ver", modulo: "pedidos", descripcion: "Ver todos los pedidos" },
   { clave: "resena:moderar", modulo: "resenas", descripcion: "Ocultar o eliminar reseñas" },
   { clave: "catalogo:gestionar", modulo: "catalogo", descripcion: "Gestionar productos" },
@@ -45,14 +46,33 @@ const fila = (nombre) => screen.getByText(nombre, { selector: "strong" }).closes
 describe("Roles: eliminar", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("roles de sistema: protegidos con candado y explicación, sin botón Eliminar", async () => {
+  it("roles de sistema: candado deshabilitado con aria-label, sin píldora ni texto repetido (0.7c)", async () => {
     await montar();
     for (const nombre of ["Administrador", "Mesero"]) {
       const celda = within(fila(nombre));
-      expect(celda.getByText("Protegido")).toBeInTheDocument();
-      expect(celda.getByText(/rol de sistema: no se puede eliminar/i)).toBeInTheDocument();
-      expect(celda.queryByRole("button", { name: /eliminar/i })).not.toBeInTheDocument();
+      const candado = celda.getByRole("button", { name: "Rol de sistema: no se puede eliminar" });
+      expect(candado).toBeDisabled();
+      expect(candado).toHaveAttribute("title", "Rol de sistema: no se puede eliminar");
+      expect(celda.queryByText("Protegido")).not.toBeInTheDocument();
+      expect(celda.queryByRole("button", { name: /^eliminar/i })).not.toBeInTheDocument();
     }
+    // Admin no se edita; los demás roles de sistema sí
+    expect(within(fila("Administrador")).queryByRole("button", { name: /editar/i })).not.toBeInTheDocument();
+    expect(within(fila("Mesero")).getByRole("button", { name: /editar/i })).toBeInTheDocument();
+    // Una sola nota explicativa arriba de la tabla
+    expect(screen.getAllByText(/los roles de sistema/i)).toHaveLength(1);
+    expect(screen.queryByText("Rol de sistema: no se puede eliminar.")).not.toBeInTheDocument();
+  });
+
+  it("permisos: máximo 2 etiquetas y '+N más' que despliega el resto (0.7c)", async () => {
+    await montar();
+    const celda = within(fila("Supervisor"));
+    expect(celda.getAllByText(/^Permiso \d$/)).toHaveLength(2);
+    const mas = celda.getByRole("button", { name: "+2 más" });
+    expect(mas).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(mas);
+    expect(celda.getAllByText(/^Permiso \d$/)).toHaveLength(4);
+    expect(celda.getByRole("button", { name: "Ver menos" })).toHaveAttribute("aria-expanded", "true");
   });
 
   it("rol con usuarios: Eliminar deshabilitado con el motivo", async () => {
