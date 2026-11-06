@@ -13,22 +13,23 @@ import Perfil from "./pages/Perfil/Perfil";
 import Registro from "./pages/Registro/Registro";
 import CustomerDashboard from "./pages/CustomerDashboard/CustomerDashboard";
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
-import WaiterDashboard from "./pages/WaiterDashboard/WaiterDashboard";
+import StaffDashboard from "./pages/StaffDashboard/StaffDashboard";
 import RecuperarContrasena from "./pages/RecuperarContrasena/RecuperarContrasena";
 import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./context/useAuth";
 import { CarritoProvider } from "./context/CarritoContext";
 import { DialogoProvider } from "./context/DialogoContext";
+import { esAdministrador, esPersonal, rutaInicio, tienePermiso } from "./utils/permisos";
 
 import "./styles/index.css";
 import "./styles/variables.css";
 
+// Rutas por permisos (0.15d): "*" → /admin; personal → /staff; cliente → /cuenta
 function CustomerRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <main className="customer-dashboard-loading">Cargando tu cuenta...</main>;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role === "admin") return <Navigate to="/admin" replace />;
-  if (user.role === "mesero") return <Navigate to="/mesero" replace />;
+  if (rutaInicio(user) !== "/cuenta") return <Navigate to={rutaInicio(user)} replace />;
   return children;
 }
 
@@ -36,43 +37,36 @@ function AdminRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <main className="customer-dashboard-loading">Verificando permisos...</main>;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== "admin") return <Navigate to={user.role === "mesero" ? "/mesero" : "/cuenta"} replace />;
+  if (!esAdministrador(user)) return <Navigate to={rutaInicio(user)} replace />;
   return children;
 }
 
-function WaiterRoute({ children }) {
+function StaffRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <main className="customer-dashboard-loading">Verificando permisos...</main>;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== "mesero") return <Navigate to={user.role === "admin" ? "/admin" : "/cuenta"} replace />;
+  if (!esPersonal(user)) return <Navigate to={rutaInicio(user)} replace />;
   return children;
-}
-
-function dashboardPath(role) {
-  if (role === "admin") return "/admin";
-  if (role === "mesero") return "/mesero";
-  return "/cuenta";
 }
 
 function GuestRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user) return children;
-  return <Navigate to={dashboardPath(user.role)} replace />;
+  return <Navigate to={rutaInicio(user)} replace />;
 }
 
 function HomeRoute() {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (user && user.role !== "cliente") return <Navigate to={dashboardPath(user.role)} replace />;
+  if (user && rutaInicio(user) !== "/cuenta") return <Navigate to={rutaInicio(user)} replace />;
   return <Inicio />;
 }
 
 function DomiciliosRoute() {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (user?.role === "admin") return <Navigate to="/admin" replace />;
-  if (user?.role === "mesero") return <Navigate to="/mesero" replace />;
+  if (user && rutaInicio(user) !== "/cuenta") return <Navigate to={rutaInicio(user)} replace />;
   return <Domicilios />;
 }
 
@@ -90,10 +84,8 @@ function ReservationsRoute() {
   }, [loading, user, navigate, location.pathname]);
 
   if (loading) return <main className="customer-dashboard-loading">Verificando tu cuenta...</main>;
-  if (user?.role === "admin") return <Navigate to="/admin" replace />;
-  if (user?.role === "mesero" && !user.permisos?.includes("reserva:crear")) {
-    return <Navigate to="/mesero" replace />;
-  }
+  if (esAdministrador(user)) return <Navigate to="/admin" replace />;
+  if (esPersonal(user) && !tienePermiso(user, "reserva:crear")) return <Navigate to="/staff" replace />;
   if (user) return <Reservas />;
 
   return (
@@ -110,7 +102,7 @@ function ReservationsRoute() {
 
 function AppRoutes() {
   const { user } = useAuth();
-  const esPersonal = user?.role === "admin" || user?.role === "mesero";
+  const sinPie = esAdministrador(user) || esPersonal(user);
 
   return (
     <>
@@ -132,11 +124,14 @@ function AppRoutes() {
           <Route path="/dashboard/cliente" element={<CustomerRoute><CustomerDashboard /></CustomerRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/dashboard/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-          <Route path="/mesero" element={<WaiterRoute><WaiterDashboard /></WaiterRoute>} />
-          <Route path="/dashboard/mesero" element={<WaiterRoute><WaiterDashboard /></WaiterRoute>} />
+          <Route path="/staff" element={<StaffRoute><StaffDashboard /></StaffRoute>} />
+          <Route path="/dashboard/staff" element={<StaffRoute><StaffDashboard /></StaffRoute>} />
+          {/* Rutas anteriores del panel (rama developers) */}
+          <Route path="/mesero" element={<Navigate to="/staff" replace />} />
+          <Route path="/dashboard/mesero" element={<Navigate to="/staff" replace />} />
         </Routes>
       </div>
-      {!esPersonal && <Footer />}
+      {!sinPie && <Footer />}
     </>
   );
 }

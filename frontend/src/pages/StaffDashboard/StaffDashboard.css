@@ -1,28 +1,28 @@
-.waiter-dashboard__header-actions {
+.staff-dashboard__header-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.7rem;
 }
 
-.waiter-dashboard__header-actions .dashboard-button {
+.staff-dashboard__header-actions .dashboard-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
 }
 
-.waiter-dashboard__reserve-button {
+.staff-dashboard__reserve-button {
   border-color: #fff;
   background: #fff;
   color: var(--color-primario);
 }
 
-.waiter-dashboard__reserve-button:hover:not(:disabled) {
+.staff-dashboard__reserve-button:hover:not(:disabled) {
   background: #fff7f3;
 }
 
-.waiter-dashboard__nav-title {
+.staff-dashboard__nav-title {
   padding: 0.35rem 0.85rem 0.6rem;
   color: #806b63;
   font-size: 0.7rem;
@@ -31,7 +31,7 @@
   text-transform: uppercase;
 }
 
-.waiter-dashboard__nav-note {
+.staff-dashboard__nav-note {
   display: grid;
   gap: 0.35rem;
   margin: 0.5rem 0.25rem 0;
@@ -43,11 +43,11 @@
   line-height: 1.45;
 }
 
-.waiter-dashboard__nav-note strong {
+.staff-dashboard__nav-note strong {
   color: var(--color-oscuro);
 }
 
-.waiter-dashboard__section-heading {
+.staff-dashboard__section-heading {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -55,19 +55,19 @@
   margin-bottom: 1.4rem;
 }
 
-.waiter-dashboard__section-heading h2 {
+.staff-dashboard__section-heading h2 {
   margin: 0.25rem 0 0;
   color: var(--color-oscuro);
   font-size: clamp(1.45rem, 3vw, 2rem);
 }
 
-.waiter-dashboard__section-heading p {
+.staff-dashboard__section-heading p {
   margin: 0.35rem 0 0;
   color: #705b57;
   font-size: 0.9rem;
 }
 
-.waiter-dashboard__section-heading > .dashboard-button {
+.staff-dashboard__section-heading > .dashboard-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -75,7 +75,7 @@
   white-space: nowrap;
 }
 
-.waiter-dashboard__date-pill {
+.staff-dashboard__date-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
@@ -89,13 +89,13 @@
   white-space: nowrap;
 }
 
-.waiter-dashboard__stats {
+.staff-dashboard__stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.8rem;
 }
 
-.waiter-dashboard__stat {
+.staff-dashboard__stat {
   display: grid;
   gap: 0.35rem;
   min-width: 0;
@@ -107,8 +107,8 @@
   font-size: 0.79rem;
 }
 
-.waiter-dashboard__stat-icon,
-.waiter-dashboard__welcome-icon {
+.staff-dashboard__stat-icon,
+.staff-dashboard__welcome-icon {
   display: grid;
   place-items: center;
   width: 38px;
@@ -119,7 +119,7 @@
   color: var(--color-primario);
 }
 
-.waiter-dashboard__stat strong {
+.staff-dashboard__stat strong {
   overflow: hidden;
   color: var(--color-oscuro);
   font-size: clamp(1.1rem, 2.4vw, 1.55rem);
@@ -127,7 +127,7 @@
   white-space: nowrap;
 }
 
-.waiter-dashboard__welcome {
+.staff-dashboard__welcome {
   display: flex;
   align-items: center;
   gap: 0.9rem;
@@ -138,32 +138,32 @@
   background: #fffaf5;
 }
 
-.waiter-dashboard__welcome-icon {
+.staff-dashboard__welcome-icon {
   flex: 0 0 auto;
   margin: 0;
 }
 
-.waiter-dashboard__welcome > div:nth-child(2) {
+.staff-dashboard__welcome > div:nth-child(2) {
   flex: 1;
 }
 
-.waiter-dashboard__welcome strong {
+.staff-dashboard__welcome strong {
   color: var(--color-oscuro);
   font-size: 0.9rem;
 }
 
-.waiter-dashboard__welcome p {
+.staff-dashboard__welcome p {
   margin: 0.25rem 0 0;
   color: #705b57;
   font-size: 0.82rem;
 }
 
-.waiter-dashboard__reservations {
+.staff-dashboard__reservations {
   display: grid;
   gap: 0.75rem;
 }
 
-.waiter-dashboard__reservation {
+.staff-dashboard__reservation {
   display: grid;
   grid-template-columns: 125px minmax(0, 1fr);
   gap: 1rem;
@@ -173,7 +173,7 @@
   background: #fff;
 }
 
-.waiter-dashboard__reservation-time {
+.staff-dashboard__reservation-time {
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
@@ -185,31 +185,31 @@
   white-space: nowrap;
 }
 
-.waiter-dashboard__reservation-info {
+.staff-dashboard__reservation-info {
   min-width: 0;
 }
 
-.waiter-dashboard__reservation-title {
+.staff-dashboard__reservation-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
 }
 
-.waiter-dashboard__reservation-title h3 {
+.staff-dashboard__reservation-title h3 {
   margin: 0;
   color: var(--color-oscuro);
   font-size: 1rem;
 }
 
-.waiter-dashboard__reservation-info > p {
+.staff-dashboard__reservation-info > p {
   margin: 0.25rem 0 0;
   color: #705b57;
   font-size: 0.8rem;
   overflow-wrap: anywhere;
 }
 
-.waiter-dashboard__status {
+.staff-dashboard__status {
   flex: 0 0 auto;
   padding: 0.3rem 0.6rem;
   border-radius: 999px;
@@ -217,17 +217,17 @@
   font-weight: 700;
 }
 
-.waiter-dashboard__status--confirmed {
+.staff-dashboard__status--confirmed {
   background: #e8f4e8;
   color: #346d34;
 }
 
-.waiter-dashboard__status--pending {
+.staff-dashboard__status--pending {
   background: #fff4dc;
   color: #896519;
 }
 
-.waiter-dashboard__reservation-meta {
+.staff-dashboard__reservation-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem 1rem;
@@ -236,23 +236,23 @@
   font-size: 0.78rem;
 }
 
-.waiter-dashboard__reservation-meta span {
+.staff-dashboard__reservation-meta span {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
 }
 
-.waiter-dashboard__demo-note {
+.staff-dashboard__demo-note {
   margin: 0.8rem 0 0;
   color: #806b63;
   font-size: 0.76rem;
 }
 
-.waiter-dashboard__order {
+.staff-dashboard__order {
   align-items: start;
 }
 
-.waiter-dashboard__order-actions {
+.staff-dashboard__order-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
@@ -260,41 +260,41 @@
 }
 
 @media (max-width: 760px) {
-  .waiter-dashboard__header-actions {
+  .staff-dashboard__header-actions {
     width: 100%;
   }
 
-  .waiter-dashboard__stats {
+  .staff-dashboard__stats {
     grid-template-columns: 1fr;
   }
 
-  .waiter-dashboard__section-heading {
+  .staff-dashboard__section-heading {
     align-items: flex-start;
     flex-direction: column;
   }
 }
 
 @media (max-width: 520px) {
-  .waiter-dashboard__reservation {
+  .staff-dashboard__reservation {
     grid-template-columns: 1fr;
     gap: 0.7rem;
   }
 
-  .waiter-dashboard__reservation-time {
+  .staff-dashboard__reservation-time {
     width: fit-content;
   }
 
-  .waiter-dashboard__reservation-title {
+  .staff-dashboard__reservation-title {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .waiter-dashboard__welcome {
+  .staff-dashboard__welcome {
     align-items: flex-start;
     flex-wrap: wrap;
   }
 
-  .waiter-dashboard__welcome > div:nth-child(2) {
+  .staff-dashboard__welcome > div:nth-child(2) {
     flex-basis: calc(100% - 58px);
   }
 }

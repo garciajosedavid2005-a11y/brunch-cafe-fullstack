@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import AuthBanner from "../Auth/AuthBanner";
 import { useAuth } from "../../context/useAuth";
+import { rutaInicio } from "../../utils/permisos";
 import "../Auth/Auth.css";
 
 const Login = () => {
@@ -29,12 +30,7 @@ const Login = () => {
 
     try {
       const loggedUser = await login(formData);
-      const defaultPath = loggedUser?.role === "admin"
-        ? "/admin"
-        : loggedUser?.role === "mesero"
-          ? "/mesero"
-          : "/cuenta";
-      navigate(location.state?.from || defaultPath, { replace: true });
+      navigate(location.state?.from || rutaInicio(loggedUser), { replace: true });
     } catch (error) {
       setMensaje({ tipo: "error", texto: error.message });
     } finally {

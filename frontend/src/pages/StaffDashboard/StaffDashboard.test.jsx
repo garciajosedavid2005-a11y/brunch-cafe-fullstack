@@ -21,7 +21,7 @@ vi.mock("../../services/api", () => ({
   apiRequest: state.apiRequest,
 }));
 
-import WaiterDashboard from "./WaiterDashboard";
+import StaffDashboard from "./StaffDashboard";
 
 describe("Panel de mesero", () => {
   beforeEach(() => {
@@ -75,7 +75,7 @@ describe("Panel de mesero", () => {
   });
 
   it("muestra primero el resumen con datos reales y permite entrar a las reservas y pedidos", async () => {
-    render(<MemoryRouter><WaiterDashboard /></MemoryRouter>);
+    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
 
     expect(screen.getByRole("heading", { name: /resumen del turno/i })).toBeInTheDocument();
     expect(state.apiRequest).toHaveBeenCalledWith("/v1/staff/reservas");
@@ -98,7 +98,7 @@ describe("Panel de mesero", () => {
   it("oculta los módulos de reservas y pedidos si el rol no tiene esos permisos", () => {
     state.user.permisos = [];
 
-    render(<MemoryRouter><WaiterDashboard /></MemoryRouter>);
+    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
 
     expect(screen.getByRole("button", { name: /resumen/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /reservas/i })).not.toBeInTheDocument();

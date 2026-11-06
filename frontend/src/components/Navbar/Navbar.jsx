@@ -3,6 +3,7 @@ import { useDialogo } from "../../context/useDialogo";
 import { useEffect, useState } from "react";
 import { useCarrito } from "../../context/CarritoContext";
 import { useAuth } from "../../context/useAuth";
+import { esAdministrador } from "../../utils/permisos";
 import compras from "../../assets/carrito-de-compras.png";
 import logoOscuro from "../../assets/logoOscuro.png";
 import logoClaro from "../../assets/logoClaro.png";
@@ -29,7 +30,7 @@ const NavbarContent = ({ pathname }) => {
     const { productos } = useCarrito();
     const { user, loading, logout } = useAuth();
     const { avisar } = useDialogo();
-    const esAdmin = user?.role === "admin";
+    const esAdmin = esAdministrador(user);
 
     const totalProductos = productos.reduce((acc, p) => acc + p.cantidad, 0);
 

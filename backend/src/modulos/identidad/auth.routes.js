@@ -16,6 +16,7 @@ import {
   crearLimiteRestablecimiento,
 } from './rateLimit.js'
 import Usuario from './usuario.model.js'
+import { ROL_CLIENTE } from './permisos.js'
 
 const router = Router()
 
@@ -40,6 +41,7 @@ router.get('/me', validateToken, async (req, res) => {
       role: usuario.rol?.nombre,
       roleLabel: usuario.rol?.etiqueta || usuario.rol?.nombre,
       permisos: req.usuario.permisos,
+      esPersonal: Boolean(usuario.rol) && usuario.rol.nombre !== ROL_CLIENTE,
     },
   })
 })

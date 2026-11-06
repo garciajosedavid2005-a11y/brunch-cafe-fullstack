@@ -16,7 +16,7 @@ import { apiRequest } from "../../services/api";
 import { formatearFechaCalendario, formatearHoraTexto, hoyLocal } from "../../utils/fechas";
 import ProfileSection from "../CustomerDashboard/sections/ProfileSection";
 import SecuritySection from "../CustomerDashboard/sections/SecuritySection";
-import "./WaiterDashboard.css";
+import "./StaffDashboard.css";
 import "../CustomerDashboard/CustomerDashboard.css";
 
 const moneda = new Intl.NumberFormat("es-CO", {
@@ -35,7 +35,7 @@ const fechaDeReserva = (fecha) => {
 
 const permisosDe = (user) => user?.permisos || [];
 
-export default function WaiterDashboard() {
+export default function StaffDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const permisos = permisosDe(user);
@@ -164,17 +164,17 @@ export default function WaiterDashboard() {
   };
 
   return (
-    <main className="customer-dashboard waiter-dashboard">
-      <header className="customer-dashboard__header waiter-dashboard__header">
+    <main className="customer-dashboard staff-dashboard">
+      <header className="customer-dashboard__header staff-dashboard__header">
         <div>
           <span className="customer-dashboard__eyebrow">BRUNCH CAFÉ · ÁREA DE SALA</span>
           <h1>Hola, {user?.nombre || "Mesero"}</h1>
           <p>Resumen del turno y acceso a los módulos habilitados para tu rol.</p>
         </div>
-        <div className="waiter-dashboard__header-actions">
+        <div className="staff-dashboard__header-actions">
           {puedeCrearReservas && (
             <button
-              className="dashboard-button waiter-dashboard__reserve-button"
+              className="dashboard-button staff-dashboard__reserve-button"
               type="button"
               onClick={() => navigate("/reservas")}
             >
@@ -197,7 +197,7 @@ export default function WaiterDashboard() {
 
       <div className="customer-dashboard__layout">
         <nav className="customer-dashboard__nav" aria-label="Secciones del panel de mesero">
-          <span className="waiter-dashboard__nav-title">Panel de sala</span>
+          <span className="staff-dashboard__nav-title">Panel de sala</span>
           {navigation.map(({ id, label, icon }) => (
             <button
               key={id}
@@ -210,7 +210,7 @@ export default function WaiterDashboard() {
               <span>{label}</span>
             </button>
           ))}
-          <div className="waiter-dashboard__nav-note">
+          <div className="staff-dashboard__nav-note">
             <strong>{user?.roleLabel || "Mesero"}</strong>
             <span>El menú muestra solo los módulos autorizados para tu cuenta.</span>
           </div>
@@ -219,43 +219,43 @@ export default function WaiterDashboard() {
         <section className="customer-dashboard__content" aria-live="polite">
           {seccion === "resumen" && (
             <div>
-              <div className="waiter-dashboard__section-heading">
+              <div className="staff-dashboard__section-heading">
                 <div>
                   <span className="customer-dashboard__eyebrow">TU TURNO</span>
                   <h2>Resumen del turno</h2>
                   <p>Estado de reservas y pedidos disponibles para tu rol.</p>
                 </div>
-                <span className="waiter-dashboard__date-pill">
+                <span className="staff-dashboard__date-pill">
                   <CalendarDays size={16} />
                   {formatearFechaCalendario(hoyLocal(), "long")}
                 </span>
               </div>
 
-              <div className="waiter-dashboard__stats">
+              <div className="staff-dashboard__stats">
                 {puedeVerReservas && (
                   <>
-                    <article className="waiter-dashboard__stat">
-                      <span className="waiter-dashboard__stat-icon"><CalendarDays size={19} /></span>
+                    <article className="staff-dashboard__stat">
+                      <span className="staff-dashboard__stat-icon"><CalendarDays size={19} /></span>
                       <span>Reservas de hoy</span>
                       <strong>{cargandoReservas ? "…" : reservasHoy.length}</strong>
                     </article>
-                    <article className="waiter-dashboard__stat">
-                      <span className="waiter-dashboard__stat-icon"><Users size={19} /></span>
+                    <article className="staff-dashboard__stat">
+                      <span className="staff-dashboard__stat-icon"><Users size={19} /></span>
                       <span>Personas esperadas</span>
                       <strong>{cargandoReservas ? "…" : personasHoy}</strong>
                     </article>
                   </>
                 )}
                 {puedeVerPedidos && (
-                  <article className="waiter-dashboard__stat">
-                    <span className="waiter-dashboard__stat-icon"><ListOrdered size={19} /></span>
+                  <article className="staff-dashboard__stat">
+                    <span className="staff-dashboard__stat-icon"><ListOrdered size={19} /></span>
                     <span>Pedidos activos</span>
                     <strong>{cargandoPedidos ? "…" : pedidosActivos}</strong>
                   </article>
                 )}
                 {puedeVerReservas && (
-                  <article className="waiter-dashboard__stat">
-                    <span className="waiter-dashboard__stat-icon"><Clock3 size={19} /></span>
+                  <article className="staff-dashboard__stat">
+                    <span className="staff-dashboard__stat-icon"><Clock3 size={19} /></span>
                     <span>Próxima reserva</span>
                     <strong>
                       {cargandoReservas
@@ -272,8 +272,8 @@ export default function WaiterDashboard() {
               {errorPedidos && <p className="dashboard-notice is-error" role="alert">{errorPedidos}</p>}
 
               {puedeVerReservas && (
-                <div className="waiter-dashboard__welcome">
-                  <div className="waiter-dashboard__welcome-icon"><CalendarCheck2 size={22} /></div>
+                <div className="staff-dashboard__welcome">
+                  <div className="staff-dashboard__welcome-icon"><CalendarCheck2 size={22} /></div>
                   <div>
                     <strong>Agenda de reservas</strong>
                     <p>
@@ -292,8 +292,8 @@ export default function WaiterDashboard() {
                 </div>
               )}
               {puedeVerPedidos && (
-                <div className="waiter-dashboard__welcome">
-                  <div className="waiter-dashboard__welcome-icon"><ListOrdered size={22} /></div>
+                <div className="staff-dashboard__welcome">
+                  <div className="staff-dashboard__welcome-icon"><ListOrdered size={22} /></div>
                   <div>
                     <strong>Pedidos del equipo</strong>
                     <p>
@@ -319,7 +319,7 @@ export default function WaiterDashboard() {
 
           {seccion === "reservas" && (
             <div>
-              <div className="waiter-dashboard__section-heading">
+              <div className="staff-dashboard__section-heading">
                 <div>
                   <span className="customer-dashboard__eyebrow">AGENDA DE SALA</span>
                   <h2>Reservas</h2>
@@ -342,22 +342,22 @@ export default function WaiterDashboard() {
                 <p className="dashboard-empty">No hay reservas registradas.</p>
               )}
               {puedeVerReservas && (
-                <div className="waiter-dashboard__reservations">
+                <div className="staff-dashboard__reservations">
                   {reservas.map((reserva) => (
-                    <article className="waiter-dashboard__reservation" key={reserva.id}>
-                      <div className="waiter-dashboard__reservation-time">
+                    <article className="staff-dashboard__reservation" key={reserva.id}>
+                      <div className="staff-dashboard__reservation-time">
                         <Clock3 size={17} />
                         <strong>{formatearHoraTexto(reserva.hora)}</strong>
                       </div>
-                      <div className="waiter-dashboard__reservation-info">
-                        <div className="waiter-dashboard__reservation-title">
+                      <div className="staff-dashboard__reservation-info">
+                        <div className="staff-dashboard__reservation-title">
                           <h3>{reserva.cliente}</h3>
-                          <span className={`waiter-dashboard__status waiter-dashboard__status--${reserva.estadoCodigo === "confirmada" ? "confirmed" : "pending"}`}>
+                          <span className={`staff-dashboard__status staff-dashboard__status--${reserva.estadoCodigo === "confirmada" ? "confirmed" : "pending"}`}>
                             {reserva.estado}
                           </span>
                         </div>
                         <p>{formatearFechaCalendario(reserva.fecha, "long")} · {reserva.correo}</p>
-                        <div className="waiter-dashboard__reservation-meta">
+                        <div className="staff-dashboard__reservation-meta">
                           <span><Users size={15} />{reserva.personas} {reserva.personas === 1 ? "persona" : "personas"}</span>
                           <span>{reserva.motivo}</span>
                           <span>{reserva.codigo}</span>
@@ -372,7 +372,7 @@ export default function WaiterDashboard() {
 
           {seccion === "pedidos" && (
             <div>
-              <div className="waiter-dashboard__section-heading">
+              <div className="staff-dashboard__section-heading">
                 <div>
                   <span className="customer-dashboard__eyebrow">OPERACIÓN</span>
                   <h2>Pedidos</h2>
@@ -385,26 +385,26 @@ export default function WaiterDashboard() {
               {!cargandoPedidos && !errorPedidos && pedidos.length === 0 && (
                 <p className="dashboard-empty">No hay pedidos para mostrar.</p>
               )}
-              <div className="waiter-dashboard__reservations">
+              <div className="staff-dashboard__reservations">
                 {pedidos.map((pedido) => (
-                  <article className="waiter-dashboard__reservation waiter-dashboard__order" key={pedido.id}>
-                    <div className="waiter-dashboard__reservation-time">
+                  <article className="staff-dashboard__reservation staff-dashboard__order" key={pedido.id}>
+                    <div className="staff-dashboard__reservation-time">
                       <ListOrdered size={17} />
                       <strong>{pedido.codigo}</strong>
                     </div>
-                    <div className="waiter-dashboard__reservation-info">
-                      <div className="waiter-dashboard__reservation-title">
+                    <div className="staff-dashboard__reservation-info">
+                      <div className="staff-dashboard__reservation-title">
                         <h3>{pedido.cliente}</h3>
-                        <span className="waiter-dashboard__status waiter-dashboard__status--pending">{pedido.estado}</span>
+                        <span className="staff-dashboard__status staff-dashboard__status--pending">{pedido.estado}</span>
                       </div>
                       <p>{formatearFechaCalendario(pedido.fecha, "long")} · {moneda.format(pedido.total)}</p>
-                      <div className="waiter-dashboard__reservation-meta">
+                      <div className="staff-dashboard__reservation-meta">
                         {pedido.items?.map((item) => (
                           <span key={`${pedido.id}-${item.nombre}`}>{item.cantidad} × {item.nombre}</span>
                         ))}
                       </div>
                       {pedido.transiciones?.length > 0 && (
-                        <div className="waiter-dashboard__order-actions">
+                        <div className="staff-dashboard__order-actions">
                           {pedido.transiciones.map((transicion) => (
                             <button
                               className="dashboard-button dashboard-button--secondary"

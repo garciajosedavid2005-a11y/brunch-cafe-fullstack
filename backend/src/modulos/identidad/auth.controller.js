@@ -1,5 +1,6 @@
 import Usuario from './usuario.model.js'
 import Rol from './rol.model.js'
+import { ROL_CLIENTE } from './permisos.js'
 import bcrypt from 'bcryptjs'
 import { tokenDeSesion } from './jwt.js'
 import { ponerCookieSesion, borrarCookieSesion } from './cookies.js'
@@ -25,6 +26,8 @@ const usuarioPublico = (usuario, rol) => ({
     rol: rol.nombre,
     rolEtiqueta: rol.etiqueta || rol.nombre,
     permisos: rol.permisos || [],
+    // El frontend separa al personal del cliente sin comparar nombres de rol (0.15d)
+    esPersonal: rol.nombre !== ROL_CLIENTE,
     createdAt: usuario.createdAt,
     updatedAt: usuario.updatedAt,
 })

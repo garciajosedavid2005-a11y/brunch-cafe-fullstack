@@ -9,6 +9,7 @@ import { hoyLocal } from "../../utils/fechas";
 import { useHorarios } from "../../hooks/useHorarios";
 import { horasReserva, opcionesDeHora, textoRango } from "../../utils/horarios";
 import { esTelefono, MENSAJE_TELEFONO } from "../../utils/telefono";
+import { esPersonal, tienePermiso } from "../../utils/permisos";
 
 function getToday() {
   return hoyLocal(); // día de Bogotá, no el del navegador
@@ -77,7 +78,7 @@ export default function FormularioReservas() {
   const handleConfirmar = async () => {
     setGuardando(true);
     try {
-      await apiRequest(user?.role === "mesero" ? "/v1/staff/reservas" : "/v1/cliente/reservas", {
+      await apiRequest(esPersonal(user) && tienePermiso(user, "reserva:crear") ? "/v1/staff/reservas" : "/v1/cliente/reservas", {
         method: "POST",
         body: JSON.stringify({ ...formData, personas: Number(formData.personas) }),
       });

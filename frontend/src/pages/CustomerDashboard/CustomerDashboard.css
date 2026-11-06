@@ -648,23 +648,6 @@
   border-color: #a1261e;
 }
 
-/* ---- Staff en /cuenta (0.7b) ---- */
-.customer-dashboard__rol {
-  display: inline-block;
-  margin: 0.2rem 0 0.4rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  background: #890620;
-  color: #ffffff;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.customer-dashboard__aviso-staff {
-  border-left: 4px solid #890620;
-}
-
 /* Marca de compra verificada en Mis comentarios (0.12) */
 .dashboard-review__verificada {
   padding: 0.15rem 0.6rem;

@@ -345,3 +345,14 @@ describe('Protecciones de roles', () => {
         expect(porClave['*']).toBeUndefined()
     })
 })
+
+// 0.15d: el frontend decide por permisos; esPersonal distingue al personal (aunque no tenga
+// permisos todavía) del cliente, sin que el frontend compare nombres de rol
+describe('esPersonal en el login y en /auth/me', () => {
+    it.each([['cliente', false], ['mesero', true], ['anfitrion', true], ['admin', true]])('%s → esPersonal=%s', async (rol, esperado) => {
+        const { usuario, sesion } = await crearConSesion(rol)
+        expect((await sesion.get('/api/v1/auth/me')).body.user.esPersonal).toBe(esperado)
+        const login = await api().post('/api/v1/auth/login').send({ correo: usuario.correo, contraseña: 'secreta123' })
+        expect(login.body.esPersonal).toBe(esperado)
+    })
+})
