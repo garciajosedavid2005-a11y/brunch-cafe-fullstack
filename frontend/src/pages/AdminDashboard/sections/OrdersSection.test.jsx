@@ -2,11 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { DialogoProvider } from "../../../context/DialogoContext";
 
-vi.mock("../../../services/adminApi", () => ({
-  adminApi: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+vi.mock("../../../services/api", () => ({
+  apiRequest: vi.fn(),
+  api: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
 
-import { adminApi } from "../../../services/adminApi";
+import { api } from "../../../services/api";
 import OrdersSection from "./OrdersSection";
 
 const PEDIDO = {
@@ -18,7 +19,7 @@ const PEDIDO = {
 
 describe("Pedidos (admin): tabla compacta", () => {
   beforeEach(() => {
-    adminApi.get.mockImplementation((ruta) => Promise.resolve(ruta.startsWith("/v1/admin/estados") ? [] : [PEDIDO]));
+    api.get.mockImplementation((ruta) => Promise.resolve(ruta.startsWith("/v1/admin/estados") ? [] : [PEDIDO]));
   });
 
   it("5 columnas: cliente bajo el código, método de pago bajo el total", async () => {

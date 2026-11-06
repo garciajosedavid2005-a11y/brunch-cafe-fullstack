@@ -9,8 +9,8 @@ const fuentes = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) =
   e.isDirectory() ? fuentes(join(dir, e.name))
     : /\.(jsx?|mjs)$/.test(e.name) && !/\.test\./.test(e.name) ? [join(dir, e.name)] : []
 );
-// apiRequest("/x"), api.get(`/x`), adminApi.patch('/x'), useAdminResource("/x")
-const LLAMADA = /(?:apiRequest|(?:adminApi|api)\.(?:get|post|put|patch|delete)|useAdminResource)\(\s*["'`](\/[^"'`]*)/g;
+// apiRequest("/x"), api.get(`/x`), useAdminResource("/x")
+const LLAMADA = /(?:apiRequest|api\.(?:get|post|put|patch|delete)|useAdminResource)\(\s*["'`](\/[^"'`]*)/g;
 
 describe("Rutas de la API en el frontend", () => {
   it("todas las llamadas usan /v1/", () => {

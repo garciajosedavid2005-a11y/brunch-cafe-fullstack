@@ -2,12 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { DialogoProvider } from "../../../context/DialogoContext";
 
-vi.mock("../../../services/adminApi", () => ({
-  adminApi: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+vi.mock("../../../services/api", () => ({
+  apiAssetUrl: (p) => p,
+  apiRequest: vi.fn(),
+  api: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
-vi.mock("../../../services/api", () => ({ apiAssetUrl: (p) => p }));
 
-import { adminApi } from "../../../services/adminApi";
+import { api } from "../../../services/api";
 import ProductsSection from "./ProductsSection";
 
 const producto = (id, nombre, extra) => ({
@@ -17,9 +18,9 @@ const producto = (id, nombre, extra) => ({
 const PRODUCTOS = [producto("p1", "Latte"), producto("p2", "Waffle", { disponible: false })];
 
 const montar = () => {
-  adminApi.get.mockImplementation((ruta) =>
+  api.get.mockImplementation((ruta) =>
     Promise.resolve(ruta === "/v1/admin/categorias" ? [{ id: "c1", nombre: "Bebidas" }] : PRODUCTOS));
-  adminApi.put.mockImplementation((ruta, datos) =>
+  api.put.mockImplementation((ruta, datos) =>
     Promise.resolve({ ...PRODUCTOS.find((p) => ruta.endsWith(p.id)), ...datos }));
   return render(<DialogoProvider><ProductsSection /></DialogoProvider>);
 };
@@ -42,7 +43,7 @@ describe("Productos: disponibilidad", () => {
     montar();
     const interruptor = within(await fila("Latte")).getByRole("switch", { name: /disponible/i });
     fireEvent.click(interruptor);
-    await waitFor(() => expect(adminApi.put).toHaveBeenCalledWith("/v1/admin/productos/p1", { disponible: false }));
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith("/v1/admin/productos/p1", { disponible: false }));
     await waitFor(() => expect(interruptor).toHaveAttribute("aria-checked", "false"));
   });
 });
@@ -77,7 +78,7 @@ describe("Productos: precio", () => {
 
   const guardarCon = async (precio) => {
     montar();
-    adminApi.post.mockResolvedValue(producto("p9", "Mocca"));
+    api.post.mockResolvedValue(producto("p9", "Mocca"));
     fireEvent.click(await screen.findByRole("button", { name: /nuevo producto/i }));
     fireEvent.change(screen.getByLabelText(/nombre/i), { target: { value: "Mocca" } });
     fireEvent.change(screen.getByLabelText(/precio/i), { target: { value: precio } });
@@ -86,12 +87,12 @@ describe("Productos: precio", () => {
 
   it.each([["22000"], ["22.000"], ["$22.000"], ["$ 22.000"]])("acepta %s como 22000", async (texto) => {
     await guardarCon(texto);
-    await waitFor(() => expect(adminApi.post).toHaveBeenCalledWith("/v1/admin/productos", expect.objectContaining({ precio: 22000 })));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/v1/admin/productos", expect.objectContaining({ precio: 22000 })));
   });
 
   it.each([["12.500,5"], ["12,5"], ["-3000"], ["doce mil"]])("rechaza %s con un mensaje (no lo convierte a otro número)", async (texto) => {
     await guardarCon(texto);
     expect(await screen.findByText(/número entero de pesos/i)).toBeInTheDocument();
-    expect(adminApi.post).not.toHaveBeenCalled();
+    expect(api.post).not.toHaveBeenCalled();
   });
 });

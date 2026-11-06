@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Search, Eye, X, Filter, ShoppingBag, MapPin, Phone, CreditCard, Clock } from "lucide-react";
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
-import { adminApi } from "../../../services/adminApi";
+import { api } from "../../../services/api";
 import { formatCurrency, formatDate, formatTime } from "../adminFormat";
 import EstadoSelector from "../components/EstadoSelector";
 import { useDialogo } from "../../../context/useDialogo";
@@ -20,7 +20,7 @@ export default function OrdersSection() {
   // Envía el código de destino; el backend valida la transición, el permiso y el motivo
   const handleCambiarEstado = async (id, codigo, motivo) => {
     try {
-      const actualizado = await adminApi.patch(`/v1/staff/pedidos/${id}/estado`, { codigo, ...(motivo ? { motivo } : {}) });
+      const actualizado = await api.patch(`/v1/staff/pedidos/${id}/estado`, { codigo, ...(motivo ? { motivo } : {}) });
       if (pedidoSeleccionado?.id === id) setPedidoSeleccionado(actualizado);
       await cargar();
     } catch (requestError) {

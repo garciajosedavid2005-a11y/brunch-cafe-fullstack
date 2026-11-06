@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
-import { adminApi } from "../../../services/adminApi";
+import { api } from "../../../services/api";
 import { formatDate } from "../adminFormat";
 import { useDialogo } from "../../../context/useDialogo";
 
@@ -28,7 +28,7 @@ export default function ReviewsSection() {
   // Alternar visibilidad (moderar)
   const handleToggleVisibilidad = async (item) => {
     try {
-      const { visible } = await adminApi.patch(`/v1/admin/comentarios/${item.id}/visibilidad`, {
+      const { visible } = await api.patch(`/v1/admin/comentarios/${item.id}/visibilidad`, {
         visible: !item.visible,
       });
       setItems((prev) => prev.map((comment) => (comment.id === item.id ? { ...comment, visible } : comment)));
@@ -41,7 +41,7 @@ export default function ReviewsSection() {
   const handleEliminar = async () => {
     if (!comentarioAEliminar) return;
     try {
-      await adminApi.delete(`/v1/admin/comentarios/${comentarioAEliminar.id}`);
+      await api.delete(`/v1/admin/comentarios/${comentarioAEliminar.id}`);
       setItems((prev) => prev.filter((comment) => comment.id !== comentarioAEliminar.id));
       setComentarioAEliminar(null);
     } catch (requestError) {

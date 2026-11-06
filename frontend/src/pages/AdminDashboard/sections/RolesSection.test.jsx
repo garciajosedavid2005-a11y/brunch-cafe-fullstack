@@ -2,11 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { DialogoProvider } from "../../../context/DialogoContext";
 
-vi.mock("../../../services/adminApi", () => ({
-  adminApi: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+vi.mock("../../../services/api", () => ({
+  apiRequest: vi.fn(),
+  api: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
 
-import { adminApi } from "../../../services/adminApi";
+import { api } from "../../../services/api";
 import RolesSection from "./RolesSection";
 
 const rol = (codigo, extra) => ({
@@ -31,12 +32,12 @@ const CATALOGO = [
 // Simula el backend: lo eliminado ya no vuelve en la lista
 const montar = async () => {
   const borrados = new Set();
-  adminApi.delete.mockImplementation(async (ruta) => {
-    const respuesta = await (adminApi.delete.respuesta?.() ?? { message: "Rol eliminado" });
+  api.delete.mockImplementation(async (ruta) => {
+    const respuesta = await (api.delete.respuesta?.() ?? { message: "Rol eliminado" });
     borrados.add(ruta.split("/").pop());
     return respuesta;
   });
-  adminApi.get.mockImplementation((ruta) =>
+  api.get.mockImplementation((ruta) =>
     Promise.resolve(ruta === "/v1/admin/permisos" ? CATALOGO : ROLES.filter((r) => !borrados.has(r.id))));
   render(<DialogoProvider><RolesSection /></DialogoProvider>);
   await screen.findByText("Temporal");
@@ -88,13 +89,13 @@ describe("Roles: eliminar", () => {
     const dialogo = screen.getByRole("dialog");
     expect(dialogo).toHaveTextContent("Temporal");
     fireEvent.click(within(dialogo).getByRole("button", { name: "Eliminar rol" }));
-    await waitFor(() => expect(adminApi.delete).toHaveBeenCalledWith("/v1/admin/roles/id-temporal"));
+    await waitFor(() => expect(api.delete).toHaveBeenCalledWith("/v1/admin/roles/id-temporal"));
     await waitFor(() => expect(screen.queryByText("Temporal", { selector: "strong" })).not.toBeInTheDocument());
   });
 
   it("si el backend lo rechaza, muestra su mensaje en el diálogo", async () => {
     await montar();
-    adminApi.delete.mockRejectedValueOnce(new Error("No se puede eliminar: tiene 1 usuario asignado."));
+    api.delete.mockRejectedValueOnce(new Error("No se puede eliminar: tiene 1 usuario asignado."));
     fireEvent.click(within(fila("Temporal")).getByRole("button", { name: /eliminar/i }));
     fireEvent.click(screen.getByRole("button", { name: "Eliminar rol" }));
     expect(await screen.findByRole("alertdialog")).toHaveTextContent("No se puede eliminar: tiene 1 usuario asignado.");

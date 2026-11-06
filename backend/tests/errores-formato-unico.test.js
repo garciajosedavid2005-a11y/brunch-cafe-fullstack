@@ -8,8 +8,6 @@ import { crearConSesion } from './helpers/usuarios.js'
 import * as manejador from '../src/modulos/compartido/errorHandler.js'
 
 const SRC = join(import.meta.dirname, '..', 'src')
-// Sin uso desde 0.8; se borran en 0.12 (aprobado)
-const SIN_USO = ['controllers/usuario.controller.js', 'middlewares/authorizeRole.js', 'schema/reserva.schema.js']
 const fuentes = (dir) => readdirSync(dir).flatMap((n) => {
     const p = join(dir, n)
     return statSync(p).isDirectory() ? fuentes(p) : n.endsWith('.js') ? [p] : []
@@ -20,7 +18,6 @@ describe('Formato único de errores sin normalizador (0.11)', () => {
         const ERROR_LEGADO = /\.status\(\s*[45]\d\d\s*\)\s*\.json\(\s*\{/g
         const hallazgos = fuentes(SRC)
             .map((archivo) => relative(SRC, archivo).split(sep).join('/'))
-            .filter((ruta) => !SIN_USO.includes(ruta))
             .flatMap((ruta) => (readFileSync(join(SRC, ruta), 'utf8').match(ERROR_LEGADO) || []).map(() => ruta))
         expect(hallazgos).toEqual([])
     })

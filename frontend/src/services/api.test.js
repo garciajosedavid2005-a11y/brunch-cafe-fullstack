@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { api, apiRequest } from "./api";
-import { adminApi } from "./adminApi";
 
 const respuesta = (status, cuerpo) => ({
   ok: status < 400, status, json: () => (cuerpo === undefined ? Promise.reject(new Error("sin cuerpo")) : Promise.resolve(cuerpo)),
@@ -8,10 +7,6 @@ const respuesta = (status, cuerpo) => ({
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Cliente HTTP único", () => {
-  it("adminApi es el mismo cliente (no un segundo fetch)", () => {
-    expect(adminApi).toBe(api);
-  });
-
   it("envía JSON con cookies y devuelve el cuerpo", async () => {
     const fetch = vi.fn().mockResolvedValue(respuesta(200, { ok: 1 }));
     vi.stubGlobal("fetch", fetch);

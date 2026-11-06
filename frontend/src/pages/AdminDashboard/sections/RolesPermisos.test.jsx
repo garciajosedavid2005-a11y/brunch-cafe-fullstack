@@ -2,11 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { DialogoProvider } from "../../../context/DialogoContext";
 
-vi.mock("../../../services/adminApi", () => ({
-  adminApi: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+vi.mock("../../../services/api", () => ({
+  apiRequest: vi.fn(),
+  api: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
 
-import { adminApi } from "../../../services/adminApi";
+import { api } from "../../../services/api";
 import RolesSection from "./RolesSection";
 
 const rol = (codigo, extra) => ({
@@ -30,12 +31,12 @@ const CATALOGO = [
 // Simula el backend: lo eliminado ya no vuelve en la lista
 const montar = async () => {
   const borrados = new Set();
-  adminApi.delete.mockImplementation(async (ruta) => {
-    const respuesta = await (adminApi.delete.respuesta?.() ?? { message: "Rol eliminado" });
+  api.delete.mockImplementation(async (ruta) => {
+    const respuesta = await (api.delete.respuesta?.() ?? { message: "Rol eliminado" });
     borrados.add(ruta.split("/").pop());
     return respuesta;
   });
-  adminApi.get.mockImplementation((ruta) =>
+  api.get.mockImplementation((ruta) =>
     Promise.resolve(ruta === "/v1/admin/permisos" ? CATALOGO : ROLES.filter((r) => !borrados.has(r.id))));
   render(<DialogoProvider><RolesSection /></DialogoProvider>);
   await screen.findByText("Temporal");

@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { ShoppingBag, CalendarDays, Star, ArrowRight } from "lucide-react";
-import { adminApi } from "../../../services/adminApi";
+import { api } from "../../../services/api";
 import AdminStatus from "../components/AdminStatus";
 import { formatClock, formatCurrency, formatDate, formatCalendarDate } from "../adminFormat";
 import { hoyLocal, fechaLocal } from "../../../utils/fechas";
 
 const cargarDatosResumen = () => Promise.all([
-  adminApi.get("/v1/staff/pedidos"),
-  adminApi.get("/v1/staff/reservas"),
-  adminApi.get("/v1/admin/comentarios"),
+  api.get("/v1/staff/pedidos"),
+  api.get("/v1/staff/reservas"),
+  api.get("/v1/admin/comentarios"),
 ]);
 
 export default function OverviewSection({ onNavigateTab }) {

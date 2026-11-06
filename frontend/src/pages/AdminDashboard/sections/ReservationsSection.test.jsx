@@ -2,11 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { DialogoProvider } from "../../../context/DialogoContext";
 
-vi.mock("../../../services/adminApi", () => ({
-  adminApi: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+vi.mock("../../../services/api", () => ({
+  apiRequest: vi.fn(),
+  api: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
 
-import { adminApi } from "../../../services/adminApi";
+import { api } from "../../../services/api";
 import ReservationsSection from "./ReservationsSection";
 
 const RESERVA = {
@@ -21,7 +22,7 @@ const RESERVA = {
 
 describe("Reservas (admin): tabla compacta", () => {
   beforeEach(() => {
-    adminApi.get.mockImplementation((ruta) => Promise.resolve(ruta.startsWith("/v1/admin/estados") ? [] : [RESERVA]));
+    api.get.mockImplementation((ruta) => Promise.resolve(ruta.startsWith("/v1/admin/estados") ? [] : [RESERVA]));
   });
 
   it("5 columnas: código y motivo bajo el cliente, personas junto a la fecha", async () => {
