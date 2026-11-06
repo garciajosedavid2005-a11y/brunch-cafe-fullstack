@@ -3,7 +3,6 @@ import { describe, it, expect } from 'vitest'
 import jwt from 'jsonwebtoken'
 import { agente } from './helpers/app.js'
 import { crearConSesion } from './helpers/usuarios.js'
-import Usuario from '../src/modulos/identidad/usuario.model.js'
 
 const iniciar = async (correo, contraseña = 'secreta123') => {
     const sesion = agente()
@@ -55,18 +54,18 @@ describe('Revocación de sesiones (tokenVersion)', () => {
         expect((await sesion.get('/api/v1/auth/me')).status).toBe(200)
     })
 
-    it('el token lleva la versión y uno sin versión (anterior a 0.7c) vale como versión 0', async () => {
+    it('el token lleva la versión; uno sin versión (anterior a 0.7c) se rechaza desde 0.12', async () => {
         const { usuario } = await crearConSesion('cliente')
         const login = await agente().post('/api/v1/auth/login').send({ correo: usuario.correo, contraseña: 'secreta123' })
         const token = login.headers['set-cookie'][0].split(';')[0].split('=')[1]
         expect(jwt.decode(token)).toMatchObject({ id: String(usuario._id), tv: 0 })
 
         const viejo = jwt.sign({ id: String(usuario._id) }, process.env.JWT_SECRET, { expiresIn: '1h' })
-        expect((await agente().get('/api/v1/auth/me').set('Cookie', `token=${viejo}`)).status).toBe(200)
+        const res = await agente().get('/api/v1/auth/me').set('Cookie', `token=${viejo}`)
+        expect(res.status).toBe(401)
+        expect(res.body.error.code).toBe('SESSION_REVOKED')
 
-        await Usuario.updateOne({ _id: usuario._id }, { $inc: { tokenVersion: 1 } })
-        const { invalidarSesionUsuario } = await import('../src/modulos/identidad/sesiones.js')
-        invalidarSesionUsuario(usuario._id)
-        expect((await agente().get('/api/v1/auth/me').set('Cookie', `token=${viejo}`)).status).toBe(401)
+        // El token con versión sigue entrando
+        expect((await agente().get('/api/v1/auth/me').set('Cookie', `token=${token}`)).status).toBe(200)
     })
 })

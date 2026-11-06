@@ -17,10 +17,10 @@ export const crearPedido = async (sesionCliente) => {
     const categoria = await Categoria.findOneAndUpdate(
         { nombre: 'Bebidas' }, { $setOnInsert: { nombre: 'Bebidas' } }, { upsert: true, returnDocument: 'after' }
     )
-    await Producto.create({ codigo: codigoProducto, nombre: `Latte ${codigoProducto}`, precio: 9000, categoria: categoria._id })
+    const producto = await Producto.create({ codigo: codigoProducto, nombre: `Latte ${codigoProducto}`, precio: 9000, categoria: categoria._id })
     const metodos = await sesionCliente.get('/api/v1/cliente/metodos-pago')
     const res = await sesionCliente.post('/api/v1/cliente/pedidos').send({
-        items: [{ productoId: codigoProducto, cantidad: 1 }],
+        items: [{ productoRef: String(producto._id), cantidad: 1 }],
         nombre: 'Ana Pérez',
         telefono: '3001234567',
         direccion: 'Carrera 36B #30-06',

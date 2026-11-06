@@ -53,10 +53,10 @@ describe('Referencias por ObjectId (0.6)', () => {
         expect((await pedir([{ productoRef: String(new mongoose.Types.ObjectId()), cantidad: 1 }])).status).toBe(400)
     })
 
-    it('compatibilidad: el código numérico (productoId) sigue aceptándose', async () => {
+    it('el código numérico (productoId) ya no se acepta: solo productoRef (0.12)', async () => {
         const res = await pedir([{ productoId: 7, cantidad: 1 }])
-        expect(res.status).toBe(201)
-        expect(String((await DetallePedido.findOne().lean()).producto)).toBe(String(latte._id))
+        expect(res.status).toBe(400)
+        expect(await DetallePedido.countDocuments()).toBe(0)
     })
 
     it('reseña de producto con productoRef: guarda la referencia; las calificaciones la incluyen', async () => {
@@ -71,10 +71,10 @@ describe('Referencias por ObjectId (0.6)', () => {
         expect(body.productRatings).toEqual([{ productoRef: String(latte._id), productoId: 7, average: 4, count: 1 }])
     })
 
-    it('reseña con productoId numérico (compatibilidad) también guarda la referencia', async () => {
+    it('reseña con productoId numérico → 400 (solo productoRef desde 0.12)', async () => {
         await recibirLatte()
-        expect((await comentar({ productoId: 7 })).status).toBe(201)
-        expect(String((await Comentario.findOne().lean()).producto)).toBe(String(latte._id))
+        expect((await comentar({ productoId: 7 })).status).toBe(400)
+        expect(await Comentario.countDocuments()).toBe(0)
     })
 
     it('reseña de un producto inexistente → 400', async () => {

@@ -7,7 +7,7 @@ import { z } from 'zod';
 import Comentario from './comentario.model.js';
 import Producto from './producto.model.js';
 import mongoose from 'mongoose';
-import { referenciaProducto, unaReferencia, MENSAJE_REFERENCIA, resolverProductos } from './referenciaProducto.schema.js';
+import { referenciaProducto, resolverProductos } from './referenciaProducto.schema.js';
 
 const comentarioSchema = z.discriminatedUnion('tipo', [
   z.object({
@@ -20,7 +20,7 @@ const comentarioSchema = z.discriminatedUnion('tipo', [
     ...referenciaProducto,
     calificacion: z.coerce.number().int().min(1).max(5),
     comentario: z.string().trim().min(10).max(300),
-  }).refine(unaReferencia, { error: MENSAJE_REFERENCIA }),
+  }),
 ]);
 
 const edicionSchema = z.object({
@@ -155,7 +155,7 @@ export const crearComentario = async (req, res, next) => {
   }
 
   try {
-    // productoRef solo sirve para encontrar el producto; se guardan producto (ObjectId) y productoId (código)
+    // productoRef solo sirve para encontrar el producto; se guardan producto (ObjectId) y productoId (código visible)
     const datos = { ...parsed.data };
     delete datos.productoRef;
     if (datos.tipo === 'producto') {

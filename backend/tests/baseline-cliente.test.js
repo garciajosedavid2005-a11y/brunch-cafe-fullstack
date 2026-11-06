@@ -61,8 +61,9 @@ describe('Línea base del cliente', () => {
         expect(metodos.status).toBe(200)
         const contraEntrega = metodos.body.find((m) => m.nombre === 'Contra Entrega')
 
+        const latte = await Producto.findOne({ codigo: 1 })
         const res = await cliente.post('/api/v1/cliente/pedidos').send({
-            items: [{ productoId: 1, cantidad: 2 }],
+            items: [{ productoRef: String(latte._id), cantidad: 2 }],
             nombre: 'Ana Pérez',
             telefono: '3001234567',
             direccion: 'Carrera 36B #30-06',

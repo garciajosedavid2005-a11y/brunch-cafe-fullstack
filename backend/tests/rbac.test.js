@@ -64,7 +64,7 @@ describe('401 sin sesión, 403 sin permiso', () => {
 
     it('un rol embebido en el token se ignora: manda la BD', async () => {
         const { usuario } = await crearConSesion('cliente')
-        const falso = jwt.sign({ id: usuario._id, rol: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1h' })
+        const falso = jwt.sign({ id: usuario._id, tv: 0, rol: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1h' })
         const res = await api().get('/api/v1/admin/roles').set('Cookie', `token=${falso}`)
         expect(res.status).toBe(403)
     })
@@ -79,10 +79,10 @@ describe('401 sin sesión, 403 sin permiso', () => {
 describe('Propiedad: el cliente solo ve lo suyo', () => {
     const crearPedido = async (sesion) => {
         const categoria = await Categoria.findOneAndUpdate({ nombre: 'Bebidas' }, {}, { upsert: true, returnDocument: 'after' })
-        await Producto.findOneAndUpdate({ codigo: 1 }, { nombre: 'Latte', precio: 9000, categoria: categoria._id }, { upsert: true })
+        const latte = await Producto.findOneAndUpdate({ codigo: 1 }, { nombre: 'Latte', precio: 9000, categoria: categoria._id }, { upsert: true, returnDocument: 'after' })
         const metodo = await MetodoPago.findOneAndUpdate({ codigo: 'contra-entrega' }, { nombre: 'Contra Entrega' }, { upsert: true, returnDocument: 'after' })
         const res = await sesion.post('/api/v1/cliente/pedidos').send({
-            items: [{ productoId: 1, cantidad: 1 }], nombre: 'Cliente', telefono: '3001234567', direccion: 'Calle 10 #20-30',
+            items: [{ productoRef: String(latte._id), cantidad: 1 }], nombre: 'Cliente', telefono: '3001234567', direccion: 'Calle 10 #20-30',
             hora: '10:00', barrio: 'Centro', metodoPagoId: String(metodo._id),
         })
         expect(res.status).toBe(201)

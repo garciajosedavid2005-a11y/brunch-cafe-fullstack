@@ -9,7 +9,7 @@ import Producto from '../catalogo/producto.model.js';
 import { STATUS_CLIENTE } from '../compartido/estados.js';
 import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../compartido/estados.service.js';
 import { cuerpoError } from '../compartido/errors.js';
-import { referenciaProducto, unaReferencia, MENSAJE_REFERENCIA, resolverProductos } from '../catalogo/referenciaProducto.schema.js';
+import { referenciaProducto, resolverProductos } from '../catalogo/referenciaProducto.schema.js';
 import { telefono } from '../compartido/comunes.schema.js';
 import { horasDomicilio, hora12, textoAnticipacion, textoRango } from '../configuracion/horarios.reglas.js';
 import { obtenerHorarios } from '../configuracion/horarios.service.js';
@@ -19,7 +19,7 @@ const orderSchema = z.object({
   items: z.array(z.object({
     ...referenciaProducto,
     cantidad: z.coerce.number().int().min(1).max(20),
-  }).refine(unaReferencia, { error: MENSAJE_REFERENCIA })).min(1).max(50),
+  })).min(1).max(50),
   nombre: z.string().trim().min(3).max(50),
   // Obligatorio para el domicilio (el formulario lo prellena con el del perfil)
   telefono: telefono(),

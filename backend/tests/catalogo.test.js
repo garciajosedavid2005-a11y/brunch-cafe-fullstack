@@ -121,7 +121,7 @@ describe('Productos no disponibles (agotados)', () => {
         const { sesion } = await crearConSesion('cliente')
         const metodos = await sesion.get('/api/v1/cliente/metodos-pago')
         const res = await sesion.post('/api/v1/cliente/pedidos').send({
-            items: [{ productoId: 1, cantidad: 1 }, { productoId: 2, cantidad: 1 }],
+            items: await Promise.all([1, 2].map(async (codigo) => ({ productoRef: String((await Producto.findOne({ codigo }))._id), cantidad: 1 }))),
             nombre: 'Ana Pérez', telefono: '3001234567', direccion: 'Carrera 36B #30-06', hora: '10:00', barrio: 'Centro',
             metodoPagoId: metodos.body[0].id,
         })

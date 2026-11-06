@@ -39,8 +39,9 @@ export const autenticar = async (req, res, next) => {
     const sesion = await obtenerSesion(payload.id)
     if (!sesion) return rechazar(res, 'INVALID_TOKEN', 'Sesión inválida. Inicia sesión de nuevo.')
     if (!sesion.activo) return rechazar(res, 'ACCOUNT_DISABLED', 'Tu cuenta está desactivada. Contacta al administrador.')
-    // Token emitido antes de un cambio de contraseña o una desactivación
-    if ((payload.tv || 0) !== sesion.tokenVersion) {
+    // Token emitido antes de un cambio de contraseña o una desactivación, o sin versión
+    // (anterior a 0.7c: desde 0.12 ya no se acepta)
+    if (payload.tv !== sesion.tokenVersion) {
         return rechazar(res, 'SESSION_REVOKED', 'Tu sesión se cerró por seguridad. Inicia sesión de nuevo.')
     }
 
