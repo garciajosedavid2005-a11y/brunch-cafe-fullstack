@@ -69,9 +69,9 @@ describe('Idempotency-Key en la creación de pedidos (0.9)', () => {
         expect(mala.body.error.code).toBe('IDEMPOTENCY_KEY_INVALID')
     })
 
-    it('el alias /api/customer/orders también la respeta', async () => {
-        await cliente.post('/api/customer/orders').set('Idempotency-Key', 'alias-0001').send(cuerpo)
-        const repetida = await cliente.post('/api/customer/orders').set('Idempotency-Key', 'alias-0001').send(cuerpo)
+    it('el alias /api/v1/cliente/pedidos también la respeta', async () => {
+        await cliente.post('/api/v1/cliente/pedidos').set('Idempotency-Key', 'alias-0001').send(cuerpo)
+        const repetida = await cliente.post('/api/v1/cliente/pedidos').set('Idempotency-Key', 'alias-0001').send(cuerpo)
         expect(repetida.headers['idempotent-replayed']).toBe('true')
         expect(await Pedido.countDocuments()).toBe(1)
     })

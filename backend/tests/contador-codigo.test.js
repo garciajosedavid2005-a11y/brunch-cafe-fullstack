@@ -12,7 +12,7 @@ beforeEach(async () => {
     ;({ sesion } = await crearConSesion('admin'))
 })
 
-const crear = (nombre) => sesion.post('/api/productos').send({ nombre, precio: 10000, categoriaId })
+const crear = (nombre) => sesion.post('/api/v1/admin/productos').send({ nombre, precio: 10000, categoriaId })
 
 describe('Código de producto con contador atómico (colección counters)', () => {
     it('10 altas simultáneas reciben códigos únicos y consecutivos', async () => {
@@ -30,7 +30,7 @@ describe('Código de producto con contador atómico (colección counters)', () =
 
     it('no reutiliza el código de un producto borrado', async () => {
         const creado = await crear('Mocca')
-        await sesion.delete(`/api/productos/${creado.body.id}`)
+        await sesion.delete(`/api/v1/admin/productos/${creado.body.id}`)
         expect((await crear('Chai')).body.codigo).toBe(3)
     })
 })

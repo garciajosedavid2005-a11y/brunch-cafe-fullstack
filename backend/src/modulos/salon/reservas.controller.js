@@ -1,9 +1,7 @@
 import mongoose from 'mongoose'
 import { STATUS_CLIENTE } from '../compartido/estados.js'
 import { notFound } from '../compartido/errors.js'
-import Reserva from './reserva.model.js'
 import * as servicio from './reservas.service.js'
-import { desdeLegado } from './reservas.schema.js'
 
 const statusCliente = (estado) => STATUS_CLIENTE.reserva[estado?.codigo] || 'pending'
 
@@ -46,18 +44,4 @@ export const editar = async (req, res) => {
 }
 export const cancelar = async (req, res) => {
     res.json({ reservation: formato(await servicio.cancelar(req.usuario, idValido(req))) })
-}
-
-// ── Alias antiguo /api/reservas (respuesta: el documento con su estado) ──
-const documento = (id) => Reserva.findById(id).populate('estado').lean()
-export const legadoCrear = async (req, res) => {
-    const reserva = await servicio.crear(req.usuario, desdeLegado(req.body))
-    res.json(await documento(reserva._id)) // 200, como antes
-}
-export const legadoMias = async (req, res) => {
-    res.json(await Reserva.find({ usuario: req.usuario.id }).populate('estado').sort({ fecha: -1 }).lean())
-}
-export const legadoCancelar = async (req, res) => {
-    const reserva = await servicio.cancelar(req.usuario, idValido(req))
-    res.json(await documento(reserva._id))
 }

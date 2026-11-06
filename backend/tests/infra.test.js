@@ -17,7 +17,7 @@ describe('Infraestructura HTTP', () => {
 
     it('JSON mal formado → 400 INVALID_JSON', async () => {
         const res = await api()
-            .post('/api/auth/login')
+            .post('/api/v1/auth/login')
             .set('Content-Type', 'application/json')
             .send('{"correo": ')
         expect(res.status).toBe(400)
@@ -25,7 +25,7 @@ describe('Infraestructura HTTP', () => {
     })
 
     it('validación Zod → 400 VALIDATION_ERROR con details por campo', async () => {
-        const res = await api().post('/api/auth/login').send({ correo: 'no-es-correo', contraseña: '123456' })
+        const res = await api().post('/api/v1/auth/login').send({ correo: 'no-es-correo', contraseña: '123456' })
         expect(res.status).toBe(400)
         expect(res.body.error.code).toBe('VALIDATION_ERROR')
         expect(res.body.error.details).toEqual(
@@ -33,14 +33,14 @@ describe('Infraestructura HTTP', () => {
         )
     })
 
-    it('respuestas heredadas { message } salen con formato único', async () => {
-        const res = await api().get('/api/customer/profile')
+    it('una ruta protegida sin sesión → 401 con formato único', async () => {
+        const res = await api().get('/api/v1/cliente/perfil')
         expect(res.status).toBe(401)
         expect(res.body).toEqual({ error: { code: 'UNAUTHORIZED', message: expect.any(String) } })
     })
 
     it('las respuestas exitosas no se alteran', async () => {
-        const res = await api().get('/api/productos/menu')
+        const res = await api().get('/api/v1/catalogo')
         expect(res.status).toBe(200)
         expect(res.body).toEqual({ categorias: [], productos: [] })
     })

@@ -27,22 +27,3 @@ export const cambiarMiContrasena = async (req, res) => {
     ponerCookieSesion(res, await tokenDeSesion(usuario)) // esta sesión sigue abierta
     res.json({ message: 'Contraseña actualizada correctamente.' })
 }
-
-// ── Alias temporales (se retiran en 0.12) ──────────────────────────────
-// GET/PUT /api/usuarios/perfil: devuelven el usuario (sin secretos), como antes
-export const legadoVerUsuario = async (req, res) => {
-    res.json(await obtenerPerfil(req.usuario.id))
-}
-export const legadoEditarUsuario = async (req, res) => {
-    res.json(await actualizarPerfil(req.usuario.id, perfilSchema.parse(req.body)))
-}
-
-// GET/PATCH /api/customer/profile: campo `email` y respuesta { profile }
-const formatoCustomer = (u) => ({ nombre: u.nombre, apellido: u.apellido, email: u.correo, telefono: u.telefono || '' })
-export const legadoVerCustomer = async (req, res) => {
-    res.json({ profile: formatoCustomer(await obtenerPerfil(req.usuario.id)) })
-}
-export const legadoEditarCustomer = async (req, res) => {
-    const { email, ...resto } = req.body || {}
-    res.json({ profile: formatoCustomer(await actualizarPerfil(req.usuario.id, perfilSchema.parse({ ...resto, correo: email }))) })
-}

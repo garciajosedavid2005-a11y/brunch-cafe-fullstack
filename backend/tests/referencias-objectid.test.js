@@ -18,8 +18,8 @@ beforeEach(async () => {
 })
 
 const pedir = async (items) => {
-    const metodos = await cliente.get('/api/customer/payment-methods')
-    return cliente.post('/api/customer/orders').send({
+    const metodos = await cliente.get('/api/v1/cliente/metodos-pago')
+    return cliente.post('/api/v1/cliente/pedidos').send({
         items, nombre: 'Ana Pérez', telefono: '3001234567', direccion: 'Carrera 36B #30-06', hora: '10:00', barrio: 'Centro',
         metodoPagoId: metodos.body[0].id,
     })
@@ -29,7 +29,7 @@ const recibirLatte = async () => {
     const { body } = await pedir([{ productoRef: String(latte._id), cantidad: 1 }])
     await entregarPedido((await crearConSesion('admin')).sesion, body.order._id)
 }
-const comentar = (extra) => cliente.post('/api/customer/comentarios').send({
+const comentar = (extra) => cliente.post('/api/v1/cliente/comentarios').send({
     tipo: 'producto', calificacion: 4, comentario: 'Muy rico y bien servido', ...extra,
 })
 
@@ -67,7 +67,7 @@ describe('Referencias por ObjectId (0.6)', () => {
         expect(String(guardado.producto)).toBe(String(latte._id))
         expect(guardado.productoId).toBe(7)
 
-        const { body } = await api().get('/api/comentarios/product-ratings')
+        const { body } = await api().get('/api/v1/comentarios/calificaciones')
         expect(body.productRatings).toEqual([{ productoRef: String(latte._id), productoId: 7, average: 4, count: 1 }])
     })
 

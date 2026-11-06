@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { crearConSesion } from './helpers/usuarios.js'
-import { datosReserva, fechaFutura } from './helpers/datos.js'
-import Reserva from '../src/modulos/salon/reserva.model.js'
+import { datosReserva } from './helpers/datos.js'
 
 let cliente
 beforeEach(async () => {
@@ -34,48 +33,6 @@ describe('Reservas del cliente: /api/v1/cliente/reservas (0.8)', () => {
         expect((await cliente.post('/api/v1/cliente/reservas').send(datosReserva({ hora: '09:30' }))).status).toBe(400)
     })
 
-    it('el alias /api/customer/reservations responde igual y avisa que está deprecado', async () => {
-        const res = await cliente.post('/api/customer/reservations').send(datosReserva())
-        expect(res.status).toBe(201)
-        expect(res.headers.deprecation).toBe('true')
-        expect(res.headers.link).toContain('/api/v1/cliente/reservas')
-        expect((await cliente.get('/api/customer/reservations')).body.reservations).toHaveLength(1)
-    })
-})
-
-describe('Alias antiguo /api/reservas: mismo servicio, mismas validaciones', () => {
-    const legado = (extra) => ({ cantidadPersonas: 2, fecha: fechaFutura(), hora: '09:00', nombre: 'Ana Pérez', correo: 'ana@example.com', telefono: '3001234567', motivo: 'Desayuno', ...extra })
-
-    it('POST crea la reserva (respuesta anterior) y ahora valida fecha futura y horario', async () => {
-        const ok = await cliente.post('/api/reservas').send(legado())
-        expect(ok.status).toBe(200) // código de respuesta anterior
-        expect(ok.headers.deprecation).toBe('true')
-        expect(ok.body).toMatchObject({ cantidadPersonas: 2, hora: '09:00', estado: { codigo: 'pendiente' } })
-        expect(ok.body.inicio).toBeDefined()
-
-        expect((await cliente.post('/api/reservas').send(legado({ fecha: ayer() }))).status).toBe(400)
-        expect((await cliente.post('/api/reservas').send(legado({ hora: '20:00' }))).status).toBe(400)
-    })
-
-    it('GET /mias lista las propias', async () => {
-        await cliente.post('/api/reservas').send(legado())
-        const res = await cliente.get('/api/reservas/mias')
-        expect(res.status).toBe(200)
-        expect(res.body).toHaveLength(1)
-    })
-
-    it('PATCH /:id/cancelar ya no cancela una reserva que inició (antes sí)', async () => {
-        const { body } = await cliente.post('/api/reservas').send(legado())
-        await Reserva.updateOne({ _id: body._id }, { $set: { inicio: new Date(Date.now() - 60000) } })
-        const res = await cliente.patch(`/api/reservas/${body._id}/cancelar`)
-        expect(res.status).toBe(409)
-    })
-
-    it('no puede cancelar la reserva de otro', async () => {
-        const { body } = await cliente.post('/api/reservas').send(legado())
-        const { sesion: otro } = await crearConSesion('cliente')
-        expect((await otro.patch(`/api/reservas/${body._id}/cancelar`)).status).toBe(404)
-    })
 })
 
 describe('Reservas del staff: /api/v1/staff/reservas', () => {

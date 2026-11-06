@@ -26,42 +26,42 @@ describe('Línea base del cliente', () => {
 
     beforeEach(async () => {
         cliente = agente()
-        const res = await cliente.post('/api/auth/registro').send(usuario)
+        const res = await cliente.post('/api/v1/auth/registro').send(usuario)
         expect(res.status).toBe(200)
     })
 
     it('registro deja sesión y /auth/me devuelve el usuario', async () => {
-        const me = await cliente.get('/api/auth/me')
+        const me = await cliente.get('/api/v1/auth/me')
         expect(me.status).toBe(200)
         expect(me.body.user).toMatchObject({ email: usuario.correo, role: 'cliente' })
     })
 
     it('login con credenciales válidas', async () => {
-        const res = await agente().post('/api/auth/login').send({ correo: usuario.correo, contraseña: usuario.contraseña })
+        const res = await agente().post('/api/v1/auth/login').send({ correo: usuario.correo, contraseña: usuario.contraseña })
         expect(res.status).toBe(200)
         expect(res.headers['set-cookie']?.[0]).toMatch(/^token=/)
     })
 
     it('perfil del cliente se consulta y edita', async () => {
-        const res = await cliente.patch('/api/customer/profile').send({
-            nombre: 'Ana María', apellido: 'Pérez', email: usuario.correo, telefono: '3007654321',
+        const res = await cliente.patch('/api/v1/cliente/perfil').send({
+            nombre: 'Ana María', apellido: 'Pérez', correo: usuario.correo, telefono: '3007654321',
         })
         expect(res.status).toBe(200)
-        expect(res.body.profile.nombre).toBe('Ana María')
+        expect(res.body.perfil.nombre).toBe('Ana María')
     })
 
     it('crea un pedido con precio calculado en el servidor', async () => {
         const categoria = await Categoria.create({ nombre: 'Bebidas' })
         await Producto.create({ codigo: 1, nombre: 'Latte', precio: 9000, categoria: categoria._id })
 
-        const menu = await cliente.get('/api/productos/menu')
+        const menu = await cliente.get('/api/v1/catalogo')
         expect(menu.body.productos).toHaveLength(1)
 
-        const metodos = await cliente.get('/api/customer/payment-methods')
+        const metodos = await cliente.get('/api/v1/cliente/metodos-pago')
         expect(metodos.status).toBe(200)
         const contraEntrega = metodos.body.find((m) => m.nombre === 'Contra Entrega')
 
-        const res = await cliente.post('/api/customer/orders').send({
+        const res = await cliente.post('/api/v1/cliente/pedidos').send({
             items: [{ productoId: 1, cantidad: 2 }],
             nombre: 'Ana Pérez',
             telefono: '3001234567',
@@ -73,7 +73,7 @@ describe('Línea base del cliente', () => {
         expect(res.status).toBe(201)
         expect(res.body.order).toMatchObject({ total: 18000, statusLabel: 'Pendiente' })
 
-        const lista = await cliente.get('/api/customer/orders')
+        const lista = await cliente.get('/api/v1/cliente/pedidos')
         expect(lista.body.orders).toHaveLength(1)
     })
 
@@ -82,21 +82,21 @@ describe('Línea base del cliente', () => {
             nombre: 'Ana Pérez', correo: usuario.correo, telefono: '3001234567', motivo: 'Desayuno',
             personas: 2, fecha: fechaFutura(), hora: '09:00',
         }
-        const creada = await cliente.post('/api/customer/reservations').send(datos)
+        const creada = await cliente.post('/api/v1/cliente/reservas').send(datos)
         expect(creada.status).toBe(201)
         const id = creada.body.reservation._id
 
-        const editada = await cliente.patch(`/api/customer/reservations/${id}`).send({ ...datos, personas: 3 })
+        const editada = await cliente.patch(`/api/v1/cliente/reservas/${id}`).send({ ...datos, personas: 3 })
         expect(editada.status).toBe(200)
         expect(editada.body.reservation.personas).toBe(3)
 
-        const cancelada = await cliente.patch(`/api/customer/reservations/${id}/cancel`)
+        const cancelada = await cliente.patch(`/api/v1/cliente/reservas/${id}/cancelar`)
         expect(cancelada.status).toBe(200)
         expect(cancelada.body.reservation.status).toBe('cancelled')
     })
 
     it('rutas del cliente exigen sesión', async () => {
-        const res = await api().get('/api/customer/orders')
+        const res = await api().get('/api/v1/cliente/pedidos')
         expect(res.status).toBe(401)
     })
 })

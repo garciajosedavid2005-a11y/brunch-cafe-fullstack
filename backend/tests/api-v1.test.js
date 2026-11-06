@@ -15,48 +15,14 @@ beforeEach(async () => {
     latte = await Producto.create({ codigo: 1, nombre: 'Latte', precio: 9000, categoria: bebidas._id, imagen: '/productos/menu/imagenes/latte.png' })
 })
 
-// [quién, ruta v1, ruta anterior]
-const EQUIVALENTES = [
-    ['anonimo', '/api/v1/comentarios', '/api/comentarios'],
-    ['anonimo', '/api/v1/comentarios/calificaciones', '/api/comentarios/product-ratings'],
-    ['anonimo', '/api/v1/catalogo', '/api/productos/menu'],
-    ['cliente', '/api/v1/auth/me', '/api/auth/me'],
-    ['cliente', '/api/v1/cliente/pedidos', '/api/customer/orders'],
-    ['cliente', '/api/v1/cliente/metodos-pago', '/api/customer/payment-methods'],
-    ['cliente', '/api/v1/cliente/comentarios', '/api/customer/comentarios'],
-    ['admin', '/api/v1/staff/pedidos', '/api/pedidos'],
-    ['admin', '/api/v1/staff/reservas', '/api/reservas'],
-    ['admin', '/api/v1/admin/categorias', '/api/categorias'],
-    ['admin', '/api/v1/admin/productos', '/api/productos'],
-    ['admin', '/api/v1/admin/estados', '/api/estados'],
-    ['admin', '/api/v1/admin/roles', '/api/roles'],
-    ['admin', '/api/v1/admin/permisos', '/api/permisos'],
-    ['admin', '/api/v1/admin/metodos-pago', '/api/metodos-pago'],
-    ['admin', '/api/v1/admin/usuarios', '/api/admin/usuarios'],
-    ['admin', '/api/v1/admin/comentarios', '/api/comentarios/admin'],
-]
-
-const agente = (quien) => ({ admin, cliente, anonimo: api() }[quien])
-
-describe('/api/v1: misma respuesta que las rutas anteriores, que quedan como alias deprecados', () => {
-    it.each(EQUIVALENTES)('%s: %s ≡ %s', async (quien, v1, anterior) => {
-        const nueva = await agente(quien).get(v1)
-        const vieja = await (quien === 'anonimo' ? api() : agente(quien)).get(anterior)
-        expect(nueva.status).toBe(200)
-        expect(vieja.status).toBe(200)
-        expect(vieja.body).toEqual(nueva.body)
-        expect(nueva.headers.deprecation).toBeUndefined()
-        expect(vieja.headers.deprecation).toBe('true')
-        expect(vieja.headers.link).toBe(`<${v1}>; rel="successor-version"`)
-    })
-
+describe('/api/v1', () => {
     it('los permisos se mantienen en v1 (un cliente no entra a staff ni admin)', async () => {
         expect((await cliente.get('/api/v1/staff/pedidos')).status).toBe(403)
         expect((await cliente.get('/api/v1/admin/usuarios')).status).toBe(403)
         expect((await api().get('/api/v1/cliente/pedidos')).status).toBe(401)
     })
 
-    it('las imágenes del catálogo no están deprecadas (sus URL viven en los datos)', async () => {
+    it('las imágenes del catálogo siguen en /api/productos/menu/imagenes (sus URL viven en los datos)', async () => {
         const res = await api().get('/api/productos/menu/imagenes/no-existe.png')
         expect(res.headers.deprecation).toBeUndefined()
     })

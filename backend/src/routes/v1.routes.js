@@ -9,7 +9,7 @@ import { verHorarios } from '../modulos/configuracion/horarios.controller.js'
 
 // API versionada (0.8): /auth, /catalogo y /comentarios (públicas), /cliente (la sesión sobre
 // sus datos), /staff (operación, por permiso) y /admin (configuración, por permiso).
-// Las rutas sin versión (/api/...) quedan como alias deprecados.
+// Las rutas sin versión (/api/...) se retiraron en 0.12 (salvo las imágenes del menú).
 const router = Router()
 
 // Catálogo público: categorías y productos disponibles, precio entero en COP, imagen como URL

@@ -141,12 +141,6 @@ describe('Reservas: horario configurado, horas en punto y teléfono', () => {
         const lista = await admin.get('/api/v1/staff/reservas')
         expect(lista.body[0].telefono).toBe('3001112233')
     })
-
-    it('el alias /api/reservas también exige el teléfono', async () => {
-        const legado = { cantidadPersonas: 2, fecha: JUEVES, hora: '09:00', nombre: 'Ana Pérez', correo: 'ana@example.com', motivo: 'Desayuno' }
-        expect((await cliente.post('/api/reservas').send(legado)).status).toBe(400)
-        expect((await cliente.post('/api/reservas').send({ ...legado, telefono: '3001234567' })).status).toBe(200)
-    })
 })
 
 describe('Pedidos a domicilio: mismo día, ≥ 1 h, horas en punto y teléfono (N8)', () => {

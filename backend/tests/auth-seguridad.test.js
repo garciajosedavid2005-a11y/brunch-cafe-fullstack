@@ -17,7 +17,7 @@ const cookieDe = (res) => res.headers['set-cookie']?.find((c) => c.startsWith('t
 
 describe('Cookie de sesión', () => {
     it('es httpOnly, SameSite=Lax, dura 2 h y no es Secure fuera de producción', async () => {
-        const res = await api().post('/api/auth/registro').send(datos())
+        const res = await api().post('/api/v1/auth/registro').send(datos())
         expect(res.status).toBe(200)
         const cookie = cookieDe(res)
         expect(cookie).toMatch(/HttpOnly/i)
@@ -27,7 +27,7 @@ describe('Cookie de sesión', () => {
     })
 
     it('logout borra la cookie', async () => {
-        const res = await api().post('/api/auth/logout')
+        const res = await api().post('/api/v1/auth/logout')
         expect(res.status).toBe(200)
         expect(cookieDe(res)).toMatch(/Expires=Thu, 01 Jan 1970/)
     })
@@ -35,9 +35,9 @@ describe('Cookie de sesión', () => {
 
 describe('Mensajes que no revelan cuentas', () => {
     it('login: correo inexistente y contraseña incorrecta responden igual', async () => {
-        await api().post('/api/auth/registro').send(datos())
-        const inexistente = await api().post('/api/auth/login').send({ correo: 'nadie@example.com', contraseña: 'secreta123' })
-        const incorrecta = await api().post('/api/auth/login').send({ correo: 'luis@example.com', contraseña: 'otra-clave' })
+        await api().post('/api/v1/auth/registro').send(datos())
+        const inexistente = await api().post('/api/v1/auth/login').send({ correo: 'nadie@example.com', contraseña: 'secreta123' })
+        const incorrecta = await api().post('/api/v1/auth/login').send({ correo: 'luis@example.com', contraseña: 'otra-clave' })
         expect(inexistente.status).toBe(401)
         expect(incorrecta.status).toBe(401)
         expect(inexistente.body).toEqual(incorrecta.body)
@@ -45,8 +45,8 @@ describe('Mensajes que no revelan cuentas', () => {
     })
 
     it('registro con correo existente da un mensaje genérico', async () => {
-        await api().post('/api/auth/registro').send(datos())
-        const res = await api().post('/api/auth/registro').send(datos({ correo: 'LUIS@example.com' }))
+        await api().post('/api/v1/auth/registro').send(datos())
+        const res = await api().post('/api/v1/auth/registro').send(datos({ correo: 'LUIS@example.com' }))
         expect(res.status).toBe(400)
         expect(res.body.error.code).toBe('REGISTRO_NO_DISPONIBLE')
         expect(res.body.error.message).not.toMatch(/existe/i)
@@ -56,27 +56,27 @@ describe('Mensajes que no revelan cuentas', () => {
 
 describe('Normalización del correo (N2)', () => {
     it('se guarda en minúsculas y sin espacios; el login acepta mayúsculas', async () => {
-        await api().post('/api/auth/registro').send(datos({ correo: '  Luis.G@Example.COM ' }))
+        await api().post('/api/v1/auth/registro').send(datos({ correo: '  Luis.G@Example.COM ' }))
         const guardado = await Usuario.findOne({}).lean()
         expect(guardado.correo).toBe('luis.g@example.com')
 
-        const res = await api().post('/api/auth/login').send({ correo: 'LUIS.G@example.com', contraseña: 'secreta123' })
+        const res = await api().post('/api/v1/auth/login').send({ correo: 'LUIS.G@example.com', contraseña: 'secreta123' })
         expect(res.status).toBe(200)
     })
 
     it('cuentas antiguas guardadas con mayúsculas siguen pudiendo entrar', async () => {
-        await api().post('/api/auth/registro').send(datos({ correo: 'temporal@example.com' }))
+        await api().post('/api/v1/auth/registro').send(datos({ correo: 'temporal@example.com' }))
         // Simula un registro antiguo, sin normalizar (escritura directa sin setters)
         await mongoose.connection.db.collection('usuarios').updateOne({}, { $set: { correo: 'Antiguo@Example.com' } })
 
-        const res = await api().post('/api/auth/login').send({ correo: 'antiguo@example.com', contraseña: 'secreta123' })
+        const res = await api().post('/api/v1/auth/login').send({ correo: 'antiguo@example.com', contraseña: 'secreta123' })
         expect(res.status).toBe(200)
     })
 })
 
 describe('Token', () => {
     it('token inválido → 401 INVALID_TOKEN y borra la cookie', async () => {
-        const res = await api().get('/api/auth/me').set('Cookie', 'token=basura')
+        const res = await api().get('/api/v1/auth/me').set('Cookie', 'token=basura')
         expect(res.status).toBe(401)
         expect(res.body.error.code).toBe('INVALID_TOKEN')
         expect(cookieDe(res)).toMatch(/Expires=Thu, 01 Jan 1970/)
@@ -87,15 +87,15 @@ describe('Token', () => {
             { id: new mongoose.Types.ObjectId(), rol: 'cliente', exp: Math.floor(Date.now() / 1000) - 60 },
             process.env.JWT_SECRET
         )
-        const res = await api().get('/api/auth/me').set('Cookie', `token=${vencido}`)
+        const res = await api().get('/api/v1/auth/me').set('Cookie', `token=${vencido}`)
         expect(res.status).toBe(401)
         expect(res.body.error.code).toBe('SESSION_EXPIRED')
     })
 
     it('sesión válida funciona con el agente', async () => {
         const sesion = agente()
-        await sesion.post('/api/auth/registro').send(datos())
-        const me = await sesion.get('/api/auth/me')
+        await sesion.post('/api/v1/auth/registro').send(datos())
+        const me = await sesion.get('/api/v1/auth/me')
         expect(me.status).toBe(200)
     })
 })
@@ -125,7 +125,7 @@ describe('Cabeceras de seguridad y CORS', () => {
     })
 
     it('mensajes Zod en español con concordancia (N1)', async () => {
-        const res = await api().post('/api/auth/login').send({ correo: 'a@b.co' })
+        const res = await api().post('/api/v1/auth/login').send({ correo: 'a@b.co' })
         expect(res.body.error.message).toBe('La contraseña es requerida')
     })
 })

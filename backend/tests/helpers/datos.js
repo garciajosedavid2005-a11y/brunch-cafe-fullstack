@@ -18,8 +18,8 @@ export const crearPedido = async (sesionCliente) => {
         { nombre: 'Bebidas' }, { $setOnInsert: { nombre: 'Bebidas' } }, { upsert: true, returnDocument: 'after' }
     )
     await Producto.create({ codigo: codigoProducto, nombre: `Latte ${codigoProducto}`, precio: 9000, categoria: categoria._id })
-    const metodos = await sesionCliente.get('/api/customer/payment-methods')
-    const res = await sesionCliente.post('/api/customer/orders').send({
+    const metodos = await sesionCliente.get('/api/v1/cliente/metodos-pago')
+    const res = await sesionCliente.post('/api/v1/cliente/pedidos').send({
         items: [{ productoId: codigoProducto, cantidad: 1 }],
         nombre: 'Ana Pérez',
         telefono: '3001234567',
@@ -39,7 +39,7 @@ export const datosReserva = (extra = {}) => ({
 
 /** Crea una reserva pendiente desde el portal del cliente y devuelve su id. */
 export const crearReserva = async (sesionCliente, extra) => {
-    const res = await sesionCliente.post('/api/customer/reservations').send(datosReserva(extra))
+    const res = await sesionCliente.post('/api/v1/cliente/reservas').send(datosReserva(extra))
     if (res.status !== 201) throw new Error(`No se creó la reserva de prueba: ${JSON.stringify(res.body)}`)
     return res.body.reservation._id
 }

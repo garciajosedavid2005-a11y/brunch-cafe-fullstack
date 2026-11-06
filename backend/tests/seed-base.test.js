@@ -75,7 +75,7 @@ describe('Seed del primer administrador', () => {
         expect(usuario.rol.nombre).toBe('admin')
         expect(usuario.contraseña).not.toBe(ENV.ADMIN_PASSWORD)
 
-        const login = await api().post('/api/auth/login').send({ correo: 'admin@brunchcafe.co', contraseña: ENV.ADMIN_PASSWORD })
+        const login = await api().post('/api/v1/auth/login').send({ correo: 'admin@brunchcafe.co', contraseña: ENV.ADMIN_PASSWORD })
         expect(login.status).toBe(200)
         expect(login.body.rol).toBe('admin')
     })
@@ -121,7 +121,7 @@ describe('Seed del primer administrador', () => {
     })
 
     it('el registro usa el rol cliente sembrado (sin upserts durante la petición)', async () => {
-        const res = await api().post('/api/auth/registro').send({
+        const res = await api().post('/api/v1/auth/registro').send({
             nombre: 'Ana', apellido: 'P', correo: 'ana@example.com', contraseña: 'secreta123',
         })
         expect(res.status).toBe(200)

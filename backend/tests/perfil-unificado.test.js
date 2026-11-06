@@ -54,36 +54,3 @@ describe('Perfil unificado: /api/v1/cliente/perfil (0.8)', () => {
     })
 })
 
-describe('Alias temporales del perfil (mismo servicio, mismas validaciones)', () => {
-    it('PATCH /api/customer/profile (campo email) responde con su forma anterior y Deprecation', async () => {
-        const { correo, ...resto } = DATOS
-        const res = await sesion.patch('/api/customer/profile').send({ ...resto, email: correo })
-        expect(res.status).toBe(200)
-        expect(res.headers.deprecation).toBe('true')
-        expect(res.body.profile).toEqual({ nombre: 'Ana María', apellido: 'Pérez', email: correo, telefono: '300 765 4321' })
-        expect(res.headers.link).toContain('/api/v1/cliente/perfil')
-    })
-
-    it('PUT /api/usuarios/perfil (campo correo) devuelve el usuario como antes', async () => {
-        const res = await sesion.put('/api/usuarios/perfil').send(DATOS)
-        expect(res.status).toBe(200)
-        expect(res.headers.deprecation).toBe('true')
-        expect(res.body).toMatchObject({ _id: String(usuario._id), correo: DATOS.correo, rol: { nombre: 'cliente' } })
-        expect(res.body.contraseña).toBeUndefined()
-    })
-
-    it('las tres rutas rechazan el mismo teléfono inválido', async () => {
-        const { correo, ...resto } = DATOS
-        const respuestas = await Promise.all([
-            sesion.patch('/api/v1/cliente/perfil').send({ ...DATOS, telefono: 'abc' }),
-            sesion.put('/api/usuarios/perfil').send({ ...DATOS, telefono: 'abc' }),
-            sesion.patch('/api/customer/profile').send({ ...resto, email: correo, telefono: 'abc' }),
-        ])
-        expect(respuestas.map((r) => r.status)).toEqual([400, 400, 400])
-    })
-
-    it('GET /api/usuarios/perfil y GET /api/customer/profile siguen funcionando', async () => {
-        expect((await sesion.get('/api/usuarios/perfil')).body.correo).toBe(usuario.correo)
-        expect((await sesion.get('/api/customer/profile')).body.profile.email).toBe(usuario.correo)
-    })
-})

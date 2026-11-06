@@ -7,7 +7,7 @@ import Estado from '../src/modulos/compartido/estado.model.js'
 
 const eventosDe = (entidadId) => Evento.find({ entidadId }).sort({ createdAt: 1, _id: 1 }).lean()
 const avanzar = (sesion, id, codigo, extra = {}) =>
-    sesion.patch(`/api/pedidos/${id}/estado`).send({ codigo, ...extra })
+    sesion.patch(`/api/v1/staff/pedidos/${id}/estado`).send({ codigo, ...extra })
 
 describe('Pedidos: transiciones de staff', () => {
     let cliente, admin, mesero, pedidoId
@@ -26,11 +26,11 @@ describe('Pedidos: transiciones de staff', () => {
     })
 
     it('el listado trae codigo y las transiciones que el usuario puede hacer', async () => {
-        const deMesero = (await mesero.sesion.get('/api/pedidos')).body[0]
+        const deMesero = (await mesero.sesion.get('/api/v1/staff/pedidos')).body[0]
         expect(deMesero).toMatchObject({ estado: 'Pendiente', estadoCodigo: 'pendiente', esFinal: false })
         expect(deMesero.transiciones.map((t) => t.codigo)).toEqual(['confirmado'])
 
-        const deAdmin = (await admin.sesion.get('/api/pedidos')).body[0]
+        const deAdmin = (await admin.sesion.get('/api/v1/staff/pedidos')).body[0]
         expect(deAdmin.transiciones).toEqual(expect.arrayContaining([
             expect.objectContaining({ codigo: 'cancelado', requiereMotivo: true }),
         ]))
@@ -50,13 +50,13 @@ describe('Pedidos: transiciones de staff', () => {
         expect(String(eventos[1].usuario)).toBe(String(mesero.usuario._id))
         expect(eventos[1].actor).toBe('mesero')
 
-        const cliente2 = await cliente.get('/api/customer/orders')
+        const cliente2 = await cliente.get('/api/v1/cliente/pedidos')
         expect(cliente2.body.orders[0]).toMatchObject({ status: 'delivered', codigo: 'entregado', statusLabel: 'Entregado' })
     })
 
     it('acepta el _id del Estado (compatibilidad con el dashboard)', async () => {
         const confirmado = await Estado.findOne({ tipo: 'pedido', codigo: 'confirmado' })
-        const res = await mesero.sesion.patch(`/api/pedidos/${pedidoId}/estado`).send({ estado: String(confirmado._id) })
+        const res = await mesero.sesion.patch(`/api/v1/staff/pedidos/${pedidoId}/estado`).send({ estado: String(confirmado._id) })
         expect(res.status).toBe(200)
         expect(res.body.estado).toBe('Confirmado')
     })
@@ -67,7 +67,7 @@ describe('Pedidos: transiciones de staff', () => {
         expect(salto.body.error).toMatchObject({ code: 'TRANSICION_INVALIDA', details: { permitidos: ['confirmado'] } })
 
         const deReserva = await Estado.findOne({ tipo: 'reserva', codigo: 'confirmada' })
-        const res = await mesero.sesion.patch(`/api/pedidos/${pedidoId}/estado`).send({ estado: String(deReserva._id) })
+        const res = await mesero.sesion.patch(`/api/v1/staff/pedidos/${pedidoId}/estado`).send({ estado: String(deReserva._id) })
         expect(res.status).toBe(400)
         expect(res.body.error.code).toBe('ESTADO_INVALIDO')
     })
@@ -115,15 +115,15 @@ describe('Pedidos: cancelación por el cliente', () => {
         const confirmado = await crearPedido(cliente)
         await avanzar(admin, confirmado, 'confirmado')
 
-        expect((await otro.patch(`/api/customer/orders/${pendiente}/cancel`)).status).toBe(404)
+        expect((await otro.patch(`/api/v1/cliente/pedidos/${pendiente}/cancelar`)).status).toBe(404)
 
-        const ok = await cliente.patch(`/api/customer/orders/${pendiente}/cancel`).send({ motivo: 'Me equivoqué' })
+        const ok = await cliente.patch(`/api/v1/cliente/pedidos/${pendiente}/cancelar`).send({ motivo: 'Me equivoqué' })
         expect(ok.status).toBe(200)
         expect(ok.body.order).toMatchObject({ status: 'cancelled', codigo: 'cancelado' })
         const ultimo = (await eventosDe(pendiente)).at(-1)
         expect(ultimo).toMatchObject({ de: 'pendiente', a: 'cancelado', motivo: 'Me equivoqué', actor: 'cliente' })
 
-        const tarde = await cliente.patch(`/api/customer/orders/${confirmado}/cancel`)
+        const tarde = await cliente.patch(`/api/v1/cliente/pedidos/${confirmado}/cancelar`)
         expect(tarde.status).toBe(409)
         expect(tarde.body.error.code).toBe('TRANSICION_INVALIDA')
     })
@@ -132,7 +132,7 @@ describe('Pedidos: cancelación por el cliente', () => {
 describe('Reservas: transiciones', () => {
     let cliente, anfitrion, reservaId
     const cambiar = (sesion, codigo, extra = {}) =>
-        sesion.patch(`/api/reservas/${reservaId}/estado`).send({ codigo, ...extra })
+        sesion.patch(`/api/v1/staff/reservas/${reservaId}/estado`).send({ codigo, ...extra })
 
     beforeEach(async () => {
         cliente = (await crearConSesion('cliente')).sesion
@@ -152,7 +152,7 @@ describe('Reservas: transiciones', () => {
         expect(reabrir.status).toBe(409)
         expect(reabrir.body.error.code).toBe('ESTADO_FINAL')
 
-        const lista = await cliente.get('/api/customer/reservations')
+        const lista = await cliente.get('/api/v1/cliente/reservas')
         expect(lista.body.reservations[0]).toMatchObject({ status: 'completed', codigo: 'completada' })
     })
 
@@ -186,7 +186,7 @@ describe('Reservas: transiciones', () => {
 
     it('cliente edita una reserva confirmada → vuelve a pendiente con evento "editada por cliente"', async () => {
         await cambiar(anfitrion.sesion, 'confirmada')
-        const res = await cliente.patch(`/api/customer/reservations/${reservaId}`).send(datosReserva({ personas: 4 }))
+        const res = await cliente.patch(`/api/v1/cliente/reservas/${reservaId}`).send(datosReserva({ personas: 4 }))
         expect(res.status).toBe(200)
         expect(res.body.reservation).toMatchObject({ status: 'pending', personas: 4 })
         const ultimo = (await eventosDe(reservaId)).at(-1)
@@ -194,21 +194,21 @@ describe('Reservas: transiciones', () => {
     })
 
     it('editar una pendiente no crea evento de estado', async () => {
-        await cliente.patch(`/api/customer/reservations/${reservaId}`).send(datosReserva({ personas: 5 }))
+        await cliente.patch(`/api/v1/cliente/reservas/${reservaId}`).send(datosReserva({ personas: 5 }))
         expect(await eventosDe(reservaId)).toHaveLength(1)
     })
 
     it('el cliente no edita ni cancela una reserva ya sentada', async () => {
         await cambiar(anfitrion.sesion, 'confirmada')
         await cambiar(anfitrion.sesion, 'sentada')
-        expect((await cliente.patch(`/api/customer/reservations/${reservaId}`).send(datosReserva())).status).toBe(404)
-        const cancelar = await cliente.patch(`/api/customer/reservations/${reservaId}/cancel`)
+        expect((await cliente.patch(`/api/v1/cliente/reservas/${reservaId}`).send(datosReserva())).status).toBe(404)
+        const cancelar = await cliente.patch(`/api/v1/cliente/reservas/${reservaId}/cancelar`)
         expect(cancelar.status).toBe(409)
         expect(cancelar.body.error.code).toBe('TRANSICION_INVALIDA')
     })
 
     it('cancelar una reserva del cliente queda en Evento', async () => {
-        const res = await cliente.patch(`/api/customer/reservations/${reservaId}/cancel`)
+        const res = await cliente.patch(`/api/v1/cliente/reservas/${reservaId}/cancelar`)
         expect(res.status).toBe(200)
         expect((await eventosDe(reservaId)).at(-1)).toMatchObject({ a: 'cancelada', motivo: 'cancelada por cliente' })
     })
@@ -222,38 +222,38 @@ describe('Catálogo de estados por API', () => {
     })
 
     it('lista los estados en el orden del flujo con su código', async () => {
-        const res = await admin.get('/api/estados?tipo=pedido')
+        const res = await admin.get('/api/v1/admin/estados?tipo=pedido')
         expect(res.body.map((e) => e.codigo)).toEqual(
             ['pendiente', 'confirmado', 'en_preparacion', 'listo', 'en_camino', 'entregado', 'cancelado'])
     })
 
     it('solo se edita la presentación', async () => {
-        const [pendiente] = (await admin.get('/api/estados?tipo=reserva')).body
-        const ok = await admin.put(`/api/estados/${pendiente.id}`).send({ nombre: 'Por aprobar', color: '#123456', descripcion: 'x' })
+        const [pendiente] = (await admin.get('/api/v1/admin/estados?tipo=reserva')).body
+        const ok = await admin.put(`/api/v1/admin/estados/${pendiente.id}`).send({ nombre: 'Por aprobar', color: '#123456', descripcion: 'x' })
         expect(ok.status).toBe(200)
         expect(ok.body).toMatchObject({ nombre: 'Por aprobar', codigo: 'pendiente', color: '#123456' })
 
         for (const campo of [{ esFinal: true }, { codigo: 'otro' }, { tipo: 'pedido' }]) {
-            const res = await admin.put(`/api/estados/${pendiente.id}`).send(campo)
+            const res = await admin.put(`/api/v1/admin/estados/${pendiente.id}`).send(campo)
             expect(res.status, JSON.stringify(campo)).toBe(400)
             expect(res.body.error.code).toBe('VALIDATION_ERROR')
         }
     })
 
     it('crear y borrar estados → 405 ESTADOS_FIJOS', async () => {
-        const [pendiente] = (await admin.get('/api/estados?tipo=pedido')).body
-        const crear = await admin.post('/api/estados').send({ nombre: 'Nuevo', tipo: 'pedido' })
+        const [pendiente] = (await admin.get('/api/v1/admin/estados?tipo=pedido')).body
+        const crear = await admin.post('/api/v1/admin/estados').send({ nombre: 'Nuevo', tipo: 'pedido' })
         expect(crear.status).toBe(405)
         expect(crear.body.error.code).toBe('ESTADOS_FIJOS')
-        expect((await admin.delete(`/api/estados/${pendiente.id}`)).status).toBe(405)
+        expect((await admin.delete(`/api/v1/admin/estados/${pendiente.id}`)).status).toBe(405)
     })
 
     it('un estado sin colores guardados usa los del catálogo, no el amarillo fijo (0.7c)', async () => {
         await Estado.collection.updateOne({ tipo: 'reserva', codigo: 'cancelada' }, { $unset: { color: '', bg: '', badgeType: '' } })
         await Estado.collection.updateOne({ tipo: 'pedido', codigo: 'pendiente' }, { $unset: { color: '', bg: '', badgeType: '' } })
-        const reservas = (await admin.get('/api/estados?tipo=reserva')).body
+        const reservas = (await admin.get('/api/v1/admin/estados?tipo=reserva')).body
         expect(reservas.find((e) => e.codigo === 'cancelada')).toMatchObject({ color: '#a33a3a', bg: '#fdecec', badgeType: 'danger' })
-        const pedidos = (await admin.get('/api/estados?tipo=pedido')).body
+        const pedidos = (await admin.get('/api/v1/admin/estados?tipo=pedido')).body
         expect(pedidos.find((e) => e.codigo === 'pendiente')).toMatchObject({ color: '#7a5000', bg: '#fff8e1', badgeType: 'warning' })
     })
 

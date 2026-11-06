@@ -15,6 +15,3 @@ export const reservaSchema = z.object({
     hora: z.string().regex(/^([01]\d|2[0-3]):00$/, { error: 'Elige una hora en punto (HH:00).' }),
     observaciones: z.string().trim().max(200).default(''),
 })
-
-// Alias antiguo POST /api/reservas: usa `cantidadPersonas` en vez de `personas`
-export const desdeLegado = ({ cantidadPersonas, ...resto } = {}) => ({ ...resto, personas: cantidadPersonas })

@@ -23,7 +23,7 @@ export const crearConSesion = async (rolNombre = 'cliente', extra = {}) => {
         ...extra,
     })
     const sesion = agente()
-    const res = await sesion.post('/api/auth/login').send({ correo: usuario.correo, contraseña: CLAVE })
+    const res = await sesion.post('/api/v1/auth/login').send({ correo: usuario.correo, contraseña: CLAVE })
     if (res.status !== 200) throw new Error(`Login de prueba falló (${res.status}): ${JSON.stringify(res.body)}`)
     return { usuario, sesion }
 }
