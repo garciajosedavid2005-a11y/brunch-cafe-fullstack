@@ -7,6 +7,7 @@ import { horasEnPunto, rangoReserva, textoRango } from '../../libs/horarios.js'
 import { obtenerHorarios } from '../configuracion/horarios.service.js'
 import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../../services/estados.service.js'
 import { reservaSchema } from './reservas.schema.js'
+import { conTransaccion } from '../../libs/transacciones.js'
 
 // Estados en los que el cliente todavía puede editar o cancelar su reserva
 export const RESERVA_EDITABLE = ['pendiente', 'confirmada']
@@ -50,8 +51,12 @@ export const obtenerMia = (usuarioId, id) => POBLAR(Reserva.findOne({ _id: id, u
 export const crear = async (sesion, cuerpo) => {
     const datos = await validarReserva(cuerpo)
     const pendiente = await estadoPorCodigo('reserva', 'pendiente')
-    const reserva = await Reserva.create({ usuario: sesion.id, estado: pendiente._id, ...aDocumento(datos) })
-    await registrarEvento({ entidad: 'reserva', entidadId: reserva._id, a: 'pendiente', usuario: sesion.id, actor: sesion.rol || 'cliente' })
+    // Reserva y su Evento inicial: los dos o ninguno (0.9)
+    const reserva = await conTransaccion(async (session) => {
+        const [creada] = await Reserva.create([{ usuario: sesion.id, estado: pendiente._id, ...aDocumento(datos) }], { session })
+        await registrarEvento({ entidad: 'reserva', entidadId: creada._id, a: 'pendiente', usuario: sesion.id, actor: sesion.rol || 'cliente', session })
+        return creada
+    })
     return obtenerMia(sesion.id, reserva._id)
 }
 

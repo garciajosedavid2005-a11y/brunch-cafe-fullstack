@@ -1,0 +1,56 @@
+// Idempotency-Key (0.9): reintentar un POST con la misma clave no repite la operación.
+// - Sin cabecera: la petición sigue igual que antes (la clave es opcional).
+// - Primera vez: se reserva la clave (índice único usuario+clave) y se guarda la respuesta 2xx.
+// - Misma clave y mismos datos: se devuelve la respuesta guardada con `Idempotent-Replayed: true`.
+// - Misma clave con otros datos: 422. Si la primera aún se procesa: 409.
+// - Si la petición falla (4xx/5xx) la clave se libera para poder corregir y reintentar.
+// Requiere validateToken antes (las claves son por usuario).
+import { createHash } from 'node:crypto'
+import SolicitudIdempotente from '../models/solicitudIdempotente.model.js'
+import { AppError } from '../libs/errors.js'
+
+const FORMATO_CLAVE = /^[A-Za-z0-9_-]{8,100}$/
+
+export const idempotencia = async (req, res, next) => {
+    const clave = req.get('Idempotency-Key')
+    if (clave === undefined) return next()
+    if (!FORMATO_CLAVE.test(clave)) {
+        throw new AppError(400, 'IDEMPOTENCY_KEY_INVALID', 'La cabecera Idempotency-Key debe tener de 8 a 100 letras, números, guiones o guiones bajos.')
+    }
+    const usuario = req.usuario.id
+    const ruta = `${req.method} ${req.baseUrl}${req.path}`
+    const huella = createHash('sha256').update(`${ruta}\n${JSON.stringify(req.body ?? {})}`).digest('hex')
+
+    await SolicitudIdempotente.init() // el índice único debe existir antes del primer insert
+    try {
+        await SolicitudIdempotente.create({ usuario, clave, ruta, huella })
+    } catch (error) {
+        if (error?.code !== 11000) throw error
+        const previa = await SolicitudIdempotente.findOne({ usuario, clave }).lean()
+        if (previa && previa.huella !== huella) {
+            throw new AppError(422, 'IDEMPOTENCY_KEY_REUSED', 'Esta Idempotency-Key ya se usó con otros datos. Genera una nueva para otra solicitud.')
+        }
+        if (!previa || previa.estado !== 'completada') {
+            throw new AppError(409, 'IDEMPOTENCY_IN_PROGRESS', 'Tu solicitud anterior todavía se está procesando. Espera un momento antes de reintentar.')
+        }
+        res.set('Idempotent-Replayed', 'true')
+        return res.status(previa.status).json(previa.cuerpo)
+    }
+
+    // Se guarda (o libera) la clave antes de responder: un reintento inmediato ya ve el resultado
+    const responder = res.json.bind(res)
+    res.json = (cuerpo) => {
+        const exito = res.statusCode >= 200 && res.statusCode < 300
+        const guardar = exito
+            ? SolicitudIdempotente.updateOne(
+                { usuario, clave },
+                { $set: { estado: 'completada', status: res.statusCode, cuerpo: JSON.parse(JSON.stringify(cuerpo)) } },
+            )
+            : SolicitudIdempotente.deleteOne({ usuario, clave })
+        guardar
+            .catch((err) => req.log?.error({ err }, 'No se pudo actualizar la Idempotency-Key'))
+            .finally(() => responder(cuerpo))
+        return res
+    }
+    return next()
+}

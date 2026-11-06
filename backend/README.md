@@ -6,7 +6,7 @@
 2. Ejecuta `npm install` si todavía no están instaladas las dependencias.
 3. Define `ADMIN_EMAIL`, `ADMIN_PASSWORD` (≥ 10 caracteres) y `ADMIN_NOMBRE` en `.env` y ejecuta `npm run seed:base` para crear los roles base, el primer administrador y los métodos de pago.
 4. `npm run seed:menu` para cargar el menú inicial (categorías, productos e imágenes de `seed-data/`).
-5. Inicia MongoDB y ejecuta `npm run dev`.
+5. Inicia MongoDB **en modo replica set** (ver «MongoDB en replica set») y ejecuta `npm run dev`. Sin replica set el servidor no arranca: pedidos, cambios de estado y usuarios usan transacciones.
 6. En `frontend`, copia `.env.example` a `.env` y ejecuta `npm run dev`.
 
 El backend escucha por defecto en `http://localhost:4000`; el cliente usa cookies con credenciales habilitadas. En producción, frontend y API deben servirse por HTTPS y `CLIENT_URL` debe apuntar al origen exacto del frontend.
@@ -23,11 +23,48 @@ El backend escucha por defecto en `http://localhost:4000`; el cliente usa cookie
 | `npm run migrate:0.7` | Migración de estados (ver abajo) |
 | `npm run seed:base` | Roles, primer admin, estados y métodos de pago (ver abajo) |
 | `npm run seed:menu` | Menú inicial desde `seed-data/` (ver abajo) |
+| `npm run mongo:replica-set` | Inicia el replica set `rs0` de un nodo en el Mongo de `MONGO_URI` (idempotente; `-- --dry-run`) |
 | `npm run seed:dev` | Usuarios de prueba `*.dev@brunchcafe.test` (solo desarrollo; contraseña en `DEV_USUARIOS_PASSWORD`) |
 
 - La primera ejecución de `npm test` descarga el binario de `mongod` (~100 MB) y lo deja en caché; no necesita un Mongo instalado.
 - `src/app.js` construye la app de Express (lo usan los tests); `src/index.js` conecta a MongoDB y escucha.
 - Logs con pino: legibles en desarrollo (`pino-pretty`), JSON en producción y silenciados en tests. Cookies, cabeceras de autorización y contraseñas nunca se registran. Nivel configurable con `LOG_LEVEL`.
+
+### MongoDB en replica set (0.9)
+
+Las transacciones de MongoDB solo funcionan en un replica set (o mongos). Un nodo basta para desarrollo. Sin replica set el servidor **no arranca** y muestra estas instrucciones. Hay dos caminos:
+
+#### Camino A: Mongo local de Windows (servicio `MongoDB`)
+
+Conserva los datos y la misma `MONGO_URI`.
+
+1. Respaldo previo con `mongodump` (ver «Migraciones y respaldo»).
+2. Simulacro, en una PowerShell **abierta como administrador** desde la raíz del repo (muestra el archivo y el cambio, no toca nada):
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File backend\scripts\activar-replica-set-windows.ps1 -DryRun
+   ```
+3. El mismo comando sin `-DryRun`: guarda `mongod.cfg.bak-AAAAMMDDTHHMMSS`, añade `replication.replSetName: rs0` a `mongod.cfg` y reinicia el servicio. Si el archivo ya tiene `replSetName` no cambia nada.
+4. Sin administrador, en `backend`: `npm run mongo:replica-set -- --dry-run` (muestra la configuración) y `npm run mongo:replica-set` (ejecuta `replSetInitiate` con el host de `MONGO_URI`; si ya está iniciado no hace nada).
+5. Comprobar: `npm run mongo:replica-set` responde «Replica set ya iniciado: rs0 (primario: sí)» y `npm run dev` arranca.
+
+Para volver atrás: el mismo script con `-Revertir` (restaura el último `mongod.cfg.bak-*` y reinicia; `-Revertir -DryRun` dice cuál restauraría). Mongo vuelve a standalone y el backend deja de arrancar.
+
+#### Camino B: Docker (`docker-compose.yml` en la raíz)
+
+No toca el Mongo local; la BD empieza vacía.
+
+1. `docker compose up -d mongo`: levanta `mongo:7` con `--replSet rs0` en el puerto **27018** (para no chocar con un Mongo local en 27017). El healthcheck inicia el replica set solo; espera a que `docker compose ps` lo muestre `healthy`.
+2. En `backend/.env`: `MONGO_URI=mongodb://127.0.0.1:27018/brunch-cafe?directConnection=true`.
+3. Datos: `npm run seed:base` y `npm run seed:menu`, o `mongorestore` de un respaldo de `backups/`.
+4. Parar: `docker compose stop mongo` (conserva el volumen `mongo-datos`); `docker compose down -v` lo borra.
+
+Los dos caminos se probaron el 2026-11-05: el A en el equipo de desarrollo y el B con una transacción de prueba.
+
+### Integridad de pedidos (0.9)
+
+- Pedido, líneas (con nombre y precio del momento) y Evento inicial se guardan en una transacción; lo mismo cada cambio de estado con su Evento y la creación de reservas.
+- Quitar el rol o desactivar a un admin cuenta los admins restantes dentro de una transacción que escribe un documento común (`counters/bloqueo-ultimo-admin`): dos degradaciones simultáneas no pueden dejar 0 admins.
+- `POST /api/v1/cliente/pedidos` acepta la cabecera `Idempotency-Key` (8–100 caracteres `A-Z a-z 0-9 _ -`; opcional). Misma clave y mismos datos → la respuesta original con `Idempotent-Replayed: true`; otros datos → `422 IDEMPOTENCY_KEY_REUSED`; aún en curso → `409 IDEMPOTENCY_IN_PROGRESS`. Si la petición falla, la clave se libera. Las claves son por usuario y caducan a las 24 h (colección `solicitudes_idempotentes`, índice TTL). El checkout genera una clave por compra.
 
 ### Datos base (`npm run seed:base`)
 

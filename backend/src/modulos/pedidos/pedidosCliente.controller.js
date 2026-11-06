@@ -13,6 +13,7 @@ import { referenciaProducto, unaReferencia, MENSAJE_REFERENCIA, resolverProducto
 import { telefono } from '../../schema/comunes.js';
 import { horasDomicilio, hora12, textoAnticipacion, textoRango } from '../../libs/horarios.js';
 import { obtenerHorarios } from '../configuracion/horarios.service.js';
+import { conTransaccion } from '../../libs/transacciones.js';
 
 const orderSchema = z.object({
   items: z.array(z.object({
@@ -158,37 +159,34 @@ export const crearPedido = async (req, res, next) => {
     ]);
     if (!paymentMethod) return res.status(400).json({ message: 'El método de pago ya no está disponible. Actualiza la página y elige otro.' });
 
-    const order = await Pedido.create({
-      usuario: req.usuario.id,
-      estado: pending._id,
-      metodoPago: paymentMethod._id,
-      total: lines.reduce((total, line) => total + line.subtotal, 0),
-      nombreEntrega: parsed.data.nombre,
-      telefono: parsed.data.telefono,
-      direccion: parsed.data.direccion,
-      barrio: parsed.data.barrio,
-      horaEntrega: parsed.data.hora,
-      indicaciones: parsed.data.indicaciones,
-    });
-
-    let details;
-    try {
-      details = await DetallePedido.insertMany(lines.map((line) => ({
-        pedido: order._id,
+    // Pedido, líneas (con nombre y precio del momento) y Evento inicial en una transacción (0.9):
+    // si algo falla no queda nada a medias
+    const { order, details } = await conTransaccion(async (session) => {
+      const [creado] = await Pedido.create([{
+        usuario: req.usuario.id,
+        estado: pending._id,
+        metodoPago: paymentMethod._id,
+        total: lines.reduce((total, line) => total + line.subtotal, 0),
+        nombreEntrega: parsed.data.nombre,
+        telefono: parsed.data.telefono,
+        direccion: parsed.data.direccion,
+        barrio: parsed.data.barrio,
+        horaEntrega: parsed.data.hora,
+        indicaciones: parsed.data.indicaciones,
+      }], { session });
+      const lineas = await DetallePedido.insertMany(lines.map((line) => ({
+        pedido: creado._id,
         producto: line.productRef,
         productoId: line.productId,
         nombreProducto: line.name,
         precioProducto: line.unitPrice,
         cantidad: line.quantity,
         subtotal: line.subtotal,
-      })));
-    } catch (error) {
-      await DetallePedido.deleteMany({ pedido: order._id });
-      await Pedido.findByIdAndDelete(order._id);
-      throw error;
-    }
-    await registrarEvento({
-      entidad: 'pedido', entidadId: order._id, a: 'pendiente', usuario: req.usuario.id, actor: req.usuario.rol || 'cliente',
+      })), { session });
+      await registrarEvento({
+        entidad: 'pedido', entidadId: creado._id, a: 'pendiente', usuario: req.usuario.id, actor: req.usuario.rol || 'cliente', session,
+      });
+      return { order: creado, details: lineas };
     });
 
     const populatedOrder = await Pedido.findById(order._id)

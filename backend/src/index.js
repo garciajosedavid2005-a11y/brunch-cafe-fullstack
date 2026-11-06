@@ -1,5 +1,5 @@
 import { config } from './config.js'
-import { connectDB } from './db.js'
+import { connectDB, exigirReplicaSet, ReplicaSetRequeridoError } from './db.js'
 import { createApp } from './app.js'
 import { logger } from './libs/logger.js'
 import { sembrarRoles } from './seeds/base.js'
@@ -8,6 +8,16 @@ import { sembrarHorarios } from './modulos/configuracion/horarios.service.js'
 
 const start = async () => {
     await connectDB()
+    // Pedidos, cambios de estado y usuarios usan transacciones (0.9): sin replica set no se arranca
+    try {
+        await exigirReplicaSet()
+    } catch (error) {
+        if (error instanceof ReplicaSetRequeridoError) {
+            logger.fatal(error.message)
+            process.exit(1)
+        }
+        throw error
+    }
     // Roles base idempotentes (el primer admin se crea con `npm run seed:base`)
     await sembrarRoles()
     try {

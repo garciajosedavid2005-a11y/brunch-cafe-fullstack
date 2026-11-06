@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { validateToken } from '../middlewares/validateToken.js';
 import { deprecado } from '../middlewares/deprecado.js';
 import { validateSchema } from '../middlewares/validator.middleware.js';
+import { idempotencia } from '../middlewares/idempotencia.js';
 import { cancelacionClienteSchema } from '../schema/cambioEstado.schema.js';
 import { legadoVerCustomer, legadoEditarCustomer } from '../modulos/identidad/perfil.controller.js';
 import * as reservas from '../modulos/salon/reservas.controller.js';
@@ -19,7 +20,7 @@ router.patch('/profile', deprecado('/api/v1/cliente/perfil'), legadoEditarCustom
 // Pedidos y métodos de pago
 const aliasPedidos = deprecado('/api/v1/cliente/pedidos');
 router.get('/orders', aliasPedidos, pedidos.listarMisPedidos);
-router.post('/orders', aliasPedidos, pedidos.crearPedido);
+router.post('/orders', aliasPedidos, idempotencia, pedidos.crearPedido);
 router.get('/orders/:id', aliasPedidos, pedidos.verMiPedido);
 router.patch('/orders/:id/cancel', aliasPedidos, validateSchema(cancelacionClienteSchema), pedidos.cancelarMiPedido);
 router.get('/payment-methods', deprecado('/api/v1/cliente/metodos-pago'), pedidos.listarMetodosPagoActivos);

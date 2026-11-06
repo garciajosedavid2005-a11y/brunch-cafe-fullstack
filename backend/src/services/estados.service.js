@@ -4,6 +4,7 @@ import mongoose from 'mongoose'
 import Estado from '../models/estado.model.js'
 import Evento from '../models/evento.model.js'
 import { AppError } from '../libs/errors.js'
+import { conTransaccion } from '../libs/transacciones.js'
 import { validarTransicion, transicionesDisponibles, definicionEstado } from '../libs/estados.js'
 
 const catalogoIncompleto = (tipo, codigo) =>
@@ -43,8 +44,11 @@ export const codigoActual = async (documento) => {
     return estado.codigo
 }
 
-export const registrarEvento = ({ entidad, entidadId, de = null, a, motivo = '', usuario = null, actor, datos }) =>
-    Evento.create({ entidad, entidadId, de, a, motivo, usuario, actor, datos })
+/** Agrega un registro a la bitácora. Con `session`, dentro de la transacción de quien llama. */
+export const registrarEvento = async ({ entidad, entidadId, de = null, a, motivo = '', usuario = null, actor, datos, session }) => {
+    const [evento] = await Evento.create([{ entidad, entidadId, de, a, motivo, usuario, actor, datos }], { session })
+    return evento
+}
 
 /**
  * Cambia el estado de `documento` (pedido o reserva) a `a`.
@@ -52,6 +56,7 @@ export const registrarEvento = ({ entidad, entidadId, de = null, a, motivo = '',
  * - Actualiza de forma condicional (si otro cambio llegó antes → 409 CONFLICTO_ESTADO).
  * - `cambios` permite guardar otros campos en la misma escritura (p. ej. editar una reserva).
  * - Registra el Evento con el usuario y su rol como actor.
+ * - Cambio y Evento van en una transacción (0.9): o quedan los dos o ninguno.
  */
 export const cambiarEstado = async ({
     tipo, Modelo, documento, a, actor = 'staff', sesion, motivo, contexto, cambios = {}, filtro = {},
@@ -62,26 +67,27 @@ export const cambiarEstado = async ({
     })
     const [actual, destino] = await Promise.all([estadoPorCodigo(tipo, de), estadoPorCodigo(tipo, a)])
 
-    const actualizado = await Modelo.findOneAndUpdate(
-        { _id: documento._id, estado: actual._id, ...filtro },
-        { $set: { ...cambios, estado: destino._id } },
-        { returnDocument: 'after', runValidators: true }
-    )
-    if (!actualizado) {
-        throw new AppError(409, 'CONFLICTO_ESTADO', 'El estado cambió mientras lo editabas. Recarga e intenta de nuevo.')
-    }
-
-    // Sin transacción hasta 0.9: si el evento falla, el cambio de estado ya quedó guardado
-    await registrarEvento({
-        entidad: tipo,
-        entidadId: documento._id,
-        de,
-        a,
-        motivo: motivoFinal,
-        usuario: sesion?.id || null,
-        actor: sesion?.rol || actor,
+    return conTransaccion(async (session) => {
+        const actualizado = await Modelo.findOneAndUpdate(
+            { _id: documento._id, estado: actual._id, ...filtro },
+            { $set: { ...cambios, estado: destino._id } },
+            { returnDocument: 'after', runValidators: true, session }
+        )
+        if (!actualizado) {
+            throw new AppError(409, 'CONFLICTO_ESTADO', 'El estado cambió mientras lo editabas. Recarga e intenta de nuevo.')
+        }
+        await registrarEvento({
+            entidad: tipo,
+            entidadId: documento._id,
+            de,
+            a,
+            motivo: motivoFinal,
+            usuario: sesion?.id || null,
+            actor: sesion?.rol || actor,
+            session,
+        })
+        return actualizado
     })
-    return actualizado
 }
 
 /** Opciones de cambio que el dashboard puede ofrecer para un documento. */

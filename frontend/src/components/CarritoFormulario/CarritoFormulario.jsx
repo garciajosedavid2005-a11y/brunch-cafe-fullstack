@@ -2,7 +2,7 @@ import "./CarritoFormulario.css"
 import { useDialogo } from '../../context/useDialogo'
 import { FaUser, FaMapMarkerAlt, FaClock, FaHome, FaStickyNote, FaCreditCard, FaMoneyBillWave, FaPhone } from 'react-icons/fa'
 import { useCarrito } from '../../context/CarritoContext'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/useAuth'
 import { apiRequest } from '../../services/api'
@@ -48,6 +48,9 @@ const CarritoFormulario = () => {
         error: ''
     })
     const [metodoPagoId, setMetodoPagoId] = useState('')
+    // Idempotency-Key (0.9): una por compra. Los reintentos de "Confirmar" (p. ej. tras un corte
+    // de red) reutilizan la misma y el backend no crea un pedido duplicado.
+    const claveCompra = useRef('')
 
     const metodosPago = metodosPagoEstado.usuarioId === user?.id
         ? metodosPagoEstado.metodos
@@ -172,6 +175,7 @@ const CarritoFormulario = () => {
 
         setErrores({})
         setErrorPedido('')
+        claveCompra.current = crypto.randomUUID() // datos (quizá) nuevos → compra nueva
         setMostrarModal(true)
     }
 
@@ -182,6 +186,7 @@ const CarritoFormulario = () => {
             const metodoPago = metodosPago.find((metodo) => metodo.id === metodoPagoId)
             const { order } = await apiRequest('/v1/cliente/pedidos', {
                 method: 'POST',
+                headers: { 'Idempotency-Key': claveCompra.current },
                 body: JSON.stringify({
                     ...formData,
                     metodoPagoId,

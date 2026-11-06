@@ -4,6 +4,7 @@ import { verMiPerfil, editarMiPerfil, cambiarMiContrasena } from '../../modulos/
 import * as reservas from '../../modulos/salon/reservas.controller.js'
 import * as pedidos from '../../modulos/pedidos/pedidosCliente.controller.js'
 import { validateSchema } from '../../middlewares/validator.middleware.js'
+import { idempotencia } from '../../middlewares/idempotencia.js'
 import { cancelacionClienteSchema } from '../../schema/cambioEstado.schema.js'
 import { crearComentario, listarMisComentarios } from '../../controllers/comentario.controller.js'
 
@@ -21,7 +22,7 @@ router.patch('/reservas/:id', reservas.editar)
 router.patch('/reservas/:id/cancelar', reservas.cancelar)
 
 router.get('/pedidos', pedidos.listarMisPedidos)
-router.post('/pedidos', pedidos.crearPedido)
+router.post('/pedidos', idempotencia, pedidos.crearPedido)
 router.get('/pedidos/:id', pedidos.verMiPedido)
 router.patch('/pedidos/:id/cancelar', validateSchema(cancelacionClienteSchema), pedidos.cancelarMiPedido)
 router.get('/metodos-pago', pedidos.listarMetodosPagoActivos)

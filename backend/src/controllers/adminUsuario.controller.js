@@ -1,6 +1,8 @@
 import mongoose from 'mongoose'
 import Usuario from '../models/usuario.model.js'
 import Rol from '../models/rol.model.js'
+import Contador from '../models/contador.model.js'
+import { conTransaccion } from '../libs/transacciones.js'
 import { AppError, badRequest, notFound } from '../libs/errors.js'
 import { ROL_ADMIN } from '../libs/permisos.js'
 import { invalidarSesionUsuario } from '../libs/sesiones.js'
@@ -28,8 +30,19 @@ export const listarUsuarios = async (req, res) => {
 }
 
 // Otros administradores activos distintos de `excluirId`
-const contarOtrosAdminsActivos = async (rolAdminId, excluirId) =>
-    Usuario.countDocuments({ rol: rolAdminId, activo: { $ne: false }, _id: { $ne: excluirId } })
+const contarOtrosAdminsActivos = async (rolAdminId, excluirId, session) =>
+    Usuario.countDocuments({ rol: rolAdminId, activo: { $ne: false }, _id: { $ne: excluirId } }).session(session)
+
+// Documento común que escriben todas las transacciones que quitan un admin: dos degradaciones
+// simultáneas chocan aquí (WriteConflict), la segunda se reintenta y vuelve a contar (0.9).
+const BLOQUEO_ADMINS = 'bloqueo-ultimo-admin'
+const asegurarBloqueo = async () => {
+    try {
+        await Contador.updateOne({ _id: BLOQUEO_ADMINS }, { $setOnInsert: { seq: 0 } }, { upsert: true })
+    } catch (error) {
+        if (error?.code !== 11000) throw error // otro upsert simultáneo ya lo creó
+    }
+}
 
 /**
  * PATCH /api/admin/usuarios/:id  { activo?, rolId? }
@@ -55,12 +68,10 @@ export const actualizarUsuario = async (req, res) => {
     const seguiraSiendoAdmin = (rolNuevo ? rolNuevo.nombre === ROL_ADMIN : usuario.rol?.nombre === ROL_ADMIN)
         && (activo === undefined ? usuario.activo !== false : activo)
     const pierdeAdmin = esAdminHoy && !seguiraSiendoAdmin
+    const rolAdminId = usuario.rol?._id
 
     if (pierdeAdmin && String(usuario._id) === String(req.usuario.id)) {
         throw new AppError(409, 'AUTO_BLOQUEO', 'No puedes desactivarte ni quitarte el rol de administrador a ti mismo.')
-    }
-    if (pierdeAdmin && (await contarOtrosAdminsActivos(usuario.rol._id, usuario._id)) === 0) {
-        throw new AppError(409, 'ULTIMO_ADMIN', 'Debe quedar al menos un administrador activo.')
     }
 
     if (activo === false && usuario.activo !== false) {
@@ -68,7 +79,17 @@ export const actualizarUsuario = async (req, res) => {
     }
     if (activo !== undefined) usuario.activo = activo
     if (rolNuevo) usuario.rol = rolNuevo._id
-    await usuario.save()
+
+    if (pierdeAdmin) await asegurarBloqueo()
+    await conTransaccion(async (session) => {
+        if (pierdeAdmin) {
+            await Contador.updateOne({ _id: BLOQUEO_ADMINS }, { $inc: { seq: 1 } }, { session })
+            if ((await contarOtrosAdminsActivos(rolAdminId, usuario._id, session)) === 0) {
+                throw new AppError(409, 'ULTIMO_ADMIN', 'Debe quedar al menos un administrador activo.')
+            }
+        }
+        await usuario.save({ session })
+    })
     invalidarSesionUsuario(usuario._id)
 
     await usuario.populate('rol', 'nombre etiqueta')
