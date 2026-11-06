@@ -104,6 +104,24 @@
     box-shadow: none !important;
 }
 
+/* Hora de entrega: selector con las horas en punto disponibles hoy (0.8) */
+.carrito-formulario__select {
+    cursor: pointer;
+    padding-right: 1.5rem;
+}
+
+.carrito-formulario__select:disabled {
+    cursor: not-allowed;
+    color: var(--color-suave);
+}
+
+.carrito-formulario__ayuda {
+    margin: 0.35rem 0 0;
+    font-size: 0.8rem;
+    color: #4a3531;
+    line-height: 1.35;
+}
+
 .carrito-formulario__input::placeholder {
     color: var(--color-suave);
     font-style: italic;

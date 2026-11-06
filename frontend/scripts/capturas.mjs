@@ -83,6 +83,50 @@ const VISTAS = {
       await p.waitForLoadState("networkidle");
     },
   },
+  // Reservas: fecha de la próxima semana para ver todas las horas del día (0.8)
+  reservas: {
+    usuario: "cliente",
+    preparar: async (p) => {
+      await p.goto(`${FRONT}/reservas`);
+      await p.waitForLoadState("networkidle");
+      const fecha = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      await p.locator("#fecha").fill(fecha);
+      // Un jueves o viernes de la próxima semana acepta hasta las 7:00 p. m.; si cae en fin de semana, 5:00 p. m.
+      const ultima = await p.locator("#hora option").last().getAttribute("value");
+      await p.locator("#hora").selectOption(ultima);
+    },
+  },
+  // Checkout a las 07:30 de Bogotá (reloj del navegador): horas de 9:00 a 16:00
+  "carrito-manana": {
+    usuario: "cliente",
+    completa: false,
+    preparar: async (p) => {
+      const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
+      await p.clock.setFixedTime(new Date(`${hoy}T07:30:00-05:00`));
+      await VISTAS.carrito.preparar(p);
+      await p.locator("#carrito-hora").selectOption("10:00");
+      await p.locator("#carrito-hora").scrollIntoViewIfNeeded();
+      const opciones = await p.locator("#carrito-hora option").allTextContents();
+      console.log(`  opciones: ${opciones.join(" | ")}`);
+    },
+  },
+  "admin-horarios": { usuario: "admin", preparar: abrirPestanaAdmin("Horarios") },
+  // Respaldo de las tablas: un texto largo no debe ensanchar la página, solo el contenedor
+  "admin-reservas-texto-largo": {
+    usuario: "admin",
+    completa: false,
+    preparar: async (p) => {
+      await abrirPestanaAdmin("Reservas")(p);
+      const medidas = await p.evaluate(() => {
+        const celda = document.querySelector(".admin-reservas__tabla tbody td");
+        if (celda) celda.insertAdjacentHTML("beforeend", `<span style="white-space:nowrap">${"TextoMuyLargoSinEspacios".repeat(8)}</span>`);
+        const c = document.querySelector(".admin-table-container");
+        return { contenedor: c.clientWidth, tabla: c.scrollWidth, pagina: document.documentElement.scrollWidth, ventana: window.innerWidth };
+      });
+      console.log(`  medidas: ${JSON.stringify(medidas)}`);
+      await p.locator(".admin-table-container").first().scrollIntoViewIfNeeded();
+    },
+  },
   "admin-productos": { usuario: "admin", preparar: abrirPestanaAdmin("Productos") },
   "admin-pedidos": { usuario: "admin", preparar: abrirPestanaAdmin("Pedidos") },
   "admin-reservas": { usuario: "admin", preparar: abrirPestanaAdmin("Reservas") },

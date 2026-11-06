@@ -1,8 +1,9 @@
 import "./ResumenPedido.css"
 import { useEffect } from 'react'
 import { useCarrito } from '../../context/CarritoContext'
-import { FaShoppingCart, FaMapMarkerAlt, FaClock, FaUser, FaHome, FaStickyNote } from 'react-icons/fa'
+import { FaShoppingCart, FaMapMarkerAlt, FaClock, FaUser, FaHome, FaStickyNote, FaPhone } from 'react-icons/fa'
 import { formatearCOP } from '../../utils/moneda'
+import { formatearHoraTexto } from '../../utils/fechas'
 
 const ResumenPedido = ({ formData, metodoPago, onEditar, onConfirmar, guardando = false, error = '' }) => {
 
@@ -63,6 +64,14 @@ const ResumenPedido = ({ formData, metodoPago, onEditar, onConfirmar, guardando 
                     </div>
 
                     <div className="resumen-pedido__dato">
+                        <FaPhone className="resumen-pedido__dato-icono" />
+                        <div>
+                            <span className="resumen-pedido__dato-label">Teléfono</span>
+                            <span className="resumen-pedido__dato-valor">{formData.telefono}</span>
+                        </div>
+                    </div>
+
+                    <div className="resumen-pedido__dato">
                         <FaMapMarkerAlt className="resumen-pedido__dato-icono" />
                         <div>
                             <span className="resumen-pedido__dato-label">Dirección</span>
@@ -74,7 +83,7 @@ const ResumenPedido = ({ formData, metodoPago, onEditar, onConfirmar, guardando 
                         <FaClock className="resumen-pedido__dato-icono" />
                         <div>
                             <span className="resumen-pedido__dato-label">Hora de entrega</span>
-                            <span className="resumen-pedido__dato-valor">{formData.hora}</span>
+                            <span className="resumen-pedido__dato-valor">Hoy, {formatearHoraTexto(formData.hora)}</span>
                         </div>
                     </div>
 

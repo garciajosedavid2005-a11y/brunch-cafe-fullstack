@@ -4,7 +4,9 @@ import { apiRequest } from "../../../services/api";
 import { useAuth } from "../../../context/useAuth";
 import SectionHeading from "../SectionHeading";
 import { useDialogo } from "../../../context/useDialogo";
-import { hoyLocal, formatearFechaCalendario } from "../../../utils/fechas";
+import { hoyLocal, formatearFechaCalendario, formatearHoraTexto } from "../../../utils/fechas";
+import { useHorarios } from "../../../hooks/useHorarios";
+import { horasReserva, opcionesDeHora } from "../../../utils/horarios";
 
 const minimumDate = hoyLocal(); // día de Bogotá
 const reservationStatus = {
@@ -18,18 +20,12 @@ const reservationStatus = {
 // El cliente solo puede editar o cancelar mientras la reserva está pendiente o confirmada
 const editableStatuses = ["pending", "confirmed"];
 
-function getAvailableTimes(date) {
-  if (!date) return [];
-  const [year, month, day] = date.split("-").map(Number);
-  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-  const lastHour = weekday === 0 || weekday === 6 ? 11 : 12;
-  return Array.from({ length: lastHour - 7 }, (_, index) => `${String(index + 8).padStart(2, "0")}:00`);
-}
-
 function createEditForm(reservation, user) {
   return {
     nombre: reservation.nombre || `${user?.nombre || ""} ${user?.apellido || ""}`.trim(),
     correo: reservation.correo || user?.email || "",
+    // Las reservas anteriores a 0.8 no tienen teléfono: se propone el del perfil
+    telefono: reservation.telefono || user?.telefono || "",
     motivo: reservation.motivo || "",
     personas: String(reservation.personas || 1),
     fecha: new Date(reservation.fecha).toISOString().slice(0, 10),
@@ -38,10 +34,7 @@ function createEditForm(reservation, user) {
   };
 }
 
-function formatTime(time) {
-  const hour = Number(time.slice(0, 2));
-  return hour === 12 ? "12:00 p. m." : `${hour > 12 ? hour - 12 : hour}:00 a. m.`;
-}
+const formatTime = formatearHoraTexto;
 
 export default function ReservationsSection() {
   const { user } = useAuth();
@@ -52,6 +45,7 @@ export default function ReservationsSection() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState({ message: "", error: false });
   const { confirmar } = useDialogo();
+  const { horarios, ahora } = useHorarios();
 
   useEffect(() => {
     apiRequest("/v1/cliente/reservas")
@@ -152,13 +146,14 @@ export default function ReservationsSection() {
                 <label>Nombre<input name="nombre" value={editForm.nombre} onChange={updateEditField} required minLength={3} maxLength={120} /></label>
                 <label>Correo electrónico<input name="correo" type="email" value={editForm.correo} onChange={updateEditField} required maxLength={254} /></label>
                 <label>Motivo<input name="motivo" value={editForm.motivo} onChange={updateEditField} required minLength={3} maxLength={120} /></label>
+                <label>Teléfono<input name="telefono" type="tel" value={editForm.telefono} onChange={updateEditField} required maxLength={30} autoComplete="tel" /></label>
                 <label>Personas<input name="personas" type="number" min="1" max="20" value={editForm.personas} onChange={updateEditField} required /></label>
                 <label>Fecha<input name="fecha" type="date" min={minimumDate} value={editForm.fecha} onChange={updateEditField} required /></label>
                 <label>Hora
                   <select name="hora" value={editForm.hora} onChange={updateEditField} required>
                     <option value="">Selecciona una hora</option>
-                    {getAvailableTimes(editForm.fecha).map((time) => (
-                      <option key={time} value={time}>{formatTime(time)}</option>
+                    {opcionesDeHora(horasReserva(horarios, editForm.fecha, ahora)).map((opcion) => (
+                      <option key={opcion.valor} value={opcion.valor}>{opcion.etiqueta}</option>
                     ))}
                   </select>
                 </label>

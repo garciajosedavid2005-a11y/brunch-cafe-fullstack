@@ -2360,3 +2360,58 @@
   white-space: normal;
   max-width: 220px;
 }
+
+/* ---- Horarios (0.8) ---- */
+.admin-horarios {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 760px;
+}
+
+.admin-horarios__grupo {
+  border: 1px solid #eedfd9;
+  border-radius: 12px;
+  padding: 1rem 1.1rem 0.4rem;
+  margin: 0;
+}
+
+.admin-horarios__titulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.35rem;
+  font-weight: 700;
+  color: #2c0703;
+}
+
+.admin-horarios__campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0 1rem;
+}
+
+.admin-horarios__pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-horarios__pie small {
+  color: #4a3531;
+}
+
+/* Respaldo: si una tabla crece (otra fuente, un texto largo) desplaza dentro de su
+   contenedor y no ensancha la página. min-width: 0 evita que un padre flex/grid lo estire. */
+.admin-table-container {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Foundation fija la altura de select (2.4375rem); con el padding del admin cortaba el texto */
+.admin-form-select {
+  height: auto;
+  line-height: 1.3;
+}

@@ -35,7 +35,8 @@ describe("Mis reservas: cancelar", () => {
     expect(dialogo).toHaveTextContent("¿Estás seguro de que deseas cancelar esta reserva?");
     fireEvent.click(screen.getByRole("button", { name: "Volver" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(apiRequest).toHaveBeenCalledTimes(1);
+    // Solo lecturas (reservas y horarios): ninguna cancelación
+    expect(apiRequest.mock.calls.filter(([, opciones]) => opciones?.method === "PATCH")).toEqual([]);
   });
 
   it("'Sí, cancelar reserva' cancela", async () => {

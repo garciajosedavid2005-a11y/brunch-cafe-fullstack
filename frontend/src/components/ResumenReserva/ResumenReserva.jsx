@@ -7,7 +7,8 @@ import {
     FaCommentAlt,
     FaCheckCircle,
     FaEnvelope,
-    FaFlag
+    FaFlag,
+    FaPhone
 } from 'react-icons/fa'
 import { useEffect } from 'react'
 import { formatearFechaCalendario, formatearHoraTexto } from '../../utils/fechas'
@@ -59,6 +60,13 @@ const ResumenReserva = ({ formData, onEditar, onConfirmar, guardando = false }) 
                         <div className="resumen-item__contenido">
                             <span className="resumen-item__label">Correo</span>
                             <span className="resumen-item__valor">{formData.correo}</span>
+                        </div>
+                    </div>
+                    <div className="resumen-item">
+                        <FaPhone className="resumen-item__icono" aria-hidden="true" />
+                        <div className="resumen-item__contenido">
+                            <span className="resumen-item__label">Teléfono</span>
+                            <span className="resumen-item__valor">{formData.telefono}</span>
                         </div>
                     </div>
                     <div className="resumen-item">
