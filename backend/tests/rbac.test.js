@@ -167,14 +167,21 @@ describe('Revocación inmediata', () => {
         const admin = await crearConSesion('admin')
         const mesero = await crearConSesion('mesero')
         expect((await mesero.sesion.get('/api/v1/staff/pedidos')).status).toBe(200)
+        const ruta = `/api/v1/admin/roles/${await rolId('mesero')}`
 
-        const res = await admin.sesion.put(`/api/v1/admin/roles/${await rolId('mesero')}`).send({
+        // Quitar un permiso lo revoca en la siguiente petición (0.15b: el test había dejado de comprobarlo)
+        const quitado = await admin.sesion.put(ruta).send({ permisos: ['pedido:cambiar_estado', 'reserva:ver', 'reserva:crear'] })
+        expect(quitado.status).toBe(200)
+        expect(quitado.body.permisos).toEqual(['pedido:cambiar_estado', 'reserva:ver', 'reserva:crear'])
+        expect((await mesero.sesion.get('/api/v1/staff/pedidos')).status).toBe(403)
+        expect((await mesero.sesion.get('/api/v1/staff/reservas')).status).toBe(200)
+
+        // Y devolverlo lo concede al instante
+        const devuelto = await admin.sesion.put(ruta).send({
             permisos: ['pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear'],
         })
-        expect(res.status).toBe(200)
-        expect(res.body.permisos).toEqual(['pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear'])
+        expect(devuelto.body.permisos).toEqual(['pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear'])
         expect((await mesero.sesion.get('/api/v1/staff/pedidos')).status).toBe(200)
-        expect((await mesero.sesion.get('/api/v1/staff/reservas')).status).toBe(200)
     })
 
     it('cambios directos en BD se aplican como máximo al vencer la caché (30 s)', async () => {
