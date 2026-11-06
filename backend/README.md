@@ -2,6 +2,7 @@
 
 ## Inicio local
 
+0. Usa **Node 22 LTS** (`.nvmrc` en la raíz y `"engines": ">=22.12 <23"` en backend y frontend). Con nvm-windows: `nvm install 22` y `nvm use 22`; con nvm (macOS/Linux): `nvm use` en la raíz. Con Node 24 en Windows, Vitest se cae a veces con el código `3221226505` (ver PROGRESO, 0.14). Tras traer cambios de otra rama, ejecuta `npm install` en `backend` y en `frontend` antes de `npm run dev`: si falta una dependencia (p. ej. `nodemailer`), nodemon se queda esperando, el puerto 4000 no responde y el login muestra «No se pudo conectar con el servidor».
 1. Copia `.env.example` a `.env` y configura `MONGO_URI` y un `JWT_SECRET` aleatorio.
 2. Ejecuta `npm install` si todavía no están instaladas las dependencias.
 3. Define `ADMIN_EMAIL`, `ADMIN_PASSWORD` (≥ 10 caracteres) y `ADMIN_NOMBRE` en `.env` y ejecuta `npm run seed:base` para crear los roles base, el primer administrador y los métodos de pago.
