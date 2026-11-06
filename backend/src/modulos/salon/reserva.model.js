@@ -1,5 +1,5 @@
 import mongoose from 'mongoose'
-import { inicioReserva, esHoraValida } from '../modulos/compartido/fechas.js'
+import { inicioReserva, esHoraValida } from '../compartido/fechas.js'
 
 const reservaSchema = new mongoose.Schema({
     usuario: {

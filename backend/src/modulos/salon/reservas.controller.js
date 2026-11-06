@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 import { STATUS_CLIENTE } from '../compartido/estados.js'
 import { notFound } from '../compartido/errors.js'
-import Reserva from '../../models/reserva.model.js'
+import Reserva from './reserva.model.js'
 import * as servicio from './reservas.service.js'
 import { desdeLegado } from './reservas.schema.js'
 

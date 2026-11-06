@@ -3,7 +3,7 @@ import { crearConSesion } from './helpers/usuarios.js'
 import { datosReserva, fechaFutura } from './helpers/datos.js'
 import Categoria from '../src/modulos/catalogo/categoria.model.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
-import Reserva from '../src/models/reserva.model.js'
+import Reserva from '../src/modulos/salon/reserva.model.js'
 import Pedido from '../src/modulos/pedidos/pedido.model.js'
 import { instanteLocal } from '../src/modulos/compartido/fechas.js'
 

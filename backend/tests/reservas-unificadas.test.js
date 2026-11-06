@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { crearConSesion } from './helpers/usuarios.js'
 import { datosReserva, fechaFutura } from './helpers/datos.js'
-import Reserva from '../src/models/reserva.model.js'
+import Reserva from '../src/modulos/salon/reserva.model.js'
 
 let cliente
 beforeEach(async () => {

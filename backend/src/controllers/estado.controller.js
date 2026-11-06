@@ -1,6 +1,6 @@
 import Estado from '../modulos/compartido/estado.model.js'
 import Pedido from '../modulos/pedidos/pedido.model.js'
-import Reserva from '../models/reserva.model.js'
+import Reserva from '../modulos/salon/reserva.model.js'
 import { AppError, badRequest, conflict, notFound } from '../modulos/compartido/errors.js'
 import { TIPOS_ESTADO, esEstadoFinal, definicionEstado } from '../modulos/compartido/estados.js'
 
