@@ -41,6 +41,13 @@ const reservaSchema = new mongoose.Schema({
         lowercase: true,
         maxlength: 254
     },
+    // Teléfono de contacto de la reserva (obligatorio al crear o editar desde 0.8;
+    // las reservas anteriores no lo tienen)
+    telefono: {
+        type: String,
+        trim: true,
+        maxlength: 30
+    },
     motivo: {
         type: String,
         trim: true,

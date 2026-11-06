@@ -64,7 +64,7 @@ describe('/api/v1: misma respuesta que las rutas anteriores, que quedan como ali
     it('flujo del cliente en v1: crear y cancelar un pedido', async () => {
         const metodos = await cliente.get('/api/v1/cliente/metodos-pago')
         const creado = await cliente.post('/api/v1/cliente/pedidos').send({
-            items: [{ productoRef: String(latte._id), cantidad: 1 }], nombre: 'Ana Pérez',
+            items: [{ productoRef: String(latte._id), cantidad: 1 }], nombre: 'Ana Pérez', telefono: '3001234567',
             direccion: 'Carrera 36B #30-06', hora: '10:00', barrio: 'Centro', metodoPagoId: metodos.body[0].id,
         })
         expect(creado.status).toBe(201)

@@ -19,7 +19,7 @@ beforeEach(async () => {
 const pedir = async (items) => {
     const metodos = await cliente.get('/api/customer/payment-methods')
     return cliente.post('/api/customer/orders').send({
-        items, nombre: 'Ana Pérez', direccion: 'Carrera 36B #30-06', hora: '10:00', barrio: 'Centro',
+        items, nombre: 'Ana Pérez', telefono: '3001234567', direccion: 'Carrera 36B #30-06', hora: '10:00', barrio: 'Centro',
         metodoPagoId: metodos.body[0].id,
     })
 }

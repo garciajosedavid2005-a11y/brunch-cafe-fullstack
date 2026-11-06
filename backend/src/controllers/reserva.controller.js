@@ -12,7 +12,8 @@ const formatoAdmin = (reserva, { permisos, estados }) => {
         codigo: `RES-${reserva._id.toString().slice(-6).toUpperCase()}`,
         cliente: reserva.nombre || [reserva.usuario?.nombre, reserva.usuario?.apellido].filter(Boolean).join(' ') || 'Cliente',
         correo: reserva.correo || reserva.usuario?.correo || '',
-        telefono: reserva.usuario?.telefono || '',
+        // El de la reserva; las anteriores a 0.8 no lo tienen y se muestra el del perfil
+        telefono: reserva.telefono || reserva.usuario?.telefono || '',
         personas: reserva.cantidadPersonas,
         fecha: reserva.fecha,
         hora: reserva.hora,

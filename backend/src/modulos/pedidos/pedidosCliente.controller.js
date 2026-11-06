@@ -10,6 +10,9 @@ import { STATUS_CLIENTE } from '../../libs/estados.js';
 import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../../services/estados.service.js';
 import { cuerpoError } from '../../libs/errors.js';
 import { referenciaProducto, unaReferencia, MENSAJE_REFERENCIA, resolverProductos } from '../../schema/referenciaProducto.js';
+import { telefono } from '../../schema/comunes.js';
+import { horasDomicilio, hora12, textoAnticipacion, textoRango } from '../../libs/horarios.js';
+import { obtenerHorarios } from '../configuracion/horarios.service.js';
 
 const orderSchema = z.object({
   items: z.array(z.object({
@@ -17,16 +20,27 @@ const orderSchema = z.object({
     cantidad: z.coerce.number().int().min(1).max(20),
   }).refine(unaReferencia, { error: MENSAJE_REFERENCIA })).min(1).max(50),
   nombre: z.string().trim().min(3).max(50),
+  // Obligatorio para el domicilio (el formulario lo prellena con el del perfil)
+  telefono: telefono(),
   direccion: z.string().trim().min(5).max(60).regex(
     /^(calle|cl|carrera|cra|avenida|av|transversal|tv|diagonal|dg)\s*\d+[a-zA-Z]?\s*(sur|norte|este|oeste)?\s*#\s*\d+[a-zA-Z]?\s*-\s*\d+[a-zA-Z]?$/i,
     'Ingresa una dirección válida. Ejemplo: Carrera 36B #30-06.'
   ),
-  hora: z.string().regex(/^(?:(?:0[8-9]|1[0-5]):[0-5]\d|16:00)$/),
+  // Solo horas en punto; el rango y la anticipación los da la configuración de horarios
+  hora: z.string().regex(/^([01]\d|2[0-3]):00$/, 'Elige una hora de entrega en punto (HH:00).'),
   barrio: z.string().trim().min(3).max(40),
   indicaciones: z.string().trim().max(120).default(''),
   metodoPagoId: z.string().refine(mongoose.isValidObjectId, 'Selecciona un método de pago válido.'),
 });
 
+
+// N8: el domicilio es para hoy (Bogotá), dentro del horario y con la anticipación mínima
+const mensajeHoraDomicilio = ({ domicilio }, disponibles) => {
+  const regla = `Los domicilios son para el mismo día, ${textoRango(domicilio)}, con al menos ${textoAnticipacion(domicilio.anticipacionMinutos)} de anticipación.`;
+  return disponibles.length
+    ? `Elige una hora de entrega disponible (la primera es ${hora12(disponibles[0])}). ${regla}`
+    : `Hoy ya no hay horarios de domicilio disponibles. ${regla}`;
+};
 
 // El status del portal sale del código del estado (sin adivinar por el texto)
 const statusCliente = (tipo, estado) => STATUS_CLIENTE[tipo][estado?.codigo] || 'pending';
@@ -44,6 +58,7 @@ const serializeOrder = (order, details) => ({
     nombre: order.nombreEntrega || '',
     direccion: order.direccion || '',
     barrio: order.barrio || '',
+    telefono: order.telefono || '',
     hora: order.horaEntrega || '',
     entregaEn: order.entregaEn || null,
     indicaciones: order.indicaciones || '',
@@ -100,6 +115,14 @@ export const crearPedido = async (req, res, next) => {
     return res.status(400).json({ message: 'Revisa los productos y datos de entrega.', errors: parsed.error.flatten() });
   }
 
+  const horarios = await obtenerHorarios();
+  const disponibles = horasDomicilio(horarios);
+  if (!disponibles.includes(parsed.data.hora)) {
+    return res.status(400).json(cuerpoError(
+      'HORA_NO_DISPONIBLE', mensajeHoraDomicilio(horarios, disponibles), { horasDisponibles: disponibles },
+    ));
+  }
+
   const productoDe = await resolverProductos(Producto, parsed.data.items);
   const products = parsed.data.items.map(productoDe).filter(Boolean);
   const lines = parsed.data.items.map((item) => {
@@ -141,6 +164,7 @@ export const crearPedido = async (req, res, next) => {
       metodoPago: paymentMethod._id,
       total: lines.reduce((total, line) => total + line.subtotal, 0),
       nombreEntrega: parsed.data.nombre,
+      telefono: parsed.data.telefono,
       direccion: parsed.data.direccion,
       barrio: parsed.data.barrio,
       horaEntrega: parsed.data.hora,

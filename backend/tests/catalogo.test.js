@@ -129,7 +129,7 @@ describe('Productos no disponibles (agotados)', () => {
         const metodos = await sesion.get('/api/customer/payment-methods')
         const res = await sesion.post('/api/customer/orders').send({
             items: [{ productoId: 1, cantidad: 1 }, { productoId: 2, cantidad: 1 }],
-            nombre: 'Ana Pérez', direccion: 'Carrera 36B #30-06', hora: '10:00', barrio: 'Centro',
+            nombre: 'Ana Pérez', telefono: '3001234567', direccion: 'Carrera 36B #30-06', hora: '10:00', barrio: 'Centro',
             metodoPagoId: metodos.body[0].id,
         })
         expect(res.status).toBe(409)

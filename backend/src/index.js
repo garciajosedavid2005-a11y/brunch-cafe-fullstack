@@ -4,6 +4,7 @@ import { createApp } from './app.js'
 import { logger } from './libs/logger.js'
 import { sembrarRoles } from './seeds/base.js'
 import { sembrarEstados, MigracionPendienteError } from './seeds/estados.js'
+import { sembrarHorarios } from './modulos/configuracion/horarios.service.js'
 
 const start = async () => {
     await connectDB()
@@ -18,6 +19,8 @@ const start = async () => {
         }
         throw error
     }
+    // Horarios por defecto si la BD no los tiene (no pisa los editados en el admin)
+    await sembrarHorarios()
     const app = createApp()
     app.listen(config.PORT, () => {
         logger.info(`Servidor corriendo en http://localhost:${config.PORT}`)

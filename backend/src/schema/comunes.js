@@ -21,6 +21,17 @@ export const textoOpcional = (campo, max) =>
         .max(max, { error: `${campo} no puede superar ${max} caracteres` })
         .optional()
 
+// Teléfono: 7–30 caracteres de dígitos, espacios, +, ( ) o -, con al menos 7 dígitos
+export const FORMATO_TELEFONO = /^[\d+\s()-]{7,30}$/
+export const MENSAJE_TELEFONO = 'Ingresa un teléfono válido (7 a 30 dígitos).'
+export const esTelefono = (valor) => FORMATO_TELEFONO.test(valor) && (valor.match(/\d/g) || []).length >= 7
+
+/** Teléfono obligatorio (pedidos a domicilio y reservas). */
+export const telefono = () => z.string(requerido('El teléfono'))
+    .trim()
+    .min(1, { error: 'El teléfono es requerido' })
+    .refine(esTelefono, { error: MENSAJE_TELEFONO })
+
 export const booleano = (campo) => z.boolean(requerido(campo))
 
 export const colorHex = (campo) =>

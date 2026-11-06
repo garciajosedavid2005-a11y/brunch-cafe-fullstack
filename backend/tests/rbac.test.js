@@ -82,7 +82,7 @@ describe('Propiedad: el cliente solo ve lo suyo', () => {
         await Producto.findOneAndUpdate({ codigo: 1 }, { nombre: 'Latte', precio: 9000, categoria: categoria._id }, { upsert: true })
         const metodo = await MetodoPago.findOneAndUpdate({ codigo: 'contra-entrega' }, { nombre: 'Contra Entrega' }, { upsert: true, returnDocument: 'after' })
         const res = await sesion.post('/api/customer/orders').send({
-            items: [{ productoId: 1, cantidad: 1 }], nombre: 'Cliente', direccion: 'Calle 10 #20-30',
+            items: [{ productoId: 1, cantidad: 1 }], nombre: 'Cliente', telefono: '3001234567', direccion: 'Calle 10 #20-30',
             hora: '10:00', barrio: 'Centro', metodoPagoId: String(metodo._id),
         })
         expect(res.status).toBe(201)
@@ -106,7 +106,7 @@ describe('Propiedad: el cliente solo ve lo suyo', () => {
         const b = await crearConSesion('cliente')
         const fecha = new Date(Date.now() + 8 * 86400000)
         while ([0, 6].includes(fecha.getUTCDay())) fecha.setUTCDate(fecha.getUTCDate() + 1)
-        const datos = { nombre: 'Ana Pérez', correo: 'ana@example.com', motivo: 'Desayuno', personas: 2, fecha: fecha.toISOString().slice(0, 10), hora: '09:00' }
+        const datos = { nombre: 'Ana Pérez', correo: 'ana@example.com', telefono: '3001234567', motivo: 'Desayuno', personas: 2, fecha: fecha.toISOString().slice(0, 10), hora: '09:00' }
         const creada = await a.sesion.post('/api/customer/reservations').send(datos)
         const id = creada.body.reservation._id
 

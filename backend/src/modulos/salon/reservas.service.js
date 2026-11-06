@@ -2,28 +2,28 @@
 // /api/customer/reservations y /api/reservas (alias). Las validaciones viven aquí.
 import Reserva from '../../models/reserva.model.js'
 import { AppError, badRequest, notFound } from '../../libs/errors.js'
-import { instanteLocal, inicioReserva, diaSemana } from '../../libs/fechas.js'
+import { instanteLocal, inicioReserva } from '../../libs/fechas.js'
+import { horasEnPunto, rangoReserva, textoRango } from '../../libs/horarios.js'
+import { obtenerHorarios } from '../configuracion/horarios.service.js'
 import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../../services/estados.service.js'
 import { reservaSchema } from './reservas.schema.js'
 
 // Estados en los que el cliente todavía puede editar o cancelar su reserva
 export const RESERVA_EDITABLE = ['pendiente', 'confirmada']
 
-// Horario: L-V 08:00–12:00, S-D 08:00–11:00 (en punto)
-export const horasDisponibles = (fecha) => {
-    const dia = diaSemana(fecha)
-    const ultima = dia === 0 || dia === 6 ? 11 : 12
-    return Array.from({ length: ultima - 7 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`)
-}
-
-/** Valida el cuerpo completo (formato, fecha futura y horario). Devuelve los datos normalizados. */
-export const validarReserva = (cuerpo) => {
+/**
+ * Valida el cuerpo completo (formato, teléfono, fecha futura y horario configurado en BD).
+ * Devuelve los datos normalizados.
+ */
+export const validarReserva = async (cuerpo) => {
     const datos = reservaSchema.parse(cuerpo)
     if (instanteLocal(datos.fecha, datos.hora) <= new Date()) {
         throw badRequest('La fecha y hora de la reserva deben ser futuras.')
     }
-    if (!horasDisponibles(datos.fecha).includes(datos.hora)) {
-        throw badRequest('La hora debe respetar el horario del café: lunes a viernes de 8:00 a 12:00 y fines de semana de 8:00 a 11:00.')
+    const horarios = await obtenerHorarios()
+    if (!horasEnPunto(rangoReserva(horarios, datos.fecha)).includes(datos.hora)) {
+        const { entreSemana, finDeSemana } = horarios.reservas
+        throw badRequest(`La hora debe respetar el horario de reservas: lunes a viernes ${textoRango(entreSemana)} y sábados y domingos ${textoRango(finDeSemana)}.`)
     }
     return datos
 }
@@ -36,6 +36,7 @@ const aDocumento = (datos) => ({
     observaciones: datos.observaciones,
     nombre: datos.nombre,
     correo: datos.correo,
+    telefono: datos.telefono,
     motivo: datos.motivo,
 })
 
@@ -47,7 +48,7 @@ export const listarMias = (usuarioId) =>
 export const obtenerMia = (usuarioId, id) => POBLAR(Reserva.findOne({ _id: id, usuario: usuarioId })).lean()
 
 export const crear = async (sesion, cuerpo) => {
-    const datos = validarReserva(cuerpo)
+    const datos = await validarReserva(cuerpo)
     const pendiente = await estadoPorCodigo('reserva', 'pendiente')
     const reserva = await Reserva.create({ usuario: sesion.id, estado: pendiente._id, ...aDocumento(datos) })
     await registrarEvento({ entidad: 'reserva', entidadId: reserva._id, a: 'pendiente', usuario: sesion.id, actor: sesion.rol || 'cliente' })
@@ -55,7 +56,7 @@ export const crear = async (sesion, cuerpo) => {
 }
 
 export const editar = async (sesion, id, cuerpo) => {
-    const datos = validarReserva(cuerpo)
+    const datos = await validarReserva(cuerpo)
     const reserva = await Reserva.findOne({ _id: id, usuario: sesion.id }).populate('estado', 'codigo')
     if (!reserva || !RESERVA_EDITABLE.includes(reserva.estado?.codigo)) {
         throw notFound('No se encontró una reserva activa que puedas editar.')

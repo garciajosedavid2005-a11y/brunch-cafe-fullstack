@@ -1,7 +1,8 @@
 import Categoria from '../../src/models/categoria.model.js'
 import Producto from '../../src/models/producto.model.js'
 
-// Próximo día hábil a 7+ días (09:00 es válida en cualquier horario actual)
+// Próximo día hábil a 7+ días (09:00 es válida en cualquier horario actual).
+// El reloj de las pruebas es fijo (setup.js): jueves 2026-11-05 07:30 en Bogotá.
 export const fechaFutura = (dias = 7) => {
     const d = new Date(Date.now() + dias * 86400000)
     while ([0, 6].includes(d.getUTCDay())) d.setUTCDate(d.getUTCDate() + 1)
@@ -21,6 +22,7 @@ export const crearPedido = async (sesionCliente) => {
     const res = await sesionCliente.post('/api/customer/orders').send({
         items: [{ productoId: codigoProducto, cantidad: 1 }],
         nombre: 'Ana Pérez',
+        telefono: '3001234567',
         direccion: 'Carrera 36B #30-06',
         hora: '10:00',
         barrio: 'Centro',
@@ -31,7 +33,7 @@ export const crearPedido = async (sesionCliente) => {
 }
 
 export const datosReserva = (extra = {}) => ({
-    nombre: 'Ana Pérez', correo: 'ana@example.com', motivo: 'Desayuno',
+    nombre: 'Ana Pérez', correo: 'ana@example.com', telefono: '3001234567', motivo: 'Desayuno',
     personas: 2, fecha: fechaFutura(), hora: '09:00', ...extra,
 })
 

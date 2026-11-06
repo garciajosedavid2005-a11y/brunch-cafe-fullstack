@@ -14,6 +14,7 @@ export const formato = (reserva) => {
         _id: reserva._id,
         nombre: reserva.nombre || [dueno?.nombre, dueno?.apellido].filter(Boolean).join(' '),
         correo: reserva.correo || dueno?.correo || '',
+        telefono: reserva.telefono || '',
         motivo: reserva.motivo || '',
         personas: reserva.cantidadPersonas,
         fecha: reserva.fecha,

@@ -1,4 +1,4 @@
-// Seed idempotente de roles base y primer administrador.
+// Seed idempotente de roles base, primer administrador, estados, métodos de pago y horarios.
 // Uso: npm run seed:base   (lee ADMIN_EMAIL, ADMIN_PASSWORD y ADMIN_NOMBRE del .env)
 import mongoose from 'mongoose'
 import { config } from '../src/config.js'
@@ -6,11 +6,12 @@ import { sembrarBase } from '../src/seeds/base.js'
 
 try {
     await mongoose.connect(config.MONGO_URI)
-    const { roles, unificacion, admin, estados, metodosPago } = await sembrarBase()
+    const { roles, unificacion, admin, estados, metodosPago, horarios } = await sembrarBase()
 
     console.log(`Roles base asegurados: ${roles.join(', ')}`)
     console.log(`Estados asegurados: ${estados.join(', ')}`)
     console.log(`Métodos de pago: ${metodosPago.creados} creados, ${metodosPago.existentes} ya existían.`)
+    console.log(`Horarios: ${horarios.creado ? 'creados con los valores por defecto' : 'ya existían (sin cambios)'}.`)
     if (unificacion.usuariosReasignados || unificacion.rolesAlias.length) {
         console.log(`Roles alias de admin encontrados: ${unificacion.rolesAlias.join(', ')} → ${unificacion.usuariosReasignados} usuario(s) reasignados al rol "admin" (los roles viejos se conservan)`)
     }

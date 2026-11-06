@@ -30,7 +30,8 @@ describe('Reservas del cliente: /api/v1/cliente/reservas (0.8)', () => {
 
     it('valida fecha futura y horario', async () => {
         expect((await cliente.post('/api/v1/cliente/reservas').send(datosReserva({ fecha: ayer() }))).status).toBe(400)
-        expect((await cliente.post('/api/v1/cliente/reservas').send(datosReserva({ hora: '15:00' }))).status).toBe(400)
+        expect((await cliente.post('/api/v1/cliente/reservas').send(datosReserva({ hora: '20:00' }))).status).toBe(400)
+        expect((await cliente.post('/api/v1/cliente/reservas').send(datosReserva({ hora: '09:30' }))).status).toBe(400)
     })
 
     it('el alias /api/customer/reservations responde igual y avisa que está deprecado', async () => {
@@ -43,7 +44,7 @@ describe('Reservas del cliente: /api/v1/cliente/reservas (0.8)', () => {
 })
 
 describe('Alias antiguo /api/reservas: mismo servicio, mismas validaciones', () => {
-    const legado = (extra) => ({ cantidadPersonas: 2, fecha: fechaFutura(), hora: '09:00', nombre: 'Ana Pérez', correo: 'ana@example.com', motivo: 'Desayuno', ...extra })
+    const legado = (extra) => ({ cantidadPersonas: 2, fecha: fechaFutura(), hora: '09:00', nombre: 'Ana Pérez', correo: 'ana@example.com', telefono: '3001234567', motivo: 'Desayuno', ...extra })
 
     it('POST crea la reserva (respuesta anterior) y ahora valida fecha futura y horario', async () => {
         const ok = await cliente.post('/api/reservas').send(legado())
@@ -53,7 +54,7 @@ describe('Alias antiguo /api/reservas: mismo servicio, mismas validaciones', () 
         expect(ok.body.inicio).toBeDefined()
 
         expect((await cliente.post('/api/reservas').send(legado({ fecha: ayer() }))).status).toBe(400)
-        expect((await cliente.post('/api/reservas').send(legado({ hora: '15:00' }))).status).toBe(400)
+        expect((await cliente.post('/api/reservas').send(legado({ hora: '20:00' }))).status).toBe(400)
     })
 
     it('GET /mias lista las propias', async () => {

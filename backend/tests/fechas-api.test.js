@@ -65,14 +65,15 @@ describe('Pedidos: hora de entrega como instante (0.10)', () => {
         const latte = await Producto.create({ codigo: 3, nombre: 'Latte', precio: 9000, categoria: categoria._id })
         const metodos = await cliente.get('/api/customer/payment-methods')
         return cliente.post('/api/customer/orders').send({
-            items: [{ productoRef: String(latte._id), cantidad: 1 }], nombre: 'Ana Pérez',
+            items: [{ productoRef: String(latte._id), cantidad: 1 }], nombre: 'Ana Pérez', telefono: '3001234567',
             direccion: 'Carrera 36B #30-06', hora: '10:00', barrio: 'Centro', metodoPagoId: metodos.body[0].id,
         })
     }
 
-    it('entregaEn = día de Bogotá del pedido + hora elegida (también pasadas las 19:00, cuando en UTC ya es mañana)', async () => {
-        vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-06T03:30:00Z') }) // 22:30 del 5 en Bogotá
-        ;({ sesion: cliente } = await crearConSesion('cliente')) // sesión emitida con el reloj simulado
+    // Desde N8 (0.8) el domicilio es solo para hoy y antes de las 16:00, así que ya no hay pedidos
+    // válidos pasadas las 19:00 de Bogotá (cuando en UTC ya es mañana): ese caso se rechaza
+    // (ver horarios.test.js). Aquí: 07:30 del jueves 5 en Bogotá, el reloj de setup.js.
+    it('entregaEn = día de Bogotá del pedido + hora elegida', async () => {
         const res = await pedir()
         expect(res.status).toBe(201)
         expect(res.body.order.delivery.entregaEn).toBe('2026-11-05T15:00:00.000Z')

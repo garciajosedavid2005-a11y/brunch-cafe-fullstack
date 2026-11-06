@@ -27,6 +27,12 @@ const pedidoSchema = new mongoose.Schema({
         trim: true,
         maxlength: 50
     },
+    // Teléfono de contacto del domicilio (obligatorio desde 0.8; los anteriores no lo tienen)
+    telefono: {
+        type: String,
+        trim: true,
+        maxlength: 30
+    },
     direccion: {
         type: String,
         trim: true,

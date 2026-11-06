@@ -11,6 +11,8 @@ import rolRoutes from '../rol.routes.js'
 import permisoRoutes from '../permiso.routes.js'
 import adminUsuarioRoutes from '../adminUsuario.routes.js'
 import { productosAdminRouter } from '../producto.routes.js'
+import { horariosSchema } from '../../modulos/configuracion/horarios.schema.js'
+import { verHorariosAdmin, editarHorarios } from '../../modulos/configuracion/horarios.controller.js'
 
 // /api/v1/admin: configuración del negocio. Cada router exige su permiso (no el rol).
 const router = Router()
@@ -29,5 +31,11 @@ comentarios.get('/', listarComentariosAdmin)
 comentarios.patch('/:id/visibilidad', validateSchema(visibilidadComentarioSchema), cambiarVisibilidadComentario)
 comentarios.delete('/:id', eliminarComentario)
 router.use('/comentarios', comentarios)
+
+const horarios = Router()
+horarios.use(validateToken, requirePermission('horario:editar'))
+horarios.get('/', verHorariosAdmin)
+horarios.put('/', validateSchema(horariosSchema), editarHorarios)
+router.use('/horarios', horarios)
 
 export default router

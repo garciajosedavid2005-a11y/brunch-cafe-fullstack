@@ -17,7 +17,8 @@ const formato = (pedido, detalles, { permisos, estados }) => {
         codigo: `PED-${pedido._id.toString().slice(-6).toUpperCase()}`,
         cliente: pedido.nombreEntrega || [pedido.usuario?.nombre, pedido.usuario?.apellido].filter(Boolean).join(' ') || 'Cliente',
         correo: pedido.usuario?.correo || '',
-        telefono: pedido.usuario?.telefono || '',
+        // El del pedido; los anteriores a 0.8 no lo tienen y se muestra el del perfil
+        telefono: pedido.telefono || pedido.usuario?.telefono || '',
         direccion: pedido.direccion || '',
         barrio: pedido.barrio || '',
         hora: pedido.horaEntrega || '',

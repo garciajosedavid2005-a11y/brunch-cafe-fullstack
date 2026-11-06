@@ -64,6 +64,7 @@ describe('Línea base del cliente', () => {
         const res = await cliente.post('/api/customer/orders').send({
             items: [{ productoId: 1, cantidad: 2 }],
             nombre: 'Ana Pérez',
+            telefono: '3001234567',
             direccion: 'Carrera 36B #30-06',
             hora: '10:00',
             barrio: 'Centro',
@@ -78,7 +79,7 @@ describe('Línea base del cliente', () => {
 
     it('crea, edita y cancela una reserva', async () => {
         const datos = {
-            nombre: 'Ana Pérez', correo: usuario.correo, motivo: 'Desayuno',
+            nombre: 'Ana Pérez', correo: usuario.correo, telefono: '3001234567', motivo: 'Desayuno',
             personas: 2, fecha: fechaFutura(), hora: '09:00',
         }
         const creada = await cliente.post('/api/customer/reservations').send(datos)
