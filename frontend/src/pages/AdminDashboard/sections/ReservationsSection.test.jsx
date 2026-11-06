@@ -44,4 +44,15 @@ describe("Reservas (admin): tabla compacta", () => {
     expect(within(fila).getByRole("button", { name: "Confirmar reserva de Ana Pérez" })).toBeInTheDocument();
     expect(within(fila).getByRole("button", { name: "Cancelar reserva de Ana Pérez" })).toBeInTheDocument();
   });
+
+  it("muestra quién registró la reserva si la hizo el personal (0.15e)", async () => {
+    api.get.mockImplementation((ruta) => Promise.resolve(ruta.startsWith("/v1/admin/estados") ? [] : [
+      { ...RESERVA, correo: "", registradaPor: { id: "m1", nombre: "Mario Mesa" } },
+      { ...RESERVA, id: "r2", cliente: "Luis Gil", registradaPor: null },
+    ]));
+    render(<DialogoProvider><ReservationsSection /></DialogoProvider>);
+    const fila = (await screen.findByText("Ana Pérez")).closest("tr");
+    expect(within(fila).getByText("Registrada por Mario Mesa")).toBeInTheDocument();
+    expect(within(screen.getByText("Luis Gil").closest("tr")).queryByText(/registrada por/i)).toBeNull();
+  });
 });

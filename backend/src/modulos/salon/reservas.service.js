@@ -6,7 +6,7 @@ import { instanteLocal, inicioReserva } from '../compartido/fechas.js'
 import { horasEnPunto, rangoReserva, textoRango } from '../configuracion/horarios.reglas.js'
 import { obtenerHorarios } from '../configuracion/horarios.service.js'
 import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../compartido/estados.service.js'
-import { reservaSchema } from './reservas.schema.js'
+import { reservaSchema, reservaStaffSchema } from './reservas.schema.js'
 import { conTransaccion } from '../compartido/transacciones.js'
 
 // Estados en los que el cliente todavía puede editar o cancelar su reserva
@@ -16,8 +16,8 @@ export const RESERVA_EDITABLE = ['pendiente', 'confirmada']
  * Valida el cuerpo completo (formato, teléfono, fecha futura y horario configurado en BD).
  * Devuelve los datos normalizados.
  */
-export const validarReserva = async (cuerpo) => {
-    const datos = reservaSchema.parse(cuerpo)
+export const validarReserva = async (cuerpo, esquema = reservaSchema) => {
+    const datos = esquema.parse(cuerpo)
     if (instanteLocal(datos.fecha, datos.hora) <= new Date()) {
         throw badRequest('La fecha y hora de la reserva deben ser futuras.')
     }
@@ -36,7 +36,7 @@ const aDocumento = (datos) => ({
     inicio: instanteLocal(datos.fecha, datos.hora),
     observaciones: datos.observaciones,
     nombre: datos.nombre,
-    correo: datos.correo,
+    correo: datos.correo || undefined,
     telefono: datos.telefono,
     motivo: datos.motivo,
 })
@@ -58,6 +58,20 @@ export const crear = async (sesion, cuerpo) => {
         return creada
     })
     return obtenerMia(sesion.id, reserva._id)
+}
+
+/** El personal registra la reserva de un cliente: sin usuario dueño y con registradaPor (0.15e). */
+export const crearPorStaff = async (sesion, cuerpo) => {
+    const datos = await validarReserva(cuerpo, reservaStaffSchema)
+    const pendiente = await estadoPorCodigo('reserva', 'pendiente')
+    const reserva = await conTransaccion(async (session) => {
+        const [creada] = await Reserva.create([{
+            usuario: null, registradaPor: sesion.id, estado: pendiente._id, ...aDocumento(datos),
+        }], { session })
+        await registrarEvento({ entidad: 'reserva', entidadId: creada._id, a: 'pendiente', usuario: sesion.id, actor: sesion.rol || 'staff', session })
+        return creada
+    })
+    return reserva._id
 }
 
 export const editar = async (sesion, id, cuerpo) => {

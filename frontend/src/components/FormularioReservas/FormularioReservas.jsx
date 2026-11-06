@@ -31,7 +31,10 @@ function initialForm(user) {
 
 export default function FormularioReservas() {
   const { user } = useAuth();
-  const [formData, setFormData] = useState(() => initialForm(user));
+  // El personal registra la reserva de un cliente (0.15e): formulario vacío y correo opcional
+  const porPersonal = esPersonal(user) && tienePermiso(user, "reserva:crear");
+  const formularioInicial = () => initialForm(porPersonal ? null : user);
+  const [formData, setFormData] = useState(formularioInicial);
   const [errores, setErrores] = useState({});
   const [mostrarModal, setMostrarModal] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -53,7 +56,8 @@ export default function FormularioReservas() {
   const validar = () => {
     const nextErrors = {};
     if (formData.nombre.trim().length < 3) nextErrors.nombre = "Ingresa un nombre de al menos 3 caracteres.";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo.trim())) nextErrors.correo = "Ingresa un correo válido.";
+    const correo = formData.correo.trim();
+    if ((correo || !porPersonal) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) nextErrors.correo = "Ingresa un correo válido.";
     if (!esTelefono(formData.telefono.trim())) nextErrors.telefono = formData.telefono.trim() ? MENSAJE_TELEFONO : "El teléfono es requerido.";
     if (formData.motivo.trim().length < 3) nextErrors.motivo = "Indica el motivo de la reserva.";
     if (!formData.personas) nextErrors.personas = "Selecciona la cantidad de personas.";
@@ -78,13 +82,14 @@ export default function FormularioReservas() {
   const handleConfirmar = async () => {
     setGuardando(true);
     try {
-      await apiRequest(esPersonal(user) && tienePermiso(user, "reserva:crear") ? "/v1/staff/reservas" : "/v1/cliente/reservas", {
+      await apiRequest(porPersonal ? "/v1/staff/reservas" : "/v1/cliente/reservas", {
         method: "POST",
         body: JSON.stringify({ ...formData, personas: Number(formData.personas) }),
       });
       setMostrarModal(false);
-      let correoEnviado = true;
-      try {
+      // Sin correo (permitido al personal) no se envía la confirmación
+      let correoEnviado = Boolean(formData.correo.trim());
+      if (correoEnviado) try {
         await emailjs.send(
           "service_mn2rux3",
           "template_r4mj66a",
@@ -103,13 +108,16 @@ export default function FormularioReservas() {
         console.error("La reserva se guardó, pero no se pudo enviar el correo:", error);
         correoEnviado = false;
       }
+      const registrada = `Reserva registrada para ${formData.nombre.trim()}. Quedó pendiente de confirmación`;
       setMensaje({
-        text: correoEnviado
+        text: porPersonal
+          ? `${registrada}${correoEnviado ? "; enviamos los detalles a su correo." : "."}`
+          : correoEnviado
           ? "Tu solicitud de reserva fue enviada y quedó pendiente de aprobación. Te enviamos un correo con los detalles."
           : "Tu solicitud de reserva fue enviada y quedó pendiente de aprobación, pero no pudimos enviar el correo de confirmación.",
         error: false,
       });
-      setFormData(initialForm(user));
+      setFormData(formularioInicial());
     } catch (error) {
       setMostrarModal(false);
       setMensaje({ text: error.message, error: true });
@@ -125,28 +133,28 @@ export default function FormularioReservas() {
           <div className="grid-x grid-padding-x">
             <div className="cell small-12 medium-8 large-6">
               <div className="formulario-card">
-                <h2 className="formulario-titulo">BIENVENIDOS A BRUNCH CAFE...</h2>
+                <h2 className="formulario-titulo">{porPersonal ? "REGISTRAR LA RESERVA DE UN CLIENTE" : "BIENVENIDOS A BRUNCH CAFE..."}</h2>
                 {mensaje.text && (
                   <p className={`formulario-reserva-notice ${mensaje.error ? "is-error" : ""}`} role={mensaje.error ? "alert" : "status"}>
                     {mensaje.text}
                   </p>
                 )}
                 <form onSubmit={handleSubmit}>
-                  <label htmlFor="nombre">Ingrese el nombre:</label>
+                  <label htmlFor="nombre">{porPersonal ? "Nombre del cliente:" : "Ingrese el nombre:"}</label>
                   <div className="formulario-campo-icono">
                     <FaUser className="formulario-icono" aria-hidden="true" />
-                    <input id="nombre" name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Ingrese su nombre" required minLength={3} maxLength={120} />
+                    <input id="nombre" name="nombre" value={formData.nombre} onChange={handleChange} placeholder={porPersonal ? "Nombre y apellido del cliente" : "Ingrese su nombre"} required minLength={3} maxLength={120} />
                   </div>
                   {errores.nombre && <p className="formulario-error">{errores.nombre}</p>}
 
-                  <label htmlFor="correo">Ingrese su correo electrónico:</label>
+                  <label htmlFor="correo">{porPersonal ? "Correo del cliente (opcional):" : "Ingrese su correo electrónico:"}</label>
                   <div className="formulario-campo-icono">
                     <FaEnvelope className="formulario-icono" aria-hidden="true" />
-                    <input id="correo" name="correo" type="email" value={formData.correo} onChange={handleChange} placeholder="ejemplo@correo.com" required maxLength={254} />
+                    <input id="correo" name="correo" type="email" value={formData.correo} onChange={handleChange} placeholder="ejemplo@correo.com" required={!porPersonal} maxLength={254} />
                   </div>
                   {errores.correo && <p className="formulario-error">{errores.correo}</p>}
 
-                  <label htmlFor="telefono">Teléfono de contacto:</label>
+                  <label htmlFor="telefono">{porPersonal ? "Teléfono del cliente:" : "Teléfono de contacto:"}</label>
                   <div className="formulario-campo-icono">
                     <FaPhone className="formulario-icono" aria-hidden="true" />
                     <input id="telefono" name="telefono" type="tel" value={formData.telefono} onChange={handleChange} placeholder="Ej: 300 123 4567" required maxLength={30} autoComplete="tel" />

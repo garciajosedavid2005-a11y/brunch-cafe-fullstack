@@ -119,6 +119,7 @@ export default function ReservationsSection() {
                       <div className="admin-table__contact">
                         <span>{reserva.telefono}</span>
                         <small>{reserva.correo}</small>
+                        {reserva.registradaPor && <small>Registrada por {reserva.registradaPor.nombre}</small>}
                       </div>
                     </td>
                     <td>

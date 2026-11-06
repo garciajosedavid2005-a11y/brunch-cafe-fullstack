@@ -15,3 +15,9 @@ export const reservaSchema = z.object({
     hora: z.string().regex(/^([01]\d|2[0-3]):00$/, { error: 'Elige una hora en punto (HH:00).' }),
     observaciones: z.string().trim().max(200).default(''),
 })
+
+// Reserva que registra el personal para un cliente (0.15e): nombre y teléfono obligatorios,
+// correo opcional (vacío o ausente); si viene, debe ser válido
+export const reservaStaffSchema = reservaSchema.extend({
+    correo: z.string().trim().toLowerCase().pipe(z.union([z.literal(''), z.email().max(254)])).optional(),
+})

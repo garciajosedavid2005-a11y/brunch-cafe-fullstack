@@ -356,7 +356,8 @@ export default function StaffDashboard() {
                             {reserva.estado}
                           </span>
                         </div>
-                        <p>{formatearFechaCalendario(reserva.fecha, "long")} · {reserva.correo}</p>
+                        <p>{[formatearFechaCalendario(reserva.fecha, "long"), reserva.telefono, reserva.correo].filter(Boolean).join(" · ")}</p>
+                        {reserva.registradaPor && <p className="staff-dashboard__registrada">Registrada por {reserva.registradaPor.nombre}</p>}
                         <div className="staff-dashboard__reservation-meta">
                           <span><Users size={15} />{reserva.personas} {reserva.personas === 1 ? "persona" : "personas"}</span>
                           <span>{reserva.motivo}</span>

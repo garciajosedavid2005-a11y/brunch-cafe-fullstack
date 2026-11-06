@@ -1,4 +1,5 @@
 import Reserva from './reserva.model.js'
+import { crearPorStaff } from './reservas.service.js'
 import { notFound } from '../compartido/errors.js'
 import { esEstadoFinal } from '../compartido/estados.js'
 import {
@@ -25,6 +26,10 @@ const formatoAdmin = (reserva, { permisos, estados }) => {
         esFinal: esEstadoFinal('reserva', codigo),
         transiciones: opcionesDeCambio('reserva', codigo, { permisos }, estados),
         observaciones: reserva.observaciones || '',
+        // Personal que la registró en nombre del cliente; null si la hizo el cliente (0.15e)
+        registradaPor: reserva.registradaPor?._id
+            ? { id: String(reserva.registradaPor._id), nombre: [reserva.registradaPor.nombre, reserva.registradaPor.apellido].filter(Boolean).join(' ') }
+            : null,
     }
 }
 
@@ -32,7 +37,7 @@ const formatoAdmin = (reserva, { permisos, estados }) => {
 
 // Acciones del staff
 
-const POBLAR_ADMIN = (consulta) => consulta.populate('usuario', '-contraseña').populate('estado')
+const POBLAR_ADMIN = (consulta) => consulta.populate('usuario', '-contraseña').populate('registradaPor', 'nombre apellido').populate('estado')
 
 export const listarReservas = async (req, res) => {
     const [reservas, estados] = await Promise.all([
@@ -40,6 +45,13 @@ export const listarReservas = async (req, res) => {
         estadosDelTipo('reserva'),
     ])
     res.json(reservas.map((reserva) => formatoAdmin(reserva, { permisos: req.usuario.permisos, estados })))
+}
+
+// POST /api/v1/staff/reservas (reserva:crear): la registra el personal para un cliente
+export const crearReserva = async (req, res) => {
+    const id = await crearPorStaff(req.usuario, req.body)
+    const [poblada, estados] = await Promise.all([POBLAR_ADMIN(Reserva.findById(id)), estadosDelTipo('reserva')])
+    res.status(201).json({ reservation: formatoAdmin(poblada, { permisos: req.usuario.permisos, estados }) })
 }
 
 // PATCH /api/reservas/:id/estado  { codigo | estado, motivo? }

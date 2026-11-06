@@ -105,4 +105,16 @@ describe("Panel de mesero", () => {
     expect(screen.queryByRole("button", { name: /pedidos/i })).not.toBeInTheDocument();
     expect(state.apiRequest).not.toHaveBeenCalled();
   });
+
+  it("en la agenda indica quién registró la reserva (0.15e)", async () => {
+    const original = state.apiRequest.getMockImplementation();
+    state.apiRequest.mockImplementation((path) => path === "/v1/staff/reservas"
+      ? Promise.resolve([{ id: "res-2", codigo: "RES-000002", cliente: "Laura Ruiz", correo: "", telefono: "3209876543", personas: 2,
+          fecha: new Date().toISOString(), hora: "10:00", estado: "Pendiente", estadoCodigo: "pendiente", registradaPor: { id: "m1", nombre: "Mario Mesa" } }])
+      : original(path));
+    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: /^reservas$/i }));
+    expect(await screen.findByText("Registrada por Mario Mesa")).toBeInTheDocument();
+    expect(screen.getByText(/3209876543/)).toBeInTheDocument();
+  });
 });

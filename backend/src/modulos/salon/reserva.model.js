@@ -2,10 +2,19 @@ import mongoose from 'mongoose'
 import { inicioReserva, esHoraValida } from '../compartido/fechas.js'
 
 const reservaSchema = new mongoose.Schema({
+    // Cliente dueño de la reserva. null si la registró el personal (0.15e): el cliente
+    // solo ve las suyas, aunque el correo coincida
     usuario: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Usuario',
-        required: true
+        default: null,
+        required: [function () { return !this.registradaPor }, 'La reserva necesita un cliente o quien la registró.']
+    },
+    // Personal que la registró en nombre del cliente (0.15e)
+    registradaPor: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Usuario',
+        default: null
     },
     estado: {
         type: mongoose.Schema.Types.ObjectId,

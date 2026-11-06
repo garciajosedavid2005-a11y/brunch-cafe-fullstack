@@ -3,9 +3,9 @@ import { render, screen, fireEvent, within } from "@testing-library/react";
 
 vi.mock("../../services/api", () => ({ apiRequest: vi.fn() }));
 vi.mock("@emailjs/browser", () => ({ default: { send: vi.fn() } }));
-vi.mock("../../context/useAuth", () => ({
-  useAuth: () => ({ user: { id: "u1", nombre: "Ana", apellido: "Pérez", email: "ana@example.com", telefono: "3001234567" } }),
-}));
+const CLIENTA = { id: "u1", nombre: "Ana", apellido: "Pérez", email: "ana@example.com", telefono: "3001234567", permisos: [], esPersonal: false };
+const sesion = vi.hoisted(() => ({ user: null }));
+vi.mock("../../context/useAuth", () => ({ useAuth: () => ({ user: sesion.user }) }));
 
 import { apiRequest } from "../../services/api";
 import { reiniciarHorarios } from "../../hooks/useHorarios";
@@ -19,6 +19,7 @@ const HORARIOS = {
 describe("Formulario de reservas: horas del horario configurado", () => {
   beforeEach(() => {
     reiniciarHorarios();
+    sesion.user = CLIENTA;
     apiRequest.mockReset();
     apiRequest.mockResolvedValue({ horarios: HORARIOS });
     vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-05T10:15:00-05:00") }); // jueves
@@ -51,5 +52,43 @@ describe("Formulario de reservas: horas del horario configurado", () => {
     render(<FormularioReservas />);
     expect((await screen.findByText(/lunes a viernes/i)).textContent.replace(/\s/g, " ")).toMatch(/8:00 a. m. a 7:00 p. m./);
     expect(screen.getByLabelText(/teléfono/i)).toHaveValue("3001234567");
+  });
+
+  // 0.15e: el personal registra la reserva de un cliente (usuario: null + registradaPor)
+  describe("registrada por el personal", () => {
+    const MESERO = { id: "m1", nombre: "Mario", apellido: "Mesa", email: "mario@cafe.test", telefono: "3110000000", permisos: ["reserva:crear"], esPersonal: true };
+
+    it("empieza vacío, el correo es opcional y se envía a /v1/staff/reservas", async () => {
+      sesion.user = MESERO;
+      apiRequest.mockImplementation((ruta) => Promise.resolve(ruta.includes("horarios") ? { horarios: HORARIOS } : { reservation: {} }));
+      render(<FormularioReservas />);
+
+      expect(screen.getByLabelText(/nombre del cliente/i)).toHaveValue("");
+      expect(screen.getByLabelText(/^correo del cliente .opcional.:$/i)).toHaveValue("");
+      expect(screen.getByLabelText(/teléfono del cliente/i)).toHaveValue("");
+
+      fireEvent.change(screen.getByLabelText(/nombre del cliente/i), { target: { value: "Laura Ruiz" } });
+      fireEvent.change(screen.getByLabelText(/teléfono del cliente/i), { target: { value: "3209876543" } });
+      fireEvent.change(screen.getByLabelText(/motivo/i), { target: { value: "Cumpleaños" } });
+      fireEvent.change(screen.getByLabelText(/personas/i), { target: { value: "4" } });
+      fireEvent.change(screen.getByLabelText(/fecha/i), { target: { value: "2026-11-12" } });
+      await within(screen.getByLabelText(/hora/i)).findAllByRole("option", { name: /m./ });
+      fireEvent.change(screen.getByLabelText(/hora/i), { target: { value: "10:00" } });
+      fireEvent.click(screen.getByRole("button", { name: /enviar reserva/i }));
+      fireEvent.click(await screen.findByRole("button", { name: /enviar solicitud/i }));
+
+      expect(await screen.findByRole("status")).toHaveTextContent(/reserva registrada para laura ruiz/i);
+      const [ruta, opciones] = apiRequest.mock.calls.find(([r]) => r.includes("reservas"));
+      expect(ruta).toBe("/v1/staff/reservas");
+      expect(JSON.parse(opciones.body)).toMatchObject({ nombre: "Laura Ruiz", telefono: "3209876543", correo: "" });
+    });
+
+    it("sin teléfono del cliente no deja continuar", async () => {
+      sesion.user = MESERO;
+      render(<FormularioReservas />);
+      fireEvent.submit(screen.getByRole("button", { name: /enviar reserva/i }).closest("form"));
+      expect(await screen.findByText("El teléfono es requerido.")).toBeInTheDocument();
+      expect(screen.queryByText("Ingresa un correo válido.")).toBeNull();
+    });
   });
 });
