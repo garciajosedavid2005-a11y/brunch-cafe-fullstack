@@ -358,7 +358,7 @@
 
 .admin-kpi-card__icon--gold {
   background: #fffde7;
-  color: #f57f17;
+  color: #b35400; /* antes #f57f17: 2.6:1 */
 }
 
 .admin-kpi-card__info {
@@ -641,7 +641,7 @@
 
 .admin-badge--warning {
   background: #fff8e1;
-  color: #b78103;
+  color: #7a5000; /* antes #b78103: 3.2:1; ahora ≥ 6:1 */
   border: 1.5px solid #ffe082;
 }
 
@@ -754,7 +754,7 @@
 }
 
 .admin-input-search::placeholder {
-  color: #8c726c;
+  color: #75605a; /* antes #8c726c: 4.4:1 */
 }
 
 .admin-filter-tabs {
@@ -996,7 +996,7 @@
 }
 
 .admin-review-item__stars {
-  color: #f57f17;
+  color: #b35400; /* antes #f57f17: 2.6:1 */
   font-size: 1.05rem;
 }
 
@@ -1865,4 +1865,584 @@
     width: 100%;
     justify-content: space-between;
   }
+}
+
+/* ---- Usuarios (0.7b) ---- */
+.admin-users__yo {
+  font-size: 0.75rem;
+  color: #6b4f49;
+}
+
+.admin-users__propia {
+  display: grid;
+  gap: 0.3rem;
+  max-width: 220px;
+}
+
+.admin-users__propia small {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #5c4540;
+  white-space: normal;
+}
+
+.admin-users__propia .admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+}
+
+/* Desplegable de rol: Foundation fija una altura que corta el texto */
+.admin-form-select.admin-select-rol {
+  height: auto !important;
+  min-height: 40px;
+  padding: 0.5rem 2rem 0.5rem 0.75rem !important;
+  line-height: 1.4 !important;
+  font-size: 0.88rem !important;
+  margin: 0 !important;
+  min-width: 150px;
+}
+
+/* ---- Roles: protegidos y eliminar (0.7b) ---- */
+.admin-roles__eliminar {
+  display: grid;
+  gap: 0.3rem;
+  max-width: 200px;
+}
+
+.admin-roles__eliminar small {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #5c4540;
+  white-space: normal;
+}
+
+.admin-button--secondary-sm.admin-button--peligro-sm {
+  color: #a1261e !important;
+  border-color: #a1261e !important;
+}
+
+.admin-button--secondary-sm.admin-button--peligro-sm:disabled {
+  color: #6b6b6b !important;
+  border-color: #c4c4c4 !important;
+  background: #f3f3f3 !important;
+  cursor: not-allowed !important;
+}
+
+/* ---- Roles: permisos legibles (0.7b) ---- */
+.admin-permisos__grupo {
+  border: none;
+  padding: 0;
+  margin: 0 0 0.8rem;
+}
+
+.admin-permisos__grupo legend {
+  margin-bottom: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #55332e;
+}
+
+.admin-permiso {
+  flex-wrap: wrap;
+  margin: 0 0 0.35rem;
+  line-height: 1.4;
+}
+
+/* Texto de permiso con el color normal (antes heredaba un rosa claro ilegible) */
+.admin-permiso .admin-permiso__texto {
+  color: #2c0703;
+  font-size: 0.9rem;
+}
+
+.admin-permiso--proximo {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.admin-permiso--proximo input[type="checkbox"] {
+  cursor: not-allowed;
+}
+
+.admin-permiso--proximo .admin-permiso__texto {
+  color: #595959; /* gris distinguible, 7:1 sobre blanco */
+}
+
+.admin-permiso__proximamente {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid #c4c4c4;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #404040;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.admin-roles__nota,
+.admin-roles__sin-permisos {
+  font-size: 0.82rem;
+  color: #6b4f49;
+}
+
+/* Etiquetas de permisos: hacen salto de línea dentro de su celda */
+.admin-roles__permisos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  max-width: 260px;
+  min-width: 140px;
+}
+
+.admin-badge.admin-roles__permiso {
+  max-width: 100%;
+  font-size: 0.74rem;
+  line-height: 1.3;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.admin-table td.admin-roles__celda-permisos {
+  white-space: normal;
+  min-width: 160px;
+  max-width: 280px;
+}
+
+/* La descripción del rol también puede ocupar varias líneas */
+.admin-table td .admin-table__category-desc {
+  white-space: normal;
+}
+
+/* ---- Selector de estado (0.7c): parece un selector; el color del estado va en un punto ----
+   Dos clases: Foundation define select:not([multiple]) { padding-top/bottom: 0 } (0,1,1). */
+.estado-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.estado-selector__punto {
+  flex: 0 0 auto;
+  width: 0.7rem;
+  height: 0.7rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 0;
+}
+
+.estado-selector__punto.admin-badge--warning { background: #b78103; }
+.estado-selector__punto.admin-badge--info { background: #1565c0; }
+.estado-selector__punto.admin-badge--success { background: #2e7d32; }
+.estado-selector__punto.admin-badge--danger { background: #c62828; }
+.estado-selector__punto.admin-badge--neutral { background: #757575; }
+
+.estado-selector .estado-selector__select {
+  appearance: none;
+  height: auto;
+  min-width: 170px;
+  margin: 0;
+  padding: 0.5rem 2.2rem 0.5rem 0.8rem;
+  border: 1.5px solid #c9b3ad;
+  border-radius: 10px;
+  background-color: #ffffff;
+  /* Flecha visible (chevron oscuro) */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%232C0703' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.8rem center;
+  background-size: 12px 8px;
+  color: #2c0703;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.estado-selector .estado-selector__select:hover:not(:disabled) {
+  border-color: #8c726c;
+}
+
+.estado-selector .estado-selector__select:focus-visible {
+  outline: 3px solid rgba(137, 6, 32, 0.35);
+  outline-offset: 2px;
+  border-color: var(--color-primario);
+}
+
+.estado-selector .estado-selector__select:disabled {
+  background-color: #f5f5f5;
+  background-image: none;
+  padding-right: 0.8rem;
+  color: #4a4a4a;
+  cursor: not-allowed;
+}
+
+/* ---- Modal de detalle (0.7c) ---- */
+.admin-modal-payment__texto {
+  color: #2c0703; /* 18:1 sobre #fffaf7 */
+}
+
+.admin-modal-status-bar {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.admin-modal-status-bar__titulo {
+  font-weight: 800;
+  font-size: 0.92rem;
+  color: var(--color-primario);
+}
+
+/* Barra de desplazamiento fina con los colores de la marca */
+.admin-modal-container {
+  scrollbar-width: thin;
+  scrollbar-color: #b6465f #f7e7e2;
+}
+
+.admin-modal-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-modal-container::-webkit-scrollbar-track {
+  background: #f7e7e2;
+  border-radius: 0 20px 20px 0;
+}
+
+.admin-modal-container::-webkit-scrollbar-thumb {
+  background: #b6465f;
+  border-radius: 999px;
+}
+
+/* ---- Roles: tabla compacta (0.7c) ---- */
+.admin-roles__nota-sistema {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #dec7be;
+  border-radius: 12px;
+  background: #fffaf7;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: #4a2a24;
+}
+
+.admin-roles__nota-sistema svg {
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+  color: var(--color-primario);
+}
+
+.admin-roles__slug {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #55332e;
+}
+
+.admin-badge.admin-roles__tipo {
+  margin-top: 0.3rem;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.68rem;
+}
+
+.admin-roles__mas {
+  margin: 0;
+  padding: 0.2rem 0.55rem;
+  border: 1px dashed #8c726c;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #4a2a24;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-roles__mas:hover {
+  border-style: solid;
+  color: var(--color-primario);
+}
+
+.admin-roles__mas:focus-visible,
+.admin-roles__candado:focus-visible {
+  outline: 3px solid rgba(137, 6, 32, 0.35);
+  outline-offset: 2px;
+}
+
+/* Candado de rol de sistema: botón deshabilitado con aspecto neutro (no de "peligro") */
+.admin-roles__candado {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid #c9b3ad;
+  border-radius: 8px;
+  background: #f5efe6;
+  color: #6b4f49;
+  cursor: not-allowed;
+}
+
+/* Celdas más compactas en Roles y Usuarios para que quepan a 1280 px */
+.admin-table--compacta th,
+.admin-table--compacta td {
+  padding: 0.75rem 0.7rem;
+}
+
+.admin-table--compacta .admin-table__category-desc {
+  display: block;
+  max-width: 190px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+/* Si no caben (1024/768 px) desplazan dentro de su contenedor, con barra visible */
+.admin-table-container {
+  scrollbar-width: thin;
+  scrollbar-color: #b6465f #f7e7e2;
+}
+
+.admin-table-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.admin-table-container::-webkit-scrollbar-track {
+  background: #f7e7e2;
+}
+
+.admin-table-container::-webkit-scrollbar-thumb {
+  background: #b6465f;
+  border-radius: 999px;
+}
+
+.admin-product-thumbnail-placeholder.admin-roles__icono {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+}
+
+.admin-users__correo {
+  margin-top: 0.15rem;
+  font-size: 0.82rem;
+  color: #55332e;
+}
+
+/* Productos: interruptor de disponibilidad y filas agotadas */
+.admin-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: #2c0703;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-switch:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.admin-switch__pista {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: #8a6f69; /* apagado: ≥ 4:1 sobre las filas (componente no textual: mínimo 3:1) */
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.admin-switch__perilla {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(44, 7, 3, 0.3);
+  transition: transform 0.2s ease;
+}
+
+.admin-switch[aria-checked="true"] .admin-switch__pista {
+  background: #2e7d32;
+}
+
+.admin-switch[aria-checked="true"] .admin-switch__perilla {
+  transform: translateX(18px);
+}
+
+.admin-switch:focus-visible {
+  outline: 2px solid var(--color-primario);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+.admin-products__etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.admin-products__fila--agotada .admin-product-thumbnail {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-switch__pista,
+  .admin-switch__perilla {
+    transition: none;
+  }
+}
+
+/* Productos a 1280 px: nombre y descripción con ancho fijo (las celdas no parten
+   línea por defecto) para que quepan las columnas de disponibilidad y acciones */
+.admin-products__tabla .admin-product-info {
+  width: 210px;
+  white-space: normal;
+}
+
+.admin-products__tabla th,
+.admin-products__tabla td {
+  padding-left: 0.6rem;
+  padding-right: 0.6rem;
+}
+
+/* Reservas a 1280 px: cliente, código y motivo en una celda; personas junto a la fecha */
+.admin-reservas__reserva {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  white-space: normal;
+  max-width: 220px;
+}
+
+.admin-reservas__motivo {
+  font-size: 0.82rem;
+  color: #4a3531;
+  line-height: 1.35;
+}
+
+.admin-reservas__tabla .admin-table__schedule .admin-table__capacity {
+  margin-top: 0.2rem;
+}
+
+/* Pedidos a 1280 px: código, fecha y cliente en una celda; método de pago bajo el total */
+.admin-pedidos__pedido {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+.admin-pedidos__total {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.admin-pedidos__pago {
+  font-size: 0.82rem;
+  color: #4a3531;
+}
+
+.admin-pedidos__tabla .admin-table__address {
+  white-space: normal;
+  max-width: 220px;
+}
+
+/* ---- Horarios (0.8) ---- */
+.admin-horarios {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 760px;
+}
+
+.admin-horarios__grupo {
+  border: 1px solid #eedfd9;
+  border-radius: 12px;
+  padding: 1rem 1.1rem 0.4rem;
+  margin: 0;
+}
+
+.admin-horarios__titulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.35rem;
+  font-weight: 700;
+  color: #2c0703;
+}
+
+.admin-horarios__campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0 1rem;
+}
+
+.admin-horarios__pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-horarios__pie small {
+  color: #4a3531;
+}
+
+/* Respaldo: si una tabla crece (otra fuente, un texto largo) desplaza dentro de su
+   contenedor y no ensancha la página. min-width: 0 evita que un padre flex/grid lo estire. */
+.admin-table-container {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Foundation fija la altura de select (2.4375rem); con el padding del admin cortaba el texto */
+.admin-form-select {
+  height: auto;
+  line-height: 1.3;
+}
+
+/* ---- 0.14: Resumen y Comentarios caben a 1280 px ---- */
+.admin-resumen__celda {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.admin-resumen__tabla .admin-table__client,
+.admin-resumen__tabla .admin-table__client span {
+  white-space: normal;
+}
+
+/* El aviso de «sin reservas» se parte en líneas en vez de salirse de la tarjeta */
+.admin-table td.admin-table__empty {
+  white-space: normal;
+}
+
+.admin-comentarios__tabla td.admin-comentarios__resena {
+  white-space: normal;
+  min-width: 260px;
+}
+
+.admin-comentarios__etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.35rem 0;
 }

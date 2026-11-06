@@ -1,27 +1,18 @@
-export const formatCurrency = (value) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(Number(value) || 0);
+import { formatearCOP } from "../../utils/moneda";
+import { formatearFecha, formatearHora, formatearFechaCalendario, formatearHoraTexto } from "../../utils/fechas";
 
-export const formatDate = (value) => {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? ""
-    : new Intl.DateTimeFormat("es-CO", { dateStyle: "medium" }).format(date);
-};
+// Montos del dashboard: enteros en COP (misma utilidad que el resto del sitio)
+export const formatCurrency = (value) => formatearCOP(Number(value) || 0);
 
-export const formatTime = (value) => {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? ""
-    : new Intl.DateTimeFormat("es-CO", { hour: "2-digit", minute: "2-digit" }).format(date);
-};
+// Fechas: delegan en utils/fechas (America/Bogota). Se mantienen los nombres que usa el dashboard.
+// Instante (createdAt, fecha de un pedido) → fecha / hora en Bogotá
+export const formatDate = (value) => formatearFecha(value);
+export const formatTime = (value) => formatearHora(value);
+// Día de una reserva (fecha de calendario, sin hora)
+export const formatCalendarDate = (value) => formatearFechaCalendario(value);
+// "HH:mm" → "8:00 a. m."
+export const formatClock = (value) => formatearHoraTexto(value);
 
-export const formatClock = (value) => {
-  const [hours, minutes] = String(value || "").split(":").map(Number);
-  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return value || "";
-  const suffix = hours >= 12 ? "p. m." : "a. m.";
-  return `${hours % 12 || 12}:${String(minutes).padStart(2, "0")} ${suffix}`;
-};
+// "1 usuario" / "3 usuarios"
+export const plural = (cantidad, singular, pluralTexto = `${singular}s`) =>
+  `${cantidad} ${cantidad === 1 ? singular : pluralTexto}`;

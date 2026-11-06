@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { useDialogo } from "../../context/useDialogo";
 import { useEffect, useState } from "react";
 import { useCarrito } from "../../context/CarritoContext";
 import { useAuth } from "../../context/useAuth";
@@ -27,6 +28,7 @@ const NavbarContent = ({ pathname }) => {
     const esTransparente = rutasTransparentes.includes(pathname);
     const { productos } = useCarrito();
     const { user, loading, logout } = useAuth();
+    const { avisar } = useDialogo();
     const esAdmin = user?.role === "admin";
 
     const totalProductos = productos.reduce((acc, p) => acc + p.cantidad, 0);
@@ -37,7 +39,7 @@ const NavbarContent = ({ pathname }) => {
             await logout();
             setMenuAbierto(false);
         } catch (error) {
-            alert(error.message || "No se pudo cerrar la sesión. Intenta de nuevo.");
+            avisar({ tipo: "error", titulo: "No se pudo cerrar la sesión", mensaje: error.message || "Intenta de nuevo." });
         } finally {
             setCerrandoSesion(false);
         }

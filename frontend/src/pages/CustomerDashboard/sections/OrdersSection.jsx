@@ -1,33 +1,60 @@
 import { useEffect, useState } from "react";
 import { apiRequest } from "../../../services/api";
 import SectionHeading from "../SectionHeading";
+import { useDialogo } from "../../../context/useDialogo";
+import { formatearCOP } from "../../../utils/moneda";
+import { formatearFecha } from "../../../utils/fechas";
 
 const orderStatus = {
   pending: "Pendiente",
   confirmed: "Confirmado",
   preparing: "En preparación",
   ready: "Listo",
+  on_the_way: "En camino",
   delivered: "Entregado",
   cancelled: "Cancelado",
 };
 
-const money = (value) =>
-  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(value || 0);
+const money = (value) => formatearCOP(Number(value) || 0);
 
 const dateLabel = (value) =>
-  new Intl.DateTimeFormat("es-CO", { dateStyle: "long" }).format(new Date(value));
+  formatearFecha(value, "long");
 
 export default function OrdersSection() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cancelando, setCancelando] = useState("");
+  const { confirmar } = useDialogo();
 
   useEffect(() => {
-    apiRequest("/customer/orders")
+    apiRequest("/v1/cliente/pedidos")
       .then(({ orders: customerOrders }) => setOrders(customerOrders))
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
   }, []);
+
+  // Solo se puede cancelar mientras el pedido sigue pendiente
+  const cancelOrder = async (id) => {
+    const { confirmado } = await confirmar({
+      titulo: "Cancelar pedido",
+      mensaje: "¿Estás seguro de que deseas cancelar este pedido?",
+      confirmarTexto: "Sí, cancelar pedido",
+      cancelarTexto: "Volver",
+      peligroso: true,
+    });
+    if (!confirmado) return;
+    setCancelando(id);
+    setError("");
+    try {
+      const { order } = await apiRequest(`/v1/cliente/pedidos/${id}/cancelar`, { method: "PATCH", body: JSON.stringify({}) });
+      setOrders((current) => current.map((item) => (item._id === id ? order : item)));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setCancelando("");
+    }
+  };
 
   return (
     <div>
@@ -69,6 +96,18 @@ export default function OrdersSection() {
               </div>
             )}
             <div className="dashboard-card__total"><span>Total</span><strong>{money(order.total)}</strong></div>
+            {order.status === "pending" && (
+              <div className="dashboard-reservation__actions">
+                <button
+                  className="dashboard-button dashboard-button--secondary"
+                  type="button"
+                  disabled={cancelando === order._id}
+                  onClick={() => cancelOrder(order._id)}
+                >
+                  Cancelar pedido
+                </button>
+              </div>
+            )}
           </article>
         ))}
       </div>

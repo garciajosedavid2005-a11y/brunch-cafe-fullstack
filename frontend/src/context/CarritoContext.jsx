@@ -50,10 +50,8 @@ export const CarritoProvider = ({ children }) => {
 
     // Calcular total
     const calcularTotal = () => {
-        return productos.reduce((total, p) => {
-            const precio = parseInt(p.precio.replace(/[^0-9]/g, ''))
-            return total + precio * p.cantidad
-        }, 0)
+        // precio es un entero en COP (viene así del catálogo)
+        return productos.reduce((total, p) => total + p.precio * p.cantidad, 0)
     }
 
     return (

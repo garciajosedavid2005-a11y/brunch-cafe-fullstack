@@ -4,8 +4,21 @@
   "description": "",
   "main": "src/index.js",
   "scripts": {
+    "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "seed:menu": "node scripts/seed-menu.js"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "seed:menu": "node scripts/seed-menu.js",
+    "report:correos": "node scripts/reportar-correos-duplicados.js",
+    "seed:base": "node scripts/seed-base.js",
+    "migrate:0.7": "node scripts/migrar-0.7-estados.js",
+    "migrate:0.6": "node scripts/migrar-0.6-referencias.js",
+    "migrate:0.10": "node scripts/migrar-0.10-fechas.js",
+    "migrate:0.12": "node scripts/migrar-0.12-colecciones-heredadas.js",
+    "seed:dev": "node scripts/seed-dev.js",
+    "recolorear:estados": "node scripts/recolorear-estados.js",
+    "mongo:replica-set": "node scripts/iniciar-replica-set.js"
   },
   "keywords": [],
   "author": "",
@@ -17,12 +30,25 @@
     "cors": "^2.8.6",
     "dotenv": "^18.0.5",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.3",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.10.3",
-    "morgan": "^1.12.1",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0",
+    "mongodb-memory-server": "^11.3.0",
+    "nodemon": "^3.1.14",
+    "pino-pretty": "^13.2.0",
+    "supertest": "^7.3.1",
+    "vitest": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

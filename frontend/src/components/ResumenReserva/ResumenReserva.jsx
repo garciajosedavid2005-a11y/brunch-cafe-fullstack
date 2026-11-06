@@ -7,9 +7,11 @@ import {
     FaCommentAlt,
     FaCheckCircle,
     FaEnvelope,
-    FaFlag
+    FaFlag,
+    FaPhone
 } from 'react-icons/fa'
 import { useEffect } from 'react'
+import { formatearFechaCalendario, formatearHoraTexto } from '../../utils/fechas'
 
 const ResumenReserva = ({ formData, onEditar, onConfirmar, guardando = false }) => {
     useEffect(() => {
@@ -20,20 +22,8 @@ const ResumenReserva = ({ formData, onEditar, onConfirmar, guardando = false }) 
         }
     }, [])
 
-    const fechaReserva = formData.fecha
-        ? new Intl.DateTimeFormat('es-CO', {
-            dateStyle: 'long',
-            timeZone: 'UTC',
-        }).format(new Date(`${formData.fecha}T12:00:00Z`))
-        : 'No seleccionada'
-
-    const horaReserva = formData.hora
-        ? new Intl.DateTimeFormat('es-CO', {
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZone: 'UTC',
-        }).format(new Date(`1970-01-01T${formData.hora}:00Z`))
-        : 'No seleccionada'
+    const fechaReserva = formData.fecha ? formatearFechaCalendario(formData.fecha, 'long') : 'No seleccionada'
+    const horaReserva = formData.hora ? formatearHoraTexto(formData.hora) : 'No seleccionada'
 
     return (
         <div className="resumen-overlay" onMouseDown={(event) => {
@@ -70,6 +60,13 @@ const ResumenReserva = ({ formData, onEditar, onConfirmar, guardando = false }) 
                         <div className="resumen-item__contenido">
                             <span className="resumen-item__label">Correo</span>
                             <span className="resumen-item__valor">{formData.correo}</span>
+                        </div>
+                    </div>
+                    <div className="resumen-item">
+                        <FaPhone className="resumen-item__icono" aria-hidden="true" />
+                        <div className="resumen-item__contenido">
+                            <span className="resumen-item__label">Teléfono</span>
+                            <span className="resumen-item__valor">{formData.telefono}</span>
                         </div>
                     </div>
                     <div className="resumen-item">

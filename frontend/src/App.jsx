@@ -16,6 +16,7 @@ import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
 import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./context/useAuth";
 import { CarritoProvider } from "./context/CarritoContext";
+import { DialogoProvider } from "./context/DialogoContext";
 
 import "./styles/index.css";
 import "./styles/variables.css";
@@ -118,11 +119,13 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <CarritoProvider>
-          <AppRoutes />
-        </CarritoProvider>
-      </AuthProvider>
+      <DialogoProvider>
+        <AuthProvider>
+          <CarritoProvider>
+            <AppRoutes />
+          </CarritoProvider>
+        </AuthProvider>
+      </DialogoProvider>
     </BrowserRouter>
   );
 }

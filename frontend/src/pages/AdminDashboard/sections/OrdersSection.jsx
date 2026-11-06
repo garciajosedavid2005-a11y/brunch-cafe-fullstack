@@ -2,27 +2,29 @@ import { useState } from "react";
 import { Search, Eye, X, Filter, ShoppingBag, MapPin, Phone, CreditCard, Clock } from "lucide-react";
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
-import { adminApi } from "../../../services/adminApi";
-import { formatClock, formatCurrency, formatDate } from "../adminFormat";
+import { api } from "../../../services/api";
+import { formatCurrency, formatDate, formatTime } from "../adminFormat";
+import EstadoSelector from "../components/EstadoSelector";
+import { useDialogo } from "../../../context/useDialogo";
 
 export default function OrdersSection() {
-  const { items: pedidos, cargando, error, cargar } = useAdminResource("/pedidos");
-  const estadosResource = useAdminResource("/estados?tipo=pedido");
+  const { items: pedidos, cargando, error, cargar } = useAdminResource("/v1/staff/pedidos");
+  const estadosResource = useAdminResource("/v1/admin/estados?tipo=pedido");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   const [busqueda, setBusqueda] = useState("");
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
+  const { avisar } = useDialogo();
 
   const estadosDisponibles = ["Todos", ...new Set(estadosResource.items.map((estado) => estado.nombre))];
 
-  const handleCambiarEstado = async (id, nuevoEstado) => {
-    const estado = estadosResource.items.find((item) => item.nombre === nuevoEstado);
-    if (!estado) return;
+  // Envía el código de destino; el backend valida la transición, el permiso y el motivo
+  const handleCambiarEstado = async (id, codigo, motivo) => {
     try {
-      const actualizado = await adminApi.patch(`/pedidos/${id}/estado`, { estado: estado.id });
+      const actualizado = await api.patch(`/v1/staff/pedidos/${id}/estado`, { codigo, ...(motivo ? { motivo } : {}) });
       if (pedidoSeleccionado?.id === id) setPedidoSeleccionado(actualizado);
       await cargar();
     } catch (requestError) {
-      window.alert(requestError.message);
+      avisar({ tipo: "error", titulo: "No se pudo cambiar el estado", mensaje: requestError.message });
     }
   };
 
@@ -36,24 +38,6 @@ export default function OrdersSection() {
       pedido.barrio.toLowerCase().includes(busqueda.toLowerCase());
     return coincideEstado && coincideBusqueda;
   });
-
-  const getBadgeClass = (estado) => {
-    switch (estado) {
-      case "Pendiente":
-        return "admin-badge--warning";
-      case "Confirmado":
-      case "En preparación":
-        return "admin-badge--info";
-      case "Recibido":
-      case "Listo":
-      case "Entregado":
-        return "admin-badge--success";
-      case "Cancelado":
-        return "admin-badge--danger";
-      default:
-        return "admin-badge--neutral";
-    }
-  };
 
   return (
     <div className="admin-section">
@@ -105,14 +89,12 @@ export default function OrdersSection() {
       {/* TABLA DE PEDIDOS */}
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table">
+          <table className="admin-table admin-table--compacta admin-pedidos__tabla">
             <thead>
               <tr>
-                <th>Código</th>
-                <th>Cliente</th>
-                <th>Entrega / Dirección</th>
+                <th>Pedido</th>
+                <th>Entrega</th>
                 <th>Total</th>
-                <th>Método de Pago</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
@@ -122,13 +104,13 @@ export default function OrdersSection() {
                 pedidosFiltrados.map((pedido) => (
                   <tr key={pedido.id}>
                     <td>
-                      <span className="admin-table__code">{pedido.codigo}</span>
-                      <small className="admin-table__date">{formatDate(pedido.fecha)} · {formatClock(new Date(pedido.fecha).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }))}</small>
-                    </td>
-                    <td>
-                      <div className="admin-table__client">
-                        <strong>{pedido.cliente}</strong>
-                        <span>{pedido.telefono}</span>
+                      <div className="admin-pedidos__pedido">
+                        <span className="admin-table__code">{pedido.codigo}</span>
+                        <small className="admin-table__date">{formatDate(pedido.fecha)} · {formatTime(pedido.fecha)}</small>
+                        <div className="admin-table__client">
+                          <strong>{pedido.cliente}</strong>
+                          <span>{pedido.telefono}</span>
+                        </div>
                       </div>
                     </td>
                     <td>
@@ -138,22 +120,14 @@ export default function OrdersSection() {
                       </div>
                     </td>
                     <td>
-                      <span className="admin-table__amount">{formatCurrency(pedido.total)}</span>
+                      <div className="admin-pedidos__total">
+                        <span className="admin-table__amount">{formatCurrency(pedido.total)}</span>
+                        <small className="admin-pedidos__pago">{pedido.metodoPago}</small>
+                      </div>
                     </td>
                     <td>
-                      <span className="admin-table__payment">{pedido.metodoPago}</span>
-                    </td>
-                    <td>
-                      {/* SELECTOR INTERACTIVO DE ESTADO */}
-                      <select
-                        className={`admin-select-status ${getBadgeClass(pedido.estado)}`}
-                        value={pedido.estado}
-                        onChange={(e) => handleCambiarEstado(pedido.id, e.target.value)}
-                      >
-                        {estadosResource.items.map((estado) => (
-                          <option key={estado.id} value={estado.nombre}>{estado.nombre}</option>
-                        ))}
-                      </select>
+                      {/* SELECTOR DE ESTADO: solo los cambios permitidos */}
+                      <EstadoSelector item={pedido} onCambiar={(codigo, motivo) => handleCambiarEstado(pedido.id, codigo, motivo)} />
                     </td>
                     <td>
                       <button
@@ -169,7 +143,7 @@ export default function OrdersSection() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="admin-table__empty">
+                  <td colSpan="5" className="admin-table__empty">
                     No se encontraron pedidos con los filtros aplicados.
                   </td>
                 </tr>
@@ -194,7 +168,7 @@ export default function OrdersSection() {
                   Pedido {pedidoSeleccionado.codigo}
                 </span>
                 <h3 className="admin-modal-title">Detalle del Pedido</h3>
-                <small className="admin-modal-date">{pedidoSeleccionado.fecha}</small>
+                <small className="admin-modal-date">{formatDate(pedidoSeleccionado.fecha)} · {formatTime(pedidoSeleccionado.fecha)}</small>
               </div>
               <button
                 type="button"
@@ -264,7 +238,7 @@ export default function OrdersSection() {
               <div className="admin-modal-footer-info">
                 <div className="admin-modal-payment">
                   <CreditCard size={18} />
-                  <span>Método de pago: <strong>{pedidoSeleccionado.metodoPago}</strong></span>
+                  <span className="admin-modal-payment__texto">Método de pago: <strong>{pedidoSeleccionado.metodoPago}</strong></span>
                 </div>
                 <div className="admin-modal-total">
                   <span>Total a cobrar:</span>
@@ -274,18 +248,11 @@ export default function OrdersSection() {
 
               {/* Selector de estado dentro del modal */}
               <div className="admin-modal-status-bar">
-                <label>Cambiar estado del pedido:</label>
-                <select
-                  className={`admin-select-status ${getBadgeClass(pedidoSeleccionado.estado)}`}
-                  value={pedidoSeleccionado.estado}
-                  onChange={(e) =>
-                    handleCambiarEstado(pedidoSeleccionado.id, e.target.value)
-                  }
-                >
-                  {estadosResource.items.map((estado) => (
-                    <option key={estado.id} value={estado.nombre}>{estado.nombre}</option>
-                  ))}
-                </select>
+                <span className="admin-modal-status-bar__titulo" id="titulo-estado-pedido">Cambiar estado del pedido</span>
+                <EstadoSelector
+                  item={pedidoSeleccionado}
+                  onCambiar={(codigo, motivo) => handleCambiarEstado(pedidoSeleccionado.id, codigo, motivo)}
+                />
               </div>
             </div>
 

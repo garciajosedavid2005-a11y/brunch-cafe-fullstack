@@ -1,35 +1,25 @@
 import { useState } from "react";
 import emailjs from "@emailjs/browser";
-import { FaCalendarAlt, FaClock, FaCommentAlt, FaEnvelope, FaUser, FaUsers } from "react-icons/fa";
+import { FaCalendarAlt, FaClock, FaCommentAlt, FaEnvelope, FaPhone, FaUser, FaUsers } from "react-icons/fa";
 import { useAuth } from "../../context/useAuth";
 import { apiRequest } from "../../services/api";
 import ResumenReserva from "../ResumenReserva/ResumenReserva";
 import "./FormularioReservas.css";
-
-function getTimesForDate(date) {
-  if (!date) return [];
-  const [year, month, day] = date.split("-").map(Number);
-  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-  const lastHour = weekday === 0 || weekday === 6 ? 11 : 12;
-
-  return Array.from({ length: lastHour - 7 }, (_, index) => {
-    const hour = index + 8;
-    return {
-      id: `${String(hour).padStart(2, "0")}:00`,
-      nombre: hour === 12 ? "12:00 PM" : `${hour}:00 AM`,
-    };
-  });
-}
+import { hoyLocal } from "../../utils/fechas";
+import { useHorarios } from "../../hooks/useHorarios";
+import { horasReserva, opcionesDeHora, textoRango } from "../../utils/horarios";
+import { esTelefono, MENSAJE_TELEFONO } from "../../utils/telefono";
 
 function getToday() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return hoyLocal(); // día de Bogotá, no el del navegador
 }
 
 function initialForm(user) {
   return {
     nombre: `${user?.nombre || ""} ${user?.apellido || ""}`.trim(),
     correo: user?.email || "",
+    // Contacto de la reserva (obligatorio): se prellena con el del perfil
+    telefono: user?.telefono || "",
     motivo: "",
     personas: "",
     fecha: "",
@@ -45,6 +35,9 @@ export default function FormularioReservas() {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState({ text: "", error: false });
+  // Horas en punto del horario configurado en el admin; hoy, solo las que no han pasado
+  const { horarios, error: errorHorarios, ahora } = useHorarios();
+  const horas = horasReserva(horarios, formData.fecha, ahora);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -60,10 +53,11 @@ export default function FormularioReservas() {
     const nextErrors = {};
     if (formData.nombre.trim().length < 3) nextErrors.nombre = "Ingresa un nombre de al menos 3 caracteres.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo.trim())) nextErrors.correo = "Ingresa un correo válido.";
+    if (!esTelefono(formData.telefono.trim())) nextErrors.telefono = formData.telefono.trim() ? MENSAJE_TELEFONO : "El teléfono es requerido.";
     if (formData.motivo.trim().length < 3) nextErrors.motivo = "Indica el motivo de la reserva.";
     if (!formData.personas) nextErrors.personas = "Selecciona la cantidad de personas.";
     if (!formData.fecha) nextErrors.fecha = "La fecha es requerida.";
-    if (!formData.hora) nextErrors.hora = "Selecciona una hora disponible.";
+    if (!formData.hora || !horas.includes(formData.hora)) nextErrors.hora = "Selecciona una hora disponible.";
     if (formData.observaciones.length > 200) nextErrors.observaciones = "Las observaciones no pueden superar 200 caracteres.";
     return nextErrors;
   };
@@ -83,7 +77,7 @@ export default function FormularioReservas() {
   const handleConfirmar = async () => {
     setGuardando(true);
     try {
-      await apiRequest("/customer/reservations", {
+      await apiRequest("/v1/cliente/reservas", {
         method: "POST",
         body: JSON.stringify({ ...formData, personas: Number(formData.personas) }),
       });
@@ -151,6 +145,13 @@ export default function FormularioReservas() {
                   </div>
                   {errores.correo && <p className="formulario-error">{errores.correo}</p>}
 
+                  <label htmlFor="telefono">Teléfono de contacto:</label>
+                  <div className="formulario-campo-icono">
+                    <FaPhone className="formulario-icono" aria-hidden="true" />
+                    <input id="telefono" name="telefono" type="tel" value={formData.telefono} onChange={handleChange} placeholder="Ej: 300 123 4567" required maxLength={30} autoComplete="tel" />
+                  </div>
+                  {errores.telefono && <p className="formulario-error">{errores.telefono}</p>}
+
                   <label htmlFor="motivo">Motivo de la reserva:</label>
                   <div className="formulario-campo-icono">
                     <FaCommentAlt className="formulario-icono" aria-hidden="true" />
@@ -180,10 +181,10 @@ export default function FormularioReservas() {
                   <label htmlFor="hora">Ingrese la hora:</label>
                   <div className="formulario-campo-icono">
                     <FaClock className="formulario-icono" aria-hidden="true" />
-                    <select id="hora" name="hora" value={formData.hora} onChange={handleChange} disabled={!formData.fecha} required>
-                      <option value="">Seleccione...</option>
-                      {getTimesForDate(formData.fecha).map((time) => (
-                        <option key={time.id} value={time.id}>{time.nombre}</option>
+                    <select id="hora" name="hora" value={horas.includes(formData.hora) ? formData.hora : ""} onChange={handleChange} disabled={!horas.length} required>
+                      <option value="">{!formData.fecha ? "Elija primero la fecha" : horas.length ? "Seleccione..." : "Sin horas disponibles ese día"}</option>
+                      {opcionesDeHora(horas).map((opcion) => (
+                        <option key={opcion.valor} value={opcion.valor}>{opcion.etiqueta}</option>
                       ))}
                     </select>
                   </div>
@@ -203,7 +204,11 @@ export default function FormularioReservas() {
                     }}>Limpiar Reserva</button>
                     <button type="submit" className="button">Enviar Reserva</button>
                   </div>
-                  <p className="formulario-reserva-horario">Lunes a viernes: 8:00 a. m. – 12:00 p. m. · Sábados y domingos: 8:00 a. m. – 11:00 a. m.</p>
+                  <p className="formulario-reserva-horario">
+                    {horarios
+                      ? `Horario de reservas: lunes a viernes de ${textoRango(horarios.reservas.entreSemana)} · sábados y domingos de ${textoRango(horarios.reservas.finDeSemana)}.`
+                      : errorHorarios || "Cargando el horario de reservas..."}
+                  </p>
                 </form>
               </div>
             </div>

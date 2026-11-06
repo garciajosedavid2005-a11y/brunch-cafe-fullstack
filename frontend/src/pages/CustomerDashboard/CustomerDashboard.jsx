@@ -4,6 +4,7 @@ import {
   CalendarDays,
   MessageSquareText,
   PackageCheck,
+  ShieldCheck,
   UserRound,
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
@@ -11,6 +12,7 @@ import ProfileSection from "./sections/ProfileSection";
 import OrdersSection from "./sections/OrdersSection";
 import ReservationsSection from "./sections/ReservationsSection";
 import ReviewsSection from "./sections/ReviewsSection";
+import SecuritySection from "./sections/SecuritySection";
 import "./CustomerDashboard.css";
 
 const sections = [
@@ -18,6 +20,7 @@ const sections = [
   { id: "orders", label: "Mis pedidos", icon: PackageCheck },
   { id: "reservations", label: "Mis reservas", icon: CalendarDays },
   { id: "reviews", label: "Mis comentarios", icon: MessageSquareText },
+  { id: "security", label: "Seguridad y configuración", icon: ShieldCheck },
 ];
 
 const sectionContent = {
@@ -25,10 +28,15 @@ const sectionContent = {
   orders: OrdersSection,
   reservations: ReservationsSection,
   reviews: ReviewsSection,
+  security: SecuritySection,
 };
+
+// Roles que no son cliente ni admin: personal del café (su panel llega en la Fase 1)
+const esStaff = (role) => Boolean(role) && !["cliente", "admin"].includes(role);
 
 export default function CustomerDashboard() {
   const { user, logout } = useAuth();
+  const staff = esStaff(user?.role);
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("profile");
   const [logoutError, setLogoutError] = useState("");
@@ -49,6 +57,7 @@ export default function CustomerDashboard() {
         <div>
           <span className="customer-dashboard__eyebrow">BRUNCH CAFÉ · MI CUENTA</span>
           <h1>Hola, {user?.nombre}</h1>
+          {staff && <span className="customer-dashboard__rol">{user.roleLabel || user.role}</span>}
           <p>Administra tu perfil y consulta tu actividad en Brunch Café.</p>
         </div>
         <button className="dashboard-button dashboard-button--secondary" type="button" onClick={handleLogout}>
@@ -56,6 +65,11 @@ export default function CustomerDashboard() {
         </button>
       </header>
       {logoutError && <p className="dashboard-notice is-error" role="alert">{logoutError}</p>}
+      {staff && (
+        <p className="dashboard-notice customer-dashboard__aviso-staff" role="note">
+          Tu panel de personal estará disponible próximamente. Por ahora puedes usar tu cuenta como cliente.
+        </p>
+      )}
 
       <div className="customer-dashboard__layout">
         <nav className="customer-dashboard__nav" aria-label="Secciones de mi cuenta">

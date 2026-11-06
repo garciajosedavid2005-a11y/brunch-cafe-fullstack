@@ -31,7 +31,7 @@ const Testimonios = () => {
 
   useEffect(() => {
     let active = true;
-    apiRequest("/comentarios")
+    apiRequest("/v1/comentarios")
       .then(({ reviews: publishedReviews }) => {
         if (active) setReviews(publishedReviews);
       })

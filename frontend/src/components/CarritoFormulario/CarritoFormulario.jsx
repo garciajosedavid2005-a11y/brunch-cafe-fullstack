@@ -1,25 +1,42 @@
 import "./CarritoFormulario.css"
-import { FaUser, FaMapMarkerAlt, FaClock, FaHome, FaStickyNote, FaCreditCard, FaMoneyBillWave } from 'react-icons/fa'
+import { useDialogo } from '../../context/useDialogo'
+import { FaUser, FaMapMarkerAlt, FaClock, FaHome, FaStickyNote, FaCreditCard, FaMoneyBillWave, FaPhone } from 'react-icons/fa'
 import { useCarrito } from '../../context/CarritoContext'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/useAuth'
 import { apiRequest } from '../../services/api'
 import ResumenPedido from '../ResumenPedido/ResumenPedido'
+import { formatearCOP } from '../../utils/moneda'
+import { itemsDelPedido } from '../../utils/pedido'
+import { useHorarios } from '../../hooks/useHorarios'
+import { horasDomicilio, opcionesDeHora, textoAnticipacion, textoRango } from '../../utils/horarios'
+import { esTelefono, MENSAJE_TELEFONO } from '../../utils/telefono'
+
+const formularioInicial = (user) => ({
+    nombre: `${user?.nombre || ''} ${user?.apellido || ''}`.trim(),
+    // Obligatorio para el domicilio: se prellena con el del perfil y se puede cambiar
+    telefono: user?.telefono || '',
+    direccion: '',
+    hora: '',
+    barrio: '',
+    indicaciones: ''
+})
 
 const CarritoFormulario = () => {
 
     const { calcularTotal, limpiarCarrito, productos } = useCarrito()
+    const { avisar } = useDialogo()
     const { user } = useAuth()
     const navigate = useNavigate()
 
-    const [formData, setFormData] = useState({
-        nombre: `${user?.nombre || ''} ${user?.apellido || ''}`.trim(),
-        direccion: '',
-        hora: '',
-        barrio: '',
-        indicaciones: ''
-    })
+    const [formData, setFormData] = useState(() => formularioInicial(user))
+    // Domicilio solo para hoy, en el horario configurado y con anticipación (N8)
+    const { horarios, error: errorHorarios, cargando: cargandoHorarios, ahora } = useHorarios()
+    const horasEntrega = horasDomicilio(horarios, ahora)
+    const reglaDomicilio = horarios
+        ? `Domicilio para hoy de ${textoRango(horarios.domicilio)}, con al menos ${textoAnticipacion(horarios.domicilio.anticipacionMinutos)} de anticipación.`
+        : ''
 
     const [mostrarModal, setMostrarModal] = useState(false)
     const [errores, setErrores] = useState({})
@@ -31,6 +48,9 @@ const CarritoFormulario = () => {
         error: ''
     })
     const [metodoPagoId, setMetodoPagoId] = useState('')
+    // Idempotency-Key (0.9): una por compra. Los reintentos de "Confirmar" (p. ej. tras un corte
+    // de red) reutilizan la misma y el backend no crea un pedido duplicado.
+    const claveCompra = useRef('')
 
     const metodosPago = metodosPagoEstado.usuarioId === user?.id
         ? metodosPagoEstado.metodos
@@ -44,7 +64,7 @@ const CarritoFormulario = () => {
         if (!user?.id) return undefined
 
         let activo = true
-        apiRequest('/customer/payment-methods')
+        apiRequest('/v1/cliente/metodos-pago')
             .then((metodos) => {
                 if (!activo) return
                 setMetodosPagoEstado({ usuarioId: user.id, metodos, error: '' })
@@ -96,14 +116,17 @@ const CarritoFormulario = () => {
                 'Ingrese una dirección válida. Ej: Carrera 36B #30-06'
         }
 
-        if (!formData.hora.trim()) {
-            nuevosErrores.hora = 'La hora es requerida'
-        } else {
-            const hora = formData.hora
-            if (hora < '08:00' || hora > '16:00') {
-                nuevosErrores.hora =
-                    'La hora debe estar entre 8:00 AM y 4:00 PM'
-            }
+        if (!formData.telefono.trim()) {
+            nuevosErrores.telefono = 'El teléfono es requerido'
+        } else if (!esTelefono(formData.telefono.trim())) {
+            nuevosErrores.telefono = MENSAJE_TELEFONO
+        }
+
+        if (!formData.hora) {
+            nuevosErrores.hora = horasEntrega.length ? 'Elige la hora de entrega' : 'Hoy ya no hay horarios de domicilio disponibles'
+        } else if (!horasEntrega.includes(formData.hora)) {
+            // La hora elegida pudo quedar sin la anticipación mínima mientras la página estaba abierta
+            nuevosErrores.hora = `Esa hora ya no está disponible. ${reglaDomicilio}`
         }
 
         const barrioRegex =/^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s-]{3,40}$/
@@ -130,9 +153,7 @@ const CarritoFormulario = () => {
         }
 
         if (productos.length === 0) {
-            alert(
-                'Tu carrito está vacío — agrega productos desde el menú'
-            )
+            avisar({ titulo: 'Tu carrito está vacío', mensaje: 'Agrega productos desde el menú para hacer tu pedido.' })
             return
         }
 
@@ -154,6 +175,7 @@ const CarritoFormulario = () => {
 
         setErrores({})
         setErrorPedido('')
+        claveCompra.current = crypto.randomUUID() // datos (quizá) nuevos → compra nueva
         setMostrarModal(true)
     }
 
@@ -162,27 +184,23 @@ const CarritoFormulario = () => {
         setErrorPedido('')
         try {
             const metodoPago = metodosPago.find((metodo) => metodo.id === metodoPagoId)
-            const { order } = await apiRequest('/customer/orders', {
+            const { order } = await apiRequest('/v1/cliente/pedidos', {
                 method: 'POST',
+                headers: { 'Idempotency-Key': claveCompra.current },
                 body: JSON.stringify({
                     ...formData,
                     metodoPagoId,
-                    items: productos.map(({ id, cantidad }) => ({
-                        productoId: id,
-                        cantidad
-                    }))
+                    items: itemsDelPedido(productos)
                 })
             })
             setMostrarModal(false)
             limpiarCarrito()
-            setFormData({
-                nombre: `${user?.nombre || ''} ${user?.apellido || ''}`.trim(),
-                direccion: '',
-                hora: '',
-                barrio: '',
-                indicaciones: ''
+            setFormData(formularioInicial(user))
+            // El pedido queda pendiente hasta que el café lo confirme
+            avisar({
+                titulo: `¡Recibimos tu pedido ${order.orderNumber}!`,
+                mensaje: `Te avisaremos cuando el café lo confirme. Método de pago: ${metodoPago.nombre}.`,
             })
-            alert(`¡Pedido ${order.orderNumber} confirmado! Método de pago: ${metodoPago.nombre}.`)
         } catch (error) {
             if (error.status === 401 || error.status === 403) {
                 navigate('/login', { state: { from: '/domicilios' } })
@@ -262,23 +280,60 @@ const CarritoFormulario = () => {
                                 )}
                             </div>
 
-                            {/* HORA */}
+                            {/* TELÉFONO */}
                             <div className="cell small-12 medium-6">
-                                <label className="carrito-formulario__label">
+                                <label className="carrito-formulario__label" htmlFor="carrito-telefono">
+                                    Teléfono de contacto...
+                                </label>
+                                <div className="carrito-formulario__campo">
+                                    <FaPhone className="carrito-formulario__icono" />
+                                    <input
+                                        id="carrito-telefono"
+                                        type="tel"
+                                        placeholder="Ej: 300 123 4567"
+                                        className="carrito-formulario__input"
+                                        name="telefono"
+                                        value={formData.telefono}
+                                        onChange={handleChange}
+                                        autoComplete="tel"
+                                        maxLength={30}
+                                    />
+                                </div>
+                                {errores.telefono && (
+                                    <p className="carrito-error">
+                                        {errores.telefono}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* HORA: solo horas en punto de hoy dentro del horario de domicilio */}
+                            <div className="cell small-12 medium-6">
+                                <label className="carrito-formulario__label" htmlFor="carrito-hora">
                                     Hora de entrega...
                                 </label>
                                 <div className="carrito-formulario__campo">
                                     <FaClock className="carrito-formulario__icono" />
-                                    <input
-                                        type="time"
-                                        className="carrito-formulario__input"
+                                    <select
+                                        id="carrito-hora"
+                                        className="carrito-formulario__input carrito-formulario__select"
                                         name="hora"
-                                        value={formData.hora}
+                                        value={horasEntrega.includes(formData.hora) ? formData.hora : ''}
                                         onChange={handleChange}
-                                        min="08:00"
-                                        max="16:00"
-                                    />
+                                        disabled={!horasEntrega.length}
+                                        aria-describedby="carrito-hora-ayuda"
+                                    >
+                                        <option value="">
+                                            {cargandoHorarios ? 'Cargando horarios...' : horasEntrega.length ? 'Selecciona una hora' : 'Sin horarios hoy'}
+                                        </option>
+                                        {opcionesDeHora(horasEntrega).map((opcion) => (
+                                            <option key={opcion.valor} value={opcion.valor}>{opcion.etiqueta}</option>
+                                        ))}
+                                    </select>
                                 </div>
+                                <p id="carrito-hora-ayuda" className="carrito-formulario__ayuda" role={horarios && !horasEntrega.length ? 'status' : undefined}>
+                                    {errorHorarios
+                                        || (horarios && !horasEntrega.length ? `Hoy ya no hay horarios de domicilio disponibles. ${reglaDomicilio}` : reglaDomicilio)}
+                                </p>
                                 {errores.hora && (
                                     <p className="carrito-error">
                                         {errores.hora}
@@ -311,7 +366,7 @@ const CarritoFormulario = () => {
                             </div>
 
                             {/* INDICACIONES */}
-                            <div className="cell small-12 medium-6">
+                            <div className="cell small-12">
                                 <label className="carrito-formulario__label">
                                     Indicaciones especiales...
                                 </label>
@@ -388,8 +443,8 @@ const CarritoFormulario = () => {
                     <div className="carrito-formulario__total">
                         <div className="carrito-formulario__total-linea"></div>
                         <p className="carrito-formulario__total-texto">
-                            TOTAL ESTIMADO:
-                            ${calcularTotal().toLocaleString('es-CO')}
+                            TOTAL ESTIMADO:{" "}
+                            {formatearCOP(calcularTotal())}
                         </p>
                         <div className="carrito-formulario__total-linea"></div>
                     </div>

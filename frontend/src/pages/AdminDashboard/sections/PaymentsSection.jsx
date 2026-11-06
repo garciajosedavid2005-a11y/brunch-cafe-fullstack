@@ -17,7 +17,7 @@ import AdminStatus from "../components/AdminStatus";
 
 export default function PaymentsSection() {
   const { items: metodos, cargando, error, guardando, cargar, crear, actualizar, eliminar } =
-    useAdminResource("/metodos-pago");
+    useAdminResource("/v1/admin/metodos-pago");
   const [busqueda, setBusqueda] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [metodoEnEdicion, setMetodoEnEdicion] = useState(null);
