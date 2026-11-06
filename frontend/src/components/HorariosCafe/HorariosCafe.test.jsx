@@ -41,4 +41,15 @@ describe("Pie de página y Nosotros leen los horarios de la configuración", () 
     expect(await screen.findByText(/no pudimos cargar los horarios/i)).toBeInTheDocument();
     expect(screen.queryByText(/a\. m\./)).toBeNull();
   });
+
+  it("si falla la primera carga, reintenta solo y muestra los horarios (0.14)", async () => {
+    reiniciarHorarios({ reintentosMs: [20] });
+    apiRequest.mockReset()
+      .mockRejectedValueOnce(new Error("No se pudo conectar con el servidor."))
+      .mockResolvedValue({ horarios: HORARIOS });
+    render(<MemoryRouter><Footer /></MemoryRouter>);
+    expect(await screen.findByText(/no pudimos cargar los horarios/i)).toBeInTheDocument();
+    expect(await screen.findByRole("list", { name: /horarios/i })).toBeInTheDocument();
+    expect(apiRequest).toHaveBeenCalledTimes(2);
+  });
 });

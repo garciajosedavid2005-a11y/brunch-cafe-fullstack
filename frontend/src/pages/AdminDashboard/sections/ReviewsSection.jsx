@@ -66,6 +66,8 @@ export default function ReviewsSection() {
     return matchBusqueda && matchCalificacion && matchTipo;
   });
 
+  const cincoEstrellas = comentarios.filter((c) => c.calificacion === 5).length;
+
   const promedioCalificacion = (
     comentarios.reduce((acc, curr) => acc + curr.calificacion, 0) /
     (comentarios.length || 1)
@@ -92,7 +94,7 @@ export default function ReviewsSection() {
           <div className="admin-kpi-card__info">
             <span className="admin-kpi-card__label">Calificación Promedio</span>
             <span className="admin-kpi-card__value">{promedioCalificacion} ★</span>
-            <span className="admin-kpi-card__sub">Basado en {comentarios.length} opiniones</span>
+            <span className="admin-kpi-card__sub">Basado en {comentarios.length} {comentarios.length === 1 ? "opinión" : "opiniones"}</span>
           </div>
         </div>
 
@@ -115,15 +117,15 @@ export default function ReviewsSection() {
           </div>
           <div className="admin-kpi-card__info">
             <span className="admin-kpi-card__label">Satisfacción 5 Estrellas</span>
+            {/* 0.14: el texto depende del dato (antes decía siempre «Mayoría de clientes satisfechos») */}
             <span className="admin-kpi-card__value">
-              {Math.round(
-                (comentarios.filter((c) => c.calificacion === 5).length /
-                  (comentarios.length || 1)) *
-                  100
-              )}
-              %
+              {comentarios.length ? `${Math.round((cincoEstrellas / comentarios.length) * 100)}%` : "—"}
             </span>
-            <span className="admin-kpi-card__sub">Mayoría de clientes satisfechos</span>
+            <span className="admin-kpi-card__sub">
+              {comentarios.length
+                ? `${cincoEstrellas} de ${comentarios.length} ${comentarios.length === 1 ? "opinión" : "opiniones"} con 5 estrellas`
+                : "Aún no hay opiniones"}
+            </span>
           </div>
         </div>
       </div>
@@ -204,14 +206,12 @@ export default function ReviewsSection() {
       <AdminStatus cargando={cargando} error={error} onReintentar={cargar} />
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table">
+          {/* 0.14: 4 columnas para que quepa a 1280 px (antes 7) */}
+          <table className="admin-table admin-table--compacta admin-comentarios__tabla">
             <thead>
               <tr>
                 <th>Cliente</th>
-                <th>Calificación</th>
-                <th>Tipo / Plato</th>
-                <th>Comentario</th>
-                <th>Fecha</th>
+                <th>Reseña</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
@@ -224,9 +224,10 @@ export default function ReviewsSection() {
                       <div className="admin-table__client">
                         <strong className="admin-table__client-name">{item.autor}</strong>
                         <span>{item.correo}</span>
+                        <span className="admin-table__date">{formatDate(item.fecha)}</span>
                       </div>
                     </td>
-                    <td>
+                    <td className="admin-comentarios__resena">
                       <div className="admin-stars-display" style={{ color: "#b78103", fontWeight: 800 }}>
                         {"★".repeat(item.calificacion)}
                         <span style={{ color: "#a3908a" }}>
@@ -236,8 +237,7 @@ export default function ReviewsSection() {
                           ({item.calificacion}/5)
                         </span>
                       </div>
-                    </td>
-                    <td>
+                      <div className="admin-comentarios__etiquetas">
                       {item.tipo === "Producto" ? (
                         <div>
                           <span className="admin-badge admin-badge--info">Producto</span>
@@ -248,11 +248,11 @@ export default function ReviewsSection() {
                       ) : (
                         <span className="admin-badge admin-badge--neutral">General Café</span>
                       )}
-                    </td>
-                    <td>
+                      {item.verificada && <span className="admin-badge admin-badge--success">Compra verificada</span>}
+                      </div>
                       <div
                         style={{
-                          maxWidth: "340px",
+                          maxWidth: "380px",
                           whiteSpace: "normal",
                           fontSize: "0.88rem",
                           lineHeight: "1.4",
@@ -262,9 +262,6 @@ export default function ReviewsSection() {
                       >
                         "{item.comentario}"
                       </div>
-                    </td>
-                    <td>
-                      <span className="admin-table__date">{formatDate(item.fecha)}</span>
                     </td>
                     <td>
                       {item.visible ? (
@@ -298,7 +295,7 @@ export default function ReviewsSection() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="admin-table__empty">
+                  <td colSpan="4" className="admin-table__empty">
                     No se encontraron comentarios con los criterios seleccionados.
                   </td>
                 </tr>

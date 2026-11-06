@@ -2415,3 +2415,34 @@
   height: auto;
   line-height: 1.3;
 }
+
+/* ---- 0.14: Resumen y Comentarios caben a 1280 px ---- */
+.admin-resumen__celda {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.admin-resumen__tabla .admin-table__client,
+.admin-resumen__tabla .admin-table__client span {
+  white-space: normal;
+}
+
+/* El aviso de «sin reservas» se parte en líneas en vez de salirse de la tarjeta */
+.admin-table td.admin-table__empty {
+  white-space: normal;
+}
+
+.admin-comentarios__tabla td.admin-comentarios__resena {
+  white-space: normal;
+  min-width: 260px;
+}
+
+.admin-comentarios__etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.35rem 0;
+}
