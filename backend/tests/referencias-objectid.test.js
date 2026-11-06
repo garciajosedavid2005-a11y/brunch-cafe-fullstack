@@ -4,7 +4,7 @@ import { api } from './helpers/app.js'
 import { crearConSesion } from './helpers/usuarios.js'
 import Categoria from '../src/modulos/catalogo/categoria.model.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
-import DetallePedido from '../src/models/detallePedido.model.js'
+import DetallePedido from '../src/modulos/pedidos/detallePedido.model.js'
 import Comentario from '../src/modulos/catalogo/comentario.model.js'
 import { up, down } from '../src/migraciones/m06-referencias.js'
 

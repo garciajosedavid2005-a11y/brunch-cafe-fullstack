@@ -4,11 +4,11 @@ import {
     crearMetodoPago,
     actualizarMetodoPago,
     eliminarMetodoPago
-} from '../controllers/metodoPago.controller.js'
-import { validateToken } from '../middlewares/validateToken.js'
-import { requirePermission } from '../middlewares/requirePermission.js'
-import { validateSchema } from '../modulos/compartido/validator.middleware.js'
-import { crearMetodoPagoSchema, actualizarMetodoPagoSchema } from '../schema/metodoPago.schema.js'
+} from './metodoPago.controller.js'
+import { validateToken } from '../../middlewares/validateToken.js'
+import { requirePermission } from '../../middlewares/requirePermission.js'
+import { validateSchema } from '../compartido/validator.middleware.js'
+import { crearMetodoPagoSchema, actualizarMetodoPagoSchema } from './metodoPago.schema.js'
 
 const router = Router()
 

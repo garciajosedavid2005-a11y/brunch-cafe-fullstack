@@ -1,9 +1,9 @@
 import { Router } from 'express'
-import { listarPedidos, verPedido, cambiarEstadoPedido, cancelarPedido } from '../controllers/pedido.controller.js'
-import { validateToken } from '../middlewares/validateToken.js'
-import { requirePermission } from '../middlewares/requirePermission.js'
-import { validateSchema } from '../modulos/compartido/validator.middleware.js'
-import { cambiarEstadoPedidoSchema, cancelacionStaffSchema } from '../schema/pedido.schema.js'
+import { listarPedidos, verPedido, cambiarEstadoPedido, cancelarPedido } from './pedidosStaff.controller.js'
+import { validateToken } from '../../middlewares/validateToken.js'
+import { requirePermission } from '../../middlewares/requirePermission.js'
+import { validateSchema } from '../compartido/validator.middleware.js'
+import { cambiarEstadoPedidoSchema, cancelacionStaffSchema } from './pedido.schema.js'
 
 const router = Router()
 

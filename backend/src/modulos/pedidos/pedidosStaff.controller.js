@@ -1,13 +1,13 @@
 import mongoose from 'mongoose'
-import Pedido from '../models/pedido.model.js'
-import DetallePedido from '../models/detallePedido.model.js'
-import Evento from '../modulos/compartido/evento.model.js'
-import Estado from '../modulos/compartido/estado.model.js'
-import { filtrosPedidosSchema } from '../schema/pedido.schema.js'
-import { instanteLocal } from '../modulos/compartido/fechas.js'
-import { notFound } from '../modulos/compartido/errors.js'
-import { esEstadoFinal } from '../modulos/compartido/estados.js'
-import { cambiarEstado, codigoDestino, estadosDelTipo, opcionesDeCambio } from '../modulos/compartido/estados.service.js'
+import Pedido from './pedido.model.js'
+import DetallePedido from './detallePedido.model.js'
+import Evento from '../compartido/evento.model.js'
+import Estado from '../compartido/estado.model.js'
+import { filtrosPedidosSchema } from './pedido.schema.js'
+import { instanteLocal } from '../compartido/fechas.js'
+import { notFound } from '../compartido/errors.js'
+import { esEstadoFinal } from '../compartido/estados.js'
+import { cambiarEstado, codigoDestino, estadosDelTipo, opcionesDeCambio } from '../compartido/estados.service.js'
 
 const POBLAR = [
     ['usuario', 'nombre apellido correo telefono'],

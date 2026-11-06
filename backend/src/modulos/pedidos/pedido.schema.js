@@ -1,9 +1,9 @@
 import { z } from 'zod'
-import { CODIGOS_ESTADO } from '../modulos/compartido/estados.js'
-import { esFechaValida } from '../modulos/compartido/fechas.js'
+import { CODIGOS_ESTADO } from '../compartido/estados.js'
+import { esFechaValida } from '../compartido/fechas.js'
 
 // El cambio de estado de pedidos usa el esquema común (codigo | estado, motivo)
-export { cambioEstadoSchema as cambiarEstadoPedidoSchema } from '../modulos/compartido/cambioEstado.schema.js'
+export { cambioEstadoSchema as cambiarEstadoPedidoSchema } from '../compartido/cambioEstado.schema.js'
 
 const CODIGOS_PEDIDO = CODIGOS_ESTADO.pedido
 

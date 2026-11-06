@@ -4,7 +4,7 @@ import { requirePermission } from '../../middlewares/requirePermission.js'
 import { validateSchema } from '../../modulos/compartido/validator.middleware.js'
 import { cambioEstadoSchema } from '../../modulos/compartido/cambioEstado.schema.js'
 import { listarReservas, cambiarEstadoReserva } from '../../controllers/reserva.controller.js'
-import pedidoRoutes from '../pedido.routes.js'
+import pedidoRoutes from '../../modulos/pedidos/pedidosStaff.routes.js'
 
 // /api/v1/staff: operación del salón y la cocina, por permiso (no por rol)
 const router = Router()

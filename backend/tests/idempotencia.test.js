@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { crearConSesion } from './helpers/usuarios.js'
 import Categoria from '../src/modulos/catalogo/categoria.model.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
-import Pedido from '../src/models/pedido.model.js'
+import Pedido from '../src/modulos/pedidos/pedido.model.js'
 
 describe('Idempotency-Key en la creación de pedidos (0.9)', () => {
     let cliente

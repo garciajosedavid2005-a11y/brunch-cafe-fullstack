@@ -2,9 +2,9 @@
 // Los usan /api/v1/cliente/pedidos, /api/v1/cliente/metodos-pago y los alias /api/customer/*.
 import mongoose from 'mongoose';
 import { z } from 'zod';
-import Pedido from '../../models/pedido.model.js';
-import DetallePedido from '../../models/detallePedido.model.js';
-import MetodoPago from '../../models/metodoPago.model.js';
+import Pedido from './pedido.model.js';
+import DetallePedido from './detallePedido.model.js';
+import MetodoPago from './metodoPago.model.js';
 import Producto from '../catalogo/producto.model.js';
 import { STATUS_CLIENTE } from '../compartido/estados.js';
 import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../compartido/estados.service.js';

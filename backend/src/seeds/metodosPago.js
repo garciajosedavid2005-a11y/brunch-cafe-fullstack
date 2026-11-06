@@ -1,6 +1,6 @@
 // Métodos de pago iniciales. Se siembran con `npm run seed:base` (antes se
 // creaban en cada petición, lo que hacía reaparecer los que el admin borraba).
-import MetodoPago from '../models/metodoPago.model.js'
+import MetodoPago from '../modulos/pedidos/metodoPago.model.js'
 
 export const METODOS_PAGO = [
     {

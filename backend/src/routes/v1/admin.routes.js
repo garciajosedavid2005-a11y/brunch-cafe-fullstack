@@ -5,7 +5,7 @@ import { validateSchema } from '../../modulos/compartido/validator.middleware.js
 import { visibilidadComentarioSchema } from '../../modulos/catalogo/comentario.schema.js'
 import { listarComentariosAdmin, cambiarVisibilidadComentario, eliminarComentario } from '../../modulos/catalogo/comentario.controller.js'
 import categoriaRoutes from '../../modulos/catalogo/categoria.routes.js'
-import metodoPagoRoutes from '../metodoPago.routes.js'
+import metodoPagoRoutes from '../../modulos/pedidos/metodoPago.routes.js'
 import estadoRoutes from '../estado.routes.js'
 import rolRoutes from '../rol.routes.js'
 import permisoRoutes from '../permiso.routes.js'

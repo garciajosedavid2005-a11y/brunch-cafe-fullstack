@@ -1,7 +1,7 @@
-import MetodoPago from '../models/metodoPago.model.js'
-import Pedido from '../models/pedido.model.js'
-import { manejarError } from '../modulos/compartido/manejarError.js'
-import { slug, sinUndefined } from '../modulos/compartido/utils.js'
+import MetodoPago from './metodoPago.model.js'
+import Pedido from './pedido.model.js'
+import { manejarError } from '../compartido/manejarError.js'
+import { slug, sinUndefined } from '../compartido/utils.js'
 
 const COMPARACION = { locale: 'es', strength: 1 }
 

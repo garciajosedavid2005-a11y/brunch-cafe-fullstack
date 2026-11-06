@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import MetodoPago from '../src/models/metodoPago.model.js'
+import MetodoPago from '../src/modulos/pedidos/metodoPago.model.js'
 import { sembrarBase } from '../src/seeds/base.js'
 import { crearConSesion } from './helpers/usuarios.js'
 
