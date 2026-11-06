@@ -8,28 +8,8 @@ import {
 } from './errors.js'
 import { logger } from './logger.js'
 
-/**
- * TRANSITORIO (se retira al cerrar 0.11): muchos controladores todavía responden
- * `res.status(4xx).json({ message, errors })`. Este middleware intercepta esas
- * respuestas y las entrega con el formato único { error: { code, message, details } }.
- * En respuestas 5xx nunca se expone el mensaje original.
- */
-export const normalizarErroresLegados = (req, res, next) => {
-    const jsonOriginal = res.json.bind(res)
-    res.json = (cuerpo) => {
-        if (res.statusCode < 400 || (cuerpo && typeof cuerpo.error === 'object' && cuerpo.error !== null)) {
-            return jsonOriginal(cuerpo)
-        }
-        const status = res.statusCode
-        if (status >= 500) {
-            logger.error({ cuerpo, url: req.originalUrl }, 'Respuesta 5xx heredada')
-            return jsonOriginal(cuerpoError(codigoPorStatus(status), MENSAJE_INTERNO))
-        }
-        const message = cuerpo?.message || 'No fue posible completar la solicitud.'
-        return jsonOriginal(cuerpoError(codigoPorStatus(status), message, cuerpo?.errors))
-    }
-    next()
-}
+// 0.11: se retiró normalizarErroresLegados; los controladores responden ya con el
+// formato único { error: { code, message, details } } o lanzan AppError.
 
 export const rutaNoEncontrada = (req, res) => {
     res.status(404).json(cuerpoError('NOT_FOUND', `No existe la ruta ${req.method} ${req.originalUrl}.`))

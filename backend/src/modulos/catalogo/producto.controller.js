@@ -1,3 +1,4 @@
+import { cuerpoError } from '../compartido/errors.js'
 import mongoose from 'mongoose'
 import Categoria from './categoria.model.js'
 import Producto from './producto.model.js'
@@ -55,7 +56,7 @@ export const listarCatalogo = async (req, res) => {
 export const obtenerImagenMenu = async (req, res) => {
     try {
         const imagen = await MenuImage.findOne({ nombre: req.params.nombre }).select('contentType data')
-        if (!imagen) return res.status(404).json({ message: 'Imagen no encontrada' })
+        if (!imagen) return res.status(404).json(cuerpoError('NOT_FOUND', 'Imagen no encontrada'))
 
         res.set('Content-Type', imagen.contentType)
             .set('Cache-Control', 'public, max-age=3600')
@@ -81,11 +82,11 @@ export const crearProducto = async (req, res) => {
     try {
         const { categoriaId, ...datos } = req.body
         if (!mongoose.isValidObjectId(categoriaId)) {
-            return res.status(400).json({ message: 'La categoría seleccionada no es válida' })
+            return res.status(400).json(cuerpoError('BAD_REQUEST', 'La categoría seleccionada no es válida'))
         }
 
         const categoria = await Categoria.findById(categoriaId)
-        if (!categoria) return res.status(400).json({ message: 'La categoría seleccionada no existe' })
+        if (!categoria) return res.status(400).json(cuerpoError('BAD_REQUEST', 'La categoría seleccionada no existe'))
 
         // Código numérico (lo usan carrito y pedidos): contador atómico, sin carreras
         const ultimo = await Producto.findOne({ codigo: { $type: 'number' } }).sort({ codigo: -1 }).select('codigo')
@@ -109,16 +110,16 @@ export const crearProducto = async (req, res) => {
 export const actualizarProducto = async (req, res) => {
     try {
         const producto = await Producto.findById(req.params.id)
-        if (!producto) return res.status(404).json({ message: 'Producto no encontrado' })
+        if (!producto) return res.status(404).json(cuerpoError('NOT_FOUND', 'Producto no encontrado'))
 
         const { categoriaId, ...datos } = req.body
         const cambios = { ...datos }
         if (categoriaId !== undefined) {
             if (!mongoose.isValidObjectId(categoriaId)) {
-                return res.status(400).json({ message: 'La categoría seleccionada no es válida' })
+                return res.status(400).json(cuerpoError('BAD_REQUEST', 'La categoría seleccionada no es válida'))
             }
             const categoria = await Categoria.findById(categoriaId)
-            if (!categoria) return res.status(400).json({ message: 'La categoría seleccionada no existe' })
+            if (!categoria) return res.status(400).json(cuerpoError('BAD_REQUEST', 'La categoría seleccionada no existe'))
             cambios.categoria = categoria._id
         }
 
@@ -142,7 +143,7 @@ export const actualizarProducto = async (req, res) => {
 export const eliminarProducto = async (req, res) => {
     try {
         const producto = await Producto.findById(req.params.id)
-        if (!producto) return res.status(404).json({ message: 'Producto no encontrado' })
+        if (!producto) return res.status(404).json(cuerpoError('NOT_FOUND', 'Producto no encontrado'))
         await producto.deleteOne()
         await borrarImagenSubida(producto.imagen)
         res.json({ message: 'Producto eliminado' })

@@ -1,3 +1,4 @@
+import { cuerpoError } from '../compartido/errors.js'
 import { Router } from 'express'
 import { register, login, logout } from './auth.controller.js'
 import { validateSchema } from '../compartido/validator.middleware.js'
@@ -15,7 +16,7 @@ router.get('/me', validateToken, async (req, res) => {
   const usuario = await Usuario.findById(req.usuario.id)
     .select('-contraseña')
     .populate('rol')
-  if (!usuario) return res.status(404).json({ message: 'Usuario no encontrado.' })
+  if (!usuario) return res.status(404).json(cuerpoError('NOT_FOUND', 'Usuario no encontrado.'))
 
   return res.json({
     user: {

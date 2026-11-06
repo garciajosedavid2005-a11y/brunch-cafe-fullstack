@@ -1,3 +1,4 @@
+import { cuerpoError } from '../compartido/errors.js'
 import MetodoPago from './metodoPago.model.js'
 import Pedido from './pedido.model.js'
 import { manejarError } from '../compartido/manejarError.js'
@@ -37,12 +38,12 @@ export const crearMetodoPago = async (req, res) => {
 
         const identificador = slug(codigo || nombre, '-')
         if (!identificador) {
-            return res.status(400).json({ message: 'El nombre debe contener letras o números' })
+            return res.status(400).json(cuerpoError('BAD_REQUEST', 'El nombre debe contener letras o números'))
         }
 
         const existe = await MetodoPago.findOne({ nombre }).collation(COMPARACION)
         if (existe) {
-            return res.status(409).json({ message: 'Ya existe un método de pago con ese nombre' })
+            return res.status(409).json(cuerpoError('CONFLICT', 'Ya existe un método de pago con ese nombre'))
         }
 
         const metodo = await new MetodoPago({
@@ -62,14 +63,14 @@ export const crearMetodoPago = async (req, res) => {
 export const actualizarMetodoPago = async (req, res) => {
     try {
         const metodo = await MetodoPago.findById(req.params.id)
-        if (!metodo) return res.status(404).json({ message: 'Método de pago no encontrado' })
+        if (!metodo) return res.status(404).json(cuerpoError('NOT_FOUND', 'Método de pago no encontrado'))
 
         const { nombre, descripcion, icono, activo } = req.body
 
         if (nombre !== undefined) {
             const existe = await MetodoPago.findOne({ nombre, _id: { $ne: metodo._id } }).collation(COMPARACION)
             if (existe) {
-                return res.status(409).json({ message: 'Ya existe un método de pago con ese nombre' })
+                return res.status(409).json(cuerpoError('CONFLICT', 'Ya existe un método de pago con ese nombre'))
             }
         }
 
@@ -87,13 +88,11 @@ export const actualizarMetodoPago = async (req, res) => {
 export const eliminarMetodoPago = async (req, res) => {
     try {
         const metodo = await MetodoPago.findById(req.params.id)
-        if (!metodo) return res.status(404).json({ message: 'Método de pago no encontrado' })
+        if (!metodo) return res.status(404).json(cuerpoError('NOT_FOUND', 'Método de pago no encontrado'))
 
         const enUso = await Pedido.countDocuments({ metodoPago: metodo._id })
         if (enUso > 0) {
-            return res.status(400).json({
-                message: `No se puede eliminar: hay ${enUso} pedido(s) que lo usan. Puedes desactivarlo en su lugar`,
-            })
+            return res.status(400).json(cuerpoError('BAD_REQUEST', `No se puede eliminar: hay ${enUso} pedido(s) que lo usan. Puedes desactivarlo en su lugar`))
         }
 
         await metodo.deleteOne()

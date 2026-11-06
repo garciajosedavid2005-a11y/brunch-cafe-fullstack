@@ -1,3 +1,4 @@
+import { cuerpoError } from '../compartido/errors.js'
 import Categoria from './categoria.model.js'
 import Producto from './producto.model.js'
 import { manejarError } from '../compartido/manejarError.js'
@@ -34,7 +35,7 @@ export const crearCategoria = async (req, res) => {
 
         const existe = await Categoria.findOne({ nombre }).collation(COMPARACION)
         if (existe) {
-            return res.status(409).json({ message: 'Ya existe una categoría con ese nombre' })
+            return res.status(409).json(cuerpoError('CONFLICT', 'Ya existe una categoría con ese nombre'))
         }
 
         const categoria = await new Categoria({ nombre, descripcion }).save()
@@ -48,14 +49,14 @@ export const crearCategoria = async (req, res) => {
 export const actualizarCategoria = async (req, res) => {
     try {
         const categoria = await Categoria.findById(req.params.id)
-        if (!categoria) return res.status(404).json({ message: 'Categoría no encontrada' })
+        if (!categoria) return res.status(404).json(cuerpoError('NOT_FOUND', 'Categoría no encontrada'))
 
         const { nombre, descripcion } = req.body
 
         if (nombre !== undefined) {
             const existe = await Categoria.findOne({ nombre, _id: { $ne: categoria._id } }).collation(COMPARACION)
             if (existe) {
-                return res.status(409).json({ message: 'Ya existe una categoría con ese nombre' })
+                return res.status(409).json(cuerpoError('CONFLICT', 'Ya existe una categoría con ese nombre'))
             }
         }
 
@@ -73,14 +74,12 @@ export const actualizarCategoria = async (req, res) => {
 export const eliminarCategoria = async (req, res) => {
     try {
         const categoria = await Categoria.findById(req.params.id)
-        if (!categoria) return res.status(404).json({ message: 'Categoría no encontrada' })
+        if (!categoria) return res.status(404).json(cuerpoError('NOT_FOUND', 'Categoría no encontrada'))
 
         // No se puede borrar una categoría que todavía tiene productos
         const enUso = await Producto.countDocuments({ categoria: categoria._id })
         if (enUso > 0) {
-            return res.status(400).json({
-                message: `No se puede eliminar: hay ${enUso} producto(s) en esta categoría`,
-            })
+            return res.status(400).json(cuerpoError('BAD_REQUEST', `No se puede eliminar: hay ${enUso} producto(s) en esta categoría`))
         }
 
         await categoria.deleteOne()

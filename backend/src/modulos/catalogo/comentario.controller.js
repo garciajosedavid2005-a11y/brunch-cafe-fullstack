@@ -1,3 +1,4 @@
+import { cuerpoError } from '../compartido/errors.js';
 import { z } from 'zod';
 import Comentario from './comentario.model.js';
 import Producto from './producto.model.js';
@@ -78,7 +79,7 @@ export const listarComentariosAdmin = async (req, res, next) => {
 
 export const cambiarVisibilidadComentario = async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(404).json({ message: 'Comentario no encontrado.' });
+    return res.status(404).json(cuerpoError('NOT_FOUND', 'Comentario no encontrado.'));
   }
   try {
     const comentario = await Comentario.findByIdAndUpdate(
@@ -86,7 +87,7 @@ export const cambiarVisibilidadComentario = async (req, res, next) => {
       { visible: req.body.visible },
       { returnDocument: 'after', runValidators: true }
     );
-    if (!comentario) return res.status(404).json({ message: 'Comentario no encontrado.' });
+    if (!comentario) return res.status(404).json(cuerpoError('NOT_FOUND', 'Comentario no encontrado.'));
     return res.json({ id: comentario._id, visible: comentario.visible });
   } catch (error) {
     return next(error);
@@ -95,11 +96,11 @@ export const cambiarVisibilidadComentario = async (req, res, next) => {
 
 export const eliminarComentario = async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(404).json({ message: 'Comentario no encontrado.' });
+    return res.status(404).json(cuerpoError('NOT_FOUND', 'Comentario no encontrado.'));
   }
   try {
     const comentario = await Comentario.findByIdAndDelete(req.params.id);
-    if (!comentario) return res.status(404).json({ message: 'Comentario no encontrado.' });
+    if (!comentario) return res.status(404).json(cuerpoError('NOT_FOUND', 'Comentario no encontrado.'));
     return res.json({ message: 'Comentario eliminado.' });
   } catch (error) {
     return next(error);
@@ -122,10 +123,7 @@ export const crearComentario = async (req, res, next) => {
   const parsed = comentarioSchema.safeParse(req.body);
 
   if (!parsed.success) {
-    return res.status(400).json({
-      message: 'Revisa la calificación y el comentario.',
-      errors: parsed.error.flatten(),
-    });
+    return res.status(400).json(cuerpoError('BAD_REQUEST', 'Revisa la calificación y el comentario.', parsed.error.flatten()));
   }
 
   try {
@@ -135,7 +133,7 @@ export const crearComentario = async (req, res, next) => {
     if (datos.tipo === 'producto') {
       const producto = (await resolverProductos(Producto, [parsed.data]))(parsed.data);
       if (!producto) {
-        return res.status(400).json({ message: 'El producto seleccionado no existe en el menú.' });
+        return res.status(400).json(cuerpoError('BAD_REQUEST', 'El producto seleccionado no existe en el menú.'));
       }
       datos.producto = producto._id;
       datos.productoId = producto.codigo;

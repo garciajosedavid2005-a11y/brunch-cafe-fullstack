@@ -113,7 +113,7 @@ export const listarMetodosPagoActivos = async (req, res, next) => {
 export const crearPedido = async (req, res, next) => {
   const parsed = orderSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ message: 'Revisa los productos y datos de entrega.', errors: parsed.error.flatten() });
+    return res.status(400).json(cuerpoError('BAD_REQUEST', 'Revisa los productos y datos de entrega.', parsed.error.flatten()));
   }
 
   const horarios = await obtenerHorarios();
@@ -139,7 +139,7 @@ export const crearPedido = async (req, res, next) => {
     };
   });
   if (lines.some((line) => !line)) {
-    return res.status(400).json({ message: 'Uno o más productos ya no están disponibles en el menú.' });
+    return res.status(400).json(cuerpoError('BAD_REQUEST', 'Uno o más productos ya no están disponibles en el menú.'));
   }
   // Agotados: existen pero no se pueden pedir (el carrito pudo llenarse antes de que se agotaran)
   const agotados = products.filter((product) => product.disponible === false);
@@ -157,7 +157,7 @@ export const crearPedido = async (req, res, next) => {
       estadoPorCodigo('pedido', 'pendiente'),
       MetodoPago.findOne({ _id: parsed.data.metodoPagoId, activo: { $ne: false } }),
     ]);
-    if (!paymentMethod) return res.status(400).json({ message: 'El método de pago ya no está disponible. Actualiza la página y elige otro.' });
+    if (!paymentMethod) return res.status(400).json(cuerpoError('BAD_REQUEST', 'El método de pago ya no está disponible. Actualiza la página y elige otro.'));
 
     // Pedido, líneas (con nombre y precio del momento) y Evento inicial en una transacción (0.9):
     // si algo falla no queda nada a medias
@@ -201,14 +201,14 @@ export const crearPedido = async (req, res, next) => {
 
 export const verMiPedido = async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(404).json({ message: 'No se encontró el pedido.' });
+    return res.status(404).json(cuerpoError('NOT_FOUND', 'No se encontró el pedido.'));
   }
   try {
     const order = await Pedido.findOne({ _id: req.params.id, usuario: req.usuario.id })
       .populate('estado', POBLAR_ESTADO)
       .populate('metodoPago', 'nombre')
       .lean();
-    if (!order) return res.status(404).json({ message: 'No se encontró el pedido.' });
+    if (!order) return res.status(404).json(cuerpoError('NOT_FOUND', 'No se encontró el pedido.'));
     const details = await DetallePedido.find({ pedido: order._id }).lean();
     return res.json({ order: serializeOrder(order, details) });
   } catch (error) {
@@ -220,10 +220,10 @@ export const verMiPedido = async (req, res, next) => {
 // Requiere validateSchema(cancelacionClienteSchema) en la ruta
 export const cancelarMiPedido = async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(404).json({ message: 'No se encontró el pedido.' });
+    return res.status(404).json(cuerpoError('NOT_FOUND', 'No se encontró el pedido.'));
   }
   const order = await Pedido.findOne({ _id: req.params.id, usuario: req.usuario.id }).populate('estado', 'codigo');
-  if (!order) return res.status(404).json({ message: 'No se encontró el pedido.' });
+  if (!order) return res.status(404).json(cuerpoError('NOT_FOUND', 'No se encontró el pedido.'));
 
   await cambiarEstado({
     tipo: 'pedido',

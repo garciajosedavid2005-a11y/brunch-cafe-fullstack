@@ -7,11 +7,7 @@ import { config } from './config.js'
 import { logger } from './modulos/compartido/logger.js'
 import routes from './routes/index.routes.js'
 import v1Routes from './routes/v1.routes.js'
-import {
-    manejadorErrores,
-    normalizarErroresLegados,
-    rutaNoEncontrada,
-} from './modulos/compartido/errorHandler.js'
+import { manejadorErrores, rutaNoEncontrada } from './modulos/compartido/errorHandler.js'
 
 export const createApp = () => {
     const app = express()
@@ -44,7 +40,6 @@ export const createApp = () => {
     // 3 MB: una imagen de producto de 2 MB ocupa ~2,7 MB en base64 más el resto de campos
     app.use(express.json({ limit: '3mb' }))
     app.use(cookieParser())
-    app.use(normalizarErroresLegados)
 
     app.get('/api/health', (req, res) => {
         res.json({ status: 'ok', entorno: config.NODE_ENV })
