@@ -6,16 +6,22 @@
  * Uso:
  *   const ref = useAnimacionEntrada();
  *   <div ref={ref} className="animar">...</div>
+ *
+ * Devuelve un "callback ref": se engancha cuando el elemento aparece en el DOM,
+ * aunque sea después del primer render (p. ej. una sección que espera datos).
+ * Antes era un useRef + useEffect de una sola vez: si el componente empezaba
+ * devolviendo null, el observador nunca se creaba y la sección quedaba con
+ * opacity:0 (bloque vacío en "Nuestros Destacados").
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 
 const useAnimacionEntrada = (opciones = {}) => {
-  const ref = useRef(null);
+  const [elemento, setElemento] = useState(null);
+  const { threshold, rootMargin } = opciones;
 
   useEffect(() => {
-    const elemento = ref.current;
-    if (!elemento) return;
+    if (!elemento) return undefined;
 
     const observador = new IntersectionObserver(
       ([entrada]) => {
@@ -25,16 +31,16 @@ const useAnimacionEntrada = (opciones = {}) => {
         }
       },
       {
-        threshold: opciones.threshold || 0.15,
-        rootMargin: opciones.rootMargin || "0px",
+        threshold: threshold || 0.15,
+        rootMargin: rootMargin || "0px",
       }
     );
 
     observador.observe(elemento);
     return () => observador.disconnect();
-  }, [opciones.threshold, opciones.rootMargin]);
+  }, [elemento, threshold, rootMargin]);
 
-  return ref;
+  return setElemento;
 };
 
 export default useAnimacionEntrada;

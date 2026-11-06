@@ -3,23 +3,29 @@ import { Link } from "react-router-dom";
 import { apiRequest } from "../../../services/api";
 import { useAuth } from "../../../context/useAuth";
 import SectionHeading from "../SectionHeading";
+import { useDialogo } from "../../../context/useDialogo";
+import { hoyLocal, formatearFechaCalendario, formatearHoraTexto } from "../../../utils/fechas";
+import { useHorarios } from "../../../hooks/useHorarios";
+import { horasReserva, opcionesDeHora } from "../../../utils/horarios";
 
-const today = new Date();
-const minimumDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-const reservationStatus = { pending: "Pendiente de aprobación", confirmed: "Confirmada", cancelled: "Cancelada" };
-
-function getAvailableTimes(date) {
-  if (!date) return [];
-  const [year, month, day] = date.split("-").map(Number);
-  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-  const lastHour = weekday === 0 || weekday === 6 ? 11 : 12;
-  return Array.from({ length: lastHour - 7 }, (_, index) => `${String(index + 8).padStart(2, "0")}:00`);
-}
+const minimumDate = hoyLocal(); // día de Bogotá
+const reservationStatus = {
+  pending: "Pendiente de aprobación",
+  confirmed: "Confirmada",
+  seated: "En curso",
+  completed: "Completada",
+  cancelled: "Cancelada",
+  no_show: "No asistió",
+};
+// El cliente solo puede editar o cancelar mientras la reserva está pendiente o confirmada
+const editableStatuses = ["pending", "confirmed"];
 
 function createEditForm(reservation, user) {
   return {
     nombre: reservation.nombre || `${user?.nombre || ""} ${user?.apellido || ""}`.trim(),
     correo: reservation.correo || user?.email || "",
+    // Las reservas anteriores a 0.8 no tienen teléfono: se propone el del perfil
+    telefono: reservation.telefono || user?.telefono || "",
     motivo: reservation.motivo || "",
     personas: String(reservation.personas || 1),
     fecha: new Date(reservation.fecha).toISOString().slice(0, 10),
@@ -28,10 +34,7 @@ function createEditForm(reservation, user) {
   };
 }
 
-function formatTime(time) {
-  const hour = Number(time.slice(0, 2));
-  return hour === 12 ? "12:00 p. m." : `${hour > 12 ? hour - 12 : hour}:00 a. m.`;
-}
+const formatTime = formatearHoraTexto;
 
 export default function ReservationsSection() {
   const { user } = useAuth();
@@ -41,9 +44,11 @@ export default function ReservationsSection() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState({ message: "", error: false });
+  const { confirmar } = useDialogo();
+  const { horarios, ahora } = useHorarios();
 
   useEffect(() => {
-    apiRequest("/customer/reservations")
+    apiRequest("/v1/cliente/reservas")
       .then(({ reservations: customerReservations }) => setReservations(customerReservations))
       .catch((error) => setNotice({ message: error.message, error: true }))
       .finally(() => setLoading(false));
@@ -65,7 +70,7 @@ export default function ReservationsSection() {
     setSaving(true);
     setNotice({ message: "", error: false });
     try {
-      const { reservation } = await apiRequest(`/customer/reservations/${editingId}`, {
+      const { reservation } = await apiRequest(`/v1/cliente/reservas/${editingId}`, {
         method: "PATCH",
         body: JSON.stringify({ ...editForm, personas: Number(editForm.personas) }),
       });
@@ -81,9 +86,17 @@ export default function ReservationsSection() {
   };
 
   const cancelReservation = async (id) => {
+    const { confirmado } = await confirmar({
+      titulo: "Cancelar reserva",
+      mensaje: "¿Estás seguro de que deseas cancelar esta reserva?",
+      confirmarTexto: "Sí, cancelar reserva",
+      cancelarTexto: "Volver",
+      peligroso: true,
+    });
+    if (!confirmado) return;
     setNotice({ message: "", error: false });
     try {
-      const { reservation } = await apiRequest(`/customer/reservations/${id}/cancel`, { method: "PATCH" });
+      const { reservation } = await apiRequest(`/v1/cliente/reservas/${id}/cancelar`, { method: "PATCH" });
       setReservations((current) => current.map((item) => item._id === id ? reservation : item));
       if (editingId === id) {
         setEditingId("");
@@ -113,11 +126,11 @@ export default function ReservationsSection() {
             <div className="dashboard-reservation">
               <div>
                 <span className={`dashboard-status status-${reservation.status}`}>{reservationStatus[reservation.status] || reservation.status}</span>
-                <h3>{new Intl.DateTimeFormat("es-CO", { dateStyle: "long", timeZone: "UTC" }).format(new Date(reservation.fecha))} · {formatTime(reservation.hora)}</h3>
+                <h3>{formatearFechaCalendario(reservation.fecha, "long")} · {formatTime(reservation.hora)}</h3>
                 <p>{reservation.nombre || `${reservation.user?.nombre || user?.nombre || ""} ${reservation.user?.apellido || user?.apellido || ""}`.trim()} · {reservation.correo || reservation.user?.email || user?.email}</p>
                 <p><strong>Motivo:</strong> {reservation.motivo || "No especificado"} · {reservation.personas} {reservation.personas === 1 ? "persona" : "personas"}{reservation.observaciones ? ` · ${reservation.observaciones}` : ""}</p>
               </div>
-              {reservation.status !== "cancelled" && (
+              {editableStatuses.includes(reservation.status) && (
                 <div className="dashboard-reservation__actions">
                   <button className="dashboard-button dashboard-button--secondary" type="button" onClick={() => beginEditing(reservation)}>
                     Editar
@@ -133,13 +146,14 @@ export default function ReservationsSection() {
                 <label>Nombre<input name="nombre" value={editForm.nombre} onChange={updateEditField} required minLength={3} maxLength={120} /></label>
                 <label>Correo electrónico<input name="correo" type="email" value={editForm.correo} onChange={updateEditField} required maxLength={254} /></label>
                 <label>Motivo<input name="motivo" value={editForm.motivo} onChange={updateEditField} required minLength={3} maxLength={120} /></label>
+                <label>Teléfono<input name="telefono" type="tel" value={editForm.telefono} onChange={updateEditField} required maxLength={30} autoComplete="tel" /></label>
                 <label>Personas<input name="personas" type="number" min="1" max="20" value={editForm.personas} onChange={updateEditField} required /></label>
                 <label>Fecha<input name="fecha" type="date" min={minimumDate} value={editForm.fecha} onChange={updateEditField} required /></label>
                 <label>Hora
                   <select name="hora" value={editForm.hora} onChange={updateEditField} required>
                     <option value="">Selecciona una hora</option>
-                    {getAvailableTimes(editForm.fecha).map((time) => (
-                      <option key={time} value={time}>{formatTime(time)}</option>
+                    {opcionesDeHora(horasReserva(horarios, editForm.fecha, ahora)).map((opcion) => (
+                      <option key={opcion.valor} value={opcion.valor}>{opcion.etiqueta}</option>
                     ))}
                   </select>
                 </label>

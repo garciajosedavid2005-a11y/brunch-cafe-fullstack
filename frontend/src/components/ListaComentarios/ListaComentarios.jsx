@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiRequest } from "../../services/api";
 import "./ListaComentarios.css";
+import { formatearFecha } from "../../utils/fechas";
 
 const Estrellas = ({ calificacion }) => (
   <div className="lista-comentarios__estrellas" aria-label={`${calificacion} de 5 estrellas`}>
@@ -25,7 +26,7 @@ const ListaComentarios = () => {
 
   useEffect(() => {
     let active = true;
-    apiRequest("/comentarios")
+    apiRequest("/v1/comentarios")
       .then(({ reviews: publishedReviews }) => {
         if (active) setReviews(publishedReviews);
       })
@@ -74,9 +75,10 @@ const ListaComentarios = () => {
                     <Estrellas calificacion={review.calificacion} />
                   </div>
                   {review.producto && <p className="lista-comentarios__producto">Sobre: {review.producto}</p>}
+                  {review.verificada && <p className="lista-comentarios__verificada">Compra verificada</p>}
                   <p className="lista-comentarios__comentario">{review.comentario}</p>
                   <time className="lista-comentarios__fecha" dateTime={review.createdAt}>
-                    {new Intl.DateTimeFormat("es-CO", { dateStyle: "medium" }).format(new Date(review.createdAt))}
+                    {formatearFecha(review.createdAt)}
                   </time>
                 </article>
               </div>

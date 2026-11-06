@@ -4,22 +4,35 @@ import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
 import { formatCurrency } from "../adminFormat";
 import { apiAssetUrl } from "../../../services/api";
+import { useDialogo } from "../../../context/useDialogo";
+
+// Mismo límite que el backend (2 MB por imagen; el cuerpo admite 3 MB)
+const MAX_BYTES_IMAGEN = 2 * 1024 * 1024;
+const TIPOS_IMAGEN = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+// "22000", "22.000", "$ 22.000" → 22000. Decimales, negativos o texto → null
+// (antes se quitaban todos los caracteres no numéricos: "12.500,5" se guardaba como 125005)
+const leerPrecio = (texto) => {
+  const limpio = texto.replace(/[$\s]/g, "");
+  return /^(\d+|\d{1,3}(\.\d{3})+)$/.test(limpio) ? Number(limpio.replace(/\./g, "")) : null;
+};
+const megas = (bytes) => (bytes / (1024 * 1024)).toLocaleString("es-CO", { maximumFractionDigits: 1 });
 
 export default function ProductsSection() {
   const { items: productos, cargando, error, guardando, cargar, crear, actualizar, eliminar } =
-    useAdminResource("/productos");
+    useAdminResource("/v1/admin/productos");
   const {
     items: categorias,
     cargando: cargandoCategorias,
     error: errorCategorias,
     cargar: cargarCategorias,
-  } = useAdminResource("/categorias");
+  } = useAdminResource("/v1/admin/categorias");
   const [busqueda, setBusqueda] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("Todas");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [productoEnEdicion, setProductoEnEdicion] = useState(null); // null = nuevo
   const [productoAEliminar, setProductoAEliminar] = useState(null);
   const fileInputRef = useRef(null);
+  const { avisar } = useDialogo();
 
   // Formulario local
   const [formData, setFormData] = useState({
@@ -33,16 +46,26 @@ export default function ProductsSection() {
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({
-          ...prev,
-          imagen: reader.result,
-        }));
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    // Se valida antes de leerla: así no viaja al servidor una imagen que rechazaría
+    const problema = !TIPOS_IMAGEN.includes(file.type)
+      ? "El archivo debe ser una imagen PNG, JPG, WEBP o GIF."
+      : file.size > MAX_BYTES_IMAGEN
+        ? `La imagen pesa ${megas(file.size)} MB y el máximo es 2 MB. Redúcela o comprímela e inténtalo de nuevo.`
+        : "";
+    if (problema) {
+      e.target.value = "";
+      avisar({ tipo: "error", titulo: "Imagen no válida", mensaje: problema });
+      return;
     }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData((prev) => ({
+        ...prev,
+        imagen: reader.result,
+      }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleRemoveImage = () => {
@@ -85,8 +108,16 @@ export default function ProductsSection() {
     e.preventDefault();
     if (!formData.nombre.trim() || !formData.precio.trim()) return;
 
-    const precio = Number(formData.precio.replace(/[^\d]/g, ""));
-    if (!Number.isSafeInteger(precio) || precio < 0 || !formData.categoria) return;
+    const precio = leerPrecio(formData.precio);
+    if (precio === null || !Number.isSafeInteger(precio)) {
+      await avisar({
+        tipo: "error",
+        titulo: "Precio no válido",
+        mensaje: "El precio debe ser un número entero de pesos, sin decimales (por ejemplo 22000 o 22.000).",
+      });
+      return;
+    }
+    if (!formData.categoria) return;
     const datos = {
       ...formData,
       precio,
@@ -106,6 +137,11 @@ export default function ProductsSection() {
 
   const handleToggleDestacado = async (producto) => {
     await actualizar(producto.id, { destacado: !producto.destacado });
+  };
+
+  // Agotado ↔ disponible (el backend lo saca del menú y rechaza pedidos con él)
+  const handleToggleDisponible = async (producto) => {
+    await actualizar(producto.id, { disponible: !producto.disponible });
   };
 
   // Filtrado
@@ -179,12 +215,12 @@ export default function ProductsSection() {
       {/* TABLA DE PRODUCTOS */}
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table">
+          <table className="admin-table admin-table--compacta admin-products__tabla">
             <thead>
               <tr>
                 <th>Plato / Producto</th>
-                <th>Categoría</th>
                 <th>Precio</th>
+                <th>Disponible</th>
                 <th>Destacado</th>
                 <th>Acciones</th>
               </tr>
@@ -192,7 +228,7 @@ export default function ProductsSection() {
             <tbody>
               {productosFiltrados.length > 0 ? (
                 productosFiltrados.map((prod) => (
-                  <tr key={prod.id}>
+                  <tr key={prod.id} className={prod.disponible ? "" : "admin-products__fila--agotada"}>
                     <td>
                       <div className="admin-product-cell">
                         {prod.imagen ? (
@@ -214,16 +250,32 @@ export default function ProductsSection() {
                           <span className="admin-product-desc-preview">
                             {prod.descripcion}
                           </span>
+                          <span className="admin-products__etiquetas">
+                            <span className="admin-badge admin-badge--neutral">{prod.categoria}</span>
+                            {!prod.disponible && <span className="admin-badge admin-badge--danger">Agotado</span>}
+                          </span>
                         </div>
                       </div>
                     </td>
                     <td>
-                      <span className="admin-badge admin-badge--neutral">
-                        {prod.categoria}
-                      </span>
+                      <span className="admin-table__amount">{formatCurrency(prod.precio)}</span>
                     </td>
                     <td>
-                      <span className="admin-table__amount">{formatCurrency(prod.precio)}</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={prod.disponible}
+                        aria-label={`Disponible: ${prod.nombre}`}
+                        title={prod.disponible ? "Marcar como agotado (sale del menú)" : "Marcar como disponible (vuelve al menú)"}
+                        className="admin-switch"
+                        disabled={guardando}
+                        onClick={() => handleToggleDisponible(prod)}
+                      >
+                        <span className="admin-switch__pista" aria-hidden="true">
+                          <span className="admin-switch__perilla" />
+                        </span>
+                        <span className="admin-switch__texto">{prod.disponible ? "Sí" : "No"}</span>
+                      </button>
                     </td>
                     <td>
                       <button
@@ -367,7 +419,8 @@ export default function ProductsSection() {
                       <input
                         type="file"
                         ref={fileInputRef}
-                        accept="image/*"
+                        accept={TIPOS_IMAGEN.join(",")}
+                        aria-label="Imagen del producto"
                         style={{ display: "none" }}
                         onChange={handleFileChange}
                       />
@@ -403,7 +456,7 @@ export default function ProductsSection() {
                             Haz clic para subir desde tu equipo
                           </span>
                           <span className="admin-file-dropzone__hint">
-                            Formatos PNG, JPG, WEBP recomendados
+                            PNG, JPG, WEBP o GIF · máximo 2 MB
                           </span>
                         </div>
                       )}

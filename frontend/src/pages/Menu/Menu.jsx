@@ -7,9 +7,10 @@ import "./Menu.css";
 
 const ITEMS_POR_PAGINA = 8;
 
+// Los enlaces /menu#producto-<codigo> usan el código visible del producto
 function getVisibleCountForHash(hash, menu) {
-  const productId = Number(hash.replace("#producto-", ""));
-  const productIndex = menu.findIndex((product) => product.id === productId);
+  const codigo = Number(hash.replace("#producto-", ""));
+  const productIndex = menu.findIndex((product) => product.codigo === codigo);
   if (productIndex === -1) return ITEMS_POR_PAGINA;
   return Math.ceil((productIndex + 1) / ITEMS_POR_PAGINA) * ITEMS_POR_PAGINA;
 }
@@ -23,13 +24,15 @@ const Menu = () => {
   const [categoriaActiva, setCategoriaActiva] = useState("Todo");
   const [visibleCount, setVisibleCount] = useState(ITEMS_POR_PAGINA);
   const [productRatings, setProductRatings] = useState({});
+  // Cambiarlo vuelve a pedir el menú (botón "Reintentar")
+  const [intento, setIntento] = useState(0);
   const heroRef = useAnimacionEntrada();
   const categoriasRef = useAnimacionEntrada();
   const gridRef = useAnimacionEntrada();
 
   useEffect(() => {
     let active = true;
-    apiRequest("/productos/menu")
+    apiRequest("/v1/catalogo")
       .then(({ productos, categorias: categoriasMenu }) => {
         if (!active) return;
         setMenu(productos);
@@ -46,13 +49,14 @@ const Menu = () => {
     return () => {
       active = false;
     };
-  }, [location.hash]);
+  }, [location.hash, intento]);
 
   useEffect(() => {
-    apiRequest("/comentarios/product-ratings")
+    apiRequest("/v1/comentarios/calificaciones")
       .then(({ productRatings: ratings }) => {
-        setProductRatings(Object.fromEntries(ratings.map(({ productoId, average, count }) => [
-          productoId,
+        // Indexadas por el ObjectId del producto (el `id` del catálogo)
+        setProductRatings(Object.fromEntries(ratings.map(({ productoRef, average, count }) => [
+          productoRef,
           { average, count },
         ])));
       })
@@ -83,6 +87,12 @@ const Menu = () => {
   });
 
   const productosVisibles = productosFiltrados.slice(0, visibleCount);
+
+  const reintentar = () => {
+    setLoadingMenu(true);
+    setMenuError("");
+    setIntento((n) => n + 1);
+  };
 
   const manejarCategoria = (categoria) => {
     setCategoriaActiva(categoria);
@@ -124,8 +134,18 @@ const Menu = () => {
 
       <section ref={gridRef} className="menu-grid animar">
         {loadingMenu && <p role="status">Cargando menú...</p>}
-        {menuError && <p role="alert">{menuError}</p>}
-        {!loadingMenu && !menuError && productosVisibles.length === 0 && (
+        {!loadingMenu && menuError && (
+          <div role="alert">
+            <p>No pudimos cargar el menú. {menuError}</p>
+            <button type="button" className="menu-ver-mas__boton" onClick={reintentar}>
+              Reintentar
+            </button>
+          </div>
+        )}
+        {!loadingMenu && !menuError && menu.length === 0 && (
+          <p role="status">Todavía no hay productos en el menú. Vuelve pronto.</p>
+        )}
+        {!loadingMenu && !menuError && menu.length > 0 && productosVisibles.length === 0 && (
           <p>En este momento no hay productos disponibles en esta categoría.</p>
         )}
         {productosVisibles.map((producto, index) => {
@@ -133,6 +153,7 @@ const Menu = () => {
             <TarjetaMenu
               key={producto.id}
               id={producto.id}
+              codigo={producto.codigo}
               nombre={producto.nombre}
               descripcion={producto.descripcion}
               precio={producto.precio}

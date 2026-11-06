@@ -261,7 +261,14 @@
   color: #346d34;
 }
 
-.status-preparing {
+.status-completed {
+  background: #e8f4e8;
+  color: #346d34;
+}
+
+.status-preparing,
+.status-on_the_way,
+.status-seated {
   background: #eaf1fa;
   color: #345b88;
 }
@@ -269,6 +276,11 @@
 .status-cancelled {
   background: #fbe9e8;
   color: #a23c36;
+}
+
+.status-no_show {
+  background: #f0f0f0;
+  color: #5f5f5f;
 }
 
 .dashboard-order-items {
@@ -402,7 +414,7 @@
 
 .dashboard-rating button.is-selected,
 .dashboard-stars {
-  color: #cc8a20;
+  color: #9a6408; /* antes #cc8a20: 2.9:1 */
 }
 
 .dashboard-character-count {
@@ -584,4 +596,97 @@
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+/* ---- Seguridad y configuración (0.7b) ---- */
+.dashboard-account {
+  margin-bottom: 1.2rem;
+}
+
+.dashboard-account h3 {
+  margin: 0 0 0.8rem;
+  font-size: 1.05rem;
+  color: #2c0703;
+}
+
+.dashboard-account__datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.8rem 1.4rem;
+  margin: 0;
+}
+
+.dashboard-account__datos dt {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b4f49;
+}
+
+.dashboard-account__datos dd {
+  margin: 0.15rem 0 0;
+  color: #2c0703;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-account__ayuda {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #5c4540;
+}
+
+.dashboard-field-error {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #a1261e;
+}
+
+.dashboard-form input[aria-invalid="true"] {
+  border-color: #a1261e;
+}
+
+/* ---- Staff en /cuenta (0.7b) ---- */
+.customer-dashboard__rol {
+  display: inline-block;
+  margin: 0.2rem 0 0.4rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: #890620;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.customer-dashboard__aviso-staff {
+  border-left: 4px solid #890620;
+}
+
+/* Marca de compra verificada en Mis comentarios (0.12) */
+.dashboard-review__verificada {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #e6f4ea;
+  color: #1f5a2c;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dashboard-review-edit {
+  margin-top: 0.75rem;
+}
+
+.dashboard-review__calificacion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.dashboard-review__acciones {
+  margin-top: 0.75rem;
 }

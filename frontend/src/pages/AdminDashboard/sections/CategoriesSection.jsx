@@ -5,7 +5,7 @@ import AdminStatus from "../components/AdminStatus";
 
 export default function CategoriesSection() {
   const { items: categorias, cargando, error, guardando, cargar, crear, actualizar, eliminar } =
-    useAdminResource("/categorias");
+    useAdminResource("/v1/admin/categorias");
   const [busqueda, setBusqueda] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [categoriaEnEdicion, setCategoriaEnEdicion] = useState(null); // null = crear nueva

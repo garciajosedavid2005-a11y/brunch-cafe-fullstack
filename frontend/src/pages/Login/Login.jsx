@@ -136,16 +136,9 @@ const Login = () => {
             </div>
 
             <div className="auth-utilidades auth-animar-item auth-delay-5">
-              <a
-                href="#recuperar-contrasena"
-                className="auth-link-olvido"
-                onClick={(e) => {
-                  e.preventDefault();
-                  alert("Te enviaremos un correo con las instrucciones para restablecer tu contraseña.");
-                }}
-              >
+              <Link to="/recuperar-contrasena" className="auth-link-olvido">
                 ¿Olvidaste tu contraseña?
-              </a>
+              </Link>
             </div>
 
             <div className="auth-animar-item auth-delay-6">

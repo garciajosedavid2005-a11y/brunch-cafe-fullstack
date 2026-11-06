@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { ShoppingBag, CalendarDays, Star, ArrowRight } from "lucide-react";
-import { adminApi } from "../../../services/adminApi";
+import { api } from "../../../services/api";
 import AdminStatus from "../components/AdminStatus";
-import { formatClock, formatCurrency, formatDate } from "../adminFormat";
+import { formatClock, formatCurrency, formatDate, formatCalendarDate } from "../adminFormat";
+import { hoyLocal, fechaLocal } from "../../../utils/fechas";
 
 const cargarDatosResumen = () => Promise.all([
-  adminApi.get("/pedidos"),
-  adminApi.get("/reservas"),
-  adminApi.get("/comentarios/admin"),
+  api.get("/v1/staff/pedidos"),
+  api.get("/v1/staff/reservas"),
+  api.get("/v1/admin/comentarios"),
 ]);
 
 export default function OverviewSection({ onNavigateTab }) {
@@ -45,8 +46,9 @@ export default function OverviewSection({ onNavigateTab }) {
     };
   }, []);
 
-  const hoy = new Date().toLocaleDateString("en-CA");
-  const pedidosHoy = datos.pedidos.filter((pedido) => new Date(pedido.fecha).toLocaleDateString("en-CA") === hoy);
+  // "Hoy" es el día de Bogotá, no el del navegador
+  const hoy = hoyLocal();
+  const pedidosHoy = datos.pedidos.filter((pedido) => fechaLocal(pedido.fecha) === hoy);
   const reservasPendientes = datos.reservas.filter((reserva) => reserva.estado.toLowerCase().includes("pendiente"));
   const promedio = datos.comentarios.length
     ? (datos.comentarios.reduce((total, item) => total + item.calificacion, 0) / datos.comentarios.length).toFixed(1)
@@ -88,7 +90,7 @@ export default function OverviewSection({ onNavigateTab }) {
           </div>
           <div className="admin-kpi-card__info">
             <span className="admin-kpi-card__label">Pedidos del Día</span>
-            <h3 className="admin-kpi-card__value">{pedidosHoy.length} pedidos</h3>
+            <h3 className="admin-kpi-card__value">{pedidosHoy.length} {pedidosHoy.length === 1 ? "pedido" : "pedidos"}</h3>
             <span className="admin-kpi-card__sub">{formatCurrency(pedidosHoy.reduce((total, pedido) => total + pedido.total, 0))} hoy</span>
           </div>
         </button>
@@ -125,7 +127,7 @@ export default function OverviewSection({ onNavigateTab }) {
           <div className="admin-kpi-card__info">
             <span className="admin-kpi-card__label">Satisfacción Clientes</span>
             <h3 className="admin-kpi-card__value">{promedio} ★</h3>
-            <span className="admin-kpi-card__sub">{datos.comentarios.length} opiniones</span>
+            <span className="admin-kpi-card__sub">{datos.comentarios.length} {datos.comentarios.length === 1 ? "opinión" : "opiniones"}</span>
           </div>
         </button>
       </div>
@@ -150,35 +152,34 @@ export default function OverviewSection({ onNavigateTab }) {
             </button>
           </div>
 
+          {/* 0.14: 2 columnas para que quepa en la tarjeta (media pantalla a 1280 px) */}
           <div className="admin-table-container">
-            <table className="admin-table">
+            <table className="admin-table admin-table--compacta admin-resumen__tabla">
               <thead>
                 <tr>
-                  <th>Código</th>
-                  <th>Cliente</th>
+                  <th>Pedido</th>
                   <th>Total</th>
-                  <th>Estado</th>
                 </tr>
               </thead>
               <tbody>
                 {pedidosRecientes.map((pedido) => (
                   <tr key={pedido.id}>
                     <td>
-                      <span className="admin-table__code">{pedido.codigo}</span>
-                    </td>
-                    <td>
-                      <div className="admin-table__client">
-                        <strong>{pedido.cliente}</strong>
-                        <span>{pedido.barrio}</span>
+                      <div className="admin-resumen__celda">
+                        <span className="admin-table__code">{pedido.codigo}</span>
+                        <div className="admin-table__client">
+                          <strong>{pedido.cliente}</strong>
+                          <span>{pedido.barrio}</span>
+                        </div>
                       </div>
                     </td>
                     <td>
-                      <span className="admin-table__amount">{formatCurrency(pedido.total)}</span>
-                    </td>
-                    <td>
-                      <span className={`admin-badge ${getBadgeClass(pedido.estado)}`}>
-                        {pedido.estado}
-                      </span>
+                      <div className="admin-resumen__celda">
+                        <span className="admin-table__amount">{formatCurrency(pedido.total)}</span>
+                        <span className={`admin-badge ${getBadgeClass(pedido.estado)}`}>
+                          {pedido.estado}
+                        </span>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -205,13 +206,11 @@ export default function OverviewSection({ onNavigateTab }) {
           </div>
 
           <div className="admin-table-container">
-            <table className="admin-table">
+            <table className="admin-table admin-table--compacta admin-resumen__tabla">
               <thead>
                 <tr>
-                  <th>Cliente</th>
-                  <th>Fecha/Hora</th>
-                  <th>Personas</th>
-                  <th>Estado</th>
+                  <th>Reserva</th>
+                  <th>Fecha</th>
                 </tr>
               </thead>
               <tbody>
@@ -222,27 +221,25 @@ export default function OverviewSection({ onNavigateTab }) {
                         <div className="admin-table__client">
                           <strong>{reserva.cliente}</strong>
                           <span>{reserva.motivo}</span>
+                          <span>{reserva.personas} {reserva.personas === 1 ? "persona" : "personas"}</span>
                         </div>
                       </td>
                       <td>
-                        <div className="admin-table__schedule">
-                          <strong>{formatDate(reserva.fecha)}</strong>
-                          <span>{formatClock(reserva.hora)}</span>
+                        <div className="admin-resumen__celda">
+                          <div className="admin-table__schedule">
+                            <strong>{formatCalendarDate(reserva.fecha)}</strong>
+                            <span>{formatClock(reserva.hora)}</span>
+                          </div>
+                          <span className={`admin-badge ${getBadgeClass(reserva.estado)}`}>
+                            {reserva.estado}
+                          </span>
                         </div>
-                      </td>
-                      <td>
-                        <strong className="admin-table__text-dark">{reserva.personas} pers.</strong>
-                      </td>
-                      <td>
-                        <span className={`admin-badge ${getBadgeClass(reserva.estado)}`}>
-                          {reserva.estado}
-                        </span>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="4" className="admin-table__empty">
+                    <td colSpan="2" className="admin-table__empty">
                       No hay reservas pendientes en este momento.
                     </td>
                   </tr>

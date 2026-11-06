@@ -1,18 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
-import { adminApi } from "../../../services/adminApi";
+import { api } from "../../../services/api";
+import { useDialogo } from "../../../context/useDialogo";
 
 export default function useAdminResource(ruta) {
   const [items, setItems] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const { avisar } = useDialogo();
 
   const cargar = useCallback(async () => {
     setCargando(true);
     setError("");
 
     try {
-      const datos = await adminApi.get(ruta);
+      const datos = await api.get(ruta);
       setItems(datos);
     } catch (e) {
       setError(e.message);
@@ -23,7 +25,7 @@ export default function useAdminResource(ruta) {
 
   useEffect(() => {
     let active = true;
-    adminApi.get(ruta)
+    api.get(ruta)
       .then((datos) => {
         if (active) setItems(datos);
       })
@@ -39,13 +41,13 @@ export default function useAdminResource(ruta) {
     };
   }, [ruta]);
 
-  // Ejecuta una acción; si falla avisa con el mensaje del backend y devuelve null
+  // Ejecuta una acción; si falla muestra el mensaje del backend en un diálogo y devuelve null
   const ejecutar = async (accion) => {
     setGuardando(true);
     try {
       return await accion();
     } catch (e) {
-      window.alert(e.message);
+      await avisar({ tipo: "error", titulo: "No se pudo completar la acción", mensaje: e.message });
       return null;
     } finally {
       setGuardando(false);
@@ -54,28 +56,28 @@ export default function useAdminResource(ruta) {
 
   const crear = (datos) =>
     ejecutar(async () => {
-      const nuevo = await adminApi.post(ruta, datos);
+      const nuevo = await api.post(ruta, datos);
       setItems((prev) => [...prev, nuevo]);
       return nuevo;
     });
 
   const actualizar = (id, datos) =>
     ejecutar(async () => {
-      const actualizado = await adminApi.put(`${ruta}/${id}`, datos);
+      const actualizado = await api.put(`${ruta}/${id}`, datos);
       setItems((prev) => prev.map((item) => (item.id === id ? actualizado : item)));
       return actualizado;
     });
 
   const parchear = (id, datos, sufijo = "") =>
     ejecutar(async () => {
-      const actualizado = await adminApi.patch(`${ruta}/${id}${sufijo}`, datos);
+      const actualizado = await api.patch(`${ruta}/${id}${sufijo}`, datos);
       setItems((prev) => prev.map((item) => (item.id === id ? actualizado : item)));
       return actualizado;
     });
 
   const eliminar = (id) =>
     ejecutar(async () => {
-      await adminApi.delete(`${ruta}/${id}`);
+      await api.delete(`${ruta}/${id}`);
       setItems((prev) => prev.filter((item) => item.id !== id));
       return true;
     });

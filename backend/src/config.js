@@ -1,23 +1,49 @@
-import 'dotenv/config';
-import { z } from 'zod';
- 
+import 'dotenv/config'
+import { z } from 'zod'
+
 // Define y valida las variables de entorno que el backend necesita.
 // Si falta alguna obligatoria, el servidor no arranca (mejor fallar rápido).
+const booleanoEnv = z
+  .enum(['true', 'false', '1', '0'])
+  .transform((v) => v === 'true' || v === '1')
+
 const envSchema = z.object({
   PORT: z.string().default('4000'),
   MONGO_URI: z.string().min(1, 'MONGO_URI es requerido en el .env'),
   JWT_SECRET: z.string().min(1, 'JWT_SECRET es requerido en el .env'),
-  JWT_EXPIRES_IN: z.string().default('7d'),
+  JWT_EXPIRES_IN: z.string().default('2h'),
+  // Uno o varios orígenes separados por coma
   CLIENT_URL: z.string().default('http://localhost:5173'),
-  NODE_ENV: z.string().default('development'),
-});
- 
-const parsed = envSchema.safeParse(process.env);
- 
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  // Cookie de sesión. En producción con frontend y API en sitios distintos: SAMESITE=none + SECURE=true
+  COOKIE_SECURE: booleanoEnv.optional(),
+  COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
+  SMTP_HOST: z.string().trim().optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_FROM: z.string().trim().optional(),
+  // Número de proxies delante de la API (para que req.ip sea la IP real del cliente)
+  TRUST_PROXY: z.coerce.number().int().min(0).default(0),
+})
+
+const parsed = envSchema.safeParse(process.env)
+
 if (!parsed.success) {
-  console.error('❌ Variables de entorno inválidas o faltantes:');
-  console.error(parsed.error.format());
-  process.exit(1);
+  console.error('❌ Variables de entorno inválidas o faltantes:')
+  console.error(z.treeifyError(parsed.error))
+  process.exit(1)
 }
- 
-export const config = parsed.data;
+
+const env = parsed.data
+
+export const config = {
+  ...env,
+  CLIENT_URLS: env.CLIENT_URL.split(',').map((url) => url.trim()).filter(Boolean),
+  COOKIE_SECURE: env.COOKIE_SECURE ?? env.NODE_ENV === 'production',
+}
+
+if (config.COOKIE_SAMESITE === 'none' && !config.COOKIE_SECURE) {
+  console.error('❌ COOKIE_SAMESITE=none exige COOKIE_SECURE=true (los navegadores rechazan la cookie).')
+  process.exit(1)
+}

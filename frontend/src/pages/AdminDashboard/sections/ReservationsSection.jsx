@@ -2,23 +2,35 @@ import { useState } from "react";
 import { Search, Eye, Check, X, CalendarDays, Users, Clock, Mail, Phone, MessageSquare, Info } from "lucide-react";
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
-import { formatClock, formatDate } from "../adminFormat";
+import { formatClock, formatCalendarDate } from "../adminFormat";
+import EstadoSelector from "../components/EstadoSelector";
+import { pedirMotivo } from "../components/estadoUtils";
+import { useDialogo } from "../../../context/useDialogo";
 
 export default function ReservationsSection() {
-  const { items: reservas, cargando, error, cargar, parchear } = useAdminResource("/reservas");
-  const estadosResource = useAdminResource("/estados?tipo=reserva");
+  const { items: reservas, cargando, error, cargar, parchear } = useAdminResource("/v1/staff/reservas");
+  const estadosResource = useAdminResource("/v1/admin/estados?tipo=reserva");
   const [filtroEstado, setFiltroEstado] = useState("Todas");
   const [busqueda, setBusqueda] = useState("");
   const [reservaSeleccionada, setReservaSeleccionada] = useState(null);
+  const { confirmar } = useDialogo();
 
   const estadosDisponibles = ["Todas", ...new Set(estadosResource.items.map((estado) => estado.nombre))];
 
-  const handleCambiarEstado = async (id, nuevoEstado) => {
-    const estado = estadosResource.items.find((item) => item.nombre === nuevoEstado);
-    if (!estado) return;
-    const actualizada = await parchear(id, { estado: estado.id }, "/estado");
+  const handleCambiarEstado = async (id, codigo, motivo) => {
+    const actualizada = await parchear(id, { codigo, ...(motivo ? { motivo } : {}) }, "/estado");
     if (actualizada && reservaSeleccionada?.id === id) setReservaSeleccionada(actualizada);
   };
+
+  // Botones rápidos (confirmar / cancelar) solo si la transición está permitida
+  const accionRapida = async (reserva, codigo) => {
+    const transicion = (reserva.transiciones || []).find((t) => t.codigo === codigo);
+    if (!transicion) return;
+    const motivo = await pedirMotivo(confirmar, transicion);
+    if (motivo === null) return;
+    handleCambiarEstado(reserva.id, codigo, motivo);
+  };
+  const puede = (reserva, codigo) => (reserva.transiciones || []).some((t) => t.codigo === codigo);
 
   // Filtrar reservas
   const reservasFiltradas = reservas.filter((reserva) => {
@@ -31,19 +43,6 @@ export default function ReservationsSection() {
       reserva.correo.toLowerCase().includes(busqueda.toLowerCase());
     return coincideEstado && coincideBusqueda;
   });
-
-  const getBadgeClass = (estado) => {
-    switch (estado) {
-      case "Pendiente":
-        return "admin-badge--warning";
-      case "Confirmada":
-        return "admin-badge--success";
-      case "Cancelada":
-        return "admin-badge--danger";
-      default:
-        return "admin-badge--neutral";
-    }
-  };
 
   return (
     <div className="admin-section">
@@ -95,15 +94,12 @@ export default function ReservationsSection() {
       {/* TABLA DE RESERVAS */}
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table">
+          <table className="admin-table admin-table--compacta admin-reservas__tabla">
             <thead>
               <tr>
-                <th>Código</th>
-                <th>Cliente</th>
+                <th>Reserva</th>
                 <th>Contacto</th>
-                <th>Fecha y Hora</th>
-                <th>Personas</th>
-                <th>Motivo</th>
+                <th>Fecha y hora</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
@@ -113,10 +109,11 @@ export default function ReservationsSection() {
                 reservasFiltradas.map((reserva) => (
                   <tr key={reserva.id}>
                     <td>
-                      <span className="admin-table__code">{reserva.codigo}</span>
-                    </td>
-                    <td>
-                      <strong className="admin-table__client-name">{reserva.cliente}</strong>
+                      <div className="admin-reservas__reserva">
+                        <strong className="admin-table__client-name">{reserva.cliente}</strong>
+                        <span className="admin-table__code">{reserva.codigo}</span>
+                        {reserva.motivo && <span className="admin-reservas__motivo">{reserva.motivo}</span>}
+                      </div>
                     </td>
                     <td>
                       <div className="admin-table__contact">
@@ -126,39 +123,27 @@ export default function ReservationsSection() {
                     </td>
                     <td>
                       <div className="admin-table__schedule">
-                        <strong>{formatDate(reserva.fecha)}</strong>
+                        <strong>{formatCalendarDate(reserva.fecha)}</strong>
                         <span>{formatClock(reserva.hora)}</span>
+                        <span className="admin-table__capacity">
+                          <Users size={14} aria-hidden="true" />
+                          {reserva.personas} pers.
+                        </span>
                       </div>
                     </td>
                     <td>
-                      <span className="admin-table__capacity">
-                        <Users size={14} />
-                        {reserva.personas} pers.
-                      </span>
-                    </td>
-                    <td>
-                      <span className="admin-table__reason">{reserva.motivo}</span>
-                    </td>
-                    <td>
-                      <select
-                        className={`admin-select-status ${getBadgeClass(reserva.estado)}`}
-                        value={reserva.estado}
-                        onChange={(e) => handleCambiarEstado(reserva.id, e.target.value)}
-                      >
-                        {estadosResource.items.map((estado) => (
-                          <option key={estado.id} value={estado.nombre}>{estado.nombre}</option>
-                        ))}
-                      </select>
+                      <EstadoSelector item={reserva} onCambiar={(codigo, motivo) => handleCambiarEstado(reserva.id, codigo, motivo)} />
                     </td>
                     <td>
                       <div className="admin-table__actions-row">
-                        {reserva.estado === "Pendiente" && (
+                        {(puede(reserva, "confirmada") || puede(reserva, "cancelada")) && reserva.estadoCodigo === "pendiente" && (
                           <>
                             <button
                               type="button"
                               className="admin-button--icon-success"
                               title="Confirmar reserva"
-                              onClick={() => handleCambiarEstado(reserva.id, "Confirmada")}
+                              aria-label={`Confirmar reserva de ${reserva.cliente}`}
+                              onClick={() => accionRapida(reserva, "confirmada")}
                             >
                               <Check size={16} />
                             </button>
@@ -166,7 +151,8 @@ export default function ReservationsSection() {
                               type="button"
                               className="admin-button--icon-danger"
                               title="Rechazar/Cancelar reserva"
-                              onClick={() => handleCambiarEstado(reserva.id, "Cancelada")}
+                              aria-label={`Cancelar reserva de ${reserva.cliente}`}
+                              onClick={() => accionRapida(reserva, "cancelada")}
                             >
                               <X size={16} />
                             </button>
@@ -187,7 +173,7 @@ export default function ReservationsSection() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="admin-table__empty">
+                  <td colSpan="5" className="admin-table__empty">
                     No se encontraron reservas con los filtros aplicados.
                   </td>
                 </tr>
@@ -261,18 +247,11 @@ export default function ReservationsSection() {
 
               {/* Selector de estado */}
               <div className="admin-modal-status-bar">
-                <label>Estado de la reserva:</label>
-                <select
-                  className={`admin-select-status ${getBadgeClass(reservaSeleccionada.estado)}`}
-                  value={reservaSeleccionada.estado}
-                  onChange={(e) =>
-                    handleCambiarEstado(reservaSeleccionada.id, e.target.value)
-                  }
-                >
-                  {estadosResource.items.map((estado) => (
-                    <option key={estado.id} value={estado.nombre}>{estado.nombre}</option>
-                  ))}
-                </select>
+                <span className="admin-modal-status-bar__titulo">Estado de la reserva</span>
+                <EstadoSelector
+                  item={reservaSeleccionada}
+                  onCambiar={(codigo, motivo) => handleCambiarEstado(reservaSeleccionada.id, codigo, motivo)}
+                />
               </div>
             </div>
 

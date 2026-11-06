@@ -23,12 +23,14 @@ export default function ProfileSection() {
     setSaving(true);
     setStatus({ message: "", error: false });
     try {
-      const { profile } = await apiRequest("/customer/profile", {
+      // El formulario usa `email` (como la sesión); la API v1 usa `correo`
+      const { perfil } = await apiRequest("/v1/cliente/perfil", {
         method: "PATCH",
-        body: JSON.stringify(form),
+        body: JSON.stringify({ nombre: form.nombre, apellido: form.apellido, correo: form.email, telefono: form.telefono }),
       });
-      setForm(profile);
-      setUser((currentUser) => ({ ...currentUser, ...profile }));
+      const actualizado = { nombre: perfil.nombre, apellido: perfil.apellido, email: perfil.correo, telefono: perfil.telefono };
+      setForm(actualizado);
+      setUser((currentUser) => ({ ...currentUser, ...actualizado }));
       setStatus({ message: "Tu perfil se actualizó correctamente.", error: false });
     } catch (error) {
       setStatus({ message: error.message, error: true });

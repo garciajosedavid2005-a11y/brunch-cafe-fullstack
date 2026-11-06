@@ -12,4 +12,10 @@ export default defineConfig({
       errorRecovery: true,
     },
   },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.js'],
+    include: ['src/**/*.test.{js,jsx}'],
+    css: false,
+  },
 })

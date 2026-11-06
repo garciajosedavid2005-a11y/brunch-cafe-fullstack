@@ -47,7 +47,7 @@
     color: var(--color-suave) !important;
 }
 
-span {
+.container span {
     color: var(--color-fondo);
     font-size: 12px;
 }

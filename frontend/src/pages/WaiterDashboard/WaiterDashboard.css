@@ -91,7 +91,7 @@
 
 .waiter-dashboard__stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.8rem;
 }
 
@@ -246,6 +246,17 @@
   margin: 0.8rem 0 0;
   color: #806b63;
   font-size: 0.76rem;
+}
+
+.waiter-dashboard__order {
+  align-items: start;
+}
+
+.waiter-dashboard__order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
 }
 
 @media (max-width: 760px) {

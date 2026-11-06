@@ -5,46 +5,89 @@ import {
   Edit2,
   Trash2,
   Search,
-  CheckCircle,
-  AlertCircle,
   Users,
   Lock,
   X,
-  ShieldAlert,
 } from "lucide-react";
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
+import { useDialogo } from "../../../context/useDialogo";
+import { plural } from "../adminFormat";
+
+// Títulos de los grupos de permisos (las claves del backend no llevan tildes)
+const TITULO_MODULO = {
+  catalogo: "Catálogo",
+  pedidos: "Pedidos",
+  reservas: "Reservas",
+  resenas: "Reseñas",
+  configuracion: "Configuración",
+  identidad: "Usuarios y roles",
+  caja: "Caja",
+  inventario: "Inventario",
+  reportes: "Reportes",
+};
+const tituloModulo = (modulo) => TITULO_MODULO[modulo] || modulo.charAt(0).toUpperCase() + modulo.slice(1);
+
+const PERMISOS_VISIBLES = 2;
+const MOTIVO_SISTEMA = "Rol de sistema: no se puede eliminar";
 
 export default function RolesSection() {
   const { items: roles, cargando, error, guardando, cargar, crear, actualizar, eliminar } =
-    useAdminResource("/roles");
+    useAdminResource("/v1/admin/roles");
+  // Catálogo de permisos (los "reservados" son de fases futuras y aún no se asignan)
+  const { items: catalogo } = useAdminResource("/v1/admin/permisos");
   const [busqueda, setBusqueda] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [rolEnEdicion, setRolEnEdicion] = useState(null);
-  const [rolAEliminar, setRolAEliminar] = useState(null);
+  const { confirmar } = useDialogo();
+  // Filas con la lista de permisos desplegada ("+N más")
+  const [desplegados, setDesplegados] = useState(() => new Set());
+  const alternarDesplegado = (id) =>
+    setDesplegados((actual) => {
+      const nuevo = new Set(actual);
+      if (nuevo.has(id)) nuevo.delete(id);
+      else nuevo.add(id);
+      return nuevo;
+    });
 
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
-    permisosTexto: "",
+    permisos: [],
   });
+
+  const etiquetaPermiso = (clave) =>
+    clave === "*" ? "Todos los permisos" : catalogo.find((p) => p.clave === clave)?.descripcion || clave;
+
+  const modulos = [...new Set(catalogo.map((p) => p.modulo))];
+
+  const alternarPermiso = (clave) =>
+    setFormData((actual) => ({
+      ...actual,
+      permisos: actual.permisos.includes(clave)
+        ? actual.permisos.filter((p) => p !== clave)
+        : [...actual.permisos, clave],
+    }));
 
   const abrirModalCrear = () => {
     setRolEnEdicion(null);
     setFormData({
       nombre: "",
       descripcion: "",
-      permisosTexto: "",
+      permisos: [],
     });
     setModalAbierto(true);
   };
 
   const abrirModalEditar = (item) => {
+    if (item.editable === false) return;
     setRolEnEdicion(item);
+    // Solo se conservan claves asignables del catálogo (los textos antiguos se descartan)
+    const asignables = new Set(catalogo.filter((p) => !p.reservado).map((p) => p.clave));
     setFormData({
       nombre: item.nombre,
       descripcion: item.descripcion,
-      permisosTexto: item.permisos ? item.permisos.join("\n") : "",
+      permisos: (item.permisos || []).filter((p) => asignables.has(p)),
     });
     setModalAbierto(true);
   };
@@ -53,15 +96,11 @@ export default function RolesSection() {
     e.preventDefault();
     if (!formData.nombre.trim()) return;
 
-    const listaPermisos = formData.permisosTexto
-      .split("\n")
-      .map((p) => p.trim())
-      .filter(Boolean);
-
+    const permisosEditables = !rolEnEdicion || rolEnEdicion.permisosEditables !== false;
     const datos = {
       nombre: formData.nombre,
       descripcion: formData.descripcion,
-      permisos: listaPermisos,
+      ...(permisosEditables ? { permisos: formData.permisos } : {}),
     };
     const guardado = rolEnEdicion
       ? await actualizar(rolEnEdicion.id, datos)
@@ -69,9 +108,17 @@ export default function RolesSection() {
     if (guardado) setModalAbierto(false);
   };
 
-  const handleEliminar = async () => {
-    if (!rolAEliminar || rolAEliminar.esSistema) return;
-    if (await eliminar(rolAEliminar.id)) setRolAEliminar(null);
+  // Solo roles personalizados sin usuarios; el backend vuelve a validarlo (ROL_PROTEGIDO / ROL_CON_USUARIOS)
+  const handleEliminar = async (rol) => {
+    const { confirmado } = await confirmar({
+      titulo: "Eliminar rol",
+      mensaje: "¿Estás seguro de que deseas eliminar este rol? Esta acción no se puede deshacer.",
+      detalle: <strong>{rol.nombre}</strong>,
+      confirmarTexto: "Eliminar rol",
+      cancelarTexto: "Cancelar",
+      peligroso: true,
+    });
+    if (confirmado && (await eliminar(rol.id))) await cargar();
   };
 
   const rolesFiltrados = roles.filter(
@@ -113,22 +160,28 @@ export default function RolesSection() {
           />
         </div>
         <div className="admin-toolbar__count">
-          <strong>{rolesFiltrados.length}</strong> roles configurados
+          {plural(rolesFiltrados.length, "rol configurado", "roles configurados")}
         </div>
       </div>
 
       {/* GRID / TABLA DE ROLES */}
       <AdminStatus cargando={cargando} error={error} onReintentar={cargar} />
+      <p className="admin-roles__nota-sistema">
+        <Lock size={14} aria-hidden="true" />
+        <span>
+          Los roles de sistema (administrador, cliente y los del personal) son necesarios para que la app funcione:
+          puedes editar su descripción y permisos (salvo el administrador), pero no eliminarlos.
+        </span>
+      </p>
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table">
+          <table className="admin-table admin-table--compacta">
             <thead>
               <tr>
                 <th>Rol</th>
                 <th>Descripción</th>
-                <th>Usuarios Asignados</th>
-                <th>Permisos Otorgados</th>
-                <th>Tipo</th>
+                <th>Usuarios</th>
+                <th>Permisos</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -139,7 +192,7 @@ export default function RolesSection() {
                     <td>
                       <div className="admin-product-cell">
                         <div
-                          className="admin-product-thumbnail-placeholder"
+                          className="admin-product-thumbnail-placeholder admin-roles__icono"
                           style={{
                             background: rol.codigo === "admin" ? "#890620" : "#eedfd9",
                             color: rol.codigo === "admin" ? "#ffffff" : "#2C0703",
@@ -149,9 +202,10 @@ export default function RolesSection() {
                         </div>
                         <div>
                           <strong className="admin-table__client-name">{rol.nombre}</strong>
-                          <div style={{ fontSize: "0.75rem", color: "#55332e", fontFamily: "monospace" }}>
-                            slug: {rol.codigo}
-                          </div>
+                          <div className="admin-roles__slug">{rol.codigo}</div>
+                          <span className={`admin-badge admin-roles__tipo ${rol.esSistema ? "admin-badge--warning" : "admin-badge--neutral"}`}>
+                            {rol.esSistema ? "Sistema" : "Personalizado"}
+                          </span>
                         </div>
                       </div>
                     </td>
@@ -161,61 +215,74 @@ export default function RolesSection() {
                     <td>
                       <span className="admin-badge admin-badge--neutral">
                         <Users size={12} style={{ display: "inline", marginRight: "4px" }} />
-                        {rol.usuariosAsignados} usuarios
+                        {plural(rol.usuariosAsignados, "usuario")}
                       </span>
                     </td>
-                    <td>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem", maxWidth: "280px" }}>
+                    <td className="admin-roles__celda-permisos">
+                      <div className="admin-roles__permisos" id={`permisos-${rol.id}`}>
                         {rol.permisos && rol.permisos.length > 0 ? (
-                          rol.permisos.slice(0, 3).map((p, idx) => (
-                            <span
-                              key={idx}
-                              className="admin-badge admin-badge--info"
-                              style={{ fontSize: "0.74rem" }}
-                            >
-                              {p}
+                          (desplegados.has(rol.id) ? rol.permisos : rol.permisos.slice(0, PERMISOS_VISIBLES)).map((p) => (
+                            <span key={p} className="admin-badge admin-badge--info admin-roles__permiso">
+                              {etiquetaPermiso(p)}
                             </span>
                           ))
                         ) : (
-                          <span style={{ fontSize: "0.8rem", color: "#8c726c" }}>Sin permisos</span>
+                          <span className="admin-roles__sin-permisos">Sin permisos</span>
                         )}
-                        {rol.permisos && rol.permisos.length > 3 && (
-                          <span
-                            className="admin-badge admin-badge--neutral"
-                            style={{ fontSize: "0.74rem" }}
+                        {rol.permisos && rol.permisos.length > PERMISOS_VISIBLES && (
+                          <button
+                            type="button"
+                            className="admin-roles__mas"
+                            aria-expanded={desplegados.has(rol.id)}
+                            aria-controls={`permisos-${rol.id}`}
+                            onClick={() => alternarDesplegado(rol.id)}
                           >
-                            +{rol.permisos.length - 3} más
-                          </span>
+                            {desplegados.has(rol.id) ? "Ver menos" : `+${rol.permisos.length - PERMISOS_VISIBLES} más`}
+                          </button>
                         )}
                       </div>
                     </td>
                     <td>
-                      {rol.esSistema ? (
-                        <span className="admin-badge admin-badge--warning">Sistema</span>
-                      ) : (
-                        <span className="admin-badge admin-badge--neutral">Personalizado</span>
-                      )}
-                    </td>
-                    <td>
                       <div className="admin-table__actions-row">
-                        <button
-                          type="button"
-                          className="admin-button--secondary-sm"
-                          onClick={() => abrirModalEditar(rol)}
-                          title="Editar rol"
-                        >
-                          <Edit2 size={14} />
-                          <span>Editar</span>
-                        </button>
-                        {!rol.esSistema && (
+                        {rol.editable !== false && (
                           <button
                             type="button"
-                            className="admin-button--icon-danger"
-                            onClick={() => setRolAEliminar(rol)}
-                            title="Eliminar rol"
+                            className="admin-button--secondary-sm"
+                            onClick={() => abrirModalEditar(rol)}
+                            title="Editar rol"
                           >
-                            <Trash2 size={16} />
+                            <Edit2 size={14} />
+                            <span>Editar</span>
                           </button>
+                        )}
+                        {rol.esSistema ? (
+                          <button
+                            type="button"
+                            className="admin-roles__candado"
+                            disabled
+                            aria-label={MOTIVO_SISTEMA}
+                            title={MOTIVO_SISTEMA}
+                          >
+                            <Lock size={16} aria-hidden="true" />
+                          </button>
+                        ) : (
+                          <div className="admin-roles__eliminar">
+                            <button
+                              type="button"
+                              className="admin-button--secondary-sm admin-button--peligro-sm"
+                              disabled={rol.usuariosAsignados > 0 || guardando}
+                              onClick={() => handleEliminar(rol)}
+                              aria-describedby={rol.usuariosAsignados > 0 ? `motivo-${rol.id}` : undefined}
+                            >
+                              <Trash2 size={14} aria-hidden="true" />
+                              <span>Eliminar</span>
+                            </button>
+                            {rol.usuariosAsignados > 0 && (
+                              <small id={`motivo-${rol.id}`}>
+                                Tiene {plural(rol.usuariosAsignados, "usuario asignado", "usuarios asignados")}
+                              </small>
+                            )}
+                          </div>
                         )}
                       </div>
                     </td>
@@ -223,7 +290,7 @@ export default function RolesSection() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="admin-table__empty">
+                  <td colSpan="5" className="admin-table__empty">
                     No se encontraron roles configurados.
                   </td>
                 </tr>
@@ -284,16 +351,36 @@ export default function RolesSection() {
                 </div>
 
                 <div className="admin-form-group">
-                  <label className="admin-form-label">Permisos (un permiso por línea)</label>
-                  <textarea
-                    rows={4}
-                    className="admin-form-textarea"
-                    placeholder="Crear pedidos&#10;Consultar reservas&#10;Ver reportes"
-                    value={formData.permisosTexto}
-                    onChange={(e) =>
-                      setFormData({ ...formData, permisosTexto: e.target.value })
-                    }
-                  />
+                  <label className="admin-form-label">Permisos</label>
+                  {rolEnEdicion && rolEnEdicion.permisosEditables === false ? (
+                    <p className="admin-roles__nota">
+                      Este rol no puede tener permisos de staff. Solo se editan el nombre y la descripción.
+                    </p>
+                  ) : (
+                    modulos.map((modulo) => (
+                      <fieldset key={modulo} className="admin-permisos__grupo">
+                        <legend>{tituloModulo(modulo)}</legend>
+                        {catalogo
+                          .filter((p) => p.modulo === modulo)
+                          .map((permiso) => (
+                            <label
+                              key={permiso.clave}
+                              className={`admin-checkbox-label admin-permiso ${permiso.reservado ? "admin-permiso--proximo" : ""}`}
+                              title={permiso.reservado ? "Disponible en próximas fases" : undefined}
+                            >
+                              <input
+                                type="checkbox"
+                                disabled={permiso.reservado}
+                                checked={formData.permisos.includes(permiso.clave)}
+                                onChange={() => alternarPermiso(permiso.clave)}
+                              />
+                              <span className="admin-permiso__texto">{permiso.descripcion}</span>
+                              {permiso.reservado && <span className="admin-permiso__proximamente">Próximamente</span>}
+                            </label>
+                          ))}
+                      </fieldset>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -314,45 +401,6 @@ export default function RolesSection() {
         </div>
       )}
 
-      {/* MODAL ELIMINAR */}
-      {rolAEliminar && (
-        <div className="admin-modal-overlay" onClick={() => setRolAEliminar(null)}>
-          <div
-            className="admin-modal-container admin-modal-container--sm"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-          >
-            <div className="admin-modal-header">
-              <h3 className="admin-modal-title">¿Eliminar Rol?</h3>
-            </div>
-            <div className="admin-modal-body">
-              <div className="admin-delete-alert">
-                <AlertCircle size={28} className="admin-delete-alert__icon" />
-                <p>
-                  Estás a punto de eliminar el rol{" "}
-                  <strong>{rolAEliminar.nombre}</strong>. Los usuarios que tengan este rol perderán sus accesos asociados.
-                </p>
-              </div>
-            </div>
-            <div className="admin-modal-footer">
-              <button
-                type="button"
-                className="admin-button--modal-cancel"
-                onClick={() => setRolAEliminar(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="admin-button--danger"
-                onClick={handleEliminar}
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

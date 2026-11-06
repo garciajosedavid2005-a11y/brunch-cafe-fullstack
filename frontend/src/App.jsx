@@ -14,9 +14,11 @@ import Registro from "./pages/Registro/Registro";
 import CustomerDashboard from "./pages/CustomerDashboard/CustomerDashboard";
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
 import WaiterDashboard from "./pages/WaiterDashboard/WaiterDashboard";
+import RecuperarContrasena from "./pages/RecuperarContrasena/RecuperarContrasena";
 import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./context/useAuth";
 import { CarritoProvider } from "./context/CarritoContext";
+import { DialogoProvider } from "./context/DialogoContext";
 
 import "./styles/index.css";
 import "./styles/variables.css";
@@ -89,6 +91,9 @@ function ReservationsRoute() {
 
   if (loading) return <main className="customer-dashboard-loading">Verificando tu cuenta...</main>;
   if (user?.role === "admin") return <Navigate to="/admin" replace />;
+  if (user?.role === "mesero" && !user.permisos?.includes("reserva:crear")) {
+    return <Navigate to="/mesero" replace />;
+  }
   if (user) return <Reservas />;
 
   return (
@@ -119,6 +124,8 @@ function AppRoutes() {
           <Route path="/comentarios" element={<Comentarios />} />
           <Route path="/domicilios" element={<DomiciliosRoute />} />
           <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
+          <Route path="/recuperar-contrasena" element={<RecuperarContrasena />} />
+          <Route path="/restablecer-contrasena" element={<RecuperarContrasena />} />
           <Route path="/registro" element={<GuestRoute><Registro /></GuestRoute>} />
           <Route path="/perfil" element={<CustomerRoute><Perfil /></CustomerRoute>} />
           <Route path="/cuenta" element={<CustomerRoute><CustomerDashboard /></CustomerRoute>} />
@@ -137,11 +144,13 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <CarritoProvider>
-          <AppRoutes />
-        </CarritoProvider>
-      </AuthProvider>
+      <DialogoProvider>
+        <AuthProvider>
+          <CarritoProvider>
+            <AppRoutes />
+          </CarritoProvider>
+        </AuthProvider>
+      </DialogoProvider>
     </BrowserRouter>
   );
 }

@@ -285,6 +285,17 @@
   right: 1.2rem;
 }
 
+/* Con flechas visibles (> 640 px), el texto no puede quedar debajo de ellas:
+   margen lateral mínimo = posición (1.2rem) + ancho (46px) + aire (0.8rem) ≈ 5rem
+   medido desde el borde de la pantalla; en pantallas anchas (> 75rem) se descuenta el
+   margen exterior del contenedor centrado. */
+@media (min-width: 641px) {
+  .hero__contenido.grid-container {
+    padding-left: max(0.9375rem, calc(5rem - max(0px, (100vw - 75rem) / 2)));
+    padding-right: max(0.9375rem, calc(5rem - max(0px, (100vw - 75rem) / 2)));
+  }
+}
+
 /* ───────── Puntos ───────── */
 
 .hero__puntos {

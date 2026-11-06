@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import "./Footer.css";
 import { FaFacebook, FaInstagram, FaTiktok, FaTripadvisor } from "react-icons/fa";
+import HorariosCafe from "../HorariosCafe/HorariosCafe";
 
 const Footer = () => {
   return (
@@ -21,10 +22,9 @@ const Footer = () => {
 
         {/* Horario y redes */}
         <div className="cell small-12 medium-4">
-          <h4>Horario de Atención</h4>
-          <span>Lunes - Viernes: 8:00 AM - 4:00 PM</span>
-          <br />
-          <span>Sábado - Domingo: 9:00 AM - 3:00 PM</span>
+          {/* Leídos de la configuración (Admin › Horarios) */}
+          <h4>Horarios</h4>
+          <HorariosCafe className="footer-horarios" />
           <div className="footer-icons">
             <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer">
               <FaFacebook />
