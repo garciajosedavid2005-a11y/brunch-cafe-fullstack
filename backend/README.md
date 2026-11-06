@@ -85,8 +85,8 @@ Lee `seed-data/menu.json` (categorías con descripción y productos con `codigo`
 
 ### Catálogo
 
-- `GET /api/v1/catalogo` (público): categorías y productos **disponibles**, precio entero en COP (el frontend lo formatea) e imagen siempre como URL (`/productos/menu/imagenes/...`), nunca base64. `GET /api/productos/menu` es un alias con la misma respuesta mientras queden clientes que lo usen.
-- `Producto.disponible` (por defecto `true`): los agotados no salen en el catálogo y `POST /api/customer/orders` los rechaza con `409 PRODUCT_UNAVAILABLE` (indica cuáles). El admin los sigue viendo y los activa con un interruptor.
+- `GET /api/v1/catalogo` (público): categorías y productos **disponibles**, precio entero en COP (el frontend lo formatea) e imagen siempre como URL (`/productos/menu/imagenes/...`), nunca base64.
+- `Producto.disponible` (por defecto `true`): los agotados no salen en el catálogo y `POST /api/v1/cliente/pedidos` los rechaza con `409 PRODUCT_UNAVAILABLE` (indica cuáles). El admin los sigue viendo y los activa con un interruptor.
 - Imágenes subidas desde el admin: máximo 2 MB (PNG, JPG, WEBP o GIF); se guardan en `MenuImage` y el producto guarda su URL. El cuerpo JSON admite hasta 3 MB (`413 PAYLOAD_TOO_LARGE`).
 - Precio: entero ≥ 0 (`"12000"` se acepta; decimales y negativos no).
 - `codigo` (número que usan carrito y pedidos) sale de un contador atómico (colección `counters`); nunca se repite ni se reutiliza.
@@ -106,16 +106,16 @@ Lee `seed-data/menu.json` (categorías con descripción y productos con `codigo`
 - El JWT solo identifica al usuario. En cada petición `autenticar` relee usuario, rol y permisos desde la BD (caché en memoria de 30 s). Editar un rol o un usuario invalida su caché al instante; un usuario desactivado o borrado recibe `401` (`ACCOUNT_DISABLED` / `INVALID_TOKEN`) y no puede iniciar sesión (`403 ACCOUNT_DISABLED`).
 - Protege rutas con `requirePermission('clave')` (con varias claves basta una). Sin sesión → `401`; sin permiso → `403 FORBIDDEN`.
 - Roles sembrados: `admin` (`*`, no editable ni borrable), `cliente` (sin permisos de staff; sus rutas se protegen por propiedad) y los de staff `mesero`, `anfitrion`, `cocina`, `barista`, `cajero`, `repartidor` y `compras` con permisos mínimos (editables desde el dashboard, no borrables).
-- `GET /api/admin/usuarios` y `PATCH /api/admin/usuarios/:id` (`{ activo?, rolId? }`, permiso `usuario:gestionar`). Un admin no puede desactivarse ni quitarse el rol admin, y siempre debe quedar al menos un admin activo (`409 AUTO_BLOQUEO` / `409 ULTIMO_ADMIN`).
-- `GET /api/permisos` (permiso `rol:gestionar`) alimenta las casillas de la pantalla de Roles. No se borra un rol con usuarios asignados.
+- `GET /api/v1/admin/usuarios` y `PATCH /api/v1/admin/usuarios/:id` (`{ activo?, rolId? }`, permiso `usuario:gestionar`). Un admin no puede desactivarse ni quitarse el rol admin, y siempre debe quedar al menos un admin activo (`409 AUTO_BLOQUEO` / `409 ULTIMO_ADMIN`).
+- `GET /api/v1/admin/permisos` (permiso `rol:gestionar`) alimenta las casillas de la pantalla de Roles. No se borra un rol con usuarios asignados.
 - Limitación: la caché de sesiones y el rate limit son por proceso (una sola instancia del backend).
 
 ### Estados y transiciones
 
-- El catálogo de estados y la máquina de transiciones viven en `src/modulos/compartido/estados.js` (fuente de verdad). Cada `Estado` tiene un `codigo` fijo; el admin solo edita etiqueta (`nombre`), descripción y colores (`PUT /api/estados/:id`). Crear o borrar estados responde `405 ESTADOS_FIJOS`.
+- El catálogo de estados y la máquina de transiciones viven en `src/modulos/compartido/estados.js` (fuente de verdad). Cada `Estado` tiene un `codigo` fijo; el admin solo edita etiqueta (`nombre`), descripción y colores (`PUT /api/v1/admin/estados/:id`). Crear o borrar estados responde `405 ESTADOS_FIJOS`.
 - Pedido: `pendiente → confirmado → en_preparacion → listo → en_camino → entregado`, más `cancelado`. Reserva: `pendiente → confirmada → sentada → completada`, más `cancelada` y `no_show`. Los estados finales no se reabren.
 - Cada transición declara quién la hace y qué permiso exige: avanzar un pedido → `pedido:cambiar_estado`; cancelarlo (solo en `pendiente`/`confirmado`) → `pedido:cancelar` + motivo obligatorio; reservas → `reserva:cambiar_estado`. El cliente cancela su pedido solo en `pendiente` y su reserva en `pendiente`/`confirmada`; si edita una confirmada, vuelve a `pendiente`.
-- `PATCH /api/pedidos/:id/estado` y `PATCH /api/reservas/:id/estado` reciben `{ codigo, motivo? }` (o `{ estado: <_id> }` por compatibilidad). Errores: `400 ESTADO_INVALIDO | MOTIVO_REQUERIDO`, `403 FORBIDDEN`, `409 TRANSICION_INVALIDA | ESTADO_FINAL | CONFLICTO_ESTADO`. Los listados de staff incluyen `estadoCodigo`, `esFinal` y `transiciones` (las que el usuario puede hacer).
+- `PATCH /api/v1/staff/pedidos/:id/estado` y `PATCH /api/v1/staff/reservas/:id/estado` reciben `{ codigo, motivo? }` (o `{ estado: <_id> }` por compatibilidad). Errores: `400 ESTADO_INVALIDO | MOTIVO_REQUERIDO`, `403 FORBIDDEN`, `409 TRANSICION_INVALIDA | ESTADO_FINAL | CONFLICTO_ESTADO`. Los listados de staff incluyen `estadoCodigo`, `esFinal` y `transiciones` (las que el usuario puede hacer).
 - Cada cambio (y la creación) queda en la colección `eventos` (`de`, `a`, `motivo`, `usuario`, `actor`).
 - El servidor siembra los estados al arrancar; si encuentra estados sin `codigo` (BD anterior a 0.7) no arranca y pide ejecutar la migración.
 
@@ -125,6 +125,7 @@ Lee `seed-data/menu.json` (categorías con descripción y productos con `codigo`
    `docker run --rm -v "<ruta-del-repo>/backups:/backups" mongo:7 mongodump --uri "mongodb://host.docker.internal:27017/brunch-cafe" --out /backups/<nombre>`
 2. Simulacro: `npm run migrate:0.7 -- --dry-run` (cuántos documentos cambiarían por colección y tabla de equivalencias estado viejo → código). Si algún estado no encaja, se lista y no se escribe nada.
 3. Aplicar: `npm run migrate:0.7`. Revertir: `npm run migrate:0.7 -- --down` (también admite `--dry-run`); no revierte si un estado nuevo ya está en uso.
+4. Las demás siguen el mismo patrón: `migrate:0.6` (referencias por ObjectId), `migrate:0.10` (instantes UTC) y `migrate:0.12` (elimina las colecciones heredadas `users`, `orders`, `reservations` y `reviews`; `-- --respaldo <carpeta>` guarda cada una en EJSON antes de eliminarla y `-- --down --respaldo <carpeta>` las restaura).
 
 ### Formato de errores
 
@@ -136,33 +137,47 @@ Todas las respuestas de error usan el mismo formato:
 
 Códigos habituales: `BAD_REQUEST`, `VALIDATION_ERROR`, `INVALID_JSON`, `INVALID_ID`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `DUPLICATE`, `PAYLOAD_TOO_LARGE`, `TOO_MANY_REQUESTS`, `INTERNAL_ERROR`. Los errores 5xx nunca exponen el detalle interno (queda en el log). En código nuevo, lanza `AppError` (`src/modulos/compartido/errors.js`) y deja que el manejador central responda.
 
-## Endpoints
+## Endpoints (`/api/v1`)
 
-La autenticación conserva las cuentas existentes de `Usuario` y `Rol`; no crea una colección de usuarios paralela. El endpoint de perfil de sesión y todos los endpoints `/api/customer` requieren la cookie JWT y limitan las consultas al usuario autenticado.
+Desde 0.12 la API es solo `/api/v1`. Las rutas sin versión responden `404 NOT_FOUND` con el formato estándar, salvo `GET /api/health` y `GET /api/productos/menu/imagenes/:nombre` (las URL de las imágenes están guardadas en los productos). Los permisos se comprueban por clave (`requirePermission`), no por rol; «sesión» = cookie `token` válida.
+
+### Públicos
 
 | Método | Ruta | Acción |
 |---|---|---|
-| POST | `/api/auth/registro` | Crear cuenta de cliente |
-| POST | `/api/auth/login` | Iniciar sesión |
-| POST | `/api/auth/logout` | Cerrar sesión |
-| GET | `/api/auth/me` | Consultar la sesión |
-| GET, PATCH | `/api/customer/profile` | Consultar y editar el perfil |
-| GET, POST | `/api/customer/orders` | Consultar historial propio y crear un pedido con artículos y entrega validados |
-| GET | `/api/customer/orders/:id` | Consultar detalle de un pedido propio |
-| GET, POST | `/api/customer/reservations` | Listar y crear reservas |
-| PATCH | `/api/customer/orders/:id/cancel` | Cancelar un pedido propio mientras está pendiente |
-| PATCH | `/api/customer/reservations/:id` | Editar una reserva propia y volverla a pendiente de aprobación |
-| PATCH | `/api/customer/reservations/:id/cancel` | Cancelar una reserva propia futura |
-| GET, POST | `/api/customer/reviews` | Consultar y publicar los comentarios propios |
-| GET | `/api/reviews` | Listar comentarios públicos publicados desde el dashboard |
-| GET | `/api/reviews/product-ratings` | Consultar promedios públicos de calificación por producto |
-| GET | `/api/v1/catalogo` | Catálogo público (alias: `/api/productos/menu`) |
-| GET | `/api/v1/horarios` | Horarios de domicilio y reservas (público, solo lectura) |
-| GET, PUT | `/api/v1/admin/horarios` | Ver y editar los horarios (`horario:editar`) |
+| GET | `/api/health` | Estado del servidor |
+| GET | `/api/v1/catalogo` | Categorías y productos disponibles (precio entero COP, imagen como URL) |
+| GET | `/api/productos/menu/imagenes/:nombre` | Imagen de un producto |
+| GET | `/api/v1/horarios` | Horarios de domicilio y reservas (solo lectura) |
+| GET | `/api/v1/comentarios` | Reseñas visibles (con `verificada`) |
+| GET | `/api/v1/comentarios/calificaciones` | Promedio y cantidad por producto |
 
-### Staff: pedidos (`/api/v1/staff/pedidos`, 0.13)
+### Autenticación (`/api/v1/auth`)
 
-Por permiso, no por rol. Errores con el formato único; las transiciones válidas están en `src/modulos/compartido/estados.js`.
+| Método | Ruta | Acción |
+|---|---|---|
+| POST | `/api/v1/auth/registro` | Crear cuenta de cliente (rate limit 10/h por IP) |
+| POST | `/api/v1/auth/login` | Iniciar sesión (rate limit 5 fallos/15 min por IP + correo) |
+| POST | `/api/v1/auth/logout` | Cerrar sesión |
+| GET | `/api/v1/auth/me` | Usuario de la sesión, rol y permisos |
+
+### Cliente (`/api/v1/cliente`, sesión; cada uno ve y edita solo lo suyo)
+
+| Método | Ruta | Acción |
+|---|---|---|
+| GET, PATCH | `/api/v1/cliente/perfil` | Ver y editar el perfil (`nombre`, `apellido`, `correo`, `telefono` opcional) |
+| PUT | `/api/v1/cliente/perfil/contrasena` | Cambiar la contraseña (`actual`, `nueva`); cierra las demás sesiones |
+| GET, POST | `/api/v1/cliente/pedidos` | Historial y crear un pedido a domicilio (teléfono obligatorio, hora en punto de hoy con 1 h de anticipación, `Idempotency-Key` opcional) |
+| GET | `/api/v1/cliente/pedidos/:id` | Detalle de un pedido propio |
+| PATCH | `/api/v1/cliente/pedidos/:id/cancelar` | Cancelar un pedido propio en `pendiente` (`motivo` opcional) |
+| GET | `/api/v1/cliente/metodos-pago` | Métodos de pago activos |
+| GET, POST | `/api/v1/cliente/reservas` | Listar y crear reservas (teléfono obligatorio, hora en punto dentro del horario) |
+| PATCH | `/api/v1/cliente/reservas/:id` | Editar una reserva pendiente o confirmada (vuelve a `pendiente`) |
+| PATCH | `/api/v1/cliente/reservas/:id/cancelar` | Cancelar una reserva propia que no ha empezado |
+| GET, POST | `/api/v1/cliente/comentarios` | Mis reseñas y publicar una (producto: pedido entregado que lo contenga; general: pedido entregado o reserva completada) |
+| PATCH | `/api/v1/cliente/comentarios/:id` | Editar calificación y texto de una reseña propia |
+
+### Staff (`/api/v1/staff`, sesión + permiso)
 
 | Método | Ruta | Permiso | Acción |
 |---|---|---|---|
@@ -170,5 +185,26 @@ Por permiso, no por rol. Errores con el formato único; las transiciones válida
 | GET | `/api/v1/staff/pedidos/:id` | `pedido:ver` | Detalle con líneas e `historial` (de, a, motivo, actor, usuario, fecha) |
 | PATCH | `/api/v1/staff/pedidos/:id/estado` | el de la transición | `{ codigo, motivo? }`: avanzar (`pedido:cambiar_estado`) o cancelar (`pedido:cancelar` + motivo). Salto inválido o estado final → 409 |
 | PATCH | `/api/v1/staff/pedidos/:id/cancelar` | `pedido:cancelar` | `{ motivo }` (3–300 caracteres). Solo desde `pendiente` o `confirmado`; deja el Evento en la misma transacción |
+| GET | `/api/v1/staff/reservas` | `reserva:ver` | Listar reservas con sus transiciones |
+| PATCH | `/api/v1/staff/reservas/:id/estado` | `reserva:cambiar_estado` | `{ codigo, motivo? }` (cancelar exige motivo) |
 
-Los pedidos se guardan en `Pedido` y `DetallePedido`. El backend valida los productos contra el catálogo en MongoDB (existentes y disponibles) y calcula precios y total desde allí, sin confiar en importes del navegador; guarda también los datos de entrega para el historial. Las reservas se almacenan en `Reserva` y referencian un `Estado` del catálogo fijo, y se crean desde la página protegida `/reservas`. Nombre y correo se precargan desde la cuenta y pueden ajustarse como datos de contacto de esa reserva. Editar una reserva activa la devuelve a `Pendiente` para una nueva aprobación. Las reservas aceptan horas en punto dentro del horario configurado en Admin › Horarios (por defecto 8:00–19:00 entre semana y 8:00–17:00 los fines de semana), además de requerir un motivo y un teléfono. Los domicilios son para el mismo día, en punto, dentro de su horario (por defecto 8:00–16:00) y con 1 h de anticipación. Los comentarios se guardan en la colección `Review`: el dashboard es el único formulario para publicarlos, y la página pública de comentarios muestra las reseñas reales sin permitir publicaciones duplicadas. Pueden ser generales o asociarse a un producto; las calificaciones de producto se agregan en el endpoint público de promedios.
+### Admin (`/api/v1/admin`, sesión + permiso)
+
+| Método | Ruta | Permiso | Acción |
+|---|---|---|---|
+| GET | `/api/v1/admin/categorias` | — (público) | Listar categorías |
+| POST, PUT, DELETE | `/api/v1/admin/categorias[/:id]` | `catalogo:gestionar` | Crear, editar y borrar (no se borra una categoría con productos) |
+| GET, POST, PUT, DELETE | `/api/v1/admin/productos[/:id]` | `catalogo:gestionar` | Gestionar productos (imagen ≤ 2 MB, precio entero, `disponible`) |
+| GET | `/api/v1/admin/estados?tipo=pedido\|reserva` | `estado:editar`, `pedido:ver` o `reserva:ver` | Catálogo de estados |
+| PUT | `/api/v1/admin/estados/:id` | `estado:editar` | Editar etiqueta, descripción y colores (crear/borrar → 405) |
+| GET, POST, PUT, DELETE | `/api/v1/admin/roles[/:id]` | `rol:gestionar` | Roles y sus permisos (los de sistema no se borran; `409 ROL_CON_USUARIOS`) |
+| GET | `/api/v1/admin/permisos` | `rol:gestionar` | Catálogo de permisos |
+| GET, POST, PUT, DELETE | `/api/v1/admin/metodos-pago[/:id]` | `metodo_pago:gestionar` | Métodos de pago |
+| GET | `/api/v1/admin/usuarios` | `usuario:gestionar` | Listar usuarios |
+| PATCH | `/api/v1/admin/usuarios/:id` | `usuario:gestionar` | `{ activo?, rolId? }` (`409 AUTO_BLOQUEO` / `ULTIMO_ADMIN`) |
+| GET | `/api/v1/admin/comentarios` | `resena:moderar` | Todas las reseñas |
+| PATCH | `/api/v1/admin/comentarios/:id/visibilidad` | `resena:moderar` | `{ visible }` |
+| DELETE | `/api/v1/admin/comentarios/:id` | `resena:moderar` | Borrar una reseña |
+| GET, PUT | `/api/v1/admin/horarios` | `horario:editar` | Ver y editar los horarios |
+
+Los pedidos se guardan en `Pedido` y `DetallePedido` (nombre y precio del momento en cada línea). El backend valida los productos contra el catálogo (existentes y disponibles) y calcula precios y total desde allí, sin confiar en importes del navegador. Las reservas se guardan en `Reserva` con un `Estado` del catálogo fijo. Las reseñas se guardan en `Comentario` (una por usuario y producto; las anteriores a 0.12 cuentan como no verificadas).

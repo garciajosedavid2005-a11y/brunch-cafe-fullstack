@@ -1,24 +1,27 @@
 // Capturas de pantalla para revisión visual (npm run capturas -- <etiqueta>).
 // Requiere backend y frontend levantados y los usuarios de `npm run seed:dev` (backend).
 // La contraseña de prueba se lee de DEV_USUARIOS_PASSWORD (no está en el código).
-//   FRONT_URL (por defecto http://localhost:5173) · API_URL (por defecto http://localhost:4000/api)
+// Alternativa sin contraseña: COOKIES_SESION=<archivo.json> con { admin, cliente, mesero }
+// = valor de la cookie `token` de cada usuario de prueba (el archivo no se versiona).
+//   FRONT_URL (por defecto http://localhost:5173) · API_URL (por defecto http://localhost:4000/api/v1)
 //   ZONA_NAVEGADOR (por defecto America/Bogota): zona del navegador simulado
 import { chromium } from "playwright";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import process from "node:process";
 
 const FRONT = process.env.FRONT_URL || "http://localhost:5173";
-const API = process.env.API_URL || "http://localhost:4000/api";
+const API = process.env.API_URL || "http://localhost:4000/api/v1";
 const CLAVE = process.env.DEV_USUARIOS_PASSWORD;
+const COOKIES = process.env.COOKIES_SESION ? JSON.parse(await readFile(process.env.COOKIES_SESION, "utf8")) : null;
 const ETIQUETA = process.argv[2] || "actual";
 const ANCHOS = (process.env.ANCHOS || "1280,1024,768").split(",").map(Number);
 const SOLO = process.env.SOLO ? process.env.SOLO.split(",") : null;
 const SALIDA = join(process.cwd(), "capturas", ETIQUETA);
 
-const SOLO_PUBLICAS = SOLO && SOLO.every((v) => ["inicio", "menu", "nosotros", "nosotros-ubicacion", "pie"].includes(v));
-if (!CLAVE && !SOLO_PUBLICAS) {
-  console.error("Define DEV_USUARIOS_PASSWORD (la misma que usaste en `npm run seed:dev`).");
+const SOLO_PUBLICAS = SOLO && SOLO.every((v) => ["inicio", "menu", "nosotros", "nosotros-ubicacion", "pie", "comentarios"].includes(v));
+if (!CLAVE && !COOKIES && !SOLO_PUBLICAS) {
+  console.error("Define DEV_USUARIOS_PASSWORD (la misma que usaste en `npm run seed:dev`) o COOKIES_SESION.");
   process.exit(1);
 }
 
@@ -166,6 +169,16 @@ const VISTAS = {
   "admin-roles": { usuario: "admin", preparar: abrirPestanaAdmin("Roles") },
   "admin-usuarios": { usuario: "admin", preparar: abrirPestanaAdmin("Usuarios") },
   "admin-estados": { usuario: "admin", preparar: abrirPestanaAdmin("Estados") },
+  "admin-comentarios": { usuario: "admin", preparar: abrirPestanaAdmin("Comentarios") },
+  comentarios: { preparar: (p) => p.goto(`${FRONT}/comentarios`) },
+  "cuenta-cliente-comentarios": { usuario: "cliente", preparar: async (p) => {
+    await p.goto(`${FRONT}/cuenta`);
+    await p.getByRole("button", { name: /mis comentarios/i }).click();
+  } },
+  "cuenta-cliente-seguridad": { usuario: "cliente", preparar: async (p) => {
+    await p.goto(`${FRONT}/cuenta`);
+    await p.getByRole("button", { name: /seguridad/i }).click();
+  } },
 };
 
 // Sin --hide-scrollbars (Playwright lo pone por defecto): así se ven las barras de desplazamiento
@@ -177,7 +190,10 @@ const contextoDe = async (usuario) => {
   const clave = usuario || "invitado";
   if (contextos[clave]) return contextos[clave];
   const contexto = await navegador.newContext({ locale: "es-CO", timezoneId: process.env.ZONA_NAVEGADOR || "America/Bogota" });
-  if (usuario) {
+  if (usuario && COOKIES) {
+    if (!COOKIES[usuario]) throw new Error(`COOKIES_SESION no trae la sesión de ${usuario}`);
+    await contexto.addCookies([{ name: "token", value: COOKIES[usuario], url: new URL(API).origin, httpOnly: true }]);
+  } else if (usuario) {
     const res = await contexto.request.post(`${API}/auth/login`, { data: { correo: USUARIOS[usuario], contraseña: CLAVE } });
     if (!res.ok()) throw new Error(`Login de prueba falló para ${usuario}: ${res.status()} (¿ejecutaste npm run seed:dev?)`);
   }
