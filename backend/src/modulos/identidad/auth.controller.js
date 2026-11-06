@@ -84,9 +84,8 @@ export const logout = (req, res) => {
     return res.sendStatus(200)
 }
 
-export const solicitarRecuperacion = async (req, res) => {
-    const mensaje = await solicitar(req.validado.correo)
-    res.status(202).json({ message: mensaje })
+export const solicitarRecuperacion = (req, res) => {
+    res.status(202).json({ message: solicitar(req.validado.correo) })
 }
 
 export const restablecerContrasena = async (req, res) => {

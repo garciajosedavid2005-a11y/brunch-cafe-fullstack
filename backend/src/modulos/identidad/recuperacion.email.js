@@ -1,8 +1,10 @@
 import nodemailer from 'nodemailer'
 import { config } from '../../config.js'
 
+export const smtpConfigurado = () => Boolean(config.SMTP_HOST && config.SMTP_USER && config.SMTP_PASSWORD)
+
 export const enviarCorreoRecuperacion = async ({ correo, nombre, url }) => {
-    if (!config.SMTP_HOST || !config.SMTP_USER || !config.SMTP_PASSWORD) {
+    if (!smtpConfigurado()) {
         const error = new Error('Configura SMTP_HOST, SMTP_USER y SMTP_PASSWORD para enviar enlaces de recuperación.')
         error.code = 'SMTP_CONFIG_MISSING'
         throw error

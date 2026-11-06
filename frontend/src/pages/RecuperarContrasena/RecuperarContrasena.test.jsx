@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router-dom";
 
 const apiRequest = vi.hoisted(() => vi.fn());
 vi.mock("../../services/api", () => ({ apiRequest }));
@@ -51,6 +51,34 @@ describe("Recuperar contraseña", () => {
     fireEvent.click(screen.getByRole("button", { name: /restablecer contraseña/i }));
 
     expect(await screen.findByRole("status")).toHaveTextContent("Contraseña restablecida.");
+    expect(apiRequest).toHaveBeenCalledWith("/v1/auth/restablecer-contrasena", {
+      method: "POST",
+      body: JSON.stringify({ token: "abc", nueva: "clave-nueva-123" }),
+    });
+  });
+
+  // 0.15c: el token no se queda en la barra de direcciones ni en el historial
+  it("quita el token de la dirección y lo sigue usando al enviar", async () => {
+    apiRequest.mockResolvedValue({ message: "Contraseña restablecida." });
+    let ubicacion;
+    const Ubicacion = () => {
+      ubicacion = useLocation();
+      return null;
+    };
+    render(
+      <MemoryRouter initialEntries={["/restablecer-contrasena?token=abc"]}>
+        <RecuperarContrasena />
+        <Ubicacion />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(ubicacion.search).toBe(""));
+    expect(ubicacion.pathname).toBe("/restablecer-contrasena");
+
+    fireEvent.change(screen.getByLabelText("Nueva contraseña", { exact: true }), { target: { value: "clave-nueva-123" } });
+    fireEvent.change(screen.getByLabelText(/confirma la nueva contraseña/i), { target: { value: "clave-nueva-123" } });
+    fireEvent.click(screen.getByRole("button", { name: /restablecer contraseña/i }));
+    await screen.findByRole("status");
     expect(apiRequest).toHaveBeenCalledWith("/v1/auth/restablecer-contrasena", {
       method: "POST",
       body: JSON.stringify({ token: "abc", nueva: "clave-nueva-123" }),

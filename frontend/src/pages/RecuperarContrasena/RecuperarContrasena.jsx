@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, Lock, Mail } from "lucide-react";
 import AuthBanner from "../Auth/AuthBanner";
@@ -6,8 +6,13 @@ import { apiRequest } from "../../services/api";
 import "../Auth/Auth.css";
 
 export default function RecuperarContrasena() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token") || "";
+  const [searchParams, setSearchParams] = useSearchParams();
+  // El token se guarda en memoria y se quita de la dirección (historial, capturas, Referer): 0.15c
+  const [token] = useState(() => searchParams.get("token") || "");
+
+  useEffect(() => {
+    if (searchParams.has("token")) setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
   const [correo, setCorreo] = useState("");
   const [nueva, setNueva] = useState("");
   const [confirmacion, setConfirmacion] = useState("");

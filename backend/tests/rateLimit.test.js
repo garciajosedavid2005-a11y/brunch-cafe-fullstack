@@ -53,3 +53,15 @@ describe('Rate limit de registro (10 / hora por IP)', () => {
         expect(once.body.error.code).toBe('TOO_MANY_REQUESTS')
     })
 })
+
+describe('Rate limit de recuperación de contraseña (5 / hora por IP)', () => {
+    it('bloquea la sexta solicitud con 429 y formato único', async () => {
+        for (let i = 0; i < 5; i++) {
+            const res = await api().post('/api/v1/auth/recuperar-contrasena').send({ correo: `rec${i}@example.com` })
+            expect(res.status).toBe(202)
+        }
+        const sexta = await api().post('/api/v1/auth/recuperar-contrasena').send({ correo: 'rec5@example.com' })
+        expect(sexta.status).toBe(429)
+        expect(sexta.body.error.code).toBe('TOO_MANY_REQUESTS')
+    })
+})

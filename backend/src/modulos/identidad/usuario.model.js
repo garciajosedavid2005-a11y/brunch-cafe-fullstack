@@ -39,6 +39,7 @@ const usuarioSchema = new mongoose.Schema({
     passwordResetTokenHash: {
         type: String,
         select: false,
+        index: { sparse: true },
     },
     passwordResetExpiresAt: {
         type: Date,

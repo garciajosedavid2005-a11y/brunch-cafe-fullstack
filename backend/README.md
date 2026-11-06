@@ -18,7 +18,9 @@ El rol nuevo `mesero` recibe `pedido:ver`, `pedido:cambiar_estado`, `reserva:ver
 
 El panel de Mesero inicia en Resumen y carga reservas y pedidos desde las rutas protegidas de `/api/v1/staff`. Perfil y cambio de contraseña usan las mismas rutas de cuenta ya disponibles.
 
-Para habilitar el enlace de recuperación configura `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` y, opcionalmente, `SMTP_FROM` en `backend/.env`. La solicitud se hace en `POST /api/v1/auth/recuperar-contrasena`; el enlace de un solo uso vence a los 30 minutos y actualiza la contraseña en `POST /api/v1/auth/restablecer-contrasena`. Si SMTP no está configurado o falla, el API mantiene la respuesta genérica para no revelar si existe una cuenta y registra el error para diagnóstico.
+Para habilitar el enlace de recuperación configura `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` y, opcionalmente, `SMTP_FROM` en `backend/.env`. La solicitud se hace en `POST /api/v1/auth/recuperar-contrasena`; el enlace de un solo uso vence a los 30 minutos y actualiza la contraseña en `POST /api/v1/auth/restablecer-contrasena`. La API responde siempre `202` con el mismo mensaje y sin esperar el envío: así ni la respuesta ni su tiempo revelan si existe una cuenta. El token se guarda con hash (SHA-256), es de un solo uso, vence a los 30 minutos y, al usarlo, sube `tokenVersion` (se cierran todas las sesiones). Límites: 5 solicitudes y 10 restablecimientos por hora por IP. Si el envío falla, el enlace se invalida y el error se registra sin el correo.
+
+**Probar sin SMTP (solo desarrollo):** con `NODE_ENV=development` y sin `SMTP_HOST`/`SMTP_USER`/`SMTP_PASSWORD`, el enlace no se envía: aparece en el log del backend (`SMTP sin configurar: enlace de recuperación`) y sigue siendo válido 30 minutos. Pide el enlace en `/recuperar-contrasena` con un usuario de `npm run seed:dev`, copia el `enlace` del log y ábrelo. En `test` y `production` el enlace nunca se escribe en el log.
 
 ## MongoDB Atlas en Windows
 

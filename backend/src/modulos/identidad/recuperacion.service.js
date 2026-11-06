@@ -4,14 +4,18 @@ import Usuario from './usuario.model.js'
 import { config } from '../../config.js'
 import { logger } from '../compartido/logger.js'
 import { AppError } from '../compartido/errors.js'
-import { enviarCorreoRecuperacion } from './recuperacion.email.js'
+import { enviarCorreoRecuperacion, smtpConfigurado } from './recuperacion.email.js'
 
 const DURACION_TOKEN_MS = 30 * 60 * 1000
 const MENSAJE_SOLICITUD = 'Si la cuenta existe, recibirás un enlace para restablecer tu contraseña.'
 
 const hashToken = (token) => createHash('sha256').update(token).digest('hex')
 
-export const solicitarRecuperacion = async (correo) => {
+// Solicitudes en curso (los tests las esperan; en el servidor corren en segundo plano)
+const pendientes = new Set()
+export const esperarRecuperacionesPendientes = () => Promise.allSettled([...pendientes])
+
+const procesarSolicitud = async (correo) => {
     const usuario = await Usuario.findOne({ correo }).collation({ locale: 'en', strength: 2 })
 
     if (usuario && usuario.activo !== false) {
@@ -23,6 +27,13 @@ export const solicitarRecuperacion = async (correo) => {
         usuario.passwordResetTokenHash = tokenHash
         usuario.passwordResetExpiresAt = new Date(Date.now() + DURACION_TOKEN_MS)
         await usuario.save()
+
+        // Solo en desarrollo y sin SMTP: el enlace va al log para poder probar el flujo (0.15c).
+        // Nunca se registra el correo; en test y producción el enlace no se escribe en ningún log.
+        if (config.NODE_ENV === 'development' && !smtpConfigurado()) {
+            logger.info({ usuarioId: usuario._id, enlace: url.toString() }, 'SMTP sin configurar: enlace de recuperación (solo en desarrollo; vence en 30 min)')
+            return
+        }
 
         try {
             await enviarCorreoRecuperacion({
@@ -50,7 +61,18 @@ export const solicitarRecuperacion = async (correo) => {
             }, 'No se pudo enviar el correo de recuperación')
         }
     }
+}
 
+// Responde de inmediato y procesa en segundo plano: esperar al SMTP haría que el tiempo de
+// respuesta revelara qué correos tienen cuenta (0.15c).
+export const solicitarRecuperacion = (correo) => {
+    const tarea = procesarSolicitud(correo)
+        .catch((error) => logger.error({
+            errorCode: error?.code || 'RECOVERY_FAILED',
+            errorName: error?.name,
+        }, 'No se pudo procesar una solicitud de recuperación'))
+        .finally(() => pendientes.delete(tarea))
+    pendientes.add(tarea)
     return MENSAJE_SOLICITUD
 }
 
