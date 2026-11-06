@@ -1,7 +1,7 @@
-import Categoria from '../models/categoria.model.js'
-import Producto from '../models/producto.model.js'
-import { manejarError } from '../modulos/compartido/manejarError.js'
-import { sinUndefined } from '../modulos/compartido/utils.js'
+import Categoria from './categoria.model.js'
+import Producto from './producto.model.js'
+import { manejarError } from '../compartido/manejarError.js'
+import { sinUndefined } from '../compartido/utils.js'
 
 // Compara nombres sin importar mayúsculas ni tildes ("Postres" = "postres")
 const COMPARACION = { locale: 'es', strength: 1 }

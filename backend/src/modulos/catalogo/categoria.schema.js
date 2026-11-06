@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { texto, textoOpcional } from '../modulos/compartido/comunes.schema.js'
+import { texto, textoOpcional } from '../compartido/comunes.schema.js'
 
 export const crearCategoriaSchema = z.object({
     nombre: texto('El nombre', 2, 50),

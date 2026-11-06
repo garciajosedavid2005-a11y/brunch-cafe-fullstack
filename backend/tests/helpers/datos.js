@@ -1,5 +1,5 @@
-import Categoria from '../../src/models/categoria.model.js'
-import Producto from '../../src/models/producto.model.js'
+import Categoria from '../../src/modulos/catalogo/categoria.model.js'
+import Producto from '../../src/modulos/catalogo/producto.model.js'
 
 // Próximo día hábil a 7+ días (09:00 es válida en cualquier horario actual).
 // El reloj de las pruebas es fijo (setup.js): jueves 2026-11-05 07:30 en Bogotá.

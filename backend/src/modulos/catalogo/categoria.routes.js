@@ -4,11 +4,11 @@ import {
     crearCategoria,
     actualizarCategoria,
     eliminarCategoria
-} from '../controllers/categoria.controller.js'
-import { validateToken } from '../middlewares/validateToken.js'
-import { requirePermission } from '../middlewares/requirePermission.js'
-import { validateSchema } from '../modulos/compartido/validator.middleware.js'
-import { crearCategoriaSchema, actualizarCategoriaSchema } from '../schema/categoria.schema.js'
+} from './categoria.controller.js'
+import { validateToken } from '../../middlewares/validateToken.js'
+import { requirePermission } from '../../middlewares/requirePermission.js'
+import { validateSchema } from '../compartido/validator.middleware.js'
+import { crearCategoriaSchema, actualizarCategoriaSchema } from './categoria.schema.js'
 
 const router = Router()
 

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { validateToken } from '../middlewares/validateToken.js';
+import { validateToken } from '../../middlewares/validateToken.js';
 import {
   crearComentario,
   listarComentariosPublicos,
@@ -8,11 +8,11 @@ import {
   listarComentariosAdmin,
   cambiarVisibilidadComentario,
   eliminarComentario,
-} from '../controllers/comentario.controller.js';
-import { requirePermission } from '../middlewares/requirePermission.js';
-import { validateSchema } from '../modulos/compartido/validator.middleware.js';
-import { visibilidadComentarioSchema } from '../schema/comentario.schema.js';
-import { deprecado } from '../modulos/compartido/deprecado.js';
+} from './comentario.controller.js';
+import { requirePermission } from '../../middlewares/requirePermission.js';
+import { validateSchema } from '../compartido/validator.middleware.js';
+import { visibilidadComentarioSchema } from './comentario.schema.js';
+import { deprecado } from '../compartido/deprecado.js';
 
 // /api/comentarios y /api/reviews: alias deprecados (se retiran en 0.12)
 const router = Router();

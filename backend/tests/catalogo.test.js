@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { api } from './helpers/app.js'
-import Categoria from '../src/models/categoria.model.js'
-import Producto from '../src/models/producto.model.js'
-import MenuImage from '../src/models/menuImage.model.js'
+import Categoria from '../src/modulos/catalogo/categoria.model.js'
+import Producto from '../src/modulos/catalogo/producto.model.js'
+import MenuImage from '../src/modulos/catalogo/menuImage.model.js'
 import { crearConSesion } from './helpers/usuarios.js'
 
 // PNG de 1×1 px

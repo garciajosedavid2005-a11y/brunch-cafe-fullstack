@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { texto, textoOpcional, booleano, requerido } from '../modulos/compartido/comunes.schema.js'
-import { DATA_URL, esUrlDelMenu, bytesDeDataUrl, MAX_BYTES_IMAGEN } from '../libs/imagenesProducto.js'
+import { texto, textoOpcional, booleano, requerido } from '../compartido/comunes.schema.js'
+import { DATA_URL, esUrlDelMenu, bytesDeDataUrl, MAX_BYTES_IMAGEN } from './imagenesProducto.js'
 
 // '' (sin imagen), la URL que ya tenía (/productos/menu/imagenes/...) o una imagen nueva incrustada
 // Límite: 2 MB por imagen (decodificada). El cuerpo JSON admite hasta 3 MB (app.js).

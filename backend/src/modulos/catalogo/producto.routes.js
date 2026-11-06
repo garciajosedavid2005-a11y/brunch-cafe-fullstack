@@ -6,12 +6,12 @@ import {
     eliminarProducto,
     listarCatalogo,
     obtenerImagenMenu,
-} from '../controllers/producto.controller.js'
-import { validateToken } from '../middlewares/validateToken.js'
-import { requirePermission } from '../middlewares/requirePermission.js'
-import { validateSchema } from '../modulos/compartido/validator.middleware.js'
-import { deprecado } from '../modulos/compartido/deprecado.js'
-import { crearProductoSchema, actualizarProductoSchema } from '../schema/producto.schema.js'
+} from './producto.controller.js'
+import { validateToken } from '../../middlewares/validateToken.js'
+import { requirePermission } from '../../middlewares/requirePermission.js'
+import { validateSchema } from '../compartido/validator.middleware.js'
+import { deprecado } from '../compartido/deprecado.js'
+import { crearProductoSchema, actualizarProductoSchema } from './producto.schema.js'
 
 // Gestión de productos (admin). Se monta en /api/v1/admin/productos y en el alias /api/productos.
 export const productosAdminRouter = Router()

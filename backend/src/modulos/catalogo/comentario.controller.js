@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import Comentario from '../models/comentario.model.js';
-import Producto from '../models/producto.model.js';
+import Comentario from './comentario.model.js';
+import Producto from './producto.model.js';
 import mongoose from 'mongoose';
-import { referenciaProducto, unaReferencia, MENSAJE_REFERENCIA, resolverProductos } from '../schema/referenciaProducto.js';
+import { referenciaProducto, unaReferencia, MENSAJE_REFERENCIA, resolverProductos } from './referenciaProducto.schema.js';
 
 const comentarioSchema = z.discriminatedUnion('tipo', [
   z.object({

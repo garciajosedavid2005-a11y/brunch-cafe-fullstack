@@ -4,10 +4,10 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { extname, join, resolve } from 'node:path'
 import { z } from 'zod'
-import Categoria from '../models/categoria.model.js'
-import MenuImage from '../models/menuImage.model.js'
-import Producto from '../models/producto.model.js'
-import { PREFIJO_URL } from '../libs/imagenesProducto.js'
+import Categoria from '../modulos/catalogo/categoria.model.js'
+import MenuImage from '../modulos/catalogo/menuImage.model.js'
+import Producto from '../modulos/catalogo/producto.model.js'
+import { PREFIJO_URL } from '../modulos/catalogo/imagenesProducto.js'
 
 export const DIRECTORIO_SEED = resolve(import.meta.dirname, '../../seed-data')
 

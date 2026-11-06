@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import Categoria from '../src/models/categoria.model.js'
-import Producto from '../src/models/producto.model.js'
+import Categoria from '../src/modulos/catalogo/categoria.model.js'
+import Producto from '../src/modulos/catalogo/producto.model.js'
 import { crearConSesion } from './helpers/usuarios.js'
 
 let categoriaId

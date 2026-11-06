@@ -1,9 +1,9 @@
 import { Router } from 'express'
-import { listarCatalogo } from '../controllers/producto.controller.js'
+import { listarCatalogo } from '../modulos/catalogo/producto.controller.js'
 import clienteRoutes from './v1/cliente.routes.js'
 import staffRoutes from './v1/staff.routes.js'
 import adminRoutes from './v1/admin.routes.js'
-import comentariosRoutes from './v1/comentarios.routes.js'
+import comentariosRoutes from '../modulos/catalogo/comentario.v1.routes.js'
 import authRoutes from './auth.routes.js'
 import { verHorarios } from '../modulos/configuracion/horarios.controller.js'
 

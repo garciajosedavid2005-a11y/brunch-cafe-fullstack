@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { listarComentariosPublicos, obtenerCalificacionesProductos } from '../../controllers/comentario.controller.js'
+import { listarComentariosPublicos, obtenerCalificacionesProductos } from './comentario.controller.js'
 
 // /api/v1/comentarios: lectura pública (publicar es /api/v1/cliente/comentarios)
 const router = Router()

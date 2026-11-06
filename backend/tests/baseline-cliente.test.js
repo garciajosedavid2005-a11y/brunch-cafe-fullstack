@@ -3,8 +3,8 @@
 // se actualiza aquí en el mismo commit.
 import { describe, it, expect, beforeEach } from 'vitest'
 import { agente, api } from './helpers/app.js'
-import Categoria from '../src/models/categoria.model.js'
-import Producto from '../src/models/producto.model.js'
+import Categoria from '../src/modulos/catalogo/categoria.model.js'
+import Producto from '../src/modulos/catalogo/producto.model.js'
 
 const usuario = {
     nombre: 'Ana',

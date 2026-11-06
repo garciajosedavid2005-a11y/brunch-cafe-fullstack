@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 import mongoose from 'mongoose'
 import { api, agente } from './helpers/app.js'
 import Usuario from '../src/models/usuario.model.js'
-import MenuImage from '../src/models/menuImage.model.js'
+import MenuImage from '../src/modulos/catalogo/menuImage.model.js'
 
 const datos = (extra = {}) => ({
     nombre: 'Luis',

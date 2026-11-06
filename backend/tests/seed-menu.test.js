@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, relative } from 'node:path'
-import Categoria from '../src/models/categoria.model.js'
-import Producto from '../src/models/producto.model.js'
-import MenuImage from '../src/models/menuImage.model.js'
+import Categoria from '../src/modulos/catalogo/categoria.model.js'
+import Producto from '../src/modulos/catalogo/producto.model.js'
+import MenuImage from '../src/modulos/catalogo/menuImage.model.js'
 import { sembrarMenu, DIRECTORIO_SEED } from '../src/seeds/menu.js'
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')

@@ -1,7 +1,7 @@
 // Imágenes de productos: el admin las envía incrustadas (data URL) y aquí se guardan
 // en MenuImage; el producto solo guarda la URL. Así el catálogo nunca lleva base64.
 import { randomUUID } from 'node:crypto'
-import MenuImage from '../models/menuImage.model.js'
+import MenuImage from './menuImage.model.js'
 
 export const PREFIJO_URL = '/productos/menu/imagenes/'
 // Las subidas desde el admin llevan este prefijo; las del seed no (no se borran)

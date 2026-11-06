@@ -2,10 +2,10 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import mongoose from 'mongoose'
 import { api } from './helpers/app.js'
 import { crearConSesion } from './helpers/usuarios.js'
-import Categoria from '../src/models/categoria.model.js'
-import Producto from '../src/models/producto.model.js'
+import Categoria from '../src/modulos/catalogo/categoria.model.js'
+import Producto from '../src/modulos/catalogo/producto.model.js'
 import DetallePedido from '../src/models/detallePedido.model.js'
-import Comentario from '../src/models/comentario.model.js'
+import Comentario from '../src/modulos/catalogo/comentario.model.js'
 import { up, down } from '../src/migraciones/m06-referencias.js'
 
 let latte

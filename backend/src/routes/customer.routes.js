@@ -7,7 +7,7 @@ import { cancelacionClienteSchema } from '../modulos/compartido/cambioEstado.sch
 import { legadoVerCustomer, legadoEditarCustomer } from '../modulos/identidad/perfil.controller.js';
 import * as reservas from '../modulos/salon/reservas.controller.js';
 import * as pedidos from '../modulos/pedidos/pedidosCliente.controller.js';
-import { crearComentario, listarMisComentarios } from '../controllers/comentario.controller.js';
+import { crearComentario, listarMisComentarios } from '../modulos/catalogo/comentario.controller.js';
 
 // /api/customer: alias deprecados de /api/v1/cliente (se retiran en 0.12).
 const router = Router();
