@@ -3,8 +3,8 @@
 import { describe, it, expect } from 'vitest'
 import bcrypt from 'bcryptjs'
 import { api } from './helpers/app.js'
-import Usuario from '../src/models/usuario.model.js'
-import Rol from '../src/models/rol.model.js'
+import Usuario from '../src/modulos/identidad/usuario.model.js'
+import Rol from '../src/modulos/identidad/rol.model.js'
 
 const crearUsuario = async (correo) => {
     const rol = await Rol.findOne({ nombre: 'cliente' })

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { validateToken } from '../middlewares/validateToken.js';
+import { validateToken } from '../modulos/identidad/validateToken.js';
 import { deprecado } from '../modulos/compartido/deprecado.js';
 import { validateSchema } from '../modulos/compartido/validator.middleware.js';
 import { idempotencia } from '../modulos/compartido/idempotencia.js';

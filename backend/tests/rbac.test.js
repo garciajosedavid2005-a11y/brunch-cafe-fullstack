@@ -2,12 +2,12 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import jwt from 'jsonwebtoken'
 import { api } from './helpers/app.js'
 import { crearConSesion, rolId } from './helpers/usuarios.js'
-import Usuario from '../src/models/usuario.model.js'
-import Rol from '../src/models/rol.model.js'
+import Usuario from '../src/modulos/identidad/usuario.model.js'
+import Rol from '../src/modulos/identidad/rol.model.js'
 import Categoria from '../src/modulos/catalogo/categoria.model.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
 import MetodoPago from '../src/modulos/pedidos/metodoPago.model.js'
-import { TTL_SESION_MS } from '../src/libs/sesiones.js'
+import { TTL_SESION_MS } from '../src/modulos/identidad/sesiones.js'
 
 afterEach(() => vi.restoreAllMocks())
 

@@ -1,9 +1,9 @@
 // SIN USO desde 0.8: el perfil vive en src/modulos/identidad/. Se propone eliminarlo en 0.12.
-import Usuario from '../models/usuario.model.js'
+import Usuario from '../modulos/identidad/usuario.model.js'
 import bcrypt from 'bcryptjs'
-import { tokenDeSesion } from '../libs/jwt.js'
-import { ponerCookieSesion } from '../libs/cookies.js'
-import { invalidarSesionUsuario } from '../libs/sesiones.js'
+import { tokenDeSesion } from '../modulos/identidad/jwt.js'
+import { ponerCookieSesion } from '../modulos/identidad/cookies.js'
+import { invalidarSesionUsuario } from '../modulos/identidad/sesiones.js'
 
 export const verPerfil = async (req, res) => {
     try {

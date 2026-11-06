@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { validateToken } from '../../middlewares/validateToken.js'
+import { validateToken } from '../../modulos/identidad/validateToken.js'
 import { verMiPerfil, editarMiPerfil, cambiarMiContrasena } from '../../modulos/identidad/perfil.controller.js'
 import * as reservas from '../../modulos/salon/reservas.controller.js'
 import * as pedidos from '../../modulos/pedidos/pedidosCliente.controller.js'

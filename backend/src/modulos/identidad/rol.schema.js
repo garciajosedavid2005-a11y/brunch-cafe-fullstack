@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { texto, textoOpcional } from '../modulos/compartido/comunes.schema.js'
-import { CLAVES, CLAVES_ASIGNABLES } from '../libs/permisos.js'
+import { texto, textoOpcional } from '../compartido/comunes.schema.js'
+import { CLAVES, CLAVES_ASIGNABLES } from './permisos.js'
 
 // Solo claves del catálogo que ya se pueden asignar ("*" y las reservadas no)
 const permiso = z.string({ error: 'Cada permiso debe ser un texto' }).superRefine((clave, ctx) => {

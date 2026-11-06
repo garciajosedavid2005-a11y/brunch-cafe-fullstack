@@ -1,4 +1,4 @@
-import Usuario from '../models/usuario.model.js'
+import Usuario from './usuario.model.js'
 
 // Caché en memoria de la sesión resuelta desde BD (usuario + rol + permisos).
 // TTL de 30 s; se invalida al instante cuando cambia un usuario o un rol.

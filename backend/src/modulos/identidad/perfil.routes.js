@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { validateToken } from '../middlewares/validateToken.js'
-import { deprecado } from '../modulos/compartido/deprecado.js'
-import { legadoVerUsuario, legadoEditarUsuario, cambiarMiContrasena } from '../modulos/identidad/perfil.controller.js'
+import { validateToken } from './validateToken.js'
+import { deprecado } from '../compartido/deprecado.js'
+import { legadoVerUsuario, legadoEditarUsuario, cambiarMiContrasena } from './perfil.controller.js'
 
 // Alias deprecados de /api/v1/cliente/perfil (se retiran en 0.12)
 const router = Router()

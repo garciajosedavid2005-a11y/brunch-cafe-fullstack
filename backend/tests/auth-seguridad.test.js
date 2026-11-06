@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import jwt from 'jsonwebtoken'
 import mongoose from 'mongoose'
 import { api, agente } from './helpers/app.js'
-import Usuario from '../src/models/usuario.model.js'
+import Usuario from '../src/modulos/identidad/usuario.model.js'
 import MenuImage from '../src/modulos/catalogo/menuImage.model.js'
 
 const datos = (extra = {}) => ({

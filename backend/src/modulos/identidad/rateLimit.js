@@ -1,5 +1,5 @@
 import { rateLimit, ipKeyGenerator } from 'express-rate-limit'
-import { cuerpoError } from '../modulos/compartido/errors.js'
+import { cuerpoError } from '../compartido/errors.js'
 
 // Almacén en memoria: válido para una sola instancia del backend.
 // Con varias instancias habría que usar un store compartido (Redis/Mongo).

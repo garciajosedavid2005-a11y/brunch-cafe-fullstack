@@ -1,8 +1,8 @@
 // Servicio único del perfil de la sesión (lo usan /api/v1/cliente/perfil y sus alias).
 import bcrypt from 'bcryptjs'
-import Usuario from '../../models/usuario.model.js'
+import Usuario from './usuario.model.js'
 import { AppError, notFound } from '../compartido/errors.js'
-import { invalidarSesionUsuario } from '../../libs/sesiones.js'
+import { invalidarSesionUsuario } from './sesiones.js'
 
 const SIN_SECRETOS = '-contraseña -tokenVersion'
 const CORREO_OCUPADO = () => new AppError(409, 'EMAIL_IN_USE', 'Ese correo ya está asociado a otra cuenta.')

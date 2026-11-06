@@ -1,5 +1,5 @@
-import { cuerpoError } from '../modulos/compartido/errors.js'
-import { tienePermiso } from '../libs/permisos.js'
+import { cuerpoError } from '../compartido/errors.js'
+import { tienePermiso } from './permisos.js'
 
 /**
  * Autorización por permisos. Con varias claves basta con tener una.

@@ -20,7 +20,7 @@ const rolSchema = new mongoose.Schema({
         maxlength: 300,
         default: ''
     },
-    // Claves del catálogo (src/libs/permisos.js) que autorizan las rutas.
+    // Claves del catálogo (src/modulos/identidad/permisos.js) que autorizan las rutas.
     // El rol admin tiene ["*"] (todos los permisos).
     permisos: {
         type: [String],

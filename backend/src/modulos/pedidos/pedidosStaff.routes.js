@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { listarPedidos, verPedido, cambiarEstadoPedido, cancelarPedido } from './pedidosStaff.controller.js'
-import { validateToken } from '../../middlewares/validateToken.js'
-import { requirePermission } from '../../middlewares/requirePermission.js'
+import { validateToken } from '../identidad/validateToken.js'
+import { requirePermission } from '../identidad/requirePermission.js'
 import { validateSchema } from '../compartido/validator.middleware.js'
 import { cambiarEstadoPedidoSchema, cancelacionStaffSchema } from './pedido.schema.js'
 

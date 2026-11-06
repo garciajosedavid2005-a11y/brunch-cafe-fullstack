@@ -1,4 +1,4 @@
-import { config } from '../config.js'
+import { config } from '../../config.js'
 
 export const COOKIE_SESION = 'token'
 

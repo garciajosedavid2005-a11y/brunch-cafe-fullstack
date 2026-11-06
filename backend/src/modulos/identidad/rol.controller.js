@@ -1,10 +1,10 @@
-import Rol from '../models/rol.model.js'
-import Usuario from '../models/usuario.model.js'
-import Permiso from '../models/permiso.model.js'
-import { AppError, conflict, notFound } from '../modulos/compartido/errors.js'
-import { slug, sinUndefined } from '../modulos/compartido/utils.js'
-import { ROL_ADMIN, ROL_CLIENTE } from '../libs/permisos.js'
-import { invalidarSesionesDeRol } from '../libs/sesiones.js'
+import Rol from './rol.model.js'
+import Usuario from './usuario.model.js'
+import Permiso from './permiso.model.js'
+import { AppError, conflict, notFound } from '../compartido/errors.js'
+import { slug, sinUndefined } from '../compartido/utils.js'
+import { ROL_ADMIN, ROL_CLIENTE } from './permisos.js'
+import { invalidarSesionesDeRol } from './sesiones.js'
 
 // Roles base del sistema (además de los marcados con esSistema)
 const ROLES_SISTEMA = [ROL_ADMIN, ROL_CLIENTE]

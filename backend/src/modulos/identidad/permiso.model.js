@@ -1,6 +1,6 @@
 import mongoose from 'mongoose'
 
-// Reflejo en BD del catálogo de src/libs/permisos.js (lo mantiene el seed)
+// Reflejo en BD del catálogo de src/modulos/identidad/permisos.js (lo mantiene el seed)
 const permisoSchema = new mongoose.Schema({
     clave: { type: String, required: true, unique: true, trim: true },
     modulo: { type: String, required: true, trim: true },

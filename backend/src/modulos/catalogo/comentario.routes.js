@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { validateToken } from '../../middlewares/validateToken.js';
+import { validateToken } from '../identidad/validateToken.js';
 import {
   crearComentario,
   listarComentariosPublicos,
@@ -9,7 +9,7 @@ import {
   cambiarVisibilidadComentario,
   eliminarComentario,
 } from './comentario.controller.js';
-import { requirePermission } from '../../middlewares/requirePermission.js';
+import { requirePermission } from '../identidad/requirePermission.js';
 import { validateSchema } from '../compartido/validator.middleware.js';
 import { visibilidadComentarioSchema } from './comentario.schema.js';
 import { deprecado } from '../compartido/deprecado.js';

@@ -1,7 +1,7 @@
 import { obtenerPerfil, actualizarPerfil, cambiarContrasena } from './perfil.service.js'
 import { perfilSchema, contrasenaSchema } from './perfil.schema.js'
-import { tokenDeSesion } from '../../libs/jwt.js'
-import { ponerCookieSesion } from '../../libs/cookies.js'
+import { tokenDeSesion } from './jwt.js'
+import { ponerCookieSesion } from './cookies.js'
 
 // Forma v1: { perfil: { id, nombre, apellido, correo, telefono, rol, createdAt } }
 const formato = (u) => ({

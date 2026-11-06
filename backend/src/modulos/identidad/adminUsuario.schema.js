@@ -1,6 +1,6 @@
 import mongoose from 'mongoose'
 import { z } from 'zod'
-import { booleano, requerido } from '../modulos/compartido/comunes.schema.js'
+import { booleano, requerido } from '../compartido/comunes.schema.js'
 
 export const actualizarUsuarioSchema = z
     .object({

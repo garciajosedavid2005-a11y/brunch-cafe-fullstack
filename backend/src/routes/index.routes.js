@@ -1,18 +1,18 @@
 import { Router } from 'express'
 import { deprecadoBajo } from '../modulos/compartido/deprecado.js'
-import authRoutes from './auth.routes.js'
-import usuarioRoutes from './usuario.routes.js'
+import authRoutes from '../modulos/identidad/auth.routes.js'
+import usuarioRoutes from '../modulos/identidad/perfil.routes.js'
 import reservaRoutes from '../modulos/salon/reserva.routes.js'
 import customerRoutes from './customer.routes.js'
 import comentarioRoutes from '../modulos/catalogo/comentario.routes.js'
 import categoriaRoutes from '../modulos/catalogo/categoria.routes.js'
 import metodoPagoRoutes from '../modulos/pedidos/metodoPago.routes.js'
 import estadoRoutes from './estado.routes.js'
-import rolRoutes from './rol.routes.js'
+import rolRoutes from '../modulos/identidad/rol.routes.js'
 import productoRoutes from '../modulos/catalogo/producto.routes.js'
 import pedidoRoutes from '../modulos/pedidos/pedidosStaff.routes.js'
-import permisoRoutes from './permiso.routes.js'
-import adminUsuarioRoutes from './adminUsuario.routes.js'
+import permisoRoutes from '../modulos/identidad/permiso.routes.js'
+import adminUsuarioRoutes from '../modulos/identidad/adminUsuario.routes.js'
 
 // Rutas anteriores a /api/v1: alias deprecados (cabeceras Deprecation y Link al
 // sucesor). Reservas, perfil, cliente, comentarios y productos marcan cada ruta.

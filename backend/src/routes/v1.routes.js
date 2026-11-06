@@ -4,7 +4,7 @@ import clienteRoutes from './v1/cliente.routes.js'
 import staffRoutes from './v1/staff.routes.js'
 import adminRoutes from './v1/admin.routes.js'
 import comentariosRoutes from '../modulos/catalogo/comentario.v1.routes.js'
-import authRoutes from './auth.routes.js'
+import authRoutes from '../modulos/identidad/auth.routes.js'
 import { verHorarios } from '../modulos/configuracion/horarios.controller.js'
 
 // API versionada (0.8): /auth, /catalogo y /comentarios (públicas), /cliente (la sesión sobre

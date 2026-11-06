@@ -1,9 +1,9 @@
-import Usuario from '../models/usuario.model.js'
-import Rol from '../models/rol.model.js'
+import Usuario from './usuario.model.js'
+import Rol from './rol.model.js'
 import bcrypt from 'bcryptjs'
-import { tokenDeSesion } from '../libs/jwt.js'
-import { ponerCookieSesion, borrarCookieSesion } from '../libs/cookies.js'
-import { AppError } from '../modulos/compartido/errors.js'
+import { tokenDeSesion } from './jwt.js'
+import { ponerCookieSesion, borrarCookieSesion } from './cookies.js'
+import { AppError } from '../compartido/errors.js'
 
 // Comparación sin distinguir mayúsculas: las cuentas antiguas pueden tener
 // el correo guardado con mayúsculas (ver scripts/reportar-correos-duplicados.js)

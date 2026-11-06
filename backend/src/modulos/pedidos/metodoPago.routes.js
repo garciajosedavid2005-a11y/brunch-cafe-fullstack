@@ -5,8 +5,8 @@ import {
     actualizarMetodoPago,
     eliminarMetodoPago
 } from './metodoPago.controller.js'
-import { validateToken } from '../../middlewares/validateToken.js'
-import { requirePermission } from '../../middlewares/requirePermission.js'
+import { validateToken } from '../identidad/validateToken.js'
+import { requirePermission } from '../identidad/requirePermission.js'
 import { validateSchema } from '../compartido/validator.middleware.js'
 import { crearMetodoPagoSchema, actualizarMetodoPagoSchema } from './metodoPago.schema.js'
 

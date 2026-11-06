@@ -4,11 +4,11 @@ import {
     crearRol,
     actualizarRol,
     eliminarRol
-} from '../controllers/rol.controller.js'
-import { validateToken } from '../middlewares/validateToken.js'
-import { requirePermission } from '../middlewares/requirePermission.js'
-import { validateSchema } from '../modulos/compartido/validator.middleware.js'
-import { crearRolSchema, actualizarRolSchema } from '../schema/rol.schema.js'
+} from './rol.controller.js'
+import { validateToken } from './validateToken.js'
+import { requirePermission } from './requirePermission.js'
+import { validateSchema } from '../compartido/validator.middleware.js'
+import { crearRolSchema, actualizarRolSchema } from './rol.schema.js'
 
 const router = Router()
 

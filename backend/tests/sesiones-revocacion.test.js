@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import jwt from 'jsonwebtoken'
 import { agente } from './helpers/app.js'
 import { crearConSesion } from './helpers/usuarios.js'
-import Usuario from '../src/models/usuario.model.js'
+import Usuario from '../src/modulos/identidad/usuario.model.js'
 
 const iniciar = async (correo, contraseña = 'secreta123') => {
     const sesion = agente()
@@ -49,7 +49,7 @@ describe('Revocación de sesiones (tokenVersion)', () => {
     it('cambiar solo el rol no cierra la sesión', async () => {
         const { sesion: admin } = await crearConSesion('admin')
         const { usuario, sesion } = await crearConSesion('cliente')
-        const { default: Rol } = await import('../src/models/rol.model.js')
+        const { default: Rol } = await import('../src/modulos/identidad/rol.model.js')
         const mesero = await Rol.findOne({ nombre: 'mesero' })
         await admin.patch(`/api/admin/usuarios/${usuario._id}`).send({ rolId: String(mesero._id) })
         expect((await sesion.get('/api/auth/me')).status).toBe(200)
@@ -65,7 +65,7 @@ describe('Revocación de sesiones (tokenVersion)', () => {
         expect((await agente().get('/api/auth/me').set('Cookie', `token=${viejo}`)).status).toBe(200)
 
         await Usuario.updateOne({ _id: usuario._id }, { $inc: { tokenVersion: 1 } })
-        const { invalidarSesionUsuario } = await import('../src/libs/sesiones.js')
+        const { invalidarSesionUsuario } = await import('../src/modulos/identidad/sesiones.js')
         invalidarSesionUsuario(usuario._id)
         expect((await agente().get('/api/auth/me').set('Cookie', `token=${viejo}`)).status).toBe(401)
     })

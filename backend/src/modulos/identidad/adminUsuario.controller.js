@@ -1,11 +1,11 @@
 import mongoose from 'mongoose'
-import Usuario from '../models/usuario.model.js'
-import Rol from '../models/rol.model.js'
-import Contador from '../modulos/compartido/contador.model.js'
-import { conTransaccion } from '../modulos/compartido/transacciones.js'
-import { AppError, badRequest, notFound } from '../modulos/compartido/errors.js'
-import { ROL_ADMIN } from '../libs/permisos.js'
-import { invalidarSesionUsuario } from '../libs/sesiones.js'
+import Usuario from './usuario.model.js'
+import Rol from './rol.model.js'
+import Contador from '../compartido/contador.model.js'
+import { conTransaccion } from '../compartido/transacciones.js'
+import { AppError, badRequest, notFound } from '../compartido/errors.js'
+import { ROL_ADMIN } from './permisos.js'
+import { invalidarSesionUsuario } from './sesiones.js'
 
 const formato = (usuario) => ({
     id: usuario._id,

@@ -1,10 +1,10 @@
 import { Router } from 'express'
-import { register, login, logout } from '../controllers/auth.controller.js'
-import { validateSchema } from '../modulos/compartido/validator.middleware.js'
-import { registroSchema, loginSchema } from '../schema/auth.schema.js'
-import { validateToken } from '../middlewares/validateToken.js'
-import { crearLimiteLogin, crearLimiteRegistro } from '../middlewares/rateLimit.js'
-import Usuario from '../models/usuario.model.js'
+import { register, login, logout } from './auth.controller.js'
+import { validateSchema } from '../compartido/validator.middleware.js'
+import { registroSchema, loginSchema } from './auth.schema.js'
+import { validateToken } from './validateToken.js'
+import { crearLimiteLogin, crearLimiteRegistro } from './rateLimit.js'
+import Usuario from './usuario.model.js'
 
 const router = Router()
 

@@ -96,9 +96,9 @@ describe('Pedidos: transiciones de staff', () => {
 
     it('un rol con solo pedido:cancelar entra a la ruta pero no puede avanzar', async () => {
         const rolSoloCancela = await crearConSesion('compras')
-        const { default: Rol } = await import('../src/models/rol.model.js')
+        const { default: Rol } = await import('../src/modulos/identidad/rol.model.js')
         await Rol.updateOne({ nombre: 'compras' }, { permisos: ['pedido:cancelar'] })
-        const { invalidarSesionesDeRol } = await import('../src/libs/sesiones.js')
+        const { invalidarSesionesDeRol } = await import('../src/modulos/identidad/sesiones.js')
         invalidarSesionesDeRol(rolSoloCancela.usuario.rol)
 
         expect((await avanzar(rolSoloCancela.sesion, pedidoId, 'confirmado')).status).toBe(403)

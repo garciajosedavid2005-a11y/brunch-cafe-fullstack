@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { agente } from './app.js'
-import Usuario from '../../src/models/usuario.model.js'
-import Rol from '../../src/models/rol.model.js'
+import Usuario from '../../src/modulos/identidad/usuario.model.js'
+import Rol from '../../src/modulos/identidad/rol.model.js'
 
 const CLAVE = 'secreta123'
 let contador = 0

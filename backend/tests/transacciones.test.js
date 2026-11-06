@@ -8,7 +8,7 @@ import Pedido from '../src/modulos/pedidos/pedido.model.js'
 import DetallePedido from '../src/modulos/pedidos/detallePedido.model.js'
 import Reserva from '../src/modulos/salon/reserva.model.js'
 import Evento from '../src/modulos/compartido/evento.model.js'
-import Usuario from '../src/models/usuario.model.js'
+import Usuario from '../src/modulos/identidad/usuario.model.js'
 import { exigirReplicaSet, ReplicaSetRequeridoError } from '../src/db.js'
 
 afterEach(() => vi.restoreAllMocks())

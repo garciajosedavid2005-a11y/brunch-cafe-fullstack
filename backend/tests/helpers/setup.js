@@ -35,7 +35,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
     vi.useRealTimers()
-    const { limpiarCacheSesiones } = await import('../../src/libs/sesiones.js')
+    const { limpiarCacheSesiones } = await import('../../src/modulos/identidad/sesiones.js')
     limpiarCacheSesiones()
     const colecciones = await mongoose.connection.db.collections()
     await Promise.all(colecciones.map((c) => c.deleteMany({})))
