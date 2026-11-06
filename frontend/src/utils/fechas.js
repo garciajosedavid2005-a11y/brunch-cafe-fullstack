@@ -52,5 +52,13 @@ export const fechaLocal = (valor) => {
   return d ? new Intl.DateTimeFormat("en-CA", { timeZone: ZONA_HORARIA }).format(d) : "";
 };
 
+/** Instante → hora de Bogotá "HH:mm" (24 h), para comparar con horas "HH:00" (0.15f). */
+export const horaLocal = (valor) => {
+  const d = fecha(valor);
+  return d
+    ? new Intl.DateTimeFormat("en-GB", { timeZone: ZONA_HORARIA, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d)
+    : "";
+};
+
 /** Hoy en Bogotá ("YYYY-MM-DD"). */
 export const hoyLocal = () => fechaLocal(new Date());

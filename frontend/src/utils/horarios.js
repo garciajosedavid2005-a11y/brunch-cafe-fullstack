@@ -1,16 +1,14 @@
 // Reglas de horario en el frontend (0.8, decisión 15 y N8). Son las mismas que valida el
 // backend (src/libs/horarios.js); aquí solo sirven para ofrecer las horas válidas.
 // "Ahora" y "hoy" son los de America/Bogota, aunque el navegador esté en otra zona.
-import { ZONA_HORARIA, fechaLocal, formatearHoraTexto } from "./fechas";
+import { fechaLocal, formatearHoraTexto, horaLocal } from "./fechas";
 
 const dosDigitos = (n) => String(n).padStart(2, "0");
 const horaDe = (hhmm) => Number(hhmm.slice(0, 2));
 
 /** Minutos transcurridos del día en Bogotá. */
 const minutosLocales = (ahora) => {
-  const [h, m] = new Intl.DateTimeFormat("en-GB", {
-    timeZone: ZONA_HORARIA, hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-  }).format(ahora).split(":").map(Number);
+  const [h, m] = horaLocal(ahora).split(":").map(Number);
   return h * 60 + m;
 };
 

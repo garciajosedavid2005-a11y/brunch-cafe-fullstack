@@ -81,7 +81,7 @@ describe("Panel de mesero", () => {
     expect(state.apiRequest).toHaveBeenCalledWith("/v1/staff/reservas");
     expect(state.apiRequest).toHaveBeenCalledWith("/v1/staff/pedidos?limite=20");
 
-    const navigation = screen.getByRole("navigation", { name: /secciones del panel de mesero/i });
+    const navigation = screen.getByRole("navigation", { name: /secciones del panel de personal/i });
     fireEvent.click(within(navigation).getByRole("button", { name: "Reservas" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: /reservas/i })).toBeInTheDocument());
     expect(await screen.findByText("Lucía Pérez")).toBeInTheDocument();
@@ -116,5 +116,19 @@ describe("Panel de mesero", () => {
     fireEvent.click(await screen.findByRole("button", { name: /^reservas$/i }));
     expect(await screen.findByText("Registrada por Mario Mesa")).toBeInTheDocument();
     expect(screen.getByText(/3209876543/)).toBeInTheDocument();
+  });
+
+  it("cada estado usa el color de su tipo, como en el admin, y los totales en COP (0.15f)", async () => {
+    const original = state.apiRequest.getMockImplementation();
+    const pedido = (id, estado, estadoCodigo) => ({ id, codigo: id, cliente: `Cliente ${id}`, fecha: new Date().toISOString(), estado, estadoCodigo, total: 1250000, transiciones: [] });
+    state.apiRequest.mockImplementation((path) => path === "/v1/staff/pedidos?limite=20"
+      ? Promise.resolve([pedido("PED-1", "Cancelado", "cancelado"), pedido("PED-2", "Listo", "listo"), pedido("PED-3", "En camino", "en_camino")])
+      : original(path));
+    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: /^pedidos$/i }));
+    expect(await screen.findByText("Cancelado")).toHaveClass("staff-dashboard__status--danger");
+    expect(screen.getByText("Listo")).toHaveClass("staff-dashboard__status--success");
+    expect(screen.getByText("En camino")).toHaveClass("staff-dashboard__status--info");
+    expect(screen.getAllByText(/\$\s1\.250\.000/)).toHaveLength(3);
   });
 });

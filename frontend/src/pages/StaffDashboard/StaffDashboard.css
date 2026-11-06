@@ -10,6 +10,11 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  white-space: nowrap; /* «Cerrar sesión» en una línea a 768 px (0.15f) */
+}
+
+.staff-dashboard__header-actions .dashboard-button svg {
+  flex-shrink: 0; /* sin esto, con nowrap el icono queda en 0 px */
 }
 
 .staff-dashboard__reserve-button {
@@ -165,12 +170,16 @@
 
 .staff-dashboard__reservation {
   display: grid;
-  grid-template-columns: 125px minmax(0, 1fr);
+  grid-template-columns: 145px minmax(0, 1fr); /* cabe «PED-XXXXXX» con su icono (0.15f) */
   gap: 1rem;
   padding: 1rem;
   border: 1px solid #eadbd5;
   border-radius: 14px;
   background: #fff;
+}
+
+.staff-dashboard__reservation-time svg {
+  flex-shrink: 0; /* el icono no se encoge con códigos largos (PED-8F0ECC) */
 }
 
 .staff-dashboard__reservation-time {
@@ -217,14 +226,17 @@
   font-weight: 700;
 }
 
-.staff-dashboard__status--confirmed {
-  background: #e8f4e8;
-  color: #346d34;
-}
+/* Colores por tipo de estado, los mismos grupos que el admin (0.15f); contraste ≥ 4.5:1 */
+.staff-dashboard__status--warning { background: #fff4dc; color: #74560f; }
+.staff-dashboard__status--info { background: #e3eefa; color: #1a4f8a; }
+.staff-dashboard__status--success { background: #e8f4e8; color: #2f632f; }
+.staff-dashboard__status--danger { background: #fbe7e6; color: #9b1c1c; }
+.staff-dashboard__status--neutral { background: #eeeeee; color: #4a4a4a; }
 
-.staff-dashboard__status--pending {
-  background: #fff4dc;
-  color: #896519;
+.staff-dashboard__registrada {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  font-style: italic;
 }
 
 .staff-dashboard__reservation-meta {

@@ -13,25 +13,16 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 import { apiRequest } from "../../services/api";
-import { formatearFechaCalendario, formatearHoraTexto, hoyLocal } from "../../utils/fechas";
+import { fechaLocal, formatearFechaCalendario, formatearHoraTexto, horaLocal, hoyLocal } from "../../utils/fechas";
+import { formatearCOP } from "../../utils/moneda";
+import { claseEstado } from "../AdminDashboard/components/estadoUtils";
 import ProfileSection from "../CustomerDashboard/sections/ProfileSection";
 import SecuritySection from "../CustomerDashboard/sections/SecuritySection";
 import "./StaffDashboard.css";
 import "../CustomerDashboard/CustomerDashboard.css";
 
-const moneda = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  maximumFractionDigits: 0,
-});
-
-const fechaDeReserva = (fecha) => {
-  if (typeof fecha === "string" && /^\d{4}-\d{2}-\d{2}/.test(fecha)) return fecha.slice(0, 10);
-  const date = new Date(fecha);
-  return Number.isNaN(date.getTime())
-    ? ""
-    : new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(date);
-};
+// Mismo color por tipo de estado que en el admin (0.15f): pendiente, en curso, listo, cancelado…
+const claseDeEstado = (codigo) => `staff-dashboard__status staff-dashboard__status--${claseEstado(codigo).replace("admin-badge--", "")}`;
 
 const permisosDe = (user) => user?.permisos || [];
 
@@ -108,21 +99,14 @@ export default function StaffDashboard() {
   const reservasHoy = useMemo(() => {
     const hoy = hoyLocal();
     return reservas
-      .filter((reserva) => fechaDeReserva(reserva.fecha) === hoy)
+      .filter((reserva) => fechaLocal(reserva.fecha) === hoy)
       .sort((a, b) => String(a.hora).localeCompare(String(b.hora)));
   }, [reservas]);
 
   const personasHoy = reservasHoy.reduce((total, reserva) => total + (Number(reserva.personas) || 0), 0);
   const pedidosActivos = pedidos.filter((pedido) => !pedido.esFinal).length;
-  const siguienteReserva = reservasHoy.find((reserva) => {
-    const horaBogota = new Intl.DateTimeFormat("en-GB", {
-      timeZone: "America/Bogota",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    }).format(new Date());
-    return String(reserva.hora) >= horaBogota;
-  });
+  const ahora = horaLocal(new Date());
+  const siguienteReserva = reservasHoy.find((reserva) => String(reserva.hora) >= ahora);
 
   const navigation = [
     { id: "resumen", label: "Resumen", icon: CalendarCheck2 },
@@ -168,7 +152,7 @@ export default function StaffDashboard() {
       <header className="customer-dashboard__header staff-dashboard__header">
         <div>
           <span className="customer-dashboard__eyebrow">BRUNCH CAFÉ · ÁREA DE SALA</span>
-          <h1>Hola, {user?.nombre || "Mesero"}</h1>
+          <h1>Hola, {user?.nombre}</h1>
           <p>Resumen del turno y acceso a los módulos habilitados para tu rol.</p>
         </div>
         <div className="staff-dashboard__header-actions">
@@ -196,7 +180,7 @@ export default function StaffDashboard() {
       {errorPanel && <p className="dashboard-notice is-error" role="alert">{errorPanel}</p>}
 
       <div className="customer-dashboard__layout">
-        <nav className="customer-dashboard__nav" aria-label="Secciones del panel de mesero">
+        <nav className="customer-dashboard__nav" aria-label="Secciones del panel de personal">
           <span className="staff-dashboard__nav-title">Panel de sala</span>
           {navigation.map(({ id, label, icon }) => (
             <button
@@ -211,7 +195,7 @@ export default function StaffDashboard() {
             </button>
           ))}
           <div className="staff-dashboard__nav-note">
-            <strong>{user?.roleLabel || "Mesero"}</strong>
+            <strong>{user?.roleLabel || "Personal"}</strong>
             <span>El menú muestra solo los módulos autorizados para tu cuenta.</span>
           </div>
         </nav>
@@ -352,7 +336,7 @@ export default function StaffDashboard() {
                       <div className="staff-dashboard__reservation-info">
                         <div className="staff-dashboard__reservation-title">
                           <h3>{reserva.cliente}</h3>
-                          <span className={`staff-dashboard__status staff-dashboard__status--${reserva.estadoCodigo === "confirmada" ? "confirmed" : "pending"}`}>
+                          <span className={claseDeEstado(reserva.estadoCodigo)}>
                             {reserva.estado}
                           </span>
                         </div>
@@ -396,9 +380,9 @@ export default function StaffDashboard() {
                     <div className="staff-dashboard__reservation-info">
                       <div className="staff-dashboard__reservation-title">
                         <h3>{pedido.cliente}</h3>
-                        <span className="staff-dashboard__status staff-dashboard__status--pending">{pedido.estado}</span>
+                        <span className={claseDeEstado(pedido.estadoCodigo)}>{pedido.estado}</span>
                       </div>
-                      <p>{formatearFechaCalendario(pedido.fecha, "long")} · {moneda.format(pedido.total)}</p>
+                      <p>{formatearFechaCalendario(pedido.fecha, "long")} · {formatearCOP(pedido.total)}</p>
                       <div className="staff-dashboard__reservation-meta">
                         {pedido.items?.map((item) => (
                           <span key={`${pedido.id}-${item.nombre}`}>{item.cantidad} × {item.nombre}</span>

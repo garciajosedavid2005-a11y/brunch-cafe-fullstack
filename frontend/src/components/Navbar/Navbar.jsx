@@ -3,7 +3,7 @@ import { useDialogo } from "../../context/useDialogo";
 import { useEffect, useState } from "react";
 import { useCarrito } from "../../context/CarritoContext";
 import { useAuth } from "../../context/useAuth";
-import { esAdministrador } from "../../utils/permisos";
+import { esAdministrador, esPersonal } from "../../utils/permisos";
 import compras from "../../assets/carrito-de-compras.png";
 import logoOscuro from "../../assets/logoOscuro.png";
 import logoClaro from "../../assets/logoClaro.png";
@@ -31,6 +31,8 @@ const NavbarContent = ({ pathname }) => {
     const { user, loading, logout } = useAuth();
     const { avisar } = useDialogo();
     const esAdmin = esAdministrador(user);
+    // Personal (0.15f): su inicio es /staff y no compra domicilios desde su cuenta
+    const personal = esPersonal(user);
 
     const totalProductos = productos.reduce((acc, p) => acc + p.cantidad, 0);
 
@@ -124,7 +126,7 @@ const NavbarContent = ({ pathname }) => {
                             <li><NavLink className="access" to="/comentarios">Comentarios</NavLink></li>
                             {!loading && (user ? (
                                 <>
-                                    <li><NavLink className="access" to="/cuenta">Mi cuenta</NavLink></li>
+                                    <li><NavLink className="access" to={personal ? "/staff" : "/cuenta"}>{personal ? "Mi panel" : "Mi cuenta"}</NavLink></li>
                                     <li>
                                         <button
                                             type="button"
@@ -140,7 +142,8 @@ const NavbarContent = ({ pathname }) => {
                                 <li><NavLink className="access" to="/login">Ingresar</NavLink></li>
                             ))}
 
-                            {/* Carrito integrado */}
+                            {/* Carrito integrado (no para el personal) */}
+                            {!personal && (
                             <li className="menu__item-carrito">
                                 <NavLink className="access" to="/domicilios">
                                     <div
@@ -160,6 +163,7 @@ const NavbarContent = ({ pathname }) => {
                                     </div>
                                 </NavLink>
                             </li>
+                            )}
                         </>
                     )}
                 </ul>

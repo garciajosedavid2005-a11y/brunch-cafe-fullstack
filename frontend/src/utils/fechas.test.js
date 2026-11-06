@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
-  ZONA_HORARIA, formatearFecha, formatearHora, formatearFechaCalendario, formatearHoraTexto, fechaLocal, hoyLocal,
+  ZONA_HORARIA, formatearFecha, formatearHora, formatearFechaCalendario, formatearHoraTexto, fechaLocal, hoyLocal, horaLocal,
 } from "./fechas";
 
 const normal = (t) => t.replace(/\s/g, " ");
@@ -35,6 +35,12 @@ describe("Fechas en el frontend (America/Bogota)", () => {
   it('"hoy" es el día de Bogotá', () => {
     vi.useFakeTimers({ toFake: ["Date"], now: new Date(casiMedianoche) });
     expect(hoyLocal()).toBe("2026-11-05");
+  });
+
+  it("horaLocal: hora de Bogotá en HH:mm de 24 h (0.15f)", () => {
+    expect(horaLocal(new Date(casiMedianoche))).toBe("22:30");
+    expect(horaLocal(new Date("2026-11-05T13:05:00Z"))).toBe("08:05");
+    expect(horaLocal("no es fecha")).toBe("");
   });
 
   it("valores vacíos o inválidos → texto vacío", () => {
