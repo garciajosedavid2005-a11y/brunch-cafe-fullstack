@@ -1,6 +1,7 @@
 import "./UbicacionNosotros.css"
 import localImg from "../../assets/local.png"
 import { FaMapMarkerAlt, FaClock } from 'react-icons/fa'
+import HorariosCafe from '../HorariosCafe/HorariosCafe'
 
 const UbicacionNosotros = () => {
     return (
@@ -37,10 +38,8 @@ const UbicacionNosotros = () => {
 
                             <div className="ubicacion-item">
                                 <FaClock className="ubicacion-icono" />
-                                <div>
-                                    <p>Lunes a Viernes: 8 am - 12 pm</p>
-                                    <p className = "horario">Sábados y Domingos: 8 am - 11 am</p>
-                                </div>
+                                {/* Leídos de la configuración (Admin › Horarios) */}
+                                <HorariosCafe className="ubicacion-horarios" />
                             </div>
 
                             <a  href="https://maps.google.com"

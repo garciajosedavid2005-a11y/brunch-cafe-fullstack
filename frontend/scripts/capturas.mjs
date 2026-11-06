@@ -16,7 +16,8 @@ const ANCHOS = (process.env.ANCHOS || "1280,1024,768").split(",").map(Number);
 const SOLO = process.env.SOLO ? process.env.SOLO.split(",") : null;
 const SALIDA = join(process.cwd(), "capturas", ETIQUETA);
 
-if (!CLAVE) {
+const SOLO_PUBLICAS = SOLO && SOLO.every((v) => ["inicio", "menu", "nosotros", "nosotros-ubicacion", "pie"].includes(v));
+if (!CLAVE && !SOLO_PUBLICAS) {
   console.error("Define DEV_USUARIOS_PASSWORD (la misma que usaste en `npm run seed:dev`).");
   process.exit(1);
 }
@@ -37,6 +38,25 @@ const abrirPestanaAdmin = (nombre) => async (page) => {
 const VISTAS = {
   inicio: { preparar: (p) => p.goto(`${FRONT}/`) },
   menu: { preparar: (p) => p.goto(`${FRONT}/menu`) },
+  nosotros: { preparar: (p) => p.goto(`${FRONT}/nosotros`) },
+  // Tarjeta de ubicación de Nosotros y pie de página (horarios)
+  "nosotros-ubicacion": {
+    completa: false,
+    preparar: async (p) => {
+      await p.goto(`${FRONT}/nosotros`);
+      await p.waitForLoadState("networkidle");
+      await p.locator(".ubicacion-card").scrollIntoViewIfNeeded();
+      await p.waitForTimeout(800);
+    },
+  },
+  pie: {
+    completa: false,
+    preparar: async (p) => {
+      await p.goto(`${FRONT}/`);
+      await p.waitForLoadState("networkidle");
+      await p.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    },
+  },
   "cuenta-cliente": { usuario: "cliente", preparar: (p) => p.goto(`${FRONT}/cuenta`) },
   "cuenta-mesero": { usuario: "mesero", preparar: (p) => p.goto(`${FRONT}/cuenta`) },
   "cuenta-cliente-pedidos": { usuario: "cliente", preparar: async (p) => {

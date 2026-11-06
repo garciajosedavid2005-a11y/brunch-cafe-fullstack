@@ -1,0 +1,38 @@
+/* Lista de horarios (pie de página y Nosotros); cada lugar da color y tamaño con su clase */
+.horarios-cafe {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.horarios-cafe li + li {
+  margin-top: 0.35rem;
+}
+
+.horarios-cafe__etiqueta {
+  font-weight: 600;
+}
+
+/* El rango de horas no se parte ("5:00 p. / m.") */
+.horarios-cafe__valor {
+  white-space: nowrap;
+}
+
+.footer-horarios {
+  color: var(--color-fondo);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.ubicacion-horarios {
+  text-align: left;
+  color: var(--color-oscuro);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+/* La tarjeta de ubicación da padding-left a todos sus span */
+.ubicacion-item .horarios-cafe__valor {
+  padding-left: 0;
+}

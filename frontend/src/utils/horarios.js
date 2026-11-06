@@ -52,3 +52,13 @@ export const textoAnticipacion = (minutos) =>
 
 /** Opciones para un <select>: [{ valor: "09:00", etiqueta: "9:00 a. m." }]. */
 export const opcionesDeHora = (horas) => horas.map((hora) => ({ valor: hora, etiqueta: formatearHoraTexto(hora) }));
+
+/** Líneas para mostrar los horarios (pie de página y Nosotros): reservas por tipo de día y domicilio. */
+export const lineasDeHorario = (horarios) => {
+  const rango = ({ desde, hasta }) => `${formatearHoraTexto(desde)} – ${formatearHoraTexto(hasta)}`;
+  return [
+    { etiqueta: "Reservas de lunes a viernes", valor: rango(horarios.reservas.entreSemana) },
+    { etiqueta: "Reservas de sábados y domingos", valor: rango(horarios.reservas.finDeSemana) },
+    { etiqueta: "Domicilios para el mismo día", valor: rango(horarios.domicilio) },
+  ];
+};
