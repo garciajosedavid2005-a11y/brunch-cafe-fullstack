@@ -105,7 +105,7 @@ export default function HorariosSection() {
                 <legend className="admin-horarios__titulo"><Clock size={16} aria-hidden="true" /> {titulo}</legend>
                 <div className="admin-horarios__campos">
                   {[["desde", "Primera hora"], ["hasta", "Última hora"]].map(([campo, etiqueta]) => (
-                    <div key={campo} className="admin-form-group">
+                    <div key={campo} className="admin-form-group admin-horarios__campo">
                       <label className="admin-form-label" htmlFor={`horario-${ruta.join("-")}-${campo}`}>{etiqueta}</label>
                       <select
                         id={`horario-${ruta.join("-")}-${campo}`}
@@ -119,8 +119,8 @@ export default function HorariosSection() {
                     </div>
                   ))}
                   {ruta[0] === "domicilio" && (
-                    <div className="admin-form-group">
-                      <label className="admin-form-label" htmlFor="horario-anticipacion">Anticipación mínima (minutos)</label>
+                    <div className="admin-form-group admin-horarios__campo">
+                      <label className="admin-form-label" htmlFor="horario-anticipacion">Anticipación (min)</label>
                       <input
                         id="horario-anticipacion"
                         className="admin-form-input"
@@ -130,7 +130,11 @@ export default function HorariosSection() {
                         step="15"
                         value={horarios.domicilio.anticipacionMinutos}
                         onChange={cambiar(["domicilio"], "anticipacionMinutos")}
+                        aria-describedby="horario-anticipacion-ayuda"
                       />
+                      <small id="horario-anticipacion-ayuda" className="admin-horarios__ayuda">
+                        Tiempo mínimo entre el pedido y la entrega
+                      </small>
                     </div>
                   )}
                 </div>

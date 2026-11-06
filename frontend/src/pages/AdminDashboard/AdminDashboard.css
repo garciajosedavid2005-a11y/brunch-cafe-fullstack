@@ -2385,10 +2385,38 @@
   color: #2c0703;
 }
 
+/* Cada campo ocupa tres filas compartidas (etiqueta, control, ayuda) con subgrid: los
+   controles de una misma línea empiezan a la misma altura aunque una etiqueta se parta
+   en dos líneas, y la ayuda debajo de un campo no desplaza a los demás. */
 .admin-horarios__campos {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  column-gap: 1rem;
+  row-gap: 0;
+}
+
+.admin-horarios__campo {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  row-gap: 0.45rem;
+  margin-bottom: 1.1rem;
+}
+
+.admin-horarios__campo .admin-form-label {
+  align-self: end;
+}
+
+/* Selectores y campo numérico con la misma altura */
+.admin-horarios .admin-form-select,
+.admin-horarios .admin-form-input {
+  height: 2.85rem;
+}
+
+.admin-horarios__ayuda {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #4a3531;
 }
 
 .admin-horarios__pie {

@@ -42,4 +42,12 @@ describe("Admin: horarios de domicilio y reservas", () => {
     expect(await screen.findByText(/domicilio: la primera hora no puede ser posterior/i)).toBeInTheDocument();
     expect(api.put).not.toHaveBeenCalled();
   });
+
+  it("anticipación: etiqueta corta y el detalle como ayuda asociada al campo", async () => {
+    render(<HorariosSection />);
+    const campo = await screen.findByLabelText("Anticipación (min)");
+    expect(campo).toHaveValue(60);
+    expect(campo).toHaveAccessibleDescription("Tiempo mínimo entre el pedido y la entrega");
+    expect(screen.queryByText("Anticipación mínima (minutos)")).toBeNull();
+  });
 });
