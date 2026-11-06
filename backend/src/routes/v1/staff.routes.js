@@ -13,7 +13,8 @@ router.use(validateToken)
 router.get('/reservas', requirePermission('reserva:ver'), listarReservas)
 router.patch('/reservas/:id/estado', requirePermission('reserva:cambiar_estado'), validateSchema(cambioEstadoSchema), cambiarEstadoReserva)
 
-// Pedidos: listar (pedido:ver) y cambiar estado (pedido:cambiar_estado). 0.13 amplía esta parte.
+// Pedidos (0.13): listar con filtros y ver con historial (pedido:ver), cambiar estado
+// (permiso de cada transición) y cancelar con motivo (pedido:cancelar)
 router.use('/pedidos', pedidoRoutes)
 
 export default router

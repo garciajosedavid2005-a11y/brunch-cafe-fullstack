@@ -38,6 +38,8 @@ export const createApp = () => {
     app.use(cors({
         origin: (origin, callback) => callback(null, !origin || config.CLIENT_URLS.includes(origin)),
         credentials: true,
+        // Cabeceras de respuesta que el frontend puede leer (0.9 y 0.13)
+        exposedHeaders: ['X-Total-Count', 'Idempotent-Replayed'],
     }))
     // 3 MB: una imagen de producto de 2 MB ocupa ~2,7 MB en base64 más el resto de campos
     app.use(express.json({ limit: '3mb' }))

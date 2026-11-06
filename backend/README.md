@@ -157,5 +157,18 @@ La autenticación conserva las cuentas existentes de `Usuario` y `Rol`; no crea 
 | GET | `/api/reviews` | Listar comentarios públicos publicados desde el dashboard |
 | GET | `/api/reviews/product-ratings` | Consultar promedios públicos de calificación por producto |
 | GET | `/api/v1/catalogo` | Catálogo público (alias: `/api/productos/menu`) |
+| GET | `/api/v1/horarios` | Horarios de domicilio y reservas (público, solo lectura) |
+| GET, PUT | `/api/v1/admin/horarios` | Ver y editar los horarios (`horario:editar`) |
 
-Los pedidos se guardan en `Pedido` y `DetallePedido`. El backend valida los productos contra el catálogo en MongoDB (existentes y disponibles) y calcula precios y total desde allí, sin confiar en importes del navegador; guarda también los datos de entrega para el historial. Las reservas se almacenan en `Reserva` y referencian un `Estado` del catálogo fijo, y se crean desde la página protegida `/reservas`. Nombre y correo se precargan desde la cuenta y pueden ajustarse como datos de contacto de esa reserva. Editar una reserva activa la devuelve a `Pendiente` para una nueva aprobación. Las reservas aceptan horas en punto de 8:00 a 12:00 entre semana y de 8:00 a 11:00 los fines de semana, además de requerir un motivo. Los comentarios se guardan en la colección `Review`: el dashboard es el único formulario para publicarlos, y la página pública de comentarios muestra las reseñas reales sin permitir publicaciones duplicadas. Pueden ser generales o asociarse a un producto; las calificaciones de producto se agregan en el endpoint público de promedios.
+### Staff: pedidos (`/api/v1/staff/pedidos`, 0.13)
+
+Por permiso, no por rol. Errores con el formato único; las transiciones válidas están en `src/libs/estados.js`.
+
+| Método | Ruta | Permiso | Acción |
+|---|---|---|---|
+| GET | `/api/v1/staff/pedidos` | `pedido:ver` | Listar, más recientes primero. Filtros opcionales: `estado=pendiente,confirmado` (códigos), `fecha=AAAA-MM-DD` (día de Bogotá), `limite=1..200`. Cabecera `X-Total-Count` con el total sin límite. Cada pedido trae las `transiciones` que el usuario puede hacer |
+| GET | `/api/v1/staff/pedidos/:id` | `pedido:ver` | Detalle con líneas e `historial` (de, a, motivo, actor, usuario, fecha) |
+| PATCH | `/api/v1/staff/pedidos/:id/estado` | el de la transición | `{ codigo, motivo? }`: avanzar (`pedido:cambiar_estado`) o cancelar (`pedido:cancelar` + motivo). Salto inválido o estado final → 409 |
+| PATCH | `/api/v1/staff/pedidos/:id/cancelar` | `pedido:cancelar` | `{ motivo }` (3–300 caracteres). Solo desde `pendiente` o `confirmado`; deja el Evento en la misma transacción |
+
+Los pedidos se guardan en `Pedido` y `DetallePedido`. El backend valida los productos contra el catálogo en MongoDB (existentes y disponibles) y calcula precios y total desde allí, sin confiar en importes del navegador; guarda también los datos de entrega para el historial. Las reservas se almacenan en `Reserva` y referencian un `Estado` del catálogo fijo, y se crean desde la página protegida `/reservas`. Nombre y correo se precargan desde la cuenta y pueden ajustarse como datos de contacto de esa reserva. Editar una reserva activa la devuelve a `Pendiente` para una nueva aprobación. Las reservas aceptan horas en punto dentro del horario configurado en Admin › Horarios (por defecto 8:00–19:00 entre semana y 8:00–17:00 los fines de semana), además de requerir un motivo y un teléfono. Los domicilios son para el mismo día, en punto, dentro de su horario (por defecto 8:00–16:00) y con 1 h de anticipación. Los comentarios se guardan en la colección `Review`: el dashboard es el único formulario para publicarlos, y la página pública de comentarios muestra las reseñas reales sin permitir publicaciones duplicadas. Pueden ser generales o asociarse a un producto; las calificaciones de producto se agregan en el endpoint público de promedios.
