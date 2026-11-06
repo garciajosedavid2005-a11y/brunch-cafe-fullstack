@@ -38,7 +38,7 @@
 | 0.14b | Admin › Horarios: campos alineados | — | HECHO | (este commit) | «Anticipación mínima (minutos)» ocupaba dos líneas y su campo quedaba ~24 px más abajo que las horas. Etiqueta corta «Anticipación (min)» y la ayuda «Tiempo mínimo entre el pedido y la entrega» debajo del campo (`aria-describedby`; test). Cada campo ocupa tres filas compartidas con `subgrid` (etiqueta, control, ayuda): medido en Chromium, los controles de cada sección quedan a la misma altura a 1280, 1024 y 768 px, también con una etiqueta forzada a 2–3 líneas; selectores y campo numérico de 46 px. Columnas mínimas de 150 px para que los tres campos de Domicilio quepan en una línea a 1024 px. Capturas `capturas/horarios-admin-antes` y `horarios-admin-despues`. |
 | 0.13 | Endpoints staff de pedido | PARCIAL | HECHO | (este commit) | Ya existían listar (`pedido:ver`) y cambiar estado según transiciones (permiso por transición; cancelar con motivo vía `codigo: cancelado`), con tests en `estados-api.test.js`. Se añadió: filtros opcionales en `GET /api/v1/staff/pedidos` (`estado` por códigos, `fecha` = día de Bogotá, `limite` 1–200) y `X-Total-Count` (sin parámetros responde igual que antes); `GET /:id` con líneas e historial de Eventos (quién y cuándo); `PATCH /:id/cancelar { motivo }` (`pedido:cancelar`, motivo 3–300, misma máquina de estados y transacción); id mal formado → 404. CORS expone `X-Total-Count` e `Idempotent-Replayed`. README con la tabla de staff. Sin cambios en el frontend (la interfaz de staff es de la Fase 1). Backend 269 tests. |
 
-> **Fase 1 (salón y comandas):** plan y preguntas de negocio en [PLAN_FASE_1.md](PLAN_FASE_1.md), sin código todavía; esperando respuestas.
+> **Fase 1 (salón y comandas):** plan en [PLAN_FASE_1.md](PLAN_FASE_1.md), con las preguntas de negocio respondidas el 2026-11-06 (decisiones F1-1 a F1-16). Sin código todavía: empieza cuando se apruebe la integración de `developers` (0.15).
 >
 > El diagnóstico de la Fase A (mapa del repo, hallazgos T1–T11, N1–N8, riesgos) está en [DIAGNOSTICO_FASE_A.md](DIAGNOSTICO_FASE_A.md).
 
@@ -127,6 +127,25 @@
 - 2026-11-05 · 0.12 · Reseña editable con `PATCH /api/v1/cliente/comentarios/:id`; la segunda reseña del mismo producto → `409 RESENA_EXISTENTE` (no se sobrescribe en silencio) · Claude
 - 2026-11-05 · 0.12 · `migrate:0.12` guarda cada colección heredada en EJSON antes de eliminarla (además del mongodump) para que `--down` restaure sin herramientas externas · Claude
 - 2026-11-06 · Fase 0 aprobada; antes de la Fase 1 se hace el ítem 0.14 (ajustes visuales, pie de página y prueba con Node 22) · Brayan
+- 2026-11-06 · La rama `developers` (panel de mesero, recuperación de contraseña) se conserva, pero se ajusta a las reglas de la Fase 0 en el ítem 0.15 antes de empezar la Fase 1 · Brayan
+
+**Fase 1: respuestas de negocio** (preguntas de [PLAN_FASE_1.md](PLAN_FASE_1.md), sección 5)
+- 2026-11-06 · F1-1 · Zonas y mesas editables desde Admin › Salón. Seed de ejemplo marcado como tal (Interior y Terraza, mesas de 2 y 4); los datos reales se cargan desde el admin. Solo se unen mesas de la misma zona marcadas como «combinable» · Brayan
+- 2026-11-06 · F1-2 · Estados de mesa: `libre`, `ocupada`, `cuenta_pedida`, `por_limpiar`, `bloqueada`. `por_limpiar → libre`: mesero y anfitrión (`mesa:operar`). Bloquear y desbloquear: anfitrión y admin, con motivo · Brayan
+- 2026-11-06 · F1-3 · Estaciones: Cocina y Barra. Por defecto según la categoría (bebidas → barra; el resto → cocina), con posibilidad de cambiarla por producto · Brayan
+- 2026-11-06 · F1-4 · Modificadores: grupos de opciones con recargo opcional (COP entero ≥ 0), obligatorios u opcionales, con mínimo y máximo. Seed de ejemplo editable: Leche (entera, deslactosada, almendra con recargo), Tamaño (normal, grande con recargo), Término del huevo (obligatorio en platos con huevo), Extras (con recargo); «sin ingrediente» va como nota · Brayan
+- 2026-11-06 · F1-5 · Rondas: el mesero envía cada ronda completa; sin «tiempos» ni «marchar» en la Fase 1. Nota libre por ítem · Brayan
+- 2026-11-06 · F1-6 · Anular un ítem enviado: solo con `item:anular` (admin por ahora; un rol supervisor más adelante) y motivo obligatorio. No se cobra y queda en `Evento` para el reporte de mermas de la Fase 5. Antes de enviar, el mesero lo quita libremente · Brayan
+- 2026-11-06 · F1-7 · Comensales obligatorios al abrir (mínimo 1). Una sola cuenta por mesa; la división es de la Fase 3 · Brayan
+- 2026-11-06 · F1-8 · Transferir una cuenta entre meseros: anfitrión y admin (`cuenta:transferir`), motivo opcional · Brayan
+- 2026-11-06 · F1-9 · Mesas unidas comparten una sola cuenta. Se separan solo mientras la cuenta no tenga ítems enviados; con ítems, se resuelve con la división de la Fase 3 · Brayan
+- 2026-11-06 · F1-10 · Tablet: correo y contraseña; sesión de 12 h solo para roles de staff (clientes siguen con 2 h). Tablets compartidas: botón visible «Cambiar de usuario». El PIN por dispositivo queda para la Fase 2 · Brayan
+- 2026-11-06 · F1-11 · Domicilio: opción A, sigue en `Pedido` hasta la Fase 6 · Brayan
+- 2026-11-06 · F1-12 · Para llevar pasa a la Fase 6 (no entra en la Fase 1) · Brayan
+- 2026-11-06 · F1-13 · Cerrar sin cobro: solo el admin, con motivo obligatorio y estado «cerrada sin cobro», identificable en la Fase 3. El mesero solo puede solicitar la cuenta · Brayan
+- 2026-11-06 · F1-14 · Con la cuenta abierta se respeta el precio del momento en que se agregó el ítem (snapshot de nombre, precio y modificadores) · Brayan
+- 2026-11-06 · F1-15 · Reservas conectadas a mesas: fuera de la Fase 1 (Fase 4) · Brayan
+- 2026-11-06 · F1-16 · Node 22 LTS para desarrollo y CI: `.nvmrc` y `engines` en los `package.json`, documentado en el README · Brayan
 - 2026-11-05 · T4: `codigo` con contador atómico (colección `counters`, `findOneAndUpdate` + `$inc`) mientras exista `codigo` · Brayan
 
 ## Pendientes / preguntas abiertas
@@ -139,7 +158,7 @@
 - **Staff en el frontend:** un usuario con rol de staff (mesero, etc.) que inicia sesión se redirige a `/cuenta` (el frontend solo distingue `admin`). La interfaz de staff llega en la Fase 1.
 - **Para llevar:** la transición `listo → entregado` está definida, pero se activa cuando el pedido tenga campo de modalidad (hoy todos son domicilio).
 - **Estados antiguos sin descripción:** "Pendiente" (pedido y reserva) y "Cancelada" (reserva) de la BD local no tienen descripción guardada. Se puede escribir desde el dashboard; no se migró.
-- **Crash intermitente de Vitest en Windows** (`3221226505` / `0xC0000409`): confirmado en 0.14 que depende de Node 24.15 en Windows (2 de 5 ejecuciones) y no aparece con Node 22 LTS (0 de 10). Pendiente de decidir: fijar Node 22 para desarrollo y CI (`.nvmrc` / `engines`) o seguir con 24 y repetir cuando ocurra.
+- **Crash intermitente de Vitest en Windows** (`3221226505` / `0xC0000409`): confirmado en 0.14 que depende de Node 24.15 en Windows (2 de 5 ejecuciones) y no aparece con Node 22 LTS (0 de 10). Decidido (F1-16): se fija Node 22 LTS con `.nvmrc` y `engines`; se aplica en la integración 0.15.
 - **Respaldos:** en `backups/` (ignorado por git). `mongodump` no está instalado en Windows; se usa la imagen Docker `mongo:7` (requiere Docker Desktop encendido). Respaldo previo a 0.12: `backups/pre-0.12-20261106T045032Z` y `backups/0.12-heredadas-ejson` (para `migrate:0.12 -- --down`).
 - **Datos de desarrollo:** pedido de prueba `8B0CA6` (cliente.dev, pendiente) creado al verificar 0.9; se puede cancelar desde el admin. Los 2 pedidos antiguos con `entregaEn` anterior a su `createdAt` se conservan.
 - **Imágenes del seed:** en `seed-data/imagenes/` hay 26 archivos y 24 productos (2 sin uso, no se borraron); las del menú inicial pesan 2,4–2,8 MB (el límite de 2 MB es para subidas desde el admin).
