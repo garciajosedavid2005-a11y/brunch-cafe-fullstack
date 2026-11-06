@@ -6,7 +6,7 @@ import * as pedidos from '../../modulos/pedidos/pedidosCliente.controller.js'
 import { validateSchema } from '../../modulos/compartido/validator.middleware.js'
 import { idempotencia } from '../../modulos/compartido/idempotencia.js'
 import { cancelacionClienteSchema } from '../../modulos/compartido/cambioEstado.schema.js'
-import { crearComentario, listarMisComentarios } from '../../modulos/catalogo/comentario.controller.js'
+import { crearComentario, listarMisComentarios, editarMiComentario } from '../../modulos/catalogo/comentario.controller.js'
 
 // /api/v1/cliente: lo que hace el usuario de la sesión sobre sus propios datos
 const router = Router()
@@ -29,5 +29,6 @@ router.get('/metodos-pago', pedidos.listarMetodosPagoActivos)
 
 router.get('/comentarios', listarMisComentarios)
 router.post('/comentarios', crearComentario)
+router.patch('/comentarios/:id', editarMiComentario)
 
 export default router

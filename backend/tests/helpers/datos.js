@@ -43,3 +43,11 @@ export const crearReserva = async (sesionCliente, extra) => {
     if (res.status !== 201) throw new Error(`No se creó la reserva de prueba: ${JSON.stringify(res.body)}`)
     return res.body.reservation._id
 }
+
+/** Lleva un pedido hasta "entregado" por las transiciones del staff (sesión con permisos). */
+export const entregarPedido = async (sesionStaff, pedidoId) => {
+    for (const codigo of ['confirmado', 'en_preparacion', 'listo', 'en_camino', 'entregado']) {
+        const res = await sesionStaff.patch(`/api/v1/staff/pedidos/${pedidoId}/estado`).send({ codigo })
+        if (res.status !== 200) throw new Error(`No se pudo pasar el pedido a ${codigo}: ${JSON.stringify(res.body)}`)
+    }
+}

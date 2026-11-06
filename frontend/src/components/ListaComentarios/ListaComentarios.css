@@ -175,3 +175,10 @@
 .lista-comentarios__tarjeta {
     height: 100%;
 }
+/* Reseña de un pedido entregado o de un cliente con reserva completada (0.12) */
+.lista-comentarios__verificada {
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #2e6b3a;
+}

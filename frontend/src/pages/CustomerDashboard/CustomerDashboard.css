@@ -664,3 +664,29 @@
 .customer-dashboard__aviso-staff {
   border-left: 4px solid #890620;
 }
+
+/* Marca de compra verificada en Mis comentarios (0.12) */
+.dashboard-review__verificada {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #e6f4ea;
+  color: #1f5a2c;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dashboard-review-edit {
+  margin-top: 0.75rem;
+}
+
+.dashboard-review__calificacion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.dashboard-review__acciones {
+  margin-top: 0.75rem;
+}

@@ -75,6 +75,7 @@ const ListaComentarios = () => {
                     <Estrellas calificacion={review.calificacion} />
                   </div>
                   {review.producto && <p className="lista-comentarios__producto">Sobre: {review.producto}</p>}
+                  {review.verificada && <p className="lista-comentarios__verificada">Compra verificada</p>}
                   <p className="lista-comentarios__comentario">{review.comentario}</p>
                   <time className="lista-comentarios__fecha" dateTime={review.createdAt}>
                     {formatearFecha(review.createdAt)}

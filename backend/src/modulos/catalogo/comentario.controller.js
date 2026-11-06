@@ -1,4 +1,8 @@
-import { cuerpoError } from '../compartido/errors.js';
+import { AppError, cuerpoError, notFound } from '../compartido/errors.js';
+import Pedido from '../pedidos/pedido.model.js';
+import DetallePedido from '../pedidos/detallePedido.model.js';
+import Reserva from '../salon/reserva.model.js';
+import { estadoPorCodigo } from '../compartido/estados.service.js';
 import { z } from 'zod';
 import Comentario from './comentario.model.js';
 import Producto from './producto.model.js';
@@ -18,6 +22,28 @@ const comentarioSchema = z.discriminatedUnion('tipo', [
     comentario: z.string().trim().min(10).max(300),
   }).refine(unaReferencia, { error: MENSAJE_REFERENCIA }),
 ]);
+
+const edicionSchema = z.object({
+  calificacion: z.coerce.number().int().min(1).max(5),
+  comentario: z.string().trim().min(10).max(300),
+});
+
+// Decisión 14: ¿el usuario recibió algún pedido (con ese producto, si se indica)?
+const recibioPedido = async (usuarioId, productoId) => {
+  const entregado = await estadoPorCodigo('pedido', 'entregado');
+  const pedidos = await Pedido.find({ usuario: usuarioId, estado: entregado._id }).select('_id').lean();
+  if (!pedidos.length) return false;
+  if (!productoId) return true;
+  return Boolean(await DetallePedido.exists({ pedido: { $in: pedidos.map(({ _id }) => _id) }, producto: productoId }));
+};
+
+const completoReserva = async (usuarioId) => {
+  const completada = await estadoPorCodigo('reserva', 'completada');
+  return Boolean(await Reserva.exists({ usuario: usuarioId, estado: completada._id }));
+};
+
+const resenaExistente = (id) => new AppError(409, 'RESENA_EXISTENTE',
+  'Ya dejaste una reseña de este producto. Puedes editarla desde "Mis comentarios".', { id: String(id) });
 
 export const listarComentariosPublicos = async (req, res, next) => {
   try {
@@ -43,6 +69,7 @@ export const listarComentariosPublicos = async (req, res, next) => {
         producto: nombrePorCodigo.get(comentario.productoId) || '',
         calificacion: comentario.calificacion,
         comentario: comentario.comentario,
+        verificada: comentario.verificada === true,
         createdAt: comentario.createdAt,
       })),
     });
@@ -70,6 +97,7 @@ export const listarComentariosAdmin = async (req, res, next) => {
       calificacion: comentario.calificacion,
       comentario: comentario.comentario,
       visible: comentario.visible !== false,
+      verificada: comentario.verificada === true,
       fecha: comentario.createdAt,
     })));
   } catch (error) {
@@ -137,17 +165,44 @@ export const crearComentario = async (req, res, next) => {
       }
       datos.producto = producto._id;
       datos.productoId = producto.codigo;
+      const previa = await Comentario.findOne({ usuario: req.usuario.id, tipo: 'producto', producto: producto._id }).select('_id').lean();
+      if (previa) throw resenaExistente(previa._id);
+      if (!(await recibioPedido(req.usuario.id, producto._id))) {
+        throw new AppError(403, 'RESENA_NO_VERIFICABLE', 'Solo puedes reseñar productos de pedidos que ya recibiste.');
+      }
+    } else if (!(await recibioPedido(req.usuario.id)) && !(await completoReserva(req.usuario.id))) {
+      throw new AppError(403, 'RESENA_NO_VERIFICABLE', 'Podrás dejar una reseña cuando recibas un pedido o completes una reserva.');
     }
 
     const comentario = await Comentario.create({
       ...datos,
+      verificada: true,
       usuario: req.usuario.id,
     });
 
     return res.status(201).json({ review: comentario });
   } catch (error) {
+    // Dos envíos simultáneos de la misma reseña: el índice único deja pasar solo uno
+    if (error?.code === 11000) {
+      const previa = await Comentario.findOne({ usuario: req.usuario.id, producto: error.keyValue?.producto }).select('_id').lean();
+      return next(resenaExistente(previa?._id));
+    }
     return next(error);
   }
+};
+
+// PATCH /api/v1/cliente/comentarios/:id { calificacion, comentario } (0.12): editar la propia.
+// No cambia el tipo, el producto ni la verificación; la moderación (visible) se conserva.
+export const editarMiComentario = async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) throw notFound('Comentario no encontrado.');
+  const datos = edicionSchema.parse(req.body);
+  const comentario = await Comentario.findOneAndUpdate(
+    { _id: req.params.id, usuario: req.usuario.id },
+    { $set: datos },
+    { returnDocument: 'after', runValidators: true },
+  ).lean();
+  if (!comentario) throw notFound('Comentario no encontrado.');
+  res.json({ review: comentario });
 };
 
 export const obtenerCalificacionesProductos = async (req, res, next) => {

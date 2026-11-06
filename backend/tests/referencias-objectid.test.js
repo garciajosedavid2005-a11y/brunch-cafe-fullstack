@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import mongoose from 'mongoose'
 import { api } from './helpers/app.js'
 import { crearConSesion } from './helpers/usuarios.js'
+import { entregarPedido } from './helpers/datos.js'
 import Categoria from '../src/modulos/catalogo/categoria.model.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
 import DetallePedido from '../src/modulos/pedidos/detallePedido.model.js'
@@ -22,6 +23,11 @@ const pedir = async (items) => {
         items, nombre: 'Ana Pérez', telefono: '3001234567', direccion: 'Carrera 36B #30-06', hora: '10:00', barrio: 'Centro',
         metodoPagoId: metodos.body[0].id,
     })
+}
+// Desde 0.12 una reseña de producto exige un pedido entregado que lo contenga
+const recibirLatte = async () => {
+    const { body } = await pedir([{ productoRef: String(latte._id), cantidad: 1 }])
+    await entregarPedido((await crearConSesion('admin')).sesion, body.order._id)
 }
 const comentar = (extra) => cliente.post('/api/customer/comentarios').send({
     tipo: 'producto', calificacion: 4, comentario: 'Muy rico y bien servido', ...extra,
@@ -54,6 +60,7 @@ describe('Referencias por ObjectId (0.6)', () => {
     })
 
     it('reseña de producto con productoRef: guarda la referencia; las calificaciones la incluyen', async () => {
+        await recibirLatte()
         const res = await comentar({ productoRef: String(latte._id) })
         expect(res.status).toBe(201)
         const guardado = await Comentario.findOne().lean()
@@ -65,6 +72,7 @@ describe('Referencias por ObjectId (0.6)', () => {
     })
 
     it('reseña con productoId numérico (compatibilidad) también guarda la referencia', async () => {
+        await recibirLatte()
         expect((await comentar({ productoId: 7 })).status).toBe(201)
         expect(String((await Comentario.findOne().lean()).producto)).toBe(String(latte._id))
     })
