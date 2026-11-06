@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import {
     CATALOGO_ESTADOS, TRANSICIONES, TIPOS_ESTADO, esEstadoFinal, transicionesDisponibles, validarTransicion,
-} from '../src/libs/estados.js'
+} from '../src/modulos/compartido/estados.js'
 
 const ADMIN = ['*']
 const MESERO = ['pedido:ver', 'pedido:cambiar_estado']

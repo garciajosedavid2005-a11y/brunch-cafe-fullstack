@@ -4,14 +4,14 @@ import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
 import { pinoHttp } from 'pino-http'
 import { config } from './config.js'
-import { logger } from './libs/logger.js'
+import { logger } from './modulos/compartido/logger.js'
 import routes from './routes/index.routes.js'
 import v1Routes from './routes/v1.routes.js'
 import {
     manejadorErrores,
     normalizarErroresLegados,
     rutaNoEncontrada,
-} from './middlewares/errorHandler.js'
+} from './modulos/compartido/errorHandler.js'
 
 export const createApp = () => {
     const app = express()

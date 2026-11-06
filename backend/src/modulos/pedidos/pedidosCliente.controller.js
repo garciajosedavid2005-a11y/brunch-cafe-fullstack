@@ -6,14 +6,14 @@ import Pedido from '../../models/pedido.model.js';
 import DetallePedido from '../../models/detallePedido.model.js';
 import MetodoPago from '../../models/metodoPago.model.js';
 import Producto from '../../models/producto.model.js';
-import { STATUS_CLIENTE } from '../../libs/estados.js';
-import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../../services/estados.service.js';
-import { cuerpoError } from '../../libs/errors.js';
+import { STATUS_CLIENTE } from '../compartido/estados.js';
+import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../compartido/estados.service.js';
+import { cuerpoError } from '../compartido/errors.js';
 import { referenciaProducto, unaReferencia, MENSAJE_REFERENCIA, resolverProductos } from '../../schema/referenciaProducto.js';
-import { telefono } from '../../schema/comunes.js';
+import { telefono } from '../compartido/comunes.schema.js';
 import { horasDomicilio, hora12, textoAnticipacion, textoRango } from '../../libs/horarios.js';
 import { obtenerHorarios } from '../configuracion/horarios.service.js';
-import { conTransaccion } from '../../libs/transacciones.js';
+import { conTransaccion } from '../compartido/transacciones.js';
 
 const orderSchema = z.object({
   items: z.array(z.object({

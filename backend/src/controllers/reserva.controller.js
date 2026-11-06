@@ -1,9 +1,9 @@
 import Reserva from '../models/reserva.model.js'
-import { notFound } from '../libs/errors.js'
-import { esEstadoFinal } from '../libs/estados.js'
+import { notFound } from '../modulos/compartido/errors.js'
+import { esEstadoFinal } from '../modulos/compartido/estados.js'
 import {
     cambiarEstado, codigoDestino, estadosDelTipo, opcionesDeCambio,
-} from '../services/estados.service.js'
+} from '../modulos/compartido/estados.service.js'
 
 const formatoAdmin = (reserva, { permisos, estados }) => {
     const codigo = reserva.estado?.codigo || ''

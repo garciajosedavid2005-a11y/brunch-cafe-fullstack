@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import mongoose from 'mongoose'
-import Estado from '../src/models/estado.model.js'
+import Estado from '../src/modulos/compartido/estado.model.js'
 import { recolorearAmarillo } from '../src/migraciones/recolorear-amarillo.js'
 
 const db = () => mongoose.connection.db

@@ -1,8 +1,8 @@
-import Estado from '../models/estado.model.js'
+import Estado from '../modulos/compartido/estado.model.js'
 import Pedido from '../models/pedido.model.js'
 import Reserva from '../models/reserva.model.js'
-import { AppError, badRequest, conflict, notFound } from '../libs/errors.js'
-import { TIPOS_ESTADO, esEstadoFinal, definicionEstado } from '../libs/estados.js'
+import { AppError, badRequest, conflict, notFound } from '../modulos/compartido/errors.js'
+import { TIPOS_ESTADO, esEstadoFinal, definicionEstado } from '../modulos/compartido/estados.js'
 
 const COMPARACION = { locale: 'es', strength: 1 }
 
@@ -72,7 +72,7 @@ export const actualizarEstado = async (req, res) => {
     res.json(formato(estado, usos.get(String(estado._id)) || 0))
 }
 
-// Los estados son fijos (los define src/libs/estados.js): no se crean ni se borran
+// Los estados son fijos (los define src/modulos/compartido/estados.js): no se crean ni se borran
 export const estadosFijos = () => {
     throw new AppError(405, 'ESTADOS_FIJOS', 'Los estados son fijos: solo puedes editar su etiqueta, descripción y colores.')
 }

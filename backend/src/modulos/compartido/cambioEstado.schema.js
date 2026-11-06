@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { textoOpcional } from './comunes.js'
+import { textoOpcional } from './comunes.schema.js'
 
 // Cambio de estado por staff: el destino llega como `codigo` (preferido) o como
 // `estado` (_id del Estado, lo que envía el dashboard actual).

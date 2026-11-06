@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { esFechaValida } from '../../libs/fechas.js'
-import { telefono } from '../../schema/comunes.js'
+import { esFechaValida } from '../compartido/fechas.js'
+import { telefono } from '../compartido/comunes.schema.js'
 
 // Datos de una reserva del cliente: mismas reglas para /api/v1 y los alias. 0.8.
 export const reservaSchema = z.object({

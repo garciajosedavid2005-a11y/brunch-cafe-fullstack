@@ -6,8 +6,8 @@
 // - Si la petición falla (4xx/5xx) la clave se libera para poder corregir y reintentar.
 // Requiere validateToken antes (las claves son por usuario).
 import { createHash } from 'node:crypto'
-import SolicitudIdempotente from '../models/solicitudIdempotente.model.js'
-import { AppError } from '../libs/errors.js'
+import SolicitudIdempotente from './solicitudIdempotente.model.js'
+import { AppError } from './errors.js'
 
 const FORMATO_CLAVE = /^[A-Za-z0-9_-]{8,100}$/
 

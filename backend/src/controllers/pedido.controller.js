@@ -1,13 +1,13 @@
 import mongoose from 'mongoose'
 import Pedido from '../models/pedido.model.js'
 import DetallePedido from '../models/detallePedido.model.js'
-import Evento from '../models/evento.model.js'
-import Estado from '../models/estado.model.js'
+import Evento from '../modulos/compartido/evento.model.js'
+import Estado from '../modulos/compartido/estado.model.js'
 import { filtrosPedidosSchema } from '../schema/pedido.schema.js'
-import { instanteLocal } from '../libs/fechas.js'
-import { notFound } from '../libs/errors.js'
-import { esEstadoFinal } from '../libs/estados.js'
-import { cambiarEstado, codigoDestino, estadosDelTipo, opcionesDeCambio } from '../services/estados.service.js'
+import { instanteLocal } from '../modulos/compartido/fechas.js'
+import { notFound } from '../modulos/compartido/errors.js'
+import { esEstadoFinal } from '../modulos/compartido/estados.js'
+import { cambiarEstado, codigoDestino, estadosDelTipo, opcionesDeCambio } from '../modulos/compartido/estados.service.js'
 
 const POBLAR = [
     ['usuario', 'nombre apellido correo telefono'],
@@ -130,7 +130,7 @@ export const cancelarPedido = async (req, res) => {
 }
 
 // PATCH /api/pedidos/:id/estado  { codigo | estado, motivo? }
-// Cada transición exige su permiso (ver src/libs/estados.js); cancelar pide motivo.
+// Cada transición exige su permiso (ver src/modulos/compartido/estados.js); cancelar pide motivo.
 export const cambiarEstadoPedido = async (req, res) => {
     const pedido = await buscarPedido(req.params.id)
 

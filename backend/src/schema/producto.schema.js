@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { texto, textoOpcional, booleano, requerido } from './comunes.js'
+import { texto, textoOpcional, booleano, requerido } from '../modulos/compartido/comunes.schema.js'
 import { DATA_URL, esUrlDelMenu, bytesDeDataUrl, MAX_BYTES_IMAGEN } from '../libs/imagenesProducto.js'
 
 // '' (sin imagen), la URL que ya tenía (/productos/menu/imagenes/...) o una imagen nueva incrustada

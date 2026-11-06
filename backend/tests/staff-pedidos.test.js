@@ -5,7 +5,7 @@ import mongoose from 'mongoose'
 import { crearConSesion } from './helpers/usuarios.js'
 import { crearPedido } from './helpers/datos.js'
 import Pedido from '../src/models/pedido.model.js'
-import Evento from '../src/models/evento.model.js'
+import Evento from '../src/modulos/compartido/evento.model.js'
 
 const BASE = '/api/v1/staff/pedidos'
 let cliente, admin, mesero, cocina

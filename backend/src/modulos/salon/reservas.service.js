@@ -1,13 +1,13 @@
 // Servicio único de reservas del cliente (0.8): lo usan /api/v1/cliente/reservas,
 // /api/customer/reservations y /api/reservas (alias). Las validaciones viven aquí.
 import Reserva from '../../models/reserva.model.js'
-import { AppError, badRequest, notFound } from '../../libs/errors.js'
-import { instanteLocal, inicioReserva } from '../../libs/fechas.js'
+import { AppError, badRequest, notFound } from '../compartido/errors.js'
+import { instanteLocal, inicioReserva } from '../compartido/fechas.js'
 import { horasEnPunto, rangoReserva, textoRango } from '../../libs/horarios.js'
 import { obtenerHorarios } from '../configuracion/horarios.service.js'
-import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../../services/estados.service.js'
+import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../compartido/estados.service.js'
 import { reservaSchema } from './reservas.schema.js'
-import { conTransaccion } from '../../libs/transacciones.js'
+import { conTransaccion } from '../compartido/transacciones.js'
 
 // Estados en los que el cliente todavía puede editar o cancelar su reserva
 export const RESERVA_EDITABLE = ['pendiente', 'confirmada']

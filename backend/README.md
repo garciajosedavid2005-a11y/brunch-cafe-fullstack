@@ -112,7 +112,7 @@ Lee `seed-data/menu.json` (categorías con descripción y productos con `codigo`
 
 ### Estados y transiciones
 
-- El catálogo de estados y la máquina de transiciones viven en `src/libs/estados.js` (fuente de verdad). Cada `Estado` tiene un `codigo` fijo; el admin solo edita etiqueta (`nombre`), descripción y colores (`PUT /api/estados/:id`). Crear o borrar estados responde `405 ESTADOS_FIJOS`.
+- El catálogo de estados y la máquina de transiciones viven en `src/modulos/compartido/estados.js` (fuente de verdad). Cada `Estado` tiene un `codigo` fijo; el admin solo edita etiqueta (`nombre`), descripción y colores (`PUT /api/estados/:id`). Crear o borrar estados responde `405 ESTADOS_FIJOS`.
 - Pedido: `pendiente → confirmado → en_preparacion → listo → en_camino → entregado`, más `cancelado`. Reserva: `pendiente → confirmada → sentada → completada`, más `cancelada` y `no_show`. Los estados finales no se reabren.
 - Cada transición declara quién la hace y qué permiso exige: avanzar un pedido → `pedido:cambiar_estado`; cancelarlo (solo en `pendiente`/`confirmado`) → `pedido:cancelar` + motivo obligatorio; reservas → `reserva:cambiar_estado`. El cliente cancela su pedido solo en `pendiente` y su reserva en `pendiente`/`confirmada`; si edita una confirmada, vuelve a `pendiente`.
 - `PATCH /api/pedidos/:id/estado` y `PATCH /api/reservas/:id/estado` reciben `{ codigo, motivo? }` (o `{ estado: <_id> }` por compatibilidad). Errores: `400 ESTADO_INVALIDO | MOTIVO_REQUERIDO`, `403 FORBIDDEN`, `409 TRANSICION_INVALIDA | ESTADO_FINAL | CONFLICTO_ESTADO`. Los listados de staff incluyen `estadoCodigo`, `esFinal` y `transiciones` (las que el usuario puede hacer).
@@ -134,7 +134,7 @@ Todas las respuestas de error usan el mismo formato:
 { "error": { "code": "VALIDATION_ERROR", "message": "Correo invalido", "details": [{ "campo": "correo", "mensaje": "Correo invalido" }] } }
 ```
 
-Códigos habituales: `BAD_REQUEST`, `VALIDATION_ERROR`, `INVALID_JSON`, `INVALID_ID`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `DUPLICATE`, `PAYLOAD_TOO_LARGE`, `TOO_MANY_REQUESTS`, `INTERNAL_ERROR`. Los errores 5xx nunca exponen el detalle interno (queda en el log). En código nuevo, lanza `AppError` (`src/libs/errors.js`) y deja que el manejador central responda.
+Códigos habituales: `BAD_REQUEST`, `VALIDATION_ERROR`, `INVALID_JSON`, `INVALID_ID`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `DUPLICATE`, `PAYLOAD_TOO_LARGE`, `TOO_MANY_REQUESTS`, `INTERNAL_ERROR`. Los errores 5xx nunca exponen el detalle interno (queda en el log). En código nuevo, lanza `AppError` (`src/modulos/compartido/errors.js`) y deja que el manejador central responda.
 
 ## Endpoints
 
@@ -162,7 +162,7 @@ La autenticación conserva las cuentas existentes de `Usuario` y `Rol`; no crea 
 
 ### Staff: pedidos (`/api/v1/staff/pedidos`, 0.13)
 
-Por permiso, no por rol. Errores con el formato único; las transiciones válidas están en `src/libs/estados.js`.
+Por permiso, no por rol. Errores con el formato único; las transiciones válidas están en `src/modulos/compartido/estados.js`.
 
 | Método | Ruta | Permiso | Acción |
 |---|---|---|---|

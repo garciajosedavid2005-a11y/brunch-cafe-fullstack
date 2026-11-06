@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { validateToken } from '../../middlewares/validateToken.js'
 import { requirePermission } from '../../middlewares/requirePermission.js'
-import { validateSchema } from '../../middlewares/validator.middleware.js'
+import { validateSchema } from '../../modulos/compartido/validator.middleware.js'
 import { visibilidadComentarioSchema } from '../../schema/comentario.schema.js'
 import { listarComentariosAdmin, cambiarVisibilidadComentario, eliminarComentario } from '../../controllers/comentario.controller.js'
 import categoriaRoutes from '../categorias.routes.js'

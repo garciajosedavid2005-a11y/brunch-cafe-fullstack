@@ -10,9 +10,9 @@ import {
   eliminarComentario,
 } from '../controllers/comentario.controller.js';
 import { requirePermission } from '../middlewares/requirePermission.js';
-import { validateSchema } from '../middlewares/validator.middleware.js';
+import { validateSchema } from '../modulos/compartido/validator.middleware.js';
 import { visibilidadComentarioSchema } from '../schema/comentario.schema.js';
-import { deprecado } from '../middlewares/deprecado.js';
+import { deprecado } from '../modulos/compartido/deprecado.js';
 
 // /api/comentarios y /api/reviews: alias deprecados (se retiran en 0.12)
 const router = Router();

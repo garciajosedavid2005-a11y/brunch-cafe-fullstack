@@ -15,7 +15,7 @@ import { sembrarRoles } from '../src/seeds/base.js'
 import { sembrarEstados } from '../src/seeds/estados.js'
 import { sembrarMetodosPago } from '../src/seeds/metodosPago.js'
 import MetodoPago from '../src/models/metodoPago.model.js'
-import { estadoPorCodigo, registrarEvento } from '../src/services/estados.service.js'
+import { estadoPorCodigo, registrarEvento } from '../src/modulos/compartido/estados.service.js'
 
 export const USUARIOS_DEV = [
     { rol: 'admin', correo: 'admin.dev@brunchcafe.test', nombre: 'Admin', apellido: 'Prueba' },

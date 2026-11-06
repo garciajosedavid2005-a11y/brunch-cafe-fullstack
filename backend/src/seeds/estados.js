@@ -2,8 +2,8 @@
 // - Crea los estados que falten (con la etiqueta y colores por defecto).
 // - Fuerza `esFinal` y `orden` desde el catálogo; no pisa etiqueta, descripción
 //   ni colores que el admin haya editado.
-import Estado from '../models/estado.model.js'
-import { CATALOGO_ESTADOS, TIPOS_ESTADO, ordenDe } from '../libs/estados.js'
+import Estado from '../modulos/compartido/estado.model.js'
+import { CATALOGO_ESTADOS, TIPOS_ESTADO, ordenDe } from '../modulos/compartido/estados.js'
 
 export class MigracionPendienteError extends Error {
     constructor(cantidad) {

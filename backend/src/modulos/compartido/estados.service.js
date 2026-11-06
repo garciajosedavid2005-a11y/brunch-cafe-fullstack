@@ -1,11 +1,11 @@
-// Aplica la máquina de transiciones (src/libs/estados.js) sobre pedidos y reservas
+// Aplica la máquina de transiciones (src/modulos/compartido/estados.js) sobre pedidos y reservas
 // y deja cada cambio en la bitácora Evento.
 import mongoose from 'mongoose'
-import Estado from '../models/estado.model.js'
-import Evento from '../models/evento.model.js'
-import { AppError } from '../libs/errors.js'
-import { conTransaccion } from '../libs/transacciones.js'
-import { validarTransicion, transicionesDisponibles, definicionEstado } from '../libs/estados.js'
+import Estado from './estado.model.js'
+import Evento from './evento.model.js'
+import { AppError } from './errors.js'
+import { conTransaccion } from './transacciones.js'
+import { validarTransicion, transicionesDisponibles, definicionEstado } from './estados.js'
 
 const catalogoIncompleto = (tipo, codigo) =>
     new AppError(500, 'INTERNAL_ERROR', `Falta el estado ${tipo}.${codigo} en la BD (revisa el seed de estados).`)

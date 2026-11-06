@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
 import mongoose from 'mongoose'
-import { traducirError } from '../src/middlewares/errorHandler.js'
-import { AppError, MENSAJE_INTERNO } from '../src/libs/errors.js'
+import { traducirError } from '../src/modulos/compartido/errorHandler.js'
+import { AppError, MENSAJE_INTERNO } from '../src/modulos/compartido/errors.js'
 
 describe('traducirError', () => {
     it('AppError conserva status, code, message y details', () => {

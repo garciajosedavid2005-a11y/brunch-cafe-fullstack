@@ -11,7 +11,7 @@
 // down
 //   - Borra los eventos de la migración y los estados insertados (si nadie los usa),
 //     y restaura nombre/esFinal originales quitando codigo, orden y _migracion07.
-import { CATALOGO_ESTADOS, TIPOS_ESTADO, definicionEstado, ordenDe } from '../libs/estados.js'
+import { CATALOGO_ESTADOS, TIPOS_ESTADO, definicionEstado, ordenDe } from '../modulos/compartido/estados.js'
 
 export const MOTIVO = 'migracion 0.7'
 export const ACTOR = 'sistema'

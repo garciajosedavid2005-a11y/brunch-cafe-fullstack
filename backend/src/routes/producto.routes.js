@@ -9,8 +9,8 @@ import {
 } from '../controllers/producto.controller.js'
 import { validateToken } from '../middlewares/validateToken.js'
 import { requirePermission } from '../middlewares/requirePermission.js'
-import { validateSchema } from '../middlewares/validator.middleware.js'
-import { deprecado } from '../middlewares/deprecado.js'
+import { validateSchema } from '../modulos/compartido/validator.middleware.js'
+import { deprecado } from '../modulos/compartido/deprecado.js'
 import { crearProductoSchema, actualizarProductoSchema } from '../schema/producto.schema.js'
 
 // Gestión de productos (admin). Se monta en /api/v1/admin/productos y en el alias /api/productos.

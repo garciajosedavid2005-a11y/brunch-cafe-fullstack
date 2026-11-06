@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { validateToken } from '../middlewares/validateToken.js';
-import { deprecado } from '../middlewares/deprecado.js';
-import { validateSchema } from '../middlewares/validator.middleware.js';
-import { idempotencia } from '../middlewares/idempotencia.js';
-import { cancelacionClienteSchema } from '../schema/cambioEstado.schema.js';
+import { deprecado } from '../modulos/compartido/deprecado.js';
+import { validateSchema } from '../modulos/compartido/validator.middleware.js';
+import { idempotencia } from '../modulos/compartido/idempotencia.js';
+import { cancelacionClienteSchema } from '../modulos/compartido/cambioEstado.schema.js';
 import { legadoVerCustomer, legadoEditarCustomer } from '../modulos/identidad/perfil.controller.js';
 import * as reservas from '../modulos/salon/reservas.controller.js';
 import * as pedidos from '../modulos/pedidos/pedidosCliente.controller.js';

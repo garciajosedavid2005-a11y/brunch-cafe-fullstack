@@ -3,9 +3,9 @@ import { validateToken } from '../../middlewares/validateToken.js'
 import { verMiPerfil, editarMiPerfil, cambiarMiContrasena } from '../../modulos/identidad/perfil.controller.js'
 import * as reservas from '../../modulos/salon/reservas.controller.js'
 import * as pedidos from '../../modulos/pedidos/pedidosCliente.controller.js'
-import { validateSchema } from '../../middlewares/validator.middleware.js'
-import { idempotencia } from '../../middlewares/idempotencia.js'
-import { cancelacionClienteSchema } from '../../schema/cambioEstado.schema.js'
+import { validateSchema } from '../../modulos/compartido/validator.middleware.js'
+import { idempotencia } from '../../modulos/compartido/idempotencia.js'
+import { cancelacionClienteSchema } from '../../modulos/compartido/cambioEstado.schema.js'
 import { crearComentario, listarMisComentarios } from '../../controllers/comentario.controller.js'
 
 // /api/v1/cliente: lo que hace el usuario de la sesión sobre sus propios datos

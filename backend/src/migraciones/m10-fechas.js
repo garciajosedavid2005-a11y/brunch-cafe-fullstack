@@ -7,7 +7,7 @@
 //   - Si una fecha u hora no es válida, no adivina: no escribe nada y la lista.
 // down
 //   - Quita inicio / entregaEn y la marca solo de los documentos que marcó up.
-import { instanteLocal, fechaLocal, fechaCalendario, esHoraValida } from '../libs/fechas.js'
+import { instanteLocal, fechaLocal, fechaCalendario, esHoraValida } from '../modulos/compartido/fechas.js'
 
 export const MARCA = '_migracion10'
 

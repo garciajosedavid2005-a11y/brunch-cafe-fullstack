@@ -1,8 +1,8 @@
 import Rol from '../models/rol.model.js'
 import Usuario from '../models/usuario.model.js'
 import Permiso from '../models/permiso.model.js'
-import { AppError, conflict, notFound } from '../libs/errors.js'
-import { slug, sinUndefined } from '../libs/utils.js'
+import { AppError, conflict, notFound } from '../modulos/compartido/errors.js'
+import { slug, sinUndefined } from '../modulos/compartido/utils.js'
 import { ROL_ADMIN, ROL_CLIENTE } from '../libs/permisos.js'
 import { invalidarSesionesDeRol } from '../libs/sesiones.js'
 

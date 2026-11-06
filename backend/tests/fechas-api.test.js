@@ -5,7 +5,7 @@ import Categoria from '../src/models/categoria.model.js'
 import Producto from '../src/models/producto.model.js'
 import Reserva from '../src/models/reserva.model.js'
 import Pedido from '../src/models/pedido.model.js'
-import { instanteLocal } from '../src/libs/fechas.js'
+import { instanteLocal } from '../src/modulos/compartido/fechas.js'
 
 let cliente
 beforeEach(async () => {
@@ -32,7 +32,7 @@ describe('Reservas: instante de inicio en UTC (0.10)', () => {
         await cliente.patch(`/api/customer/reservations/${id}`).send(datosReserva({ fecha: nueva, hora: '10:00' }))
         expect((await Reserva.findById(id)).inicio.toISOString()).toBe(instanteLocal(nueva, '10:00').toISOString())
 
-        const { estadoPorCodigo } = await import('../src/services/estados.service.js')
+        const { estadoPorCodigo } = await import('../src/modulos/compartido/estados.service.js')
         await Reserva.updateOne({ _id: id }, { $set: { estado: (await estadoPorCodigo('reserva', 'confirmada'))._id } })
         const otra = fechaFutura(11)
         const res = await cliente.patch(`/api/customer/reservations/${id}`).send(datosReserva({ fecha: otra, hora: '08:00' }))
@@ -50,7 +50,7 @@ describe('Reservas: instante de inicio en UTC (0.10)', () => {
 
     it('el modelo deriva inicio si una ruta antigua no lo envía', async () => {
         const { usuario } = await crearConSesion('cliente')
-        const { estadoPorCodigo } = await import('../src/services/estados.service.js')
+        const { estadoPorCodigo } = await import('../src/modulos/compartido/estados.service.js')
         const reserva = await Reserva.create({
             usuario: usuario._id, estado: (await estadoPorCodigo('reserva', 'pendiente'))._id,
             cantidadPersonas: 2, fecha: new Date('2026-12-01T12:00:00Z'), hora: '08:00',

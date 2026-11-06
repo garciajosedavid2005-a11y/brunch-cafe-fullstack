@@ -7,7 +7,7 @@ import {
 } from '../controllers/metodoPago.controller.js'
 import { validateToken } from '../middlewares/validateToken.js'
 import { requirePermission } from '../middlewares/requirePermission.js'
-import { validateSchema } from '../middlewares/validator.middleware.js'
+import { validateSchema } from '../modulos/compartido/validator.middleware.js'
 import { crearMetodoPagoSchema, actualizarMetodoPagoSchema } from '../schema/metodoPago.schema.js'
 
 const router = Router()

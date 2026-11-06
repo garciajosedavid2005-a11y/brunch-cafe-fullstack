@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { requerido, texto } from './comunes.js'
+import { requerido, texto } from '../modulos/compartido/comunes.schema.js'
 
 // Correo normalizado: sin espacios y en minúsculas (N2)
 export const correo = z

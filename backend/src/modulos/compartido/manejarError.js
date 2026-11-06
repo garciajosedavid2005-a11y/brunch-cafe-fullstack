@@ -1,6 +1,6 @@
 import { cuerpoError } from './errors.js'
 import { logger } from './logger.js'
-import { traducirError } from '../middlewares/errorHandler.js'
+import { traducirError } from './errorHandler.js'
 
 // Usado por los controladores del dashboard dentro de try/catch.
 // Delega en el traductor central para mantener el formato único de errores.

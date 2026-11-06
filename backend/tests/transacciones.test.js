@@ -7,7 +7,7 @@ import Producto from '../src/models/producto.model.js'
 import Pedido from '../src/models/pedido.model.js'
 import DetallePedido from '../src/models/detallePedido.model.js'
 import Reserva from '../src/models/reserva.model.js'
-import Evento from '../src/models/evento.model.js'
+import Evento from '../src/modulos/compartido/evento.model.js'
 import Usuario from '../src/models/usuario.model.js'
 import { exigirReplicaSet, ReplicaSetRequeridoError } from '../src/db.js'
 

@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { deprecadoBajo } from '../middlewares/deprecado.js'
+import { deprecadoBajo } from '../modulos/compartido/deprecado.js'
 import authRoutes from './auth.routes.js'
 import usuarioRoutes from './usuario.routes.js'
 import reservaRoutes from './reserva.routes.js'

@@ -1,7 +1,7 @@
 import { config } from './config.js'
 import { connectDB, exigirReplicaSet, ReplicaSetRequeridoError } from './db.js'
 import { createApp } from './app.js'
-import { logger } from './libs/logger.js'
+import { logger } from './modulos/compartido/logger.js'
 import { sembrarRoles } from './seeds/base.js'
 import { sembrarEstados, MigracionPendienteError } from './seeds/estados.js'
 import { sembrarHorarios } from './modulos/configuracion/horarios.service.js'

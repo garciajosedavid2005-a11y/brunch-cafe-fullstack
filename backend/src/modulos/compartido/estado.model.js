@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 
 const estadoSchema = new mongoose.Schema({
-    // Código fijo que usa la máquina de transiciones (src/libs/estados.js).
+    // Código fijo que usa la máquina de transiciones (src/modulos/compartido/estados.js).
     // No se edita desde el dashboard.
     codigo: {
         type: String,
@@ -32,7 +32,7 @@ const estadoSchema = new mongoose.Schema({
         default: ''
     },
     // Colores de la etiqueta que muestra el dashboard. Sin valor por defecto:
-    // si faltan, la API usa los del catálogo del código (src/libs/estados.js).
+    // si faltan, la API usa los del catálogo del código (src/modulos/compartido/estados.js).
     // (Antes el default #b78103 se aplicaba al leer y teñía de amarillo hasta "Cancelada".)
     color: {
         type: String,

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 import { verificarToken } from '../libs/jwt.js'
 import { COOKIE_SESION, borrarCookieSesion } from '../libs/cookies.js'
-import { cuerpoError } from '../libs/errors.js'
+import { cuerpoError } from '../modulos/compartido/errors.js'
 import { obtenerSesion } from '../libs/sesiones.js'
 
 const rechazar = (res, code, message) => {

@@ -1,7 +1,7 @@
 // Reglas de horario (decisión 15 y N8) como funciones puras sobre la utilidad de fechas (0.10).
 // `horarios` es el documento de configuración: { domicilio: { desde, hasta, anticipacionMinutos },
 // reservas: { entreSemana: { desde, hasta }, finDeSemana: { desde, hasta } } }.
-import { diaSemana, fechaLocal, instanteLocal } from './fechas.js'
+import { diaSemana, fechaLocal, instanteLocal } from '../modulos/compartido/fechas.js'
 
 const dosDigitos = (n) => String(n).padStart(2, '0')
 

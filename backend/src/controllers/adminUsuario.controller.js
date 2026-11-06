@@ -1,9 +1,9 @@
 import mongoose from 'mongoose'
 import Usuario from '../models/usuario.model.js'
 import Rol from '../models/rol.model.js'
-import Contador from '../models/contador.model.js'
-import { conTransaccion } from '../libs/transacciones.js'
-import { AppError, badRequest, notFound } from '../libs/errors.js'
+import Contador from '../modulos/compartido/contador.model.js'
+import { conTransaccion } from '../modulos/compartido/transacciones.js'
+import { AppError, badRequest, notFound } from '../modulos/compartido/errors.js'
 import { ROL_ADMIN } from '../libs/permisos.js'
 import { invalidarSesionUsuario } from '../libs/sesiones.js'
 

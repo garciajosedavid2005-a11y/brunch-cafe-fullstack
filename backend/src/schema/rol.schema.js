@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { texto, textoOpcional } from './comunes.js'
+import { texto, textoOpcional } from '../modulos/compartido/comunes.schema.js'
 import { CLAVES, CLAVES_ASIGNABLES } from '../libs/permisos.js'
 
 // Solo claves del catálogo que ya se pueden asignar ("*" y las reservadas no)

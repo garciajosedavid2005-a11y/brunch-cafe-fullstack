@@ -1,4 +1,4 @@
-import { ZONA_HORARIA } from '../../libs/fechas.js'
+import { ZONA_HORARIA } from '../compartido/fechas.js'
 import * as servicio from './horarios.service.js'
 
 // GET /api/v1/horarios (público): lo usan los formularios de pedido y reserva

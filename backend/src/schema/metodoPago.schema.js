@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { texto, textoOpcional, booleano } from './comunes.js'
+import { texto, textoOpcional, booleano } from '../modulos/compartido/comunes.schema.js'
 
 export const crearMetodoPagoSchema = z.object({
     nombre: texto('El nombre', 2, 100),

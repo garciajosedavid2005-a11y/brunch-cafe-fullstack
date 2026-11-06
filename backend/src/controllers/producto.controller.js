@@ -2,9 +2,9 @@ import mongoose from 'mongoose'
 import Categoria from '../models/categoria.model.js'
 import Producto from '../models/producto.model.js'
 import MenuImage from '../models/menuImage.model.js'
-import { manejarError } from '../libs/manejarError.js'
-import { sinUndefined } from '../libs/utils.js'
-import { siguienteValor } from '../libs/contadores.js'
+import { manejarError } from '../modulos/compartido/manejarError.js'
+import { sinUndefined } from '../modulos/compartido/utils.js'
+import { siguienteValor } from '../modulos/compartido/contadores.js'
 import { urlPublica, esDataUrl, guardarImagenSubida, borrarImagenSubida } from '../libs/imagenesProducto.js'
 
 const formato = (producto) => ({

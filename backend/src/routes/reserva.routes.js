@@ -3,9 +3,9 @@ import { listarReservas, cambiarEstadoReserva } from '../controllers/reserva.con
 import { legadoCrear, legadoMias, legadoCancelar } from '../modulos/salon/reservas.controller.js'
 import { validateToken } from '../middlewares/validateToken.js'
 import { requirePermission } from '../middlewares/requirePermission.js'
-import { validateSchema } from '../middlewares/validator.middleware.js'
-import { deprecado } from '../middlewares/deprecado.js'
-import { cambioEstadoSchema } from '../schema/cambioEstado.schema.js'
+import { validateSchema } from '../modulos/compartido/validator.middleware.js'
+import { deprecado } from '../modulos/compartido/deprecado.js'
+import { cambioEstadoSchema } from '../modulos/compartido/cambioEstado.schema.js'
 
 // /api/reservas: alias deprecados (se retiran en 0.12). Usan el mismo servicio que
 // /api/v1/cliente/reservas, así que ahora validan fecha futura, horario y datos de contacto.

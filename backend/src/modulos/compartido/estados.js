@@ -6,7 +6,7 @@
 // - Cada transición declara quién la hace (staff o cliente), qué permiso exige
 //   y si necesita motivo. Lo que no está aquí, no se permite.
 import { AppError } from './errors.js'
-import { CLAVES, tienePermiso } from './permisos.js'
+import { CLAVES, tienePermiso } from '../../libs/permisos.js'
 
 export const TIPOS_ESTADO = ['pedido', 'reserva']
 

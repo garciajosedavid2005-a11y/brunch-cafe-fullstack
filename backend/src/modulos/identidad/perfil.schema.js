@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { esTelefono, MENSAJE_TELEFONO } from '../../schema/comunes.js'
+import { esTelefono, MENSAJE_TELEFONO } from '../compartido/comunes.schema.js'
 
 // Mismas reglas para todas las rutas de perfil (v1 y alias). 0.8.
 // Teléfono opcional en el perfil: omitido = se conserva; '' = se borra; si viene, la misma

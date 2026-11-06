@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ZONA_HORARIA, instanteLocal, fechaLocal, horaLocal, esFechaValida, esHoraValida } from '../src/libs/fechas.js'
+import { ZONA_HORARIA, instanteLocal, fechaLocal, horaLocal, esFechaValida, esHoraValida } from '../src/modulos/compartido/fechas.js'
 
 describe('Fechas: instantes en UTC, calendario de America/Bogota', () => {
     it('la zona es America/Bogota', () => {

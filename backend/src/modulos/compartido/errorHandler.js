@@ -5,8 +5,8 @@ import {
     codigoPorStatus,
     cuerpoError,
     detallesZod,
-} from '../libs/errors.js'
-import { logger } from '../libs/logger.js'
+} from './errors.js'
+import { logger } from './logger.js'
 
 /**
  * TRANSITORIO (se retira al cerrar 0.11): muchos controladores todavía responden

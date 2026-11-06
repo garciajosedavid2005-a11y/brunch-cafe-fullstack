@@ -1,5 +1,5 @@
 import mongoose from 'mongoose'
-import { instanteLocal, fechaLocal, esHoraValida } from '../libs/fechas.js'
+import { instanteLocal, fechaLocal, esHoraValida } from '../modulos/compartido/fechas.js'
 
 const pedidoSchema = new mongoose.Schema({
     usuario: {

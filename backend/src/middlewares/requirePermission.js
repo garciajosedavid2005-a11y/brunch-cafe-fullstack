@@ -1,4 +1,4 @@
-import { cuerpoError } from '../libs/errors.js'
+import { cuerpoError } from '../modulos/compartido/errors.js'
 import { tienePermiso } from '../libs/permisos.js'
 
 /**

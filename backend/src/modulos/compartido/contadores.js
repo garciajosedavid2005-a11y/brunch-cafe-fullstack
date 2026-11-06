@@ -1,4 +1,4 @@
-import Contador from '../models/contador.model.js'
+import Contador from './contador.model.js'
 
 /**
  * Siguiente valor del contador `nombre`, de forma atómica ($inc).

@@ -1,7 +1,7 @@
 // Servicio único del perfil de la sesión (lo usan /api/v1/cliente/perfil y sus alias).
 import bcrypt from 'bcryptjs'
 import Usuario from '../../models/usuario.model.js'
-import { AppError, notFound } from '../../libs/errors.js'
+import { AppError, notFound } from '../compartido/errors.js'
 import { invalidarSesionUsuario } from '../../libs/sesiones.js'
 
 const SIN_SECRETOS = '-contraseña -tokenVersion'

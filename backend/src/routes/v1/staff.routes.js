@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import { validateToken } from '../../middlewares/validateToken.js'
 import { requirePermission } from '../../middlewares/requirePermission.js'
-import { validateSchema } from '../../middlewares/validator.middleware.js'
-import { cambioEstadoSchema } from '../../schema/cambioEstado.schema.js'
+import { validateSchema } from '../../modulos/compartido/validator.middleware.js'
+import { cambioEstadoSchema } from '../../modulos/compartido/cambioEstado.schema.js'
 import { listarReservas, cambiarEstadoReserva } from '../../controllers/reserva.controller.js'
 import pedidoRoutes from '../pedido.routes.js'
 

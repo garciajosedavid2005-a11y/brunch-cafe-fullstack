@@ -2,8 +2,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { crearConSesion } from './helpers/usuarios.js'
 import { crearPedido, crearReserva, datosReserva } from './helpers/datos.js'
-import Evento from '../src/models/evento.model.js'
-import Estado from '../src/models/estado.model.js'
+import Evento from '../src/modulos/compartido/evento.model.js'
+import Estado from '../src/modulos/compartido/estado.model.js'
 
 const eventosDe = (entidadId) => Evento.find({ entidadId }).sort({ createdAt: 1, _id: 1 }).lean()
 const avanzar = (sesion, id, codigo, extra = {}) =>

@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { listarEstados, actualizarEstado, estadosFijos } from '../controllers/estado.controller.js'
 import { validateToken } from '../middlewares/validateToken.js'
 import { requirePermission } from '../middlewares/requirePermission.js'
-import { validateSchema } from '../middlewares/validator.middleware.js'
+import { validateSchema } from '../modulos/compartido/validator.middleware.js'
 import { actualizarEstadoSchema } from '../schema/estado.schema.js'
 
 const router = Router()
