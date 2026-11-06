@@ -1,16 +1,28 @@
 import { cuerpoError } from '../compartido/errors.js'
 import { Router } from 'express'
-import { register, login, logout } from './auth.controller.js'
+import { register, login, logout, solicitarRecuperacion, restablecerContrasena } from './auth.controller.js'
 import { validateSchema } from '../compartido/validator.middleware.js'
-import { registroSchema, loginSchema } from './auth.schema.js'
+import {
+  registroSchema,
+  loginSchema,
+  solicitarRecuperacionSchema,
+  restablecerContrasenaSchema,
+} from './auth.schema.js'
 import { validateToken } from './validateToken.js'
-import { crearLimiteLogin, crearLimiteRegistro } from './rateLimit.js'
+import {
+  crearLimiteLogin,
+  crearLimiteRecuperacion,
+  crearLimiteRegistro,
+  crearLimiteRestablecimiento,
+} from './rateLimit.js'
 import Usuario from './usuario.model.js'
 
 const router = Router()
 
 router.post('/registro', crearLimiteRegistro(), validateSchema(registroSchema), register)
 router.post('/login', crearLimiteLogin(), validateSchema(loginSchema), login)
+router.post('/recuperar-contrasena', crearLimiteRecuperacion(), validateSchema(solicitarRecuperacionSchema), solicitarRecuperacion)
+router.post('/restablecer-contrasena', crearLimiteRestablecimiento(), validateSchema(restablecerContrasenaSchema), restablecerContrasena)
 router.post('/logout', logout)
 router.get('/me', validateToken, async (req, res) => {
   const usuario = await Usuario.findById(req.usuario.id)

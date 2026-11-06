@@ -23,7 +23,12 @@ describe('Seed de roles base', () => {
         const porNombre = Object.fromEntries(roles.map((r) => [r.nombre, r.permisos]))
         expect(porNombre.admin).toEqual(['*'])
         expect(porNombre.cliente).toEqual([])
-        expect(porNombre.mesero).toEqual(['pedido:ver', 'pedido:cambiar_estado'])
+        expect(porNombre.mesero).toEqual([
+            'pedido:ver',
+            'pedido:cambiar_estado',
+            'reserva:ver',
+            'reserva:crear',
+        ])
         expect(porNombre.compras).toEqual([])
     })
 

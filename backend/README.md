@@ -11,6 +11,22 @@
 
 El backend escucha por defecto en `http://localhost:4000`; el cliente usa cookies con credenciales habilitadas. En producción, frontend y API deben servirse por HTTPS y `CLIENT_URL` debe apuntar al origen exacto del frontend.
 
+## Panel Mesero y recuperación de contraseña
+
+El rol nuevo `mesero` recibe `pedido:ver`, `pedido:cambiar_estado`, `reserva:ver` y `reserva:crear`. No recibe `reserva:cambiar_estado`; la confirmación y gestión de estados sigue dependiendo de ese permiso. El seed no sobrescribe permisos que un administrador ya haya personalizado. En una base existente, reinicia el backend para actualizar el catálogo y desde **Admin → Roles** asigna al rol Mesero los permisos que necesite. Para habilitar los módulos configurados por defecto, activa `pedido:ver`, `pedido:cambiar_estado`, `reserva:ver` y `reserva:crear`.
+
+El panel de Mesero inicia en Resumen y carga reservas y pedidos desde las rutas protegidas de `/api/v1/staff`. Perfil y cambio de contraseña usan las mismas rutas de cuenta ya disponibles.
+
+Para habilitar el enlace de recuperación configura `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` y, opcionalmente, `SMTP_FROM` en `backend/.env`. La solicitud se hace en `POST /api/v1/auth/recuperar-contrasena`; el enlace de un solo uso vence a los 30 minutos y actualiza la contraseña en `POST /api/v1/auth/restablecer-contrasena`. Si SMTP no está configurado o falla, el API mantiene la respuesta genérica para no revelar si existe una cuenta y registra el error para diagnóstico.
+
+## MongoDB Atlas en Windows
+
+Si el backend muestra `querySrv ECONNREFUSED`, Node.js no puede consultar por DNS el registro SRV de una URI `mongodb+srv://`. El error ocurre antes de la autenticación; cambiar la contraseña o la lista de acceso de IP de Atlas no resuelve este error específico.
+
+En `backend/.env`, configura `MONGO_URI` con la URI estándar `mongodb://` del clúster (la que enumera los nodos y sus puertos), obtenida desde Atlas o construida siguiendo sus instrucciones oficiales. Conserva las opciones de TLS, replica set y autenticación que proporciona Atlas, y reemplaza las credenciales de muestra. La URI estándar evita la consulta SRV y Node puede resolver los nombres de los nodos mediante el resolvedor de Windows. Como alternativa, corrige el DNS o firewall para que Node pueda consultar DNS por el puerto 53.
+
+No publiques `.env` ni incluyas credenciales en mensajes o commits. Si una contraseña fue expuesta, rótala en Atlas y actualiza `MONGO_URI`.
+
 ## Desarrollo
 
 | Comando | Acción |

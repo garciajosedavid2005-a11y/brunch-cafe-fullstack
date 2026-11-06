@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import { tokenDeSesion } from './jwt.js'
 import { ponerCookieSesion, borrarCookieSesion } from './cookies.js'
 import { AppError } from '../compartido/errors.js'
+import { solicitarRecuperacion as solicitar, restablecerContrasena as restablecer } from './recuperacion.service.js'
 
 // Comparación sin distinguir mayúsculas: las cuentas antiguas pueden tener
 // el correo guardado con mayúsculas (ver scripts/reportar-correos-duplicados.js)
@@ -23,6 +24,7 @@ const usuarioPublico = (usuario, rol) => ({
     telefono: usuario.telefono,
     rol: rol.nombre,
     rolEtiqueta: rol.etiqueta || rol.nombre,
+    permisos: rol.permisos || [],
     createdAt: usuario.createdAt,
     updatedAt: usuario.updatedAt,
 })
@@ -80,4 +82,14 @@ export const login = async (req, res) => {
 export const logout = (req, res) => {
     borrarCookieSesion(res)
     return res.sendStatus(200)
+}
+
+export const solicitarRecuperacion = async (req, res) => {
+    const mensaje = await solicitar(req.validado.correo)
+    res.status(202).json({ message: mensaje })
+}
+
+export const restablecerContrasena = async (req, res) => {
+    await restablecer(req.validado)
+    res.json({ message: 'Tu contraseña fue restablecida. Ya puedes iniciar sesión.' })
 }

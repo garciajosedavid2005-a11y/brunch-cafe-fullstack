@@ -1,6 +1,18 @@
 # Progreso Brunch Café
 
-## Fase actual: 0 — Saneamiento (terminada; esperando aprobación para la Fase 1)
+## Fase actual: 1 — Salón y comandas (panel de Mesero completado)
+
+### Ítems Fase 1
+
+| ID | Ítem | Estado | Notas |
+|---|---|---|---|
+| 1.1 | Panel operativo de Mesero y recuperación de contraseña | COMPLETADO | Integrados los cambios de `developers` en `jose2`. El panel abre en Resumen y muestra datos de reservas/pedidos según permisos; se verificaron visualmente Resumen, Reservas y Pedidos. Backend: lint y 287 pruebas; frontend: lint, 113 pruebas y build. Recuperación por enlace SMTP de un solo uso, válido 30 minutos, con respuesta genérica. |
+
+### Decisiones tomadas (2026-11-06)
+
+- Mesero conserva los permisos de pedidos definidos en `developers` y suma `reserva:ver` y `reserva:crear`; no recibe `reserva:cambiar_estado`.
+- Los permisos de roles ya existentes no se sobrescriben automáticamente. En una BD existente, el administrador asigna los dos permisos nuevos desde **Admin → Roles**.
+- La recuperación se hace con enlace de un solo uso enviado por SMTP, con credenciales en variables de entorno y respuesta genérica.
 
 ### Ítems Fase 0
 

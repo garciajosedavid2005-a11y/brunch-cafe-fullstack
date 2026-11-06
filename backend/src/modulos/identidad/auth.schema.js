@@ -27,3 +27,12 @@ export const loginSchema = z.object({
         .min(1, { error: 'La contraseña es requerida' })
         .max(128, { error: 'La contraseña no puede superar 128 caracteres' }),
 })
+
+export const solicitarRecuperacionSchema = z.object({ correo })
+
+export const restablecerContrasenaSchema = z.object({
+    token: z.string().regex(/^[a-f0-9]{64}$/i, { error: 'El enlace de recuperación no es válido.' }),
+    nueva: z.string(requerido('La contraseña', { femenino: true }))
+        .min(6, { error: 'La contraseña nueva debe tener al menos 6 caracteres' })
+        .max(128, { error: 'La contraseña nueva no puede superar 128 caracteres' }),
+})

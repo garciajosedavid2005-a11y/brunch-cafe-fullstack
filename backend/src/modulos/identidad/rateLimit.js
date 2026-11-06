@@ -29,3 +29,21 @@ export const crearLimiteRegistro = () => rateLimit({
     keyGenerator: (req) => ipKeyGenerator(req.ip),
     handler: responder429('Demasiados registros desde esta conexión. Intenta de nuevo más tarde.'),
 })
+
+export const crearLimiteRecuperacion = () => rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 5,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    keyGenerator: (req) => ipKeyGenerator(req.ip),
+    handler: responder429('Demasiadas solicitudes de recuperación desde esta conexión. Intenta de nuevo más tarde.'),
+})
+
+export const crearLimiteRestablecimiento = () => rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 10,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    keyGenerator: (req) => ipKeyGenerator(req.ip),
+    handler: responder429('Demasiados intentos para restablecer la contraseña. Intenta de nuevo más tarde.'),
+})

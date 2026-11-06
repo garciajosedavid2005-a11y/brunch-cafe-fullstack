@@ -18,6 +18,11 @@ const envSchema = z.object({
   // Cookie de sesión. En producción con frontend y API en sitios distintos: SAMESITE=none + SECURE=true
   COOKIE_SECURE: booleanoEnv.optional(),
   COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
+  SMTP_HOST: z.string().trim().optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_FROM: z.string().trim().optional(),
   // Número de proxies delante de la API (para que req.ip sea la IP real del cliente)
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
 })

@@ -1,4 +1,4 @@
-// Un usuario de staff: no entra a /admin y en /cuenta ve su rol y el aviso del panel de personal
+// Un usuario de staff que abre /admin termina en el panel autorizado de Mesero.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 
@@ -13,19 +13,23 @@ const usuario = (role, roleLabel) => ({
 const responder = (user) => apiRequest.mockImplementation((ruta) => {
   if (ruta === "/v1/auth/me") return Promise.resolve({ user });
   if (ruta === "/v1/cliente/perfil") return Promise.resolve({ perfil: { nombre: user.nombre, apellido: user.apellido, correo: user.email, telefono: user.telefono } });
+  if (ruta === "/v1/staff/reservas" || ruta === "/v1/staff/pedidos?limite=20") return Promise.resolve([]);
   return Promise.resolve({});
 });
 
-describe("Staff en /cuenta", () => {
+describe("Rutas de staff", () => {
   beforeEach(() => apiRequest.mockReset());
 
-  it("un mesero que abre /admin termina en /cuenta con su rol y el aviso", async () => {
-    responder(usuario("mesero", "Mesero"));
+  it("un mesero que abre /admin termina en su panel, empezando por el resumen", async () => {
+    responder({
+      ...usuario("mesero", "Mesero"),
+      permisos: ["pedido:ver", "pedido:cambiar_estado", "reserva:ver", "reserva:crear"],
+    });
     window.history.pushState({}, "", "/admin");
     render(<App />);
-    expect(await screen.findByText("Mesero", { selector: ".customer-dashboard__rol" })).toBeInTheDocument();
-    expect(screen.getByText("Tu panel de personal estará disponible próximamente. Por ahora puedes usar tu cuenta como cliente.")).toBeInTheDocument();
-    expect(window.location.pathname).toBe("/cuenta");
+    expect(await screen.findByRole("heading", { name: /resumen del turno/i })).toBeInTheDocument();
+    expect(screen.getByText("Mesero", { selector: "strong" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/mesero");
     expect(screen.queryByText(/panel de administración/i)).not.toBeInTheDocument();
   });
 

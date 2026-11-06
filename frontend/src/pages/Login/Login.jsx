@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useDialogo } from "../../context/useDialogo";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import AuthBanner from "../Auth/AuthBanner";
@@ -7,7 +6,6 @@ import { useAuth } from "../../context/useAuth";
 import "../Auth/Auth.css";
 
 const Login = () => {
-  const { avisar } = useDialogo();
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
@@ -31,11 +29,12 @@ const Login = () => {
 
     try {
       const loggedUser = await login(formData);
-      if (loggedUser?.role === "admin") {
-        navigate("/admin", { replace: true });
-      } else {
-        navigate(location.state?.from || "/cuenta", { replace: true });
-      }
+      const defaultPath = loggedUser?.role === "admin"
+        ? "/admin"
+        : loggedUser?.role === "mesero"
+          ? "/mesero"
+          : "/cuenta";
+      navigate(location.state?.from || defaultPath, { replace: true });
     } catch (error) {
       setMensaje({ tipo: "error", texto: error.message });
     } finally {
@@ -137,20 +136,9 @@ const Login = () => {
             </div>
 
             <div className="auth-utilidades auth-animar-item auth-delay-5">
-              <a
-                href="#recuperar-contrasena"
-                className="auth-link-olvido"
-                onClick={(e) => {
-                  e.preventDefault();
-                  // La recuperación por correo aún no existe en el backend: se informa sin simularla
-                  avisar({
-                    titulo: "Recuperar contraseña",
-                    mensaje: "La recuperación de contraseña por correo todavía no está disponible. Si no recuerdas tu contraseña, comunícate con Brunch Café para restablecerla.",
-                  });
-                }}
-              >
+              <Link to="/recuperar-contrasena" className="auth-link-olvido">
                 ¿Olvidaste tu contraseña?
-              </a>
+              </Link>
             </div>
 
             <div className="auth-animar-item auth-delay-6">

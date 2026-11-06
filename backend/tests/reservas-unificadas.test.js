@@ -27,6 +27,30 @@ describe('Reservas del cliente: /api/v1/cliente/reservas (0.8)', () => {
         expect(cancelada.body.reservation.status).toBe('cancelled')
     })
 
+    describe('Reservas del staff: /api/v1/staff/reservas', () => {
+        it('permite al mesero registrar y consultar reservas sin cambiar sus estados', async () => {
+            const { sesion: mesero } = await crearConSesion('mesero')
+
+            const creada = await mesero.post('/api/v1/staff/reservas').send(datosReserva())
+            expect(creada.status).toBe(201)
+            expect(creada.body.reservation).toMatchObject({ personas: 2, status: 'pending' })
+
+            const lista = await mesero.get('/api/v1/staff/reservas')
+            expect(lista.status).toBe(200)
+            expect(lista.body).toHaveLength(1)
+            expect(lista.body[0]).toMatchObject({
+                cliente: datosReserva().nombre,
+                correo: datosReserva().correo,
+                personas: 2,
+            })
+
+            const cambioEstado = await mesero
+                .patch(`/api/v1/staff/reservas/${lista.body[0].id}/estado`)
+                .send({ codigo: 'confirmada' })
+            expect(cambioEstado.status).toBe(403)
+        })
+    })
+
     it('valida fecha futura y horario', async () => {
         expect((await cliente.post('/api/v1/cliente/reservas').send(datosReserva({ fecha: ayer() }))).status).toBe(400)
         expect((await cliente.post('/api/v1/cliente/reservas').send(datosReserva({ hora: '20:00' }))).status).toBe(400)

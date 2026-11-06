@@ -6,7 +6,6 @@ let usuario
 beforeEach(async () => {
     ;({ sesion, usuario } = await crearConSesion('cliente', { telefono: '3001234567' }))
 })
-
 const DATOS = { nombre: 'Ana María', apellido: 'Pérez', correo: 'ana.maria@example.com', telefono: '300 765 4321' }
 
 describe('Perfil unificado: /api/v1/cliente/perfil (0.8)', () => {
@@ -53,4 +52,3 @@ describe('Perfil unificado: /api/v1/cliente/perfil (0.8)', () => {
         expect((await api().get('/api/v1/cliente/perfil')).status).toBe(401)
     })
 })
-

@@ -47,13 +47,14 @@ describe('401 sin sesión, 403 sin permiso', () => {
         }
     })
 
-    it('mesero ve pedidos y estados, pero no roles ni usuarios ni reservas', async () => {
+    it('mesero ve pedidos y reservas, pero no roles, usuarios ni cambia estados de reserva', async () => {
         const { sesion } = await crearConSesion('mesero')
         expect((await sesion.get('/api/v1/staff/pedidos')).status).toBe(200)
         expect((await sesion.get('/api/v1/admin/estados?tipo=pedido')).status).toBe(200)
         expect((await sesion.get('/api/v1/admin/roles')).status).toBe(403)
         expect((await sesion.get('/api/v1/admin/usuarios')).status).toBe(403)
-        expect((await sesion.get('/api/v1/staff/reservas')).status).toBe(403)
+        expect((await sesion.get('/api/v1/staff/reservas')).status).toBe(200)
+        expect((await sesion.patch('/api/v1/staff/reservas/000000000000000000000000/estado').send({ codigo: 'confirmada' })).status).toBe(403)
     })
 
     it('anfitrión ve reservas pero no pedidos', async () => {
@@ -72,7 +73,28 @@ describe('401 sin sesión, 403 sin permiso', () => {
     it('/auth/me devuelve los permisos', async () => {
         const { sesion } = await crearConSesion('mesero')
         const me = await sesion.get('/api/v1/auth/me')
-        expect(me.body.user.permisos).toEqual(['pedido:ver', 'pedido:cambiar_estado'])
+        expect(me.body.user.permisos).toEqual([
+            'pedido:ver',
+            'pedido:cambiar_estado',
+            'reserva:ver',
+            'reserva:crear',
+        ])
+    })
+
+    it('login devuelve los permisos actuales del rol', async () => {
+        const { usuario } = await crearConSesion('mesero')
+        const res = await api().post('/api/v1/auth/login').send({
+            correo: usuario.correo,
+            contraseña: 'secreta123',
+        })
+
+        expect(res.status).toBe(200)
+        expect(res.body.permisos).toEqual([
+            'pedido:ver',
+            'pedido:cambiar_estado',
+            'reserva:ver',
+            'reserva:crear',
+        ])
     })
 })
 
@@ -146,9 +168,13 @@ describe('Revocación inmediata', () => {
         const mesero = await crearConSesion('mesero')
         expect((await mesero.sesion.get('/api/v1/staff/pedidos')).status).toBe(200)
 
-        const res = await admin.sesion.put(`/api/v1/admin/roles/${await rolId('mesero')}`).send({ permisos: ['reserva:ver'] })
+        const res = await admin.sesion.put(`/api/v1/admin/roles/${await rolId('mesero')}`).send({
+            permisos: ['pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear'],
+        })
         expect(res.status).toBe(200)
-        expect((await mesero.sesion.get('/api/v1/staff/pedidos')).status).toBe(403)
+        expect(res.body.permisos).toEqual(['pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear'])
+        expect((await mesero.sesion.get('/api/v1/staff/pedidos')).status).toBe(200)
+        expect((await mesero.sesion.get('/api/v1/staff/reservas')).status).toBe(200)
     })
 
     it('cambios directos en BD se aplican como máximo al vencer la caché (30 s)', async () => {
@@ -304,6 +330,10 @@ describe('Protecciones de roles', () => {
         const res = await sesion.get('/api/v1/admin/permisos')
         const porClave = Object.fromEntries(res.body.map((p) => [p.clave, p]))
         expect(porClave['pedido:cancelar'].reservado).toBe(false)
+        expect(porClave['reserva:crear']).toMatchObject({
+            modulo: 'reservas',
+            reservado: false,
+        })
         expect(porClave['caja:cerrar'].reservado).toBe(true)
         expect(porClave['*']).toBeUndefined()
     })

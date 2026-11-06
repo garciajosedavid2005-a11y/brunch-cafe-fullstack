@@ -10,6 +10,7 @@ export const PERMISOS = [
     { clave: 'pedido:cambiar_estado', modulo: 'pedidos', descripcion: 'Avanzar el estado de un pedido' },
     { clave: 'pedido:cancelar', modulo: 'pedidos', descripcion: 'Cancelar un pedido con motivo' },
     { clave: 'reserva:ver', modulo: 'reservas', descripcion: 'Ver todas las reservas' },
+    { clave: 'reserva:crear', modulo: 'reservas', descripcion: 'Registrar reservas para los clientes' },
     { clave: 'reserva:cambiar_estado', modulo: 'reservas', descripcion: 'Confirmar, sentar, completar o cancelar reservas' },
     { clave: 'resena:moderar', modulo: 'resenas', descripcion: 'Ocultar o eliminar reseñas' },
     { clave: 'estado:editar', modulo: 'configuracion', descripcion: 'Editar etiqueta, color y descripción de los estados' },
@@ -35,7 +36,12 @@ export const ROL_CLIENTE = 'cliente'
 // Roles de staff con permisos mínimos (se amplían en cada fase).
 // El seed solo los asigna al crear el rol; después los edita el admin.
 export const ROLES_STAFF = [
-    { nombre: 'mesero', etiqueta: 'Mesero', descripcion: 'Atiende mesas y toma comandas.', permisos: ['pedido:ver', 'pedido:cambiar_estado'] },
+    {
+        nombre: 'mesero',
+        etiqueta: 'Mesero',
+        descripcion: 'Atiende mesas y toma comandas.',
+        permisos: ['pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear'],
+    },
     { nombre: 'anfitrion', etiqueta: 'Anfitrión', descripcion: 'Recibe clientes y gestiona reservas.', permisos: ['reserva:ver', 'reserva:cambiar_estado'] },
     { nombre: 'cocina', etiqueta: 'Cocina', descripcion: 'Prepara los platos.', permisos: ['pedido:ver'] },
     { nombre: 'barista', etiqueta: 'Barista', descripcion: 'Prepara las bebidas.', permisos: ['pedido:ver'] },

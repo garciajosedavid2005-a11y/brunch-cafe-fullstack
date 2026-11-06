@@ -7,7 +7,14 @@ export const connectDB = async () => {
     await mongoose.connect(config.MONGO_URI)
     logger.info('Conectado a MongoDB')
   } catch (error) {
-    logger.fatal({ err: error }, 'Error al conectar a MongoDB')
+    if (error.code === 'ECONNREFUSED' && error.syscall === 'querySrv') {
+      logger.fatal(
+        { err: error },
+        'No se pudo consultar el registro DNS SRV de MongoDB. En Windows, usa una URI mongodb:// de Atlas o permite consultas DNS por el puerto 53; el error ocurre antes de autenticar.',
+      )
+    } else {
+      logger.fatal({ err: error }, 'Error al conectar a MongoDB')
+    }
     process.exit(1)
   }
 }

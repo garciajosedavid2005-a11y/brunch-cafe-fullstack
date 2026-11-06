@@ -4,6 +4,8 @@ import mongoose from 'mongoose'
 import { api, agente } from './helpers/app.js'
 import Usuario from '../src/modulos/identidad/usuario.model.js'
 import MenuImage from '../src/modulos/catalogo/menuImage.model.js'
+import { config } from '../src/config.js'
+import { duracionEnMs } from '../src/modulos/identidad/cookies.js'
 
 const datos = (extra = {}) => ({
     nombre: 'Luis',
@@ -16,13 +18,13 @@ const datos = (extra = {}) => ({
 const cookieDe = (res) => res.headers['set-cookie']?.find((c) => c.startsWith('token=')) || ''
 
 describe('Cookie de sesión', () => {
-    it('es httpOnly, SameSite=Lax, dura 2 h y no es Secure fuera de producción', async () => {
+    it('es httpOnly, SameSite=Lax, dura lo configurado y no es Secure fuera de producción', async () => {
         const res = await api().post('/api/v1/auth/registro').send(datos())
         expect(res.status).toBe(200)
         const cookie = cookieDe(res)
         expect(cookie).toMatch(/HttpOnly/i)
         expect(cookie).toMatch(/SameSite=Lax/i)
-        expect(cookie).toMatch(/Max-Age=7200/)
+        expect(cookie).toMatch(new RegExp(`Max-Age=${duracionEnMs(config.JWT_EXPIRES_IN) / 1000}`))
         expect(cookie).not.toMatch(/Secure/i)
     })
 
