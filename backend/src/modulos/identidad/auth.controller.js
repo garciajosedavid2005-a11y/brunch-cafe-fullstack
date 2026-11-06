@@ -24,6 +24,7 @@ const usuarioPublico = (usuario, rol) => ({
     telefono: usuario.telefono,
     rol: rol.nombre,
     rolEtiqueta: rol.etiqueta || rol.nombre,
+    permisos: rol.permisos || [],
     createdAt: usuario.createdAt,
     updatedAt: usuario.updatedAt,
 })
