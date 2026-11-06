@@ -1,6 +1,6 @@
 // Horarios del café en BD (0.8, decisión 15). Se siembran al arrancar y con `npm run seed:base`;
 // las peticiones solo leen (no crean la configuración si falta).
-import Configuracion from '../../models/configuracion.model.js'
+import Configuracion from './configuracion.model.js'
 import { AppError } from '../compartido/errors.js'
 
 export const CLAVE_HORARIOS = 'horarios'

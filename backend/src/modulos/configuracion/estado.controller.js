@@ -1,8 +1,8 @@
-import Estado from '../modulos/compartido/estado.model.js'
-import Pedido from '../modulos/pedidos/pedido.model.js'
-import Reserva from '../modulos/salon/reserva.model.js'
-import { AppError, badRequest, conflict, notFound } from '../modulos/compartido/errors.js'
-import { TIPOS_ESTADO, esEstadoFinal, definicionEstado } from '../modulos/compartido/estados.js'
+import Estado from '../compartido/estado.model.js'
+import Pedido from '../pedidos/pedido.model.js'
+import Reserva from '../salon/reserva.model.js'
+import { AppError, badRequest, conflict, notFound } from '../compartido/errors.js'
+import { TIPOS_ESTADO, esEstadoFinal, definicionEstado } from '../compartido/estados.js'
 
 const COMPARACION = { locale: 'es', strength: 1 }
 

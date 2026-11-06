@@ -3,7 +3,7 @@
 import Reserva from './reserva.model.js'
 import { AppError, badRequest, notFound } from '../compartido/errors.js'
 import { instanteLocal, inicioReserva } from '../compartido/fechas.js'
-import { horasEnPunto, rangoReserva, textoRango } from '../../libs/horarios.js'
+import { horasEnPunto, rangoReserva, textoRango } from '../configuracion/horarios.reglas.js'
 import { obtenerHorarios } from '../configuracion/horarios.service.js'
 import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../compartido/estados.service.js'
 import { reservaSchema } from './reservas.schema.js'

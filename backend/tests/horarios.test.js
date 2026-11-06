@@ -4,8 +4,8 @@ import { crearConSesion } from './helpers/usuarios.js'
 import { datosReserva } from './helpers/datos.js'
 import Categoria from '../src/modulos/catalogo/categoria.model.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
-import Configuracion from '../src/models/configuracion.model.js'
-import { horasEnPunto, horasReserva, horasDomicilio } from '../src/libs/horarios.js'
+import Configuracion from '../src/modulos/configuracion/configuracion.model.js'
+import { horasEnPunto, horasReserva, horasDomicilio } from '../src/modulos/configuracion/horarios.reglas.js'
 import { HORARIOS_POR_DEFECTO, sembrarHorarios } from '../src/modulos/configuracion/horarios.service.js'
 
 // El reloj de las pruebas está fijo en setup.js: jueves 2026-11-05 07:30 en Bogotá (12:30Z)

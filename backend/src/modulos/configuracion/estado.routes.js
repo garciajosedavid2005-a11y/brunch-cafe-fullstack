@@ -1,9 +1,9 @@
 import { Router } from 'express'
-import { listarEstados, actualizarEstado, estadosFijos } from '../controllers/estado.controller.js'
-import { validateToken } from '../modulos/identidad/validateToken.js'
-import { requirePermission } from '../modulos/identidad/requirePermission.js'
-import { validateSchema } from '../modulos/compartido/validator.middleware.js'
-import { actualizarEstadoSchema } from '../schema/estado.schema.js'
+import { listarEstados, actualizarEstado, estadosFijos } from './estado.controller.js'
+import { validateToken } from '../identidad/validateToken.js'
+import { requirePermission } from '../identidad/requirePermission.js'
+import { validateSchema } from '../compartido/validator.middleware.js'
+import { actualizarEstadoSchema } from './estado.schema.js'
 
 const router = Router()
 

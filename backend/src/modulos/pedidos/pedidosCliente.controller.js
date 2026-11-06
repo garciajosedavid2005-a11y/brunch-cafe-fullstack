@@ -11,7 +11,7 @@ import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../compartido/e
 import { cuerpoError } from '../compartido/errors.js';
 import { referenciaProducto, unaReferencia, MENSAJE_REFERENCIA, resolverProductos } from '../catalogo/referenciaProducto.schema.js';
 import { telefono } from '../compartido/comunes.schema.js';
-import { horasDomicilio, hora12, textoAnticipacion, textoRango } from '../../libs/horarios.js';
+import { horasDomicilio, hora12, textoAnticipacion, textoRango } from '../configuracion/horarios.reglas.js';
 import { obtenerHorarios } from '../configuracion/horarios.service.js';
 import { conTransaccion } from '../compartido/transacciones.js';
 

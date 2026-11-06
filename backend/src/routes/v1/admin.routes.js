@@ -6,7 +6,7 @@ import { visibilidadComentarioSchema } from '../../modulos/catalogo/comentario.s
 import { listarComentariosAdmin, cambiarVisibilidadComentario, eliminarComentario } from '../../modulos/catalogo/comentario.controller.js'
 import categoriaRoutes from '../../modulos/catalogo/categoria.routes.js'
 import metodoPagoRoutes from '../../modulos/pedidos/metodoPago.routes.js'
-import estadoRoutes from '../estado.routes.js'
+import estadoRoutes from '../../modulos/configuracion/estado.routes.js'
 import rolRoutes from '../../modulos/identidad/rol.routes.js'
 import permisoRoutes from '../../modulos/identidad/permiso.routes.js'
 import adminUsuarioRoutes from '../../modulos/identidad/adminUsuario.routes.js'

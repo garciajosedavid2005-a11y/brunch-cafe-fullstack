@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { texto, textoOpcional, colorHex } from '../modulos/compartido/comunes.schema.js'
+import { texto, textoOpcional, colorHex } from '../compartido/comunes.schema.js'
 
 // Solo la presentación es editable; codigo, tipo y esFinal los fija el catálogo
 export const actualizarEstadoSchema = z.strictObject({
