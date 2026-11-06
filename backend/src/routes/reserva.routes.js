@@ -18,8 +18,8 @@ router.post('/', validateToken, validateSchema(crearReservaSchema), crearReserva
 router.get('/mias', validateToken, misReservas)
 router.patch('/:id/cancelar', validateToken, cancelarReserva)
 
-// Rutas del admin logueado como admin
-router.get('/', validateToken, authorizeRole('admin'), listarReservas)
+// El equipo de sala puede consultar todas las reservas; solo admin puede aprobarlas.
+router.get('/', validateToken, authorizeRole('admin', 'mesero'), listarReservas)
 router.patch('/:id/estado', validateToken, authorizeRole('admin'), cambiarEstadoReserva)
 
 export default router

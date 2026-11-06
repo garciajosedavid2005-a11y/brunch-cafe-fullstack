@@ -4,7 +4,7 @@ import { manejarError } from '../libs/manejarError.js'
 import { slug, sinUndefined } from '../libs/utils.js'
 
 // Estos dos roles los usa el sistema (login, permisos): no se pueden eliminar
-const ROLES_SISTEMA = ['admin', 'cliente']
+const ROLES_SISTEMA = ['admin', 'cliente', 'mesero']
 
 const esProtegido = (rol) => Boolean(rol.esSistema) || ROLES_SISTEMA.includes(rol.nombre)
 

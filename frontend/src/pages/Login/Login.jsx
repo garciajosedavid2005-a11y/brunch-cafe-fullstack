@@ -29,11 +29,12 @@ const Login = () => {
 
     try {
       const loggedUser = await login(formData);
-      if (loggedUser?.role === "admin") {
-        navigate("/admin", { replace: true });
-      } else {
-        navigate(location.state?.from || "/cuenta", { replace: true });
-      }
+      const defaultPath = loggedUser?.role === "admin"
+        ? "/admin"
+        : loggedUser?.role === "mesero"
+          ? "/mesero"
+          : "/cuenta";
+      navigate(location.state?.from || defaultPath, { replace: true });
     } catch (error) {
       setMensaje({ tipo: "error", texto: error.message });
     } finally {

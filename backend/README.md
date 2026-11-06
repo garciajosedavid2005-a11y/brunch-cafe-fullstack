@@ -9,6 +9,14 @@
 
 El backend escucha por defecto en `http://localhost:4000`; el cliente usa cookies con credenciales habilitadas. En producción, frontend y API deben servirse por HTTPS y `CLIENT_URL` debe apuntar al origen exacto del frontend.
 
+## MongoDB Atlas en Windows
+
+Si el backend muestra `querySrv ECONNREFUSED`, Node.js no puede consultar por DNS el registro SRV de una URI `mongodb+srv://`. El error ocurre antes de la autenticación; cambiar la contraseña o la lista de acceso de IP de Atlas no resuelve este error específico.
+
+En `backend/.env`, configura `MONGO_URI` con la URI estándar `mongodb://` del clúster (la que enumera los nodos y sus puertos), obtenida desde Atlas o construida siguiendo sus instrucciones oficiales. Conserva las opciones de TLS, replica set y autenticación que proporciona Atlas, y reemplaza las credenciales de muestra. La URI estándar evita la consulta SRV y Node puede resolver los nombres de los nodos mediante el resolvedor de Windows. Como alternativa, corrige el DNS o firewall para que Node pueda consultar DNS por el puerto 53.
+
+No publiques `.env` ni incluyas credenciales en mensajes o commits. Si una contraseña fue expuesta, rótala en Atlas y actualiza `MONGO_URI`.
+
 ## Endpoints
 
 La autenticación conserva las cuentas existentes de `Usuario` y `Rol`; no crea una colección de usuarios paralela. El endpoint de perfil de sesión y todos los endpoints `/api/customer` requieren la cookie JWT y limitan las consultas al usuario autenticado.
