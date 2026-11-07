@@ -1,5 +1,4 @@
 import { useState } from "react";
-import emailjs from "@emailjs/browser";
 import { FaCalendarAlt, FaClock, FaCommentAlt, FaEnvelope, FaPhone, FaUser, FaUsers } from "react-icons/fa";
 import { useAuth } from "../../context/useAuth";
 import { apiRequest } from "../../services/api";
@@ -87,34 +86,12 @@ export default function FormularioReservas() {
         body: JSON.stringify({ ...formData, personas: Number(formData.personas) }),
       });
       setMostrarModal(false);
-      // Sin correo (permitido al personal) no se envía la confirmación
-      let correoEnviado = Boolean(formData.correo.trim());
-      if (correoEnviado) try {
-        await emailjs.send(
-          "service_mn2rux3",
-          "template_r4mj66a",
-          {
-            nombre: formData.nombre,
-            correo: formData.correo,
-            fecha: formData.fecha,
-            hora: formData.hora,
-            personas: formData.personas,
-            motivo: formData.motivo,
-            observaciones: formData.observaciones || "Ninguna",
-          },
-          "zhwv2cSLgGN51vwua"
-        );
-      } catch (error) {
-        console.error("La reserva se guardó, pero no se pudo enviar el correo:", error);
-        correoEnviado = false;
-      }
-      const registrada = `Reserva registrada para ${formData.nombre.trim()}. Quedó pendiente de confirmación`;
+      // La confirmación por correo la envía el backend al guardar (0.16), si la reserva tiene correo
+      const conCorreo = Boolean(formData.correo.trim());
       setMensaje({
         text: porPersonal
-          ? `${registrada}${correoEnviado ? "; enviamos los detalles a su correo." : "."}`
-          : correoEnviado
-          ? "Tu solicitud de reserva fue enviada y quedó pendiente de aprobación. Te enviamos un correo con los detalles."
-          : "Tu solicitud de reserva fue enviada y quedó pendiente de aprobación, pero no pudimos enviar el correo de confirmación.",
+          ? `Reserva registrada para ${formData.nombre.trim()}. Quedó pendiente de confirmación${conCorreo ? "; le enviaremos los detalles a su correo." : "."}`
+          : "Tu solicitud de reserva fue enviada y quedó pendiente de aprobación. Te enviaremos un correo con los detalles.",
         error: false,
       });
       setFormData(formularioInicial());

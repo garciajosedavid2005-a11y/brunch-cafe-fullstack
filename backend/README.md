@@ -22,6 +22,8 @@ Para habilitar el enlace de recuperación configura `SMTP_HOST`, `SMTP_PORT`, `S
 
 **Probar sin SMTP (solo desarrollo):** con `NODE_ENV=development` y sin `SMTP_HOST`/`SMTP_USER`/`SMTP_PASSWORD`, el enlace no se envía: aparece en el log del backend (`SMTP sin configurar: enlace de recuperación`) y sigue siendo válido 30 minutos. Pide el enlace en `/recuperar-contrasena` con un usuario de `npm run seed:dev`, copia el `enlace` del log y ábrelo. En `test` y `production` el enlace nunca se escribe en el log.
 
+**Confirmación de reservas (0.16):** al crear una reserva con correo (cliente o personal), el backend envía el resumen por el mismo SMTP, después de guardarla y sin bloquear la respuesta; si el envío falla, la reserva queda guardada y el error va al log (sin la dirección). Sin correo no se envía nada. En desarrollo sin SMTP, el contenido aparece en el log (`SMTP sin configurar: confirmación de reserva`). El frontend ya no usa EmailJS.
+
 ## MongoDB Atlas en Windows
 
 Si el backend muestra `querySrv ECONNREFUSED`, Node.js no puede consultar por DNS el registro SRV de una URI `mongodb+srv://`. El error ocurre antes de la autenticación; cambiar la contraseña o la lista de acceso de IP de Atlas no resuelve este error específico.

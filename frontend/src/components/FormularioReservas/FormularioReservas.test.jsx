@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 
 vi.mock("../../services/api", () => ({ apiRequest: vi.fn() }));
-vi.mock("@emailjs/browser", () => ({ default: { send: vi.fn() } }));
 const CLIENTA = { id: "u1", nombre: "Ana", apellido: "Pérez", email: "ana@example.com", telefono: "3001234567", permisos: [], esPersonal: false };
 const sesion = vi.hoisted(() => ({ user: null }));
 vi.mock("../../context/useAuth", () => ({ useAuth: () => ({ user: sesion.user }) }));

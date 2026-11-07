@@ -8,6 +8,7 @@ import { obtenerHorarios } from '../configuracion/horarios.service.js'
 import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../compartido/estados.service.js'
 import { reservaSchema, reservaStaffSchema } from './reservas.schema.js'
 import { conTransaccion } from '../compartido/transacciones.js'
+import { notificarReservaCreada } from './reservas.correo.js'
 
 // Estados en los que el cliente todavía puede editar o cancelar su reserva
 export const RESERVA_EDITABLE = ['pendiente', 'confirmada']
@@ -57,6 +58,7 @@ export const crear = async (sesion, cuerpo) => {
         await registrarEvento({ entidad: 'reserva', entidadId: creada._id, a: 'pendiente', usuario: sesion.id, actor: sesion.rol || 'cliente', session })
         return creada
     })
+    notificarReservaCreada(reserva) // después de guardar y sin bloquear la respuesta (0.16)
     return obtenerMia(sesion.id, reserva._id)
 }
 
@@ -71,6 +73,7 @@ export const crearPorStaff = async (sesion, cuerpo) => {
         await registrarEvento({ entidad: 'reserva', entidadId: creada._id, a: 'pendiente', usuario: sesion.id, actor: sesion.rol || 'staff', session })
         return creada
     })
+    notificarReservaCreada(reserva)
     return reserva._id
 }
 
