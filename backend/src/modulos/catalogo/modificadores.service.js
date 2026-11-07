@@ -118,12 +118,15 @@ export const eliminarGrupo = async (id) => {
  * y los «toca» (updatedAt) para entrar en conflicto con un borrado simultáneo. Devuelve los grupos
  * en el orden pedido. Por eso `updatedAt` de un grupo cambia también al asignarlo a un producto:
  * no significa «editado».
+ * `yaAsignados`: grupos que el producto ya tenía; esos se pueden conservar aunque se hayan
+ * desactivado después (si no, el producto no se podría volver a guardar). Uno inactivo nuevo, no.
  */
-export const reservarGrupos = async (ids, session) => {
+export const reservarGrupos = async (ids, session, { yaAsignados = [] } = {}) => {
     if (!ids.length) return []
     if (!ids.every(mongoose.isValidObjectId) || new Set(ids.map(String)).size !== ids.length) throw grupoNoValido()
+    const conservados = ids.filter((id) => yaAsignados.map(String).includes(String(id)))
     const { matchedCount } = await GrupoModificadores.updateMany(
-        { _id: { $in: ids }, activo: true },
+        { _id: { $in: ids }, $or: [{ activo: true }, { _id: { $in: conservados } }] },
         { $currentDate: { updatedAt: true } },
         { session },
     )

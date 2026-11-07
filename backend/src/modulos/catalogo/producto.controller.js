@@ -140,15 +140,19 @@ export const listarProductos = async (req, res) => {
  * borrado o una desactivación simultáneos de la estación o un borrado del grupo entran en
  * conflicto. connection.transaction() restaura el estado del documento si hay que reintentar.
  */
-const guardarConReferencias = (producto, { estacionId, gruposModificadoresIds }) => conTransaccion(async (session) => {
-    if (estacionId !== undefined) {
-        producto.estacion = estacionId === null ? null : (await reservarEstacion(estacionId, session))._id
-    }
-    if (gruposModificadoresIds !== undefined) {
-        producto.gruposModificadores = (await reservarGrupos(gruposModificadoresIds, session)).map((g) => g._id)
-    }
-    await producto.save({ session })
-})
+const guardarConReferencias = (producto, { estacionId, gruposModificadoresIds }) => {
+    // Grupos que ya tenía (leídos antes: un reintento de la transacción no debe ver los nuevos)
+    const yaAsignados = producto.isNew ? [] : (producto.gruposModificadores || []).map(String)
+    return conTransaccion(async (session) => {
+        if (estacionId !== undefined) {
+            producto.estacion = estacionId === null ? null : (await reservarEstacion(estacionId, session))._id
+        }
+        if (gruposModificadoresIds !== undefined) {
+            producto.gruposModificadores = (await reservarGrupos(gruposModificadoresIds, session, { yaAsignados })).map((g) => g._id)
+        }
+        await producto.save({ session })
+    })
+}
 
 // Solo los campos validados (req.validado): codigo, estacion o gruposModificadores en crudo no pasan
 export const crearProducto = async (req, res) => {

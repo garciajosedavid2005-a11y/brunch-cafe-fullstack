@@ -238,6 +238,25 @@ describe('Grupos asignados a productos', () => {
         expect(lista.body.find((p) => p.id === creado.body.id).gruposModificadores).toEqual([{ id: leche.id, nombre: 'Leche', activo: false }])
     })
 
+    it('un producto con un grupo ya desactivado se sigue pudiendo guardar con él; añadir uno inactivo nuevo no', async () => {
+        const leche = await crearGrupo()
+        const extras = await crearGrupo({ nombre: 'Extras' })
+        const tamano = await crearGrupo({ nombre: 'Tamaño' })
+        const creado = await admin.post(PRODUCTOS).send({
+            nombre: 'Latte', precio: 9000, categoriaId: String(categoria._id), gruposModificadoresIds: [leche.id],
+        })
+        await admin.put(`${GRUPOS}/${leche.id}`).send({ activo: false })
+        await admin.put(`${GRUPOS}/${extras.id}`).send({ activo: false })
+
+        const mantiene = await admin.put(`${PRODUCTOS}/${creado.body.id}`).send({ precio: 9500, gruposModificadoresIds: [leche.id, tamano.id] })
+        expect(mantiene.status, JSON.stringify(mantiene.body)).toBe(200)
+        expect(mantiene.body.gruposModificadores.map((g) => g.nombre)).toEqual(['Leche', 'Tamaño'])
+
+        const nuevoInactivo = await admin.put(`${PRODUCTOS}/${creado.body.id}`).send({ gruposModificadoresIds: [leche.id, extras.id] })
+        expect(nuevoInactivo.status).toBe(400)
+        expect(nuevoInactivo.body.error.code).toBe('GRUPO_NO_VALIDO')
+    })
+
     it('asignar y borrar a la vez nunca deja un producto con un grupo borrado', async () => {
         for (let i = 0; i < 4; i++) {
             const grupo = await crearGrupo({ nombre: `Grupo ${i}` })
