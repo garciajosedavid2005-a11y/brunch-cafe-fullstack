@@ -1,6 +1,6 @@
 # Progreso Brunch Café
 
-## Fase actual: 0.15 — Integración de la rama `developers` (terminada; esperando aprobación para la Fase 1)
+## Fase actual: 0.16 — Integración de `developers` y correo de reservas (terminada; la Fase 1 empieza en una sesión nueva)
 
 La Fase 1 (salón y comandas) **no ha empezado**: su plan está en [PLAN_FASE_1.md](PLAN_FASE_1.md), con las preguntas de negocio respondidas (F1-1 a F1-16).
 
@@ -18,9 +18,11 @@ La Fase 1 (salón y comandas) **no ha empezado**: su plan está en [PLAN_FASE_1.
 | 0.15d | Frontend por permisos y `/staff` | HECHO | 6518eb8 | `utils/permisos.js` (`*` → /admin, personal → /staff, cliente → /cuenta); el backend devuelve `esPersonal`. Panel renombrado a `StaffDashboard` en `/staff`; `/mesero` redirige. Test `sinRolesPorNombre`: falla si el frontend compara el rol con un nombre. Se quitó el aviso «Tu panel de personal estará disponible próximamente» de /cuenta (ya no se podía mostrar). |
 | 0.15e | Reserva registrada por el personal | HECHO | ce778e2 | `usuario: null` + `registradaPor`; nombre y teléfono obligatorios, correo opcional; el cliente solo ve las suyas; Admin › Reservas y el panel muestran «Registrada por …». No había reservas a nombre de cuentas de personal en la BD local. |
 | 0.15f | Panel de staff visual | HECHO | 0ddc13d | Colores por estado como el admin, `formatearCOP`, `fechaLocal`/`horaLocal`, barra con «Mi panel» y sin carrito, columna del código a 145 px, «Cerrar sesión» en una línea. Test `formatosCentralizados`. Capturas `capturas/0.15-antes` y `capturas/0.15-despues` (1280, 1024 y 768 px). |
-| 0.15g | Migración `migrate:0.15` | HECHO (código) · **pendiente de aplicar** | 5a9c981 | Agrega `reserva:ver` y `reserva:crear` al mesero solo si tiene los permisos antiguos; `--dry-run`, `--down`. Respaldo `backups/pre-0.15-*` (mongodump) y `backups/0.15-rols-ejson`. Simulacro mostrado; se aplica cuando Brayan lo apruebe. Las BDs nuevas ya reciben los permisos del seed. |
+| 0.15g | Migración `migrate:0.15` | HECHO | 5a9c981 | Agrega `reserva:ver` y `reserva:crear` al mesero solo si tiene los permisos antiguos; `--dry-run`, `--down`. Respaldo `backups/pre-0.15-*` (mongodump) y `backups/0.15-rols-ejson`. **Aplicada en la BD local el 2026-11-06** (aprobada): up → down → up sin problemas. Verificado con Playwright: el mesero ve Reservas y registró una reserva de prueba («Cliente Mostrador Prueba», 12 nov, 10:00, sin correo) con «Registrada por Mesero Prueba». Capturas en `capturas/0.15-despues` (`mesero-reservas-*`, `formulario-personal-*`). |
 | — | `package.json` de la raíz | HECHO | cb60ca2 | Borrados `package.json`, `package-lock.json` y `node_modules` de la raíz (aprobado): nadie los usaba. |
-| 0.15h | Documentación | HECHO | (este commit) | PROGRESO y PLAN_FASE_1 (marca lo que ya existe). |
+| 0.15h | Documentación | HECHO | 7da5acf | PROGRESO y PLAN_FASE_1 (marca lo que ya existe). |
+| 0.16 | Confirmación de reserva por SMTP (sin EmailJS) | HECHO | b98e275 | `compartido/correo.js` (nodemailer, compartido con la recuperación) y `salon/reservas.correo.js`: tras guardar y sin bloquear, si la reserva tiene correo; un fallo de SMTP no pierde la reserva (error en el log sin la dirección); en desarrollo sin SMTP el contenido va al log (verificado con una reserva real de cliente.dev, «Prueba correo 0.16»). Frontend sin `@emailjs/browser` ni claves (test `sinEmailjs`). **Las claves de EmailJS siguen en el historial de git** (ver pendientes). |
+| 0.16b | README «Al traer cambios» | HECHO | (este commit) | Node 22, `npm install` en backend y frontend, migraciones en orden (0.7 → 0.6 → 0.10 → 0.12 → 0.15) con `--dry-run` primero, `seed:base` y comprobación. Los cinco simulacros, ejecutados en la BD local: 0 cambios. |
 
 ### Ítems Fase 0
 
@@ -141,6 +143,9 @@ La Fase 1 (salón y comandas) **no ha empezado**: su plan está en [PLAN_FASE_1.
 - 2026-11-06 · 0.15 · El panel de staff pasa a `/staff` (con redirección desde `/mesero`); el layout propio de tablet sigue siendo del ítem 1.6 · Brayan
 - 2026-11-06 · 0.15 · El frontend no compara nombres de rol: `*` → admin, `esPersonal` (lo calcula el backend) → staff; test que lo vigila · Brayan/Claude
 - 2026-11-06 · 0.15 · Se borran `package.json`, `package-lock.json` y `node_modules` de la raíz · Brayan
+- 2026-11-06 · 0.15 · `migrate:0.15` aprobada y aplicada en la BD local · Brayan
+- 2026-11-06 · 0.16 · La confirmación de reserva la envía el backend por SMTP (sin bloquear, solo con correo, contenido al log en desarrollo); se quita EmailJS del frontend · Brayan
+- 2026-11-06 · La Fase 1 empieza en una sesión nueva · Brayan
 
 **Fase 1: respuestas de negocio** (preguntas de [PLAN_FASE_1.md](PLAN_FASE_1.md), sección 5)
 - 2026-11-06 · F1-1 · Zonas y mesas editables desde Admin › Salón. Seed de ejemplo marcado como tal (Interior y Terraza, mesas de 2 y 4); los datos reales se cargan desde el admin. Solo se unen mesas de la misma zona marcadas como «combinable» · Brayan
@@ -164,8 +169,8 @@ La Fase 1 (salón y comandas) **no ha empezado**: su plan está en [PLAN_FASE_1.
 ## Pendientes / preguntas abiertas
 
 **Abiertos**
-- **Migración 0.15 sin aplicar en la BD local:** hasta aplicarla, el mesero local no ve la sección Reservas del panel ni registra reservas (`npm run migrate:0.15` tras aprobar el simulacro).
-- **Correo de confirmación de reservas por EmailJS (anterior a la Fase 0):** el formulario envía nombre y correo del cliente a EmailJS desde el navegador; contradice «no enviar el correo del usuario a servicios externos». Decidir si se mueve al backend (SMTP de 0.15c) o se quita.
+- **Claves de EmailJS en el historial de git:** el service ID `service_mn2rux3`, el template ID `template_r4mj66a` y la public key de EmailJS estuvieron en `FormularioReservas.jsx` desde el primer commit (`e4b78e8`) hasta 0.16, y siguen en el historial (el repositorio está en GitHub). Nunca estuvieron en un `.env`. Recomendado: regenerar la public key (o desactivar el servicio) en el panel de EmailJS; ya no se usan.
+- **SMTP real:** sin `SMTP_*` en `.env` no se envían los correos de recuperación ni de reservas (en desarrollo van al log). Configurarlo antes de producción.
 - **Registro:** aún permite inferir si un correo existe (éxito vs. error). Cerrarlo del todo requiere verificación por correo (fuera de alcance de la Fase 0).
 - **URLs de imágenes del menú en /api sin versión (pendiente futuro):** los productos guardan `/productos/menu/imagenes/<nombre>` y se sirven en `/api/productos/menu/imagenes/*`, la única ruta sin versión que queda tras 0.12. Moverlas a `/api/v1` requiere una migración de `Producto.imagen` (con `--dry-run`, `--down` y `mongodump`) y mantener la ruta vieja mientras haya URLs guardadas fuera de la BD.
 - **Horario de apertura:** la configuración solo tiene horarios de reservas y de domicilio; el pie y Nosotros muestran esos (título «Horarios», no «Horario de Atención»). Si el café quiere publicar un horario de apertura distinto, habría que añadirlo a la configuración.

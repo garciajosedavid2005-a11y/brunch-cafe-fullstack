@@ -12,6 +12,26 @@
 
 El backend escucha por defecto en `http://localhost:4000`; el cliente usa cookies con credenciales habilitadas. En producción, frontend y API deben servirse por HTTPS y `CLIENT_URL` debe apuntar al origen exacto del frontend.
 
+## Al traer cambios
+
+Cada vez que traigas cambios de otra rama (`git pull`, fusión de `developers`, etc.):
+
+1. **Node 22**: `nvm use 22` (o `nvm use` en la raíz, que lee `.nvmrc`).
+2. **Dependencias**: `npm install` en `backend` **y** en `frontend`. Si falta una (p. ej. `nodemailer`), nodemon se queda esperando, el puerto 4000 no responde y el login muestra «No se pudo conectar con el servidor».
+3. **Migraciones pendientes, en este orden**, cada una primero con `--dry-run` (si ya está aplicada, el simulacro lo dice y no hay nada que hacer):
+
+   | Orden | Comando | Qué hace |
+   |---|---|---|
+   | 1 | `npm run migrate:0.7 -- --dry-run` | Estados con `codigo` (el servidor no arranca sin ella) |
+   | 2 | `npm run migrate:0.6 -- --dry-run` | Referencias por `ObjectId` |
+   | 3 | `npm run migrate:0.10 -- --dry-run` | Instantes UTC (`Reserva.inicio`, `Pedido.entregaEn`) |
+   | 4 | `npm run migrate:0.12 -- --dry-run` | Elimina las colecciones heredadas (usa `-- --respaldo <carpeta>`) |
+   | 5 | `npm run migrate:0.15 -- --dry-run` | `reserva:ver` y `reserva:crear` para el mesero (solo si tiene los permisos antiguos) |
+
+   Antes de aplicar una que tenga cambios: respaldo con `mongodump` (ver «Migraciones y respaldo»). Luego el mismo comando sin `--dry-run`; para revertir, `-- --down` (también con `--dry-run`).
+4. **Datos base**: `npm run seed:base` solo inserta lo que falte (roles, estados, horarios, métodos de pago); no cambia lo que el admin personalizó.
+5. Arranca con `npm run dev` y comprueba `http://localhost:4000/api/health`; después, `npm test` si vas a hacer cambios.
+
 ## Panel Mesero y recuperación de contraseña
 
 El rol nuevo `mesero` recibe `pedido:ver`, `pedido:cambiar_estado`, `reserva:ver` y `reserva:crear`. No recibe `reserva:cambiar_estado`; la confirmación y gestión de estados sigue dependiendo de ese permiso. El seed no sobrescribe permisos que un administrador ya haya personalizado. En una base existente, reinicia el backend para actualizar el catálogo y desde **Admin → Roles** asigna al rol Mesero los permisos que necesite. Para habilitar los módulos configurados por defecto, activa `pedido:ver`, `pedido:cambiar_estado`, `reserva:ver` y `reserva:crear`.
