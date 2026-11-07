@@ -28,6 +28,23 @@ Brunch Café: evolución a un POS de servicio a la mesa. Backend Node 24 + Expre
 4. Si un problema no se resuelve en 2 intentos: explicar qué pasa y esperar.
 5. En las pausas de revisión acordadas (p. ej. al terminar 0.8, con capturas antes/después).
 
+## Plugin de backend
+
+El plugin **Backend Design** está instalado. Las reglas de este CLAUDE.md y las decisiones de `docs/PROGRESO.md` tienen prioridad sobre cualquier consejo del plugin. El proyecto usa **MongoDB/Mongoose, no SQL**: los consejos de tablas, `ALTER TABLE`, claves foráneas o bloqueos se traducen a esquemas Mongoose (validaciones, `enum`, índices únicos o parciales), referencias `ObjectId` con índice, escrituras condicionales dentro de `conTransaccion()` y migraciones en `src/migraciones/` con `--dry-run` y `--down`.
+
+- **Al diseñar cada modelo y endpoint**, usar sus skills: `data-modeling-discipline` (modelos), `migration-safety` (migraciones), `idempotency-and-side-effects` (idempotencia), `auth-and-authorization` (permisos) y `security-discipline` (seguridad).
+- **Antes de cada migración**: ejecutar `/review-migration` sobre el archivo.
+- **Al terminar cada ítem del backend**: subagentes `schema-reviewer` y `security-reviewer` del plugin sobre el diff, además de `revisor-backend`.
+
+## Subagentes del proyecto (`.claude/agents/`)
+
+Al terminar cada ítem, antes del commit, se corrige lo que encuentren:
+
+- `revisor-reglas`: siempre, sobre el diff (reglas de este archivo y decisiones de PROGRESO).
+- `revisor-backend`: si el ítem tocó el backend (modelos, migraciones, permisos, IDOR, asignación masiva, transacciones, idempotencia, errores, tests). Devuelve `archivo:línea · problema · gravedad · arreglo`.
+- `revisor-visual`: si hubo cambios visuales, sobre las capturas antes/después.
+- `explorador`: para búsquedas amplias en el repositorio.
+
 ## Git
 
 - Rama `Brayan`. Commits pequeños en español, uno por punto o grupo, terminados en `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.

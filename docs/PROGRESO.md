@@ -164,6 +164,7 @@ La Fase 1 (salón y comandas) **no ha empezado**: su plan está en [PLAN_FASE_1.
 - 2026-11-06 · F1-14 · Con la cuenta abierta se respeta el precio del momento en que se agregó el ítem (snapshot de nombre, precio y modificadores) · Brayan
 - 2026-11-06 · F1-15 · Reservas conectadas a mesas: fuera de la Fase 1 (Fase 4) · Brayan
 - 2026-11-06 · F1-16 · Node 22 LTS para desarrollo y CI: `.nvmrc` y `engines` en los `package.json`, documentado en el README · Brayan
+- 2026-11-06 · Preparación de la Fase 1: se usa el plugin Backend Design (skills de modelado, migraciones, idempotencia, autorización y seguridad; `/review-migration`; subagentes `schema-reviewer` y `security-reviewer`) y se crean los subagentes del proyecto `revisor-reglas`, `revisor-backend`, `revisor-visual` y `explorador` en `.claude/agents/`. CLAUDE.md y las decisiones de PROGRESO tienen prioridad sobre el plugin · Brayan
 - 2026-11-05 · T4: `codigo` con contador atómico (colección `counters`, `findOneAndUpdate` + `$inc`) mientras exista `codigo` · Brayan
 
 ## Pendientes / preguntas abiertas
