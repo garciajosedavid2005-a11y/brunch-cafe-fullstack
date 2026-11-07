@@ -189,7 +189,7 @@ export default function ModificadoresSection() {
       <AdminStatus cargando={grupos.cargando} error={grupos.error} onReintentar={grupos.cargar} />
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table admin-modificadores__tabla" aria-label="Grupos de modificadores">
+          <table className="admin-table admin-modificadores__tabla admin-table--acciones-fijas" aria-label="Grupos de modificadores">
             <thead>
               <tr>
                 <th>Grupo</th>

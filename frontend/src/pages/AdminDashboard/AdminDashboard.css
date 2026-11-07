@@ -2763,3 +2763,37 @@
     flex-wrap: wrap;
   }
 }
+
+/* ---- 1.3b: columna de acciones fija a la derecha (decisión de Brayan) ----
+   Al desplazar una tabla ancha (Productos, Usuarios a 1024 px) las acciones quedan siempre a la
+   vista. Fondo opaco igual al de la fila (Foundation: tbody #fefefe, filas pares #f1f1f1; hover del
+   admin #fdf6f2). La fila de «vacío» (una celda con colspan) no se fija. */
+.admin-table--acciones-fijas th:last-child,
+.admin-table--acciones-fijas td:last-child:not([colspan]) {
+  position: sticky;
+  /* -1px: con right: 0 quedaba una franja de < 1 px (redondeo) por la que asomaban letras de la
+     columna de debajo; el contenedor recorta el píxel sobrante */
+  right: -1px;
+  z-index: 1;
+  /* Línea fina + sombra hacia la izquierda: indica que hay columnas debajo al desplazar */
+  box-shadow: inset 1px 0 0 #e6d3cc, -8px 0 8px -8px rgba(60, 20, 20, 0.18);
+}
+
+/* Reservas: un correo largo (sin espacios) ensanchaba la tabla a 1280 px y el selector de estado
+   quedaba cortado bajo la columna fija; ahora el correo se parte */
+.admin-reservas__tabla .admin-table__contact small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.admin-table--acciones-fijas tbody td:last-child:not([colspan]) {
+  background-color: #fefefe;
+}
+
+.admin-table--acciones-fijas tbody tr:nth-child(even) td:last-child:not([colspan]) {
+  background-color: #f1f1f1;
+}
+
+.admin-table--acciones-fijas tbody tr:hover td:last-child:not([colspan]) {
+  background-color: #fdf6f2;
+}

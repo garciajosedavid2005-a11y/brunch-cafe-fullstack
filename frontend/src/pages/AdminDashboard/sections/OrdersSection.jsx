@@ -89,7 +89,7 @@ export default function OrdersSection() {
       {/* TABLA DE PEDIDOS */}
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table admin-table--compacta admin-pedidos__tabla">
+          <table className="admin-table admin-table--compacta admin-pedidos__tabla admin-table--acciones-fijas">
             <thead>
               <tr>
                 <th>Pedido</th>

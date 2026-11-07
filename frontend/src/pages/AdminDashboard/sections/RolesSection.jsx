@@ -175,7 +175,7 @@ export default function RolesSection() {
       </p>
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table admin-table--compacta">
+          <table className="admin-table admin-table--compacta admin-table--acciones-fijas">
             <thead>
               <tr>
                 <th>Rol</th>

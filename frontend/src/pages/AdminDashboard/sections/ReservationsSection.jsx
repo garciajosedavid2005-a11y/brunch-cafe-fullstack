@@ -94,7 +94,7 @@ export default function ReservationsSection() {
       {/* TABLA DE RESERVAS */}
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table admin-table--compacta admin-reservas__tabla">
+          <table className="admin-table admin-table--compacta admin-reservas__tabla admin-table--acciones-fijas">
             <thead>
               <tr>
                 <th>Reserva</th>

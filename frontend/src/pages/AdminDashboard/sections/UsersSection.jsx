@@ -101,7 +101,7 @@ export default function UsersSection() {
       <AdminStatus cargando={cargando} error={error} onReintentar={cargar} />
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table admin-table--compacta">
+          <table className="admin-table admin-table--compacta admin-table--acciones-fijas">
             <thead>
               <tr>
                 <th>Usuario</th>

@@ -115,7 +115,7 @@ export default function PaymentsSection() {
       <AdminStatus cargando={cargando} error={error} onReintentar={cargar} />
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table">
+          <table className="admin-table admin-table--acciones-fijas">
             <thead>
               <tr>
                 <th>Método de Pago</th>

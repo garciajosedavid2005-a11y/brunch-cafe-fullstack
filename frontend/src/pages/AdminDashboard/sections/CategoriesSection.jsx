@@ -104,7 +104,7 @@ export default function CategoriesSection() {
       <AdminStatus cargando={cargando} error={error} onReintentar={cargar} />
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table" aria-label="Categorías del menú">
+          <table className="admin-table admin-table--acciones-fijas" aria-label="Categorías del menú">
             <thead>
               <tr>
                 <th>Nombre de Categoría</th>

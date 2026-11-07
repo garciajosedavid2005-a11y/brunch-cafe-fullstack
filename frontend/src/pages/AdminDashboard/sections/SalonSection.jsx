@@ -138,7 +138,7 @@ export default function SalonSection() {
       <AdminStatus cargando={zonas.cargando} error={zonas.error} onReintentar={zonas.cargar} />
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table admin-salon__tabla" aria-label="Zonas del salón">
+          <table className="admin-table admin-salon__tabla admin-table--acciones-fijas" aria-label="Zonas del salón">
             <thead>
               <tr>
                 <th>Zona</th>
@@ -220,7 +220,7 @@ export default function SalonSection() {
       <AdminStatus cargando={mesas.cargando} error={mesas.error} onReintentar={mesas.cargar} />
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table admin-salon__tabla" aria-label="Mesas del salón">
+          <table className="admin-table admin-salon__tabla admin-table--acciones-fijas" aria-label="Mesas del salón">
             <thead>
               <tr>
                 <th>Mesa</th>

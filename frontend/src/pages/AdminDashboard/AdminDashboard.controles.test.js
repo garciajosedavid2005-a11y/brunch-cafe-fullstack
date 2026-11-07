@@ -5,7 +5,7 @@
 // jsdom no calcula el diseño: se revisan las reglas del CSS. Las capturas 1.3-antes/-despues y
 // la medición con Playwright lo confirman.
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const css = readFileSync(join(import.meta.dirname, "AdminDashboard.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
@@ -62,5 +62,32 @@ describe("Selectores del admin con flecha de la marca", () => {
     expect(reglas.some((c) => /background-origin\s*:\s*border-box/.test(c)), `${clase} sin background-origin: border-box`).toBe(true);
     // El atajo `background:` borra la imagen de la flecha (lo que pasaba con .admin-form-select)
     for (const cuerpo of reglas) expect(cuerpo, `${clase} con el atajo background:`).not.toMatch(/(^|[;\s])background\s*:/);
+  });
+});
+
+// 1.3b · Columna de acciones fija a la derecha al desplazar la tabla (decisión de Brayan): a 1024 px
+// las acciones de Productos y Usuarios quedaban detrás del scroll horizontal.
+describe("Columna de acciones fija (sticky) en las tablas del admin", () => {
+  const SECCIONES = join(import.meta.dirname, "sections");
+  const archivos = readdirSync(SECCIONES).filter((f) => f.endsWith("Section.jsx"));
+
+  it("toda tabla con columna «Acciones» lleva admin-table--acciones-fijas", () => {
+    const conAcciones = archivos.filter((f) => readFileSync(join(SECCIONES, f), "utf8").includes("<th>Acciones</th>"));
+    expect(conAcciones.length).toBeGreaterThanOrEqual(11);
+    for (const archivo of conAcciones) {
+      const fuente = readFileSync(join(SECCIONES, archivo), "utf8");
+      const tablas = (fuente.match(/<th>Acciones<\/th>/g) || []).length;
+      const marcadas = (fuente.match(/admin-table--acciones-fijas/g) || []).length;
+      expect(marcadas, archivo).toBe(tablas);
+    }
+  });
+
+  it("el CSS fija la última columna a la derecha con fondo opaco, sin tocar la fila de «vacío» (colspan)", () => {
+    const fija = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, sel, cuerpo]) =>
+      sel.includes(".admin-table--acciones-fijas") && /position\s*:\s*sticky/.test(cuerpo));
+    expect(fija, "falta la regla sticky").toBeTruthy();
+    expect(fija[2]).toMatch(/right\s*:\s*(0|-1px)/);
+    expect(fija[1]).toMatch(/td:last-child:not\(\[colspan\]\)/);
+    expect(css).toMatch(/\.admin-table--acciones-fijas tbody tr:nth-child\(even\) td:last-child[^{]*\{[^}]*background-color/);
   });
 });

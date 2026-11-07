@@ -207,7 +207,7 @@ export default function ReviewsSection() {
       <div className="admin-card">
         <div className="admin-table-container">
           {/* 0.14: 4 columnas para que quepa a 1280 px (antes 7) */}
-          <table className="admin-table admin-table--compacta admin-comentarios__tabla">
+          <table className="admin-table admin-table--compacta admin-comentarios__tabla admin-table--acciones-fijas">
             <thead>
               <tr>
                 <th>Cliente</th>

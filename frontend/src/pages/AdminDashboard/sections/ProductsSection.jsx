@@ -245,7 +245,7 @@ export default function ProductsSection() {
       {/* TABLA DE PRODUCTOS */}
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table admin-table--compacta admin-products__tabla">
+          <table className="admin-table admin-table--compacta admin-products__tabla admin-table--acciones-fijas">
             <thead>
               <tr>
                 <th>Plato / Producto</th>
