@@ -2,8 +2,13 @@ import Usuario from './usuario.model.js'
 import Rol from './rol.model.js'
 import { ROL_CLIENTE } from './permisos.js'
 import bcrypt from 'bcryptjs'
-import { borrarCookieSesion } from './cookies.js'
-import { abrirSesion } from './duracionSesion.js'
+import mongoose from 'mongoose'
+import { borrarCookieSesion, COOKIE_SESION } from './cookies.js'
+import { abrirSesion, duracionSesionMs } from './duracionSesion.js'
+import { config } from '../../config.js'
+import { logger } from '../compartido/logger.js'
+import { verificarToken } from './jwt.js'
+import { obtenerSesion, invalidarSesionUsuario } from './sesiones.js'
 import { AppError } from '../compartido/errors.js'
 import { solicitarRecuperacion as solicitar, restablecerContrasena as restablecer } from './recuperacion.service.js'
 
@@ -80,7 +85,45 @@ export const login = async (req, res) => {
     res.json(usuarioPublico(usuario, usuario.rol))
 }
 
-export const logout = (req, res) => {
+/**
+ * Cierra la sesión del personal en el servidor (1.1b): sube tokenVersion para que el token deje
+ * de servir al instante (también «Cambiar de usuario» en tablets compartidas). Cierra además sus
+ * otras sesiones; aceptado para el personal. El cliente no cambia: solo se borra su cookie.
+ * Nunca falla: sin cookie, con un token inválido, vencido o ya revocado, o si la BD falla, solo
+ * se borra la cookie. Solo revoca un token vigente (misma regla de duración que autenticar) y
+ * pedido desde el frontend: con otro Origin no revoca (CSRF si alguna vez sameSite=none).
+ */
+const revocarSesionDePersonal = async (token) => {
+    let payload
+    try {
+        payload = verificarToken(token)
+    } catch {
+        return
+    }
+    if (!mongoose.isValidObjectId(payload?.id) || !Number.isInteger(payload.tv)) return
+    const sesion = await obtenerSesion(payload.id)
+    if (!sesion?.rol || sesion.rol === ROL_CLIENTE || sesion.tokenVersion !== payload.tv) return
+    if (!Number.isFinite(payload.iat) || Date.now() >= payload.iat * 1000 + duracionSesionMs(sesion)) return
+    // Condicional sobre la versión del token: dos cierres a la vez suben la versión una sola vez
+    await Usuario.updateOne(
+        { _id: payload.id, tokenVersion: payload.tv === 0 ? { $in: [0, null] } : payload.tv },
+        { $inc: { tokenVersion: 1 } },
+    )
+    invalidarSesionUsuario(payload.id)
+}
+
+export const logout = async (req, res) => {
+    const token = req.cookies?.[COOKIE_SESION]
+    const origen = req.get('origin')
+    const origenPermitido = !origen || config.CLIENT_URLS.includes(origen)
+    if (token && origenPermitido) {
+        try {
+            await revocarSesionDePersonal(token)
+        } catch (error) {
+            // La cookie se borra igual; el error va al log sin el token
+            logger.error({ err: error }, 'No se pudo revocar la sesión al cerrar sesión')
+        }
+    }
     borrarCookieSesion(res)
     return res.sendStatus(200)
 }

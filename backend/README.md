@@ -200,7 +200,7 @@ Desde 0.12 la API es solo `/api/v1`. Las rutas sin versión responden `404 NOT_F
 |---|---|---|
 | POST | `/api/v1/auth/registro` | Crear cuenta de cliente (rate limit 10/h por IP) |
 | POST | `/api/v1/auth/login` | Iniciar sesión (rate limit 5 fallos/15 min por IP + correo) |
-| POST | `/api/v1/auth/logout` | Cerrar sesión |
+| POST | `/api/v1/auth/logout` | Cerrar sesión. Personal (incluido el admin): sube `tokenVersion`, así el token deja de servir al instante y se cierran sus otras sesiones (1.1b). Cliente: solo borra la cookie |
 | GET | `/api/v1/auth/me` | Usuario de la sesión, rol y permisos |
 
 ### Cliente (`/api/v1/cliente`, sesión; cada uno ve y edita solo lo suyo)

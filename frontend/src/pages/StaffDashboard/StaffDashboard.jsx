@@ -245,7 +245,7 @@ export default function StaffDashboard() {
                   <article className="staff-dashboard__stat">
                     <span className="staff-dashboard__stat-icon"><Clock3 size={19} /></span>
                     <span>Próxima reserva</span>
-                    <strong>
+                    <strong className="staff-dashboard__stat-texto">
                       {cargandoReservas
                         ? "…"
                         : siguienteReserva
