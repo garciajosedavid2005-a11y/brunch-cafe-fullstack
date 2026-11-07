@@ -45,8 +45,10 @@ export const codigoActual = async (documento) => {
 }
 
 /** Agrega un registro a la bitácora. Con `session`, dentro de la transacción de quien llama. */
-export const registrarEvento = async ({ entidad, entidadId, de = null, a, motivo = '', usuario = null, actor, datos, session }) => {
-    const [evento] = await Evento.create([{ entidad, entidadId, de, a, motivo, usuario, actor, datos }], { session })
+export const registrarEvento = async ({
+    entidad, entidadId, tipo = 'cambio_estado', de = null, a, motivo = '', usuario = null, actor, datos, session,
+}) => {
+    const [evento] = await Evento.create([{ entidad, entidadId, tipo, de, a, motivo, usuario, actor, datos }], { session })
     return evento
 }
 

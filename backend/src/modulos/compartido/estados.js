@@ -148,3 +148,9 @@ export const STATUS_CLIENTE = {
         no_show: 'no_show',
     },
 }
+
+// 1.4 · Máquinas de mesa, cuenta e ítem (enums en el documento, sin colección Estado)
+export {
+    MAQUINA_MESA, MAQUINA_CUENTA, MAQUINA_ITEM, ESTADOS_MESA, ESTADOS_CUENTA, ESTADOS_CUENTA_ABIERTA,
+    ESTADOS_ITEM, ESTADOS_ITEM_ANULABLE, MESA_SEGUN_CUENTA, MOTIVOS_ANULACION,
+} from './estadosSalon.js'

@@ -69,6 +69,7 @@ No publiques `.env` ni incluyas credenciales en mensajes o commits. Si una contr
 | `npm run mongo:replica-set` | Inicia el replica set `rs0` de un nodo en el Mongo de `MONGO_URI` (idempotente; `-- --dry-run`) |
 | `npm run seed:modificadores` | Grupos de modificadores de ejemplo (Leche, Tamaño, Término del huevo, Extras; marcados como ejemplo) y su asignación a los productos del menú inicial que aún no tienen grupos (1.3) |
 | `npm run migrate:1.3` | Estación por defecto en las categorías existentes (ver «Al traer cambios») |
+| `npm run verificar:salon` | Consistencia de cuentas, rondas y mesas, solo lectura (1.4; ver «Cuentas y comandas del salón») |
 | `npm run seed:salon` | Salón de ejemplo (Interior y Terraza, mesas de 2 y 4, marcadas como ejemplo); solo si no hay zonas (1.2) |
 | `npm run seed:dev` | Usuarios de prueba `*.dev@brunchcafe.test` (solo desarrollo; contraseña en `DEV_USUARIOS_PASSWORD`) |
 
@@ -169,6 +170,12 @@ Lee `seed-data/menu.json` (categorías con descripción y productos con `codigo`
 - `PATCH /api/v1/staff/pedidos/:id/estado` y `PATCH /api/v1/staff/reservas/:id/estado` reciben `{ codigo, motivo? }` (o `{ estado: <_id> }` por compatibilidad). Errores: `400 ESTADO_INVALIDO | MOTIVO_REQUERIDO`, `403 FORBIDDEN`, `409 TRANSICION_INVALIDA | ESTADO_FINAL | CONFLICTO_ESTADO`. Los listados de staff incluyen `estadoCodigo`, `esFinal` y `transiciones` (las que el usuario puede hacer).
 - Cada cambio (y la creación) queda en la colección `eventos` (`de`, `a`, `motivo`, `usuario`, `actor`).
 - El servidor siembra los estados al arrancar; si encuentra estados sin `codigo` (BD anterior a 0.7) no arranca y pide ejecutar la migración.
+
+### Cuentas y comandas del salón (1.4)
+
+- Núcleo en `src/modulos/salon/cuentas.service.js` (los endpoints llegan en 1.5). Máquinas de mesa, cuenta e ítem en `src/modulos/compartido/estadosSalon.js` (estados como enums en cada documento, sin colección `Estado`).
+- Una mesa solo está en una cuenta abierta (`Mesa.cuentaActual` + índice único parcial en `cuentas`); el ítem guarda la copia de nombre, precio, modificadores y estación del momento en que se agregó; los montos (COP enteros) se recalculan siempre desde los ítems. Cada cambio queda en `eventos` (entidades `mesa` y `cuenta`).
+- `npm run verificar:salon` (solo lectura) revisa las cuentas abiertas y las cerradas en las últimas 48 h (`-- --horas N` para otro rango): montos que no cuadran, mesas y cuentas que no se apuntan entre sí y rondas incoherentes. Sale con código 1 si encuentra algo.
 
 ### Migraciones y respaldo
 

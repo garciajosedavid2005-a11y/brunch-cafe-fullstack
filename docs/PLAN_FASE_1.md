@@ -30,7 +30,7 @@
 - **Estados como enums con máquina explícita y `Evento`** (se amplía `Evento.entidad` a `mesa`, `cuenta`, `item`):
   - Mesa: `libre → ocupada → cuenta_pedida → por_limpiar → libre`, más `bloqueada` (desde y hacia `libre`).
   - Cuenta: `abierta → cuenta_pedida → (cerrada en la Fase 3)`, más `cerrada_sin_cobro` (solo admin, con motivo; F1-13).
-  - Ítem: `borrador → enviado` en esta fase, y `enviado → anulado` con `item:anular` y motivo (no se cobra; F1-6). Los estados de cocina (`en_preparacion → listo → servido`) se definen ya, pero los opera el KDS en la Fase 2.
+  - Ítem: `borrador → enviado` en esta fase, y `enviado → anulado` con `item:anular` y motivo (no se cobra; F1-6). Ampliado en 1.4 (D1): también desde `en_preparacion` y `listo`, no desde `servido`. Los estados de cocina (`en_preparacion → listo → servido`) se definen ya, pero los opera el KDS en la Fase 2.
 - **Todo cambio de mesa o cuenta en una transacción**, con control de concurrencia: escritura condicional sobre el estado esperado, igual que `cambiarEstado`. Si dos meseros tocan la misma mesa, el segundo recibe `409` y la tablet recarga.
 - **«Enviar ronda» es idempotente** (`Idempotency-Key`): un doble toque en la tablet no duplica la comanda.
 - **Sin tiempo real hasta la Fase 2**: el plano de mesas y la cuenta se refrescan por *polling* (cada 10–15 s y al volver a la pestaña). Se diseña la API para que la Fase 2 solo agregue los eventos en vivo.

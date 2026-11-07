@@ -4,6 +4,7 @@ import { crearConSesion } from './helpers/usuarios.js'
 import { api } from './helpers/app.js'
 import Zona from '../src/modulos/salon/zona.model.js'
 import Mesa from '../src/modulos/salon/mesa.model.js'
+import Cuenta from '../src/modulos/salon/cuenta.model.js'
 
 // 1.2 · Zonas y mesas (configuración del salón, permiso salon:configurar). F1-1, F1-2.
 const ZONAS = '/api/v1/admin/zonas'
@@ -204,6 +205,35 @@ describe('Mesas', () => {
         expect(await Mesa.findById(mesa.id).lean()).toMatchObject({ estado: 'ocupada', activa: true, capacidad: 6, numero: 1, combinable: false })
         // Enviar el mismo valor que ya tiene no cuenta como cambio
         expect((await admin.put(`${MESAS}/${mesa.id}`).send({ numero: 1, combinable: false, zona: zona.id })).status).toBe(200)
+    })
+
+    it('1.4 · una mesa que apunta a una cuenta (cuentaActual) cuenta como en uso aunque su estado diga libre', async () => {
+        const zona = await crearZona()
+        const otraZona = await crearZona({ nombre: 'Terraza' })
+        const mesa = await crearMesa(zona)
+        await Mesa.updateOne({ _id: mesa.id }, { cuentaActual: new mongoose.Types.ObjectId() })
+        for (const [metodo, datos] of [['delete'], ['put', { activa: false }], ['put', { zona: otraZona.id }]]) {
+            const res = await admin[metodo](`${MESAS}/${mesa.id}`).send(datos)
+            expect(res.status, `${metodo} ${JSON.stringify(datos)}`).toBe(409)
+            expect(res.body.error.code).toBe('MESA_EN_USO')
+        }
+        const desactivarZona = await admin.put(`${ZONAS}/${zona.id}`).send({ activa: false })
+        expect(desactivarZona.status).toBe(409)
+        expect(desactivarZona.body.error.code).toBe('ZONA_CON_MESAS_EN_USO')
+    })
+
+    it('1.4 · una mesa con cuentas en su historial no se borra (409 MESA_CON_HISTORIAL): se desactiva', async () => {
+        const zona = await crearZona()
+        const mesa = await crearMesa(zona)
+        await Cuenta.collection.insertOne({
+            codigo: 'C-000001', canal: 'salon', estado: 'cancelada', comensales: 2,
+            mesas: [{ mesa: new mongoose.Types.ObjectId(mesa.id), numero: 1, nombre: '', zona: new mongoose.Types.ObjectId(zona.id), zonaNombre: 'Interior' }],
+        })
+        const res = await admin.delete(`${MESAS}/${mesa.id}`)
+        expect(res.status).toBe(409)
+        expect(res.body.error.code).toBe('MESA_CON_HISTORIAL')
+        expect((await admin.put(`${MESAS}/${mesa.id}`).send({ activa: false })).status).toBe(200)
+        expect(await Mesa.exists({ _id: mesa.id })).toBeTruthy()
     })
 
     it('una mesa libre se borra, se desactiva y cambia de zona (a una activa)', async () => {

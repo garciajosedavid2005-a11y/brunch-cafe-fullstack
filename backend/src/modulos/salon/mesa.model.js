@@ -1,8 +1,9 @@
 import mongoose from 'mongoose'
+import { ESTADOS_MESA } from '../compartido/estadosSalon.js'
 
-// Estados de mesa (F1-2). La máquina de transiciones llega en 1.4 (compartido/estados.js) y los
-// cambia la operación del salón (1.5); la configuración (1.2) nunca los asigna.
-export const ESTADOS_MESA = ['libre', 'ocupada', 'cuenta_pedida', 'por_limpiar', 'bloqueada']
+// Estados de mesa (F1-2). La máquina de transiciones está en compartido/estadosSalon.js (1.4) y los
+// cambia la operación del salón (salon/cuentas.service.js); la configuración (1.2) nunca los asigna.
+export { ESTADOS_MESA }
 export const CAPACIDAD_MAXIMA = 20
 export const NUMERO_MAXIMO = 999
 
@@ -24,6 +25,9 @@ const mesaSchema = new mongoose.Schema({
     combinable: { type: Boolean, required: true, default: false },
     activa: { type: Boolean, required: true, default: true },
     posicion: { type: posicionSchema, default: null },
+    // 1.4 · Cuenta abierta que ocupa la mesa (null = ninguna). Las mesas anteriores a 1.4 no tienen el
+    // campo y cuentan como sin cuenta: el filtro { cuentaActual: null } también encuentra los ausentes.
+    cuentaActual: { type: mongoose.Schema.Types.ObjectId, ref: 'Cuenta', default: null },
     ejemplo: { type: Boolean, required: true, default: false },
 }, { timestamps: true })
 

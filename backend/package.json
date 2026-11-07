@@ -22,6 +22,7 @@
     "seed:dev": "node scripts/seed-dev.js",
     "seed:salon": "node scripts/seed-salon.js",
     "seed:modificadores": "node scripts/seed-modificadores.js",
+    "verificar:salon": "node scripts/verificar-salon.js",
     "recolorear:estados": "node scripts/recolorear-estados.js",
     "mongo:replica-set": "node scripts/iniciar-replica-set.js"
   },

@@ -1,18 +1,22 @@
 import mongoose from 'mongoose'
 import Zona, { COLACION_NOMBRE } from './zona.model.js'
 import Mesa from './mesa.model.js'
+import Cuenta from './cuenta.model.js'
 import { AppError, notFound, detallesZod } from '../compartido/errors.js'
 import { z } from 'zod'
 import { conTransaccion } from '../compartido/transacciones.js'
 import { sinUndefined } from '../compartido/utils.js'
 
 // 1.2 · Zonas y mesas (Admin › Salón). Protecciones en el servidor:
-//   - una mesa que no está libre no se borra, no se desactiva, no cambia de zona, número ni
-//     «combinable» (escritura condicional sobre estado: 'libre' → 409 MESA_EN_USO);
+//   - una mesa en uso (no está libre o, desde 1.4, apunta a una cuenta) no se borra, no se desactiva,
+//     no cambia de zona, número ni «combinable» (escritura condicional → 409 MESA_EN_USO);
 //   - una zona con mesas no se borra (se desactiva) y no se desactiva con mesas en uso;
 //   - crear una mesa y borrar su zona se serializan: ambas transacciones escriben la zona.
-// Pendiente de 1.5: ocupar una mesa debe escribir también su zona (filtro activa: true); si no,
-// desactivar la zona y ocupar una de sus mesas a la vez no entran en conflicto (write skew).
+// 1.4: abrir una cuenta escribe también la zona (filtro activa: true), así que desactivar la zona y
+// ocupar una de sus mesas a la vez entran en conflicto (salon/cuentas.service.js).
+
+// Mesa libre y sin cuenta (las anteriores a 1.4 no tienen cuentaActual: el filtro null también las incluye)
+const SIN_USO = { estado: 'libre', cuentaActual: null }
 
 const duplicada = () => new AppError(409, 'ZONA_DUPLICADA', 'Ya existe una zona con ese nombre.')
 const numeroDuplicado = (numero) => new AppError(409, 'MESA_NUMERO_DUPLICADO', `Ya existe la mesa ${numero}.`)
@@ -83,7 +87,9 @@ export const actualizarZona = async (id, { nombre, orden, activa }) => {
 
     return conTransaccion(async (session) => {
         if (activa === false) {
-            const enUso = await Mesa.countDocuments({ zona: zona._id, estado: { $ne: 'libre' } }).session(session)
+            const enUso = await Mesa.countDocuments({
+                zona: zona._id, $or: [{ estado: { $ne: 'libre' } }, { cuentaActual: { $ne: null } }],
+            }).session(session)
             if (enUso > 0) {
                 throw new AppError(409, 'ZONA_CON_MESAS_EN_USO',
                     `No se puede desactivar: hay ${enUso} mesa(s) en uso en esta zona.`)
@@ -182,7 +188,7 @@ export const actualizarMesa = async (id, datos) => {
                 ? await reservarZona(datos.zona, session)
                 : await Zona.findById(mesa.zona).select('nombre').session(session)
             // Escritura condicional sobre lo leído: si otra operación la ocupó o la movió → no escribe
-            const filtro = { _id: mesa._id, zona: mesa.zona, ...(exigeLibre ? { estado: 'libre' } : {}) }
+            const filtro = { _id: mesa._id, zona: mesa.zona, ...(exigeLibre ? SIN_USO : {}) }
             const actualizada = await Mesa.findOneAndUpdate(
                 filtro,
                 { $set: sinUndefined({ ...datos, zona: cambiaZona ? zona._id : undefined }) },
@@ -199,7 +205,13 @@ export const actualizarMesa = async (id, datos) => {
 
 export const eliminarMesa = async (id) => {
     const mesa = await buscarPorId(Mesa, id, 'Mesa no encontrada.')
-    // Solo libre (condicional). Desde 1.4, además, sin cuentas que la referencien.
-    const { deletedCount } = await Mesa.deleteOne({ _id: mesa._id, estado: 'libre' })
-    if (deletedCount === 0) throw await mesaNoEscrita(mesa._id)
+    await conTransaccion(async (session) => {
+        // Con cuentas en su historial (1.4) solo se desactiva: los informes y el Evento la siguen nombrando
+        if (await Cuenta.exists({ 'mesas.mesa': mesa._id }).session(session)) {
+            throw new AppError(409, 'MESA_CON_HISTORIAL', 'La mesa tiene cuentas en su historial: desactívala en lugar de borrarla.')
+        }
+        // Solo libre y sin cuenta (condicional). Abrir una cuenta escribe la mesa: si ocurre a la vez, chocan.
+        const { deletedCount } = await Mesa.deleteOne({ _id: mesa._id, ...SIN_USO }, { session })
+        if (deletedCount === 0) throw await mesaNoEscrita(mesa._id)
+    })
 }
