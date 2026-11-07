@@ -99,13 +99,17 @@ export const eliminarCategoria = async (req, res) => {
         const categoria = await Categoria.findById(req.params.id)
         if (!categoria) return res.status(404).json(cuerpoError('NOT_FOUND', 'Categoría no encontrada'))
 
-        // No se puede borrar una categoría que todavía tiene productos
-        const enUso = await Producto.countDocuments({ categoria: categoria._id })
+        // No se puede borrar una categoría que todavía tiene productos: 409, como estaciones y grupos (1.3b)
+        const enUso = await conTransaccion(async (session) => {
+            const productos = await Producto.countDocuments({ categoria: categoria._id }).session(session)
+            if (productos === 0) await Categoria.deleteOne({ _id: categoria._id }, { session })
+            return productos
+        })
         if (enUso > 0) {
-            return res.status(400).json(cuerpoError('BAD_REQUEST', `No se puede eliminar: hay ${enUso} producto(s) en esta categoría`))
+            return res.status(409).json(cuerpoError('CATEGORIA_EN_USO',
+                `No se puede eliminar: la usan ${enUso} producto${enUso === 1 ? '' : 's'}. Muévelos a otra categoría primero.`,
+                { productos: enUso }))
         }
-
-        await categoria.deleteOne()
 
         res.json({ message: 'Categoría eliminada' })
     } catch (error) {

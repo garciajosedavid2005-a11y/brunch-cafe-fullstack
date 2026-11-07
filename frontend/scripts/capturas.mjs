@@ -162,6 +162,11 @@ const VISTAS = {
     await abrirPestanaAdmin("Categorías")(p);
     await p.getByRole("button", { name: "Editar" }).first().click();
   } },
+  // 1.3b · borrar una categoría con productos: aviso y botón deshabilitado (el backend da 409)
+  "admin-categoria-eliminar": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Categorías")(p);
+    await p.getByRole("button", { name: /^Eliminar categoría/ }).first().click();
+  } },
   "admin-producto-form": { usuario: "admin", completa: false, preparar: async (p) => {
     await abrirPestanaAdmin("Productos")(p);
     await p.getByRole("button", { name: /^editar/i }).first().click();

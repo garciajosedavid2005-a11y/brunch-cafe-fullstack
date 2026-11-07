@@ -165,3 +165,16 @@ describe('Validación de producto (N3) e imágenes', () => {
         expect(res.body.error.message).toMatch(/2 MB/)
     })
 })
+
+describe('Borrar una categoría (1.3b)', () => {
+    it('con productos → 409 CATEGORIA_EN_USO con cuántos (como estaciones y grupos); sin productos se borra', async () => {
+        const { sesion } = await crearConSesion('admin')
+        const res = await sesion.delete(`/api/v1/admin/categorias/${bebidas._id}`)
+        expect(res.status).toBe(409)
+        expect(res.body.error).toMatchObject({ code: 'CATEGORIA_EN_USO', details: { productos: 1 } })
+        expect(res.body.error.message).toMatch(/1 producto/)
+
+        const vacia = await categoriaDePrueba('Postres')
+        expect((await sesion.delete(`/api/v1/admin/categorias/${vacia._id}`)).status).toBe(200)
+    })
+})

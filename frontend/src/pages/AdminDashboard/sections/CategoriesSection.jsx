@@ -14,6 +14,7 @@ export default function CategoriesSection() {
   const { items: estaciones, error: errorEstaciones, cargar: cargarEstaciones } = useAdminResource("/v1/admin/estaciones");
   const estacionesActivas = estaciones.filter((e) => e.activa);
   const idTituloModal = useId();
+  const idTituloEliminar = useId();
 
   // Formulario local
   const [formData, setFormData] = useState({
@@ -281,13 +282,15 @@ export default function CategoriesSection() {
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
+            aria-labelledby={idTituloEliminar}
           >
             <div className="admin-modal-header">
-              <h3 className="admin-modal-title">¿Eliminar categoría?</h3>
+              <h3 className="admin-modal-title" id={idTituloEliminar}>¿Eliminar categoría?</h3>
               <button
                 type="button"
                 className="admin-modal-close"
                 onClick={() => setCategoriaAEliminar(null)}
+                aria-label="Cerrar"
               >
                 <X size={20} />
               </button>
@@ -295,10 +298,19 @@ export default function CategoriesSection() {
             <div className="admin-modal-body">
               <div className="admin-delete-alert">
                 <AlertCircle size={28} className="admin-delete-alert__icon" />
-                <p>
-                  Estás a punto de eliminar la categoría{" "}
-                  <strong>"{categoriaAEliminar.nombre}"</strong>. Esta acción no se puede deshacer.
-                </p>
+                {/* 1.3b: con productos el backend responde 409 CATEGORIA_EN_USO; se avisa antes */}
+                {categoriaAEliminar.productosAsociados > 0 ? (
+                  <p>
+                    No se puede eliminar <strong>"{categoriaAEliminar.nombre}"</strong>: la usan{" "}
+                    {categoriaAEliminar.productosAsociados === 1 ? "1 producto" : `${categoriaAEliminar.productosAsociados} productos`}.
+                    Muévelos a otra categoría primero.
+                  </p>
+                ) : (
+                  <p>
+                    Estás a punto de eliminar la categoría{" "}
+                    <strong>"{categoriaAEliminar.nombre}"</strong>. Esta acción no se puede deshacer.
+                  </p>
+                )}
               </div>
             </div>
             <div className="admin-modal-actions">
@@ -307,15 +319,19 @@ export default function CategoriesSection() {
                 className="admin-button--secondary-sm"
                 onClick={() => setCategoriaAEliminar(null)}
               >
-                Cancelar
+                {categoriaAEliminar.productosAsociados > 0 ? "Entendido" : "Cancelar"}
               </button>
-              <button
-                type="button"
-                className="admin-button--danger"
-                onClick={handleEliminar}
-              >
-                Sí, eliminar categoría
-              </button>
+              {/* Con productos no se ofrece borrar (un botón deshabilitado rojo parecía activo) */}
+              {categoriaAEliminar.productosAsociados === 0 && (
+                <button
+                  type="button"
+                  className="admin-button--danger"
+                  onClick={handleEliminar}
+                  disabled={guardando}
+                >
+                  Sí, eliminar categoría
+                </button>
+              )}
             </div>
           </div>
         </div>

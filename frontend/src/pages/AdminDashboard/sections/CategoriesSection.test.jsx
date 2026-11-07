@@ -80,4 +80,19 @@ describe("Admin › Categorías: estación por defecto", () => {
     expect(estacion).toHaveValue("");
     expect(estacion).toBeRequired();
   });
+
+  it("1.3b · con productos no deja borrar y dice por qué; sin productos borra y muestra un 409 si el conteo estaba desfasado", async () => {
+    await montar();
+    fireEvent.click(screen.getByRole("button", { name: "Eliminar categoría Bebidas" }));
+    const aviso = screen.getByRole("dialog", { name: "¿Eliminar categoría?" });
+    expect(aviso).toHaveTextContent(/la usan 4 productos/i);
+    expect(within(aviso).queryByRole("button", { name: /sí, eliminar/i })).not.toBeInTheDocument();
+    fireEvent.click(within(aviso).getByRole("button", { name: "Entendido" }));
+
+    api.delete.mockRejectedValue(new Error("No se puede eliminar: la usan 1 producto. Muévelos a otra categoría primero."));
+    fireEvent.click(screen.getByRole("button", { name: "Eliminar categoría Antigua" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "¿Eliminar categoría?" })).getByRole("button", { name: /sí, eliminar/i }));
+    expect(await screen.findByText(/la usan 1 producto/i)).toBeInTheDocument();
+    expect(api.delete).toHaveBeenCalledWith("/v1/admin/categorias/c2");
+  });
 });

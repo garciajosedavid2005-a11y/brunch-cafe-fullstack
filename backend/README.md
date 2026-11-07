@@ -244,7 +244,7 @@ Desde 0.12 la API es solo `/api/v1`. Las rutas sin versión responden `404 NOT_F
 | Método | Ruta | Permiso | Acción |
 |---|---|---|---|
 | GET | `/api/v1/admin/categorias` | — (público) | Listar categorías (con su `estacion`) |
-| POST, PUT, DELETE | `/api/v1/admin/categorias[/:id]` | `catalogo:gestionar` | Crear, editar y borrar (no se borra una categoría con productos); `estacionId` (sin él, Cocina; no admite `null`) |
+| POST, PUT, DELETE | `/api/v1/admin/categorias[/:id]` | `catalogo:gestionar` | Crear, editar y borrar (con productos no se borra → `409 CATEGORIA_EN_USO` con `details.productos`); `estacionId` (sin él, Cocina; no admite `null`) |
 | GET, POST, PUT, DELETE | `/api/v1/admin/productos[/:id]` | `catalogo:gestionar` | Gestionar productos (imagen ≤ 2 MB, precio entero, `disponible`, `estacionId` propia o `null`, `gruposModificadoresIds`); responden `estacionId`, `estacionEfectiva` y `gruposModificadores` |
 | GET | `/api/v1/admin/estaciones` | `salon:configurar` o `catalogo:gestionar` | Estaciones con su uso (categorías y productos) |
 | POST, PUT, DELETE | `/api/v1/admin/estaciones[/:id]` | `salon:configurar` | `{ codigo (inmutable), nombre, activa }`; código o nombre repetido → `409 ESTACION_DUPLICADA`; en uso no se borra ni se desactiva → `409 ESTACION_EN_USO` |
