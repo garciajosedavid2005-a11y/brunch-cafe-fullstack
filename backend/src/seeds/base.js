@@ -6,6 +6,7 @@ import Permiso from '../modulos/identidad/permiso.model.js'
 import { COMODIN, PERMISOS, ROLES_STAFF, ROL_ADMIN, ROL_CLIENTE } from '../modulos/identidad/permisos.js'
 import { sembrarEstados } from './estados.js'
 import { sembrarMetodosPago } from './metodosPago.js'
+import { sembrarEstaciones } from './estaciones.js'
 import { sembrarHorarios } from '../modulos/configuracion/horarios.service.js'
 
 // Roles con reglas fijas: admin siempre tiene "*" y cliente nunca tiene permisos de staff
@@ -125,5 +126,6 @@ export const sembrarBase = async (env = process.env) => {
     const estados = await sembrarEstados()
     const metodosPago = await sembrarMetodosPago()
     const horarios = await sembrarHorarios()
-    return { roles: Object.keys(roles), unificacion, admin, estados, metodosPago, horarios }
+    const estaciones = await sembrarEstaciones()
+    return { roles: Object.keys(roles), unificacion, admin, estados, metodosPago, horarios, estaciones }
 }

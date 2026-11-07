@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { crearConSesion } from './helpers/usuarios.js'
-import { datosReserva, fechaFutura } from './helpers/datos.js'
-import Categoria from '../src/modulos/catalogo/categoria.model.js'
+import { datosReserva, fechaFutura, categoriaDePrueba } from './helpers/datos.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
 import Reserva from '../src/modulos/salon/reserva.model.js'
 import Pedido from '../src/modulos/pedidos/pedido.model.js'
@@ -61,7 +60,7 @@ describe('Reservas: instante de inicio en UTC (0.10)', () => {
 
 describe('Pedidos: hora de entrega como instante (0.10)', () => {
     const pedir = async () => {
-        const categoria = await Categoria.create({ nombre: 'Bebidas' })
+        const categoria = await categoriaDePrueba('Bebidas')
         const latte = await Producto.create({ codigo: 3, nombre: 'Latte', precio: 9000, categoria: categoria._id })
         const metodos = await cliente.get('/api/v1/cliente/metodos-pago')
         return cliente.post('/api/v1/cliente/pedidos').send({

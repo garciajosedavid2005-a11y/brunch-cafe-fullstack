@@ -5,6 +5,7 @@ import { join, resolve, relative } from 'node:path'
 import Categoria from '../src/modulos/catalogo/categoria.model.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
 import MenuImage from '../src/modulos/catalogo/menuImage.model.js'
+import Estacion from '../src/modulos/catalogo/estacion.model.js'
 import { sembrarMenu, DIRECTORIO_SEED } from '../src/seeds/menu.js'
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
@@ -44,6 +45,14 @@ describe('Seed del menú', () => {
         expect(latte).toMatchObject({ nombre: 'Latte', precio: 9000, destacado: true, disponible: true, imagen: '/productos/menu/imagenes/latte.png' })
         expect(latte.categoria).toMatchObject({ nombre: 'Bebidas', descripcion: 'Calientes y frías' })
         expect((await MenuImage.findOne({ nombre: 'latte.png' })).contentType).toBe('image/png')
+    })
+
+    it('1.3 · las categorías nuevas nacen con su estación (Bebidas → Barra, el resto → Cocina), aunque falten las estaciones', async () => {
+        await Estacion.deleteMany({})
+        await sembrarMenu({ directorio: dir })
+        const codigo = async (nombre) => (await Categoria.findOne({ nombre }).populate('estacion').lean()).estacion?.codigo
+        expect(await codigo('Bebidas')).toBe('barra')
+        expect(await codigo('Postres')).toBe('cocina')
     })
 
     it('es idempotente y no pisa lo que el admin editó', async () => {

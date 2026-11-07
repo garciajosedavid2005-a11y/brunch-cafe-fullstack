@@ -2,8 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import mongoose from 'mongoose'
 import { api } from './helpers/app.js'
 import { crearConSesion } from './helpers/usuarios.js'
-import { entregarPedido } from './helpers/datos.js'
-import Categoria from '../src/modulos/catalogo/categoria.model.js'
+import { entregarPedido, categoriaDePrueba } from './helpers/datos.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
 import DetallePedido from '../src/modulos/pedidos/detallePedido.model.js'
 import Comentario from '../src/modulos/catalogo/comentario.model.js'
@@ -12,7 +11,7 @@ import { up, down } from '../src/migraciones/m06-referencias.js'
 let latte
 let cliente
 beforeEach(async () => {
-    const bebidas = await Categoria.create({ nombre: 'Bebidas' })
+    const bebidas = await categoriaDePrueba('Bebidas')
     latte = await Producto.create({ codigo: 7, nombre: 'Latte', precio: 9000, categoria: bebidas._id })
     ;({ sesion: cliente } = await crearConSesion('cliente'))
 })

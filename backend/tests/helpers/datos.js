@@ -1,5 +1,13 @@
 import Categoria from '../../src/modulos/catalogo/categoria.model.js'
 import Producto from '../../src/modulos/catalogo/producto.model.js'
+import Estacion from '../../src/modulos/catalogo/estacion.model.js'
+import { codigoEstacionPorCategoria } from '../../src/seeds/estaciones.js'
+
+/** Categoría con su estación por defecto (1.3: obligatoria al crear). El setup siembra Cocina y Barra. */
+export const categoriaDePrueba = async (nombre = 'Bebidas', extra = {}) => {
+    const estacion = await Estacion.findOne({ codigo: codigoEstacionPorCategoria(nombre) })
+    return Categoria.create({ nombre, estacion: estacion._id, ...extra })
+}
 
 // Próximo día hábil a 7+ días (09:00 es válida en cualquier horario actual).
 // El reloj de las pruebas es fijo (setup.js): jueves 2026-11-05 07:30 en Bogotá.

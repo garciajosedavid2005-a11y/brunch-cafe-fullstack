@@ -31,6 +31,9 @@ beforeEach(async () => {
     await sembrarHorarios()
     // Lo que deja `npm run seed:base` (las peticiones ya no los crean)
     await sembrarMetodosPago()
+    // Estaciones Cocina y Barra (1.3, también de seed:base)
+    const { sembrarEstaciones } = await import('../../src/seeds/estaciones.js')
+    await sembrarEstaciones()
 })
 
 afterEach(async () => {

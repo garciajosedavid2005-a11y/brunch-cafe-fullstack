@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { api } from './helpers/app.js'
-import Categoria from '../src/modulos/catalogo/categoria.model.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
 import MenuImage from '../src/modulos/catalogo/menuImage.model.js'
 import { crearConSesion } from './helpers/usuarios.js'
+import { categoriaDePrueba } from './helpers/datos.js'
 
 // PNG de 1×1 px
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
@@ -11,7 +11,7 @@ const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwA
 let bebidas
 
 beforeEach(async () => {
-    bebidas = await Categoria.create({ nombre: 'Bebidas' })
+    bebidas = await categoriaDePrueba('Bebidas')
     await Producto.create({ codigo: 1, nombre: 'Latte', precio: 12000, categoria: bebidas._id, imagen: '/productos/menu/imagenes/latte.png' })
 })
 

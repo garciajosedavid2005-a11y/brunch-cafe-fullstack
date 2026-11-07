@@ -3,8 +3,8 @@
 // se actualiza aquí en el mismo commit.
 import { describe, it, expect, beforeEach } from 'vitest'
 import { agente, api } from './helpers/app.js'
-import Categoria from '../src/modulos/catalogo/categoria.model.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
+import { categoriaDePrueba } from './helpers/datos.js'
 
 const usuario = {
     nombre: 'Ana',
@@ -51,7 +51,7 @@ describe('Línea base del cliente', () => {
     })
 
     it('crea un pedido con precio calculado en el servidor', async () => {
-        const categoria = await Categoria.create({ nombre: 'Bebidas' })
+        const categoria = await categoriaDePrueba('Bebidas')
         await Producto.create({ codigo: 1, nombre: 'Latte', precio: 9000, categoria: categoria._id })
 
         const menu = await cliente.get('/api/v1/catalogo')

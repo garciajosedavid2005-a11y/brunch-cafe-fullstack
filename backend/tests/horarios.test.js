@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { agente } from './helpers/app.js'
 import { crearConSesion } from './helpers/usuarios.js'
-import { datosReserva } from './helpers/datos.js'
-import Categoria from '../src/modulos/catalogo/categoria.model.js'
+import { datosReserva, categoriaDePrueba } from './helpers/datos.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
 import Configuracion from '../src/modulos/configuracion/configuracion.model.js'
 import { horasEnPunto, horasReserva, horasDomicilio } from '../src/modulos/configuracion/horarios.reglas.js'
@@ -148,7 +147,7 @@ describe('Pedidos a domicilio: mismo día, ≥ 1 h, horas en punto y teléfono (
     let base
     beforeEach(async () => {
         ;({ sesion: cliente } = await crearConSesion('cliente'))
-        const categoria = await Categoria.create({ nombre: 'Bebidas' })
+        const categoria = await categoriaDePrueba('Bebidas')
         const latte = await Producto.create({ codigo: 7, nombre: 'Latte', precio: 9000, categoria: categoria._id })
         const metodos = await cliente.get('/api/v1/cliente/metodos-pago')
         base = {

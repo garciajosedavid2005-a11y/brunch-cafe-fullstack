@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import mongoose from 'mongoose'
 import { crearConSesion, rolId } from './helpers/usuarios.js'
-import { crearPedido, crearReserva } from './helpers/datos.js'
-import Categoria from '../src/modulos/catalogo/categoria.model.js'
+import { crearPedido, crearReserva, categoriaDePrueba } from './helpers/datos.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
 import Pedido from '../src/modulos/pedidos/pedido.model.js'
 import DetallePedido from '../src/modulos/pedidos/detallePedido.model.js'
@@ -21,7 +20,7 @@ describe('Transacciones (0.9)', () => {
     let cuerpoPedido
     beforeEach(async () => {
         ;({ sesion: cliente } = await crearConSesion('cliente'))
-        const categoria = await Categoria.create({ nombre: 'Bebidas' })
+        const categoria = await categoriaDePrueba('Bebidas')
         const latte = await Producto.create({ codigo: 9, nombre: 'Latte', precio: 9000, categoria: categoria._id })
         const metodos = await cliente.get('/api/v1/cliente/metodos-pago')
         cuerpoPedido = {

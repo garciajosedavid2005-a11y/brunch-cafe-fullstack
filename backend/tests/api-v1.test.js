@@ -4,6 +4,7 @@ import { crearConSesion } from './helpers/usuarios.js'
 import Categoria from '../src/modulos/catalogo/categoria.model.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
 import Comentario from '../src/modulos/catalogo/comentario.model.js'
+import { categoriaDePrueba } from './helpers/datos.js'
 
 let admin
 let cliente
@@ -11,7 +12,7 @@ let latte
 beforeEach(async () => {
     ;({ sesion: admin } = await crearConSesion('admin'))
     ;({ sesion: cliente } = await crearConSesion('cliente'))
-    const bebidas = await Categoria.create({ nombre: 'Bebidas' })
+    const bebidas = await categoriaDePrueba('Bebidas')
     latte = await Producto.create({ codigo: 1, nombre: 'Latte', precio: 9000, categoria: bebidas._id, imagen: '/productos/menu/imagenes/latte.png' })
 })
 

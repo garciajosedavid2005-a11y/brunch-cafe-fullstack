@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { crearConSesion } from './helpers/usuarios.js'
-import Categoria from '../src/modulos/catalogo/categoria.model.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
 import Pedido from '../src/modulos/pedidos/pedido.model.js'
+import { categoriaDePrueba } from './helpers/datos.js'
 
 describe('Idempotency-Key en la creación de pedidos (0.9)', () => {
     let cliente
     let cuerpo
     beforeEach(async () => {
         ;({ sesion: cliente } = await crearConSesion('cliente'))
-        const categoria = await Categoria.create({ nombre: 'Bebidas' })
+        const categoria = await categoriaDePrueba('Bebidas')
         const latte = await Producto.create({ codigo: 11, nombre: 'Latte', precio: 9000, categoria: categoria._id })
         const metodos = await cliente.get('/api/v1/cliente/metodos-pago')
         cuerpo = {

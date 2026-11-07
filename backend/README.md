@@ -28,9 +28,10 @@ Cada vez que traigas cambios de otra rama (`git pull`, fusión de `developers`, 
    | 4 | `npm run migrate:0.12 -- --dry-run` | Elimina las colecciones heredadas (usa `-- --respaldo <carpeta>`) |
    | 5 | `npm run migrate:0.15 -- --dry-run` | `reserva:ver` y `reserva:crear` para el mesero (solo si tiene los permisos antiguos) |
    | 6 | `npm run migrate:1.1 -- --dry-run` | Permisos de salón para mesero y anfitrión (solo si tienen los permisos anteriores a 1.1; requiere 0.15). Para revertir 1.1 y 0.15: primero `migrate:1.1 -- --down` |
+   | 7 | `npm run migrate:1.3 -- --dry-run` | Estación por defecto en las categorías existentes (Bebidas → Barra, el resto → Cocina); crea Cocina y Barra si faltan. Con el servidor detenido; se detiene sin escribir si Cocina o Barra están inactivas o su nombre lo usa otra estación |
 
    Antes de aplicar una que tenga cambios: respaldo con `mongodump` (ver «Migraciones y respaldo»). Luego el mismo comando sin `--dry-run`; para revertir, `-- --down` (también con `--dry-run`).
-4. **Datos base**: `npm run seed:base` solo inserta lo que falte (roles, estados, horarios, métodos de pago); no cambia lo que el admin personalizó.
+4. **Datos base**: `npm run seed:base` solo inserta lo que falte (roles, estados, horarios, métodos de pago, estaciones Cocina y Barra); no cambia lo que el admin personalizó.
 5. Arranca con `npm run dev` y comprueba `http://localhost:4000/api/health`; después, `npm test` si vas a hacer cambios.
 
 ## Panel Mesero y recuperación de contraseña
@@ -63,9 +64,11 @@ No publiques `.env` ni incluyas credenciales en mensajes o commits. Si una contr
 | `npm run test:watch` | Tests en modo observación |
 | `npm run lint` | ESLint 9 (flat config) |
 | `npm run migrate:0.7` | Migración de estados (ver abajo) |
-| `npm run seed:base` | Roles, primer admin, estados y métodos de pago (ver abajo) |
+| `npm run seed:base` | Roles, primer admin, estados, métodos de pago, horarios y estaciones (ver abajo) |
 | `npm run seed:menu` | Menú inicial desde `seed-data/` (ver abajo) |
 | `npm run mongo:replica-set` | Inicia el replica set `rs0` de un nodo en el Mongo de `MONGO_URI` (idempotente; `-- --dry-run`) |
+| `npm run seed:modificadores` | Grupos de modificadores de ejemplo (Leche, Tamaño, Término del huevo, Extras; marcados como ejemplo) y su asignación a los productos del menú inicial que aún no tienen grupos (1.3) |
+| `npm run migrate:1.3` | Estación por defecto en las categorías existentes (ver «Al traer cambios») |
 | `npm run seed:salon` | Salón de ejemplo (Interior y Terraza, mesas de 2 y 4, marcadas como ejemplo); solo si no hay zonas (1.2) |
 | `npm run seed:dev` | Usuarios de prueba `*.dev@brunchcafe.test` (solo desarrollo; contraseña en `DEV_USUARIOS_PASSWORD`) |
 
@@ -118,6 +121,7 @@ Idempotente: se puede ejecutar las veces que quieras.
 - Si en la BD hay roles creados a mano como `Admin` o `Administrador`, sus usuarios pasan al rol canónico `admin` (el rol viejo se conserva).
 - Pone la etiqueta del catálogo ("Cliente", "Mesero"…) a los roles cuya etiqueta guardada es el código, vacía o ausente.
 - Crea los métodos de pago que falten (Contra Entrega, Tarjeta débito, Tarjeta crédito). Las peticiones ya no los crean: un método que el admin borre no reaparece hasta volver a ejecutar el seed.
+- Crea las estaciones Cocina y Barra si no existe una con ese código (1.3); no toca nombre ni «activa» editados. Sin ellas, una categoría nueva sin estación elegida responde `400 ESTACION_NO_VALIDA`.
 
 ### Menú inicial (`npm run seed:menu`)
 
@@ -125,6 +129,7 @@ Lee `seed-data/menu.json` (categorías con descripción y productos con `codigo`
 
 - Valida todo el archivo antes de escribir (precios enteros, categorías existentes, imágenes presentes, códigos únicos).
 - Idempotente y conservador: crea las categorías, imágenes y productos que falten y **no modifica** los existentes (precio, descripción, disponibilidad o destacado editados en el admin se respetan).
+- Las categorías nuevas nacen con su estación (Bebidas → Barra, el resto → Cocina); asegura antes Cocina y Barra.
 
 ### Catálogo
 
@@ -133,6 +138,9 @@ Lee `seed-data/menu.json` (categorías con descripción y productos con `codigo`
 - Imágenes subidas desde el admin: máximo 2 MB (PNG, JPG, WEBP o GIF); se guardan en `MenuImage` y el producto guarda su URL. El cuerpo JSON admite hasta 3 MB (`413 PAYLOAD_TOO_LARGE`).
 - Precio: entero ≥ 0 (`"12000"` se acepta; decimales y negativos no).
 - `codigo` (número que usan carrito y pedidos) sale de un contador atómico (colección `counters`); nunca se repite ni se reutiliza.
+- **Estaciones (1.3, F1-3):** cada categoría tiene una estación por defecto (obligatoria al crear; sin `estacionId`, Cocina) y cada producto puede sobrescribirla (`estacionId`, `null` = hereda). La estación efectiva sale de una sola función (`catalogo/estaciones.js`). Una estación en uso no se borra ni se desactiva (`409 ESTACION_EN_USO`); una inactiva no se asigna (`400 ESTACION_NO_VALIDA`).
+- **Modificadores (1.3, F1-4):** grupos reutilizables `{ nombre, obligatorio, min, max, opciones: [{ id, nombre, precioExtra (entero COP ≥ 0), disponible }], activo }`. Reglas en el esquema: `min ≤ max`, `max ≤` número de opciones (todas, también las agotadas), obligatorio ⇔ `min ≥ 1`, opciones sin repetir. Al editar, una opción con `id` conserva su id y los campos que no se envían. El producto los referencia en orden (`gruposModificadoresIds`, hasta 10). Un grupo en uso no se borra (`409 GRUPO_EN_USO`) pero sí se desactiva (el producto deja de ofrecerlo). «Sin ingrediente» va como nota del ítem.
+- `GET /api/v1/catalogo?incluir=modificadores` añade a cada producto `estacion: { codigo, nombre }` (efectiva) y `modificadores` (solo grupos activos, con todas sus opciones y `disponible`). Sin el parámetro la respuesta no cambia; otro valor → `400 VALIDATION_ERROR`.
 
 ### Seguridad de la sesión
 
@@ -189,7 +197,7 @@ Desde 0.12 la API es solo `/api/v1`. Las rutas sin versión responden `404 NOT_F
 | Método | Ruta | Acción |
 |---|---|---|
 | GET | `/api/health` | Estado del servidor |
-| GET | `/api/v1/catalogo` | Categorías y productos disponibles (precio entero COP, imagen como URL) |
+| GET | `/api/v1/catalogo` (`?incluir=modificadores`) | Categorías y productos disponibles (precio entero COP, imagen como URL); con el parámetro, estación y modificadores |
 | GET | `/api/productos/menu/imagenes/:nombre` | Imagen de un producto |
 | GET | `/api/v1/horarios` | Horarios de domicilio y reservas (solo lectura) |
 | GET | `/api/v1/comentarios` | Reseñas visibles (con `verificada`) |
@@ -235,9 +243,12 @@ Desde 0.12 la API es solo `/api/v1`. Las rutas sin versión responden `404 NOT_F
 
 | Método | Ruta | Permiso | Acción |
 |---|---|---|---|
-| GET | `/api/v1/admin/categorias` | — (público) | Listar categorías |
-| POST, PUT, DELETE | `/api/v1/admin/categorias[/:id]` | `catalogo:gestionar` | Crear, editar y borrar (no se borra una categoría con productos) |
-| GET, POST, PUT, DELETE | `/api/v1/admin/productos[/:id]` | `catalogo:gestionar` | Gestionar productos (imagen ≤ 2 MB, precio entero, `disponible`) |
+| GET | `/api/v1/admin/categorias` | — (público) | Listar categorías (con su `estacion`) |
+| POST, PUT, DELETE | `/api/v1/admin/categorias[/:id]` | `catalogo:gestionar` | Crear, editar y borrar (no se borra una categoría con productos); `estacionId` (sin él, Cocina; no admite `null`) |
+| GET, POST, PUT, DELETE | `/api/v1/admin/productos[/:id]` | `catalogo:gestionar` | Gestionar productos (imagen ≤ 2 MB, precio entero, `disponible`, `estacionId` propia o `null`, `gruposModificadoresIds`); responden `estacionId`, `estacionEfectiva` y `gruposModificadores` |
+| GET | `/api/v1/admin/estaciones` | `salon:configurar` o `catalogo:gestionar` | Estaciones con su uso (categorías y productos) |
+| POST, PUT, DELETE | `/api/v1/admin/estaciones[/:id]` | `salon:configurar` | `{ codigo (inmutable), nombre, activa }`; código o nombre repetido → `409 ESTACION_DUPLICADA`; en uso no se borra ni se desactiva → `409 ESTACION_EN_USO` |
+| GET, POST, PUT, DELETE | `/api/v1/admin/grupos-modificadores[/:id]` | `catalogo:gestionar` | Grupos de modificadores; `409 GRUPO_DUPLICADO`, `409 GRUPO_EN_USO` (al borrar), `409 GRUPO_MODIFICADO` (editado a la vez), `400 OPCION_NO_VALIDA`; asignar uno inactivo o inexistente → `400 GRUPO_NO_VALIDO` |
 | GET | `/api/v1/admin/estados?tipo=pedido\|reserva` | `estado:editar`, `pedido:ver` o `reserva:ver` | Catálogo de estados |
 | PUT | `/api/v1/admin/estados/:id` | `estado:editar` | Editar etiqueta, descripción y colores (crear/borrar → 405) |
 | GET, POST, PUT, DELETE | `/api/v1/admin/roles[/:id]` | `rol:gestionar` | Roles y sus permisos (los de sistema no se borran; `409 ROL_CON_USUARIOS`) |

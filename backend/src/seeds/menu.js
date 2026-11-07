@@ -8,6 +8,8 @@ import Categoria from '../modulos/catalogo/categoria.model.js'
 import MenuImage from '../modulos/catalogo/menuImage.model.js'
 import Producto from '../modulos/catalogo/producto.model.js'
 import { PREFIJO_URL } from '../modulos/catalogo/imagenesProducto.js'
+import Estacion from '../modulos/catalogo/estacion.model.js'
+import { sembrarEstaciones, codigoEstacionPorCategoria } from './estaciones.js'
 
 export const DIRECTORIO_SEED = resolve(import.meta.dirname, '../../seed-data')
 
@@ -66,9 +68,15 @@ export const sembrarMenu = async ({ directorio = DIRECTORIO_SEED } = {}) => {
         return r.upsertedCount === 1
     }
 
+    // 1.3 · Las categorías nuevas nacen con su estación (bebidas → Barra, el resto → Cocina, F1-3);
+    // las existentes no se tocan (las anteriores a 1.3 las completa migrate:1.3)
+    await sembrarEstaciones()
+    const estaciones = Object.fromEntries((await Estacion.find().select('codigo').lean()).map((e) => [e.codigo, e._id]))
     const idCategoria = {}
     for (const { nombre, descripcion } of menu.categorias) {
-        contar('categorias', await insertarSiFalta(Categoria, { nombre }, { nombre, descripcion }))
+        const estacion = estaciones[codigoEstacionPorCategoria(nombre)]
+        if (!estacion) throw new Error(`Falta la estación «${codigoEstacionPorCategoria(nombre)}» para la categoría "${nombre}"`)
+        contar('categorias', await insertarSiFalta(Categoria, { nombre }, { nombre, descripcion, estacion }))
         idCategoria[nombre] = (await Categoria.findOne({ nombre }).select('_id'))._id
     }
 

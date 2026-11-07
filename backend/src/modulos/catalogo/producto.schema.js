@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { texto, textoOpcional, booleano, requerido } from '../compartido/comunes.schema.js'
+import { estacionDeProducto, gruposDeProducto } from './catalogoConfig.schema.js'
 import { DATA_URL, esUrlDelMenu, bytesDeDataUrl, MAX_BYTES_IMAGEN } from './imagenesProducto.js'
 
 // '' (sin imagen), la URL que ya tenía (/productos/menu/imagenes/...) o una imagen nueva incrustada
@@ -25,6 +26,9 @@ export const crearProductoSchema = z.object({
     destacado: booleano('El campo destacado').optional(),
     disponible: booleano('El campo disponible').optional(),
     categoriaId: z.string(requerido('La categoría')).min(1, { error: 'La categoría es requerida' }),
+    // 1.3 · Estación propia (null = hereda la de la categoría) y grupos de modificadores en orden
+    estacionId: estacionDeProducto,
+    gruposModificadoresIds: gruposDeProducto,
 })
 
 export const actualizarProductoSchema = crearProductoSchema.partial()

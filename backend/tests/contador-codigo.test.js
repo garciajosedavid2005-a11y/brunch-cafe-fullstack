@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import Categoria from '../src/modulos/catalogo/categoria.model.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
 import { crearConSesion } from './helpers/usuarios.js'
+import { categoriaDePrueba } from './helpers/datos.js'
 
 let categoriaId
 let sesion
 beforeEach(async () => {
     await Producto.init() // índice único de codigo creado antes de las pruebas
-    categoriaId = String((await Categoria.create({ nombre: 'Bebidas' }))._id)
+    categoriaId = String((await categoriaDePrueba('Bebidas'))._id)
     await Producto.create({ codigo: 1, nombre: 'Latte', precio: 9000, categoria: categoriaId })
     ;({ sesion } = await crearConSesion('admin'))
 })
