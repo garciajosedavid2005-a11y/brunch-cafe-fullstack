@@ -178,6 +178,16 @@ Lee `seed-data/menu.json` (categorías con descripción y productos con `codigo`
 3. Aplicar: `npm run migrate:0.7`. Revertir: `npm run migrate:0.7 -- --down` (también admite `--dry-run`); no revierte si un estado nuevo ya está en uso.
 4. Las demás siguen el mismo patrón: `migrate:0.6` (referencias por ObjectId), `migrate:0.10` (instantes UTC) y `migrate:0.12` (elimina las colecciones heredadas `users`, `orders`, `reservations` y `reviews`; `-- --respaldo <carpeta>` guarda cada una en EJSON antes de eliminarla y `-- --down --respaldo <carpeta>` las restaura).
 
+### Capturas de pantalla (`npm run capturas` en `frontend/`, 1.3b)
+
+Las capturas para revisar cambios visuales usan un **entorno aislado**: nunca la BD de trabajo ni datos personales.
+
+- `npm run capturas -- <etiqueta>` (en `frontend/`) arranca su propia API (`backend/scripts/entorno-capturas.js`, puerto `CAPTURAS_API_PORT`, 4100) y su propio Vite (`CAPTURAS_FRONT_PORT`, 5174), toma las capturas en `frontend/capturas/<etiqueta>/` y los detiene al terminar. El servidor de desarrollo (4000/5173) puede seguir encendido.
+- La API usa la BD **`brunch-cafe-capturas`**: el mismo `MONGO_URI` del `.env` con otro nombre de base. En cada ejecución la vacía (se niega con cualquier otra base) y la siembra: `seed:base` **sin el admin real** (`ADMIN_*` se ignoran), `seed:menu`, `seed:modificadores`, `seed:salon` y los usuarios `*.dev@brunchcafe.test`, con un pedido y una reserva de prueba. Sin SMTP: no se envía ningún correo.
+- La contraseña de los usuarios de prueba es `DEV_USUARIOS_PASSWORD` (≥ 10 caracteres), del entorno o de `backend/.env`; no se muestra. Sin ella solo se pueden capturar las vistas públicas (`SOLO=inicio,menu,…`).
+- Opciones: `ANCHOS=1280,1024,768`, `SOLO=<vistas separadas por coma>` (ver `VISTAS` en `frontend/scripts/capturas.mjs`), `ZONA_NAVEGADOR`.
+- `frontend/capturas/` no se versiona.
+
 ### Formato de errores
 
 Todas las respuestas de error usan el mismo formato:

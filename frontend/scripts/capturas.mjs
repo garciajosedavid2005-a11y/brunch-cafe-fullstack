@@ -1,27 +1,42 @@
 // Capturas de pantalla para revisión visual (npm run capturas -- <etiqueta>).
-// Requiere backend y frontend levantados y los usuarios de `npm run seed:dev` (backend).
-// La contraseña de prueba se lee de DEV_USUARIOS_PASSWORD (no está en el código).
-// Alternativa sin contraseña: COOKIES_SESION=<archivo.json> con { admin, cliente, mesero }
-// = valor de la cookie `token` de cada usuario de prueba (el archivo no se versiona).
-//   FRONT_URL (por defecto http://localhost:5173) · API_URL (por defecto http://localhost:4000/api/v1)
+// 1.3b · Entorno aislado: el script arranca su propia API (backend/scripts/entorno-capturas.js) sobre
+// la BD «brunch-cafe-capturas», que se vacía y se siembra en cada ejecución (seed:base sin el admin
+// real, menú, modificadores, salón y usuarios *.dev, sin datos personales), y su propio Vite. La BD de
+// trabajo y los servidores de desarrollo (4000 y 5173) no se tocan; al terminar se detiene todo.
+// La contraseña de los usuarios *.dev es DEV_USUARIOS_PASSWORD (entorno o backend/.env; no se muestra).
+//   CAPTURAS_API_PORT (4100) · CAPTURAS_FRONT_PORT (5174) · ANCHOS (1280,1024,768) · SOLO (vistas)
 //   ZONA_NAVEGADOR (por defecto America/Bogota): zona del navegador simulado
 import { chromium } from "playwright";
 import { mkdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { spawn } from "node:child_process";
+import { join, resolve } from "node:path";
 import process from "node:process";
 
-const FRONT = process.env.FRONT_URL || "http://localhost:5173";
-const API = process.env.API_URL || "http://localhost:4000/api/v1";
-const CLAVE = process.env.DEV_USUARIOS_PASSWORD;
-const COOKIES = process.env.COOKIES_SESION ? JSON.parse(await readFile(process.env.COOKIES_SESION, "utf8")) : null;
+const PUERTO_API = process.env.CAPTURAS_API_PORT || "4100";
+const PUERTO_FRONT = process.env.CAPTURAS_FRONT_PORT || "5174";
+const FRONT = `http://localhost:${PUERTO_FRONT}`;
+const API = `http://localhost:${PUERTO_API}/api/v1`;
+const BACKEND = resolve(process.cwd(), "../backend");
+
+// DEV_USUARIOS_PASSWORD del entorno o, si no está, de backend/.env (sin imprimirla)
+const leerClave = async () => {
+  if (process.env.DEV_USUARIOS_PASSWORD) return process.env.DEV_USUARIOS_PASSWORD;
+  try {
+    const env = await readFile(join(BACKEND, ".env"), "utf8");
+    return env.match(/^DEV_USUARIOS_PASSWORD=(.*)$/m)?.[1]?.trim().replace(/^["']|["']$/g, "") || "";
+  } catch {
+    return "";
+  }
+};
+const CLAVE = await leerClave();
 const ETIQUETA = process.argv[2] || "actual";
 const ANCHOS = (process.env.ANCHOS || "1280,1024,768").split(",").map(Number);
 const SOLO = process.env.SOLO ? process.env.SOLO.split(",") : null;
 const SALIDA = join(process.cwd(), "capturas", ETIQUETA);
 
 const SOLO_PUBLICAS = SOLO && SOLO.every((v) => ["inicio", "menu", "nosotros", "nosotros-ubicacion", "pie", "comentarios"].includes(v));
-if (!CLAVE && !COOKIES && !SOLO_PUBLICAS) {
-  console.error("Define DEV_USUARIOS_PASSWORD (la misma que usaste en `npm run seed:dev`) o COOKIES_SESION.");
+if (!CLAVE && !SOLO_PUBLICAS) {
+  console.error("Define DEV_USUARIOS_PASSWORD (≥ 10 caracteres) en el entorno o en backend/.env.");
   process.exit(1);
 }
 
@@ -30,6 +45,51 @@ const USUARIOS = {
   cliente: "cliente.dev@brunchcafe.test",
   mesero: "mesero.dev@brunchcafe.test",
 };
+
+// ── Entorno aislado: API sobre la BD de capturas + Vite apuntando a ella ──
+const procesos = [];
+const errores = [];
+const arrancar = (nombre, args, opciones) => {
+  const hijo = spawn(process.execPath, args, { ...opciones, stdio: ["ignore", "ignore", "pipe"] });
+  hijo.stderr.on("data", (d) => errores.push(`[${nombre}] ${d}`));
+  procesos.push(hijo);
+  return hijo;
+};
+const detenerTodo = () => {
+  for (const hijo of procesos) if (hijo.exitCode === null) hijo.kill();
+};
+process.on("exit", detenerTodo);
+
+const esperar = async (url, hijo, nombre, segundos = 90) => {
+  for (let i = 0; i < segundos * 2; i += 1) {
+    if (hijo.exitCode !== null) throw new Error(`${nombre} terminó antes de tiempo:\n${errores.join("").slice(-1500)}`);
+    try {
+      if ((await fetch(url)).ok) return;
+    } catch {
+      // aún no responde
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`${nombre} no respondió en ${segundos} s (${url}). ¿Está ocupado el puerto?`);
+};
+
+const api = arrancar("api", ["scripts/entorno-capturas.js"], {
+  cwd: BACKEND,
+  env: { ...process.env, DEV_USUARIOS_PASSWORD: CLAVE, CAPTURAS_API_PORT: PUERTO_API, CAPTURAS_FRONT_URL: FRONT },
+});
+const vite = arrancar("vite", [join(process.cwd(), "node_modules/vite/bin/vite.js"), "--port", PUERTO_FRONT, "--strictPort"], {
+  cwd: process.cwd(),
+  env: { ...process.env, VITE_API_URL: `http://localhost:${PUERTO_API}/api` },
+});
+try {
+  await esperar(`http://localhost:${PUERTO_API}/api/health`, api, "La API de capturas");
+  await esperar(FRONT, vite, "Vite");
+  console.log(`Entorno de capturas listo (BD brunch-cafe-capturas · API ${PUERTO_API} · web ${PUERTO_FRONT}).`);
+} catch (error) {
+  console.error(error.message);
+  detenerTodo();
+  process.exit(1);
+}
 
 const abrirPestanaAdmin = (nombre) => async (page) => {
   await page.goto(`${FRONT}/admin`);
@@ -213,14 +273,9 @@ const VISTAS = {
   } },
   // Panel del personal (1.1: botón «Cambiar de usuario» en la cabecera)
   "staff-resumen": { usuario: "mesero", preparar: (p) => p.goto(`${FRONT}/staff`) },
-  // Login tras «Cambiar de usuario». Cierra la sesión del contexto: con contraseña se vuelve
-  // a iniciar en cada ancho; con COOKIES_SESION se repone la cookie
+  // Login tras «Cambiar de usuario». Cierra la sesión del contexto: se vuelve a iniciar en cada ancho
   "staff-cambio-usuario": { usuario: "mesero", preparar: async (p) => {
-    if (COOKIES) {
-      await p.context().addCookies([{ name: "token", value: COOKIES.mesero, url: new URL(API).origin, httpOnly: true }]);
-    } else {
-      await p.context().request.post(`${API}/auth/login`, { data: { correo: USUARIOS.mesero, contraseña: CLAVE } });
-    }
+    await p.context().request.post(`${API}/auth/login`, { data: { correo: USUARIOS.mesero, contraseña: CLAVE } });
     await p.goto(`${FRONT}/staff`);
     await p.getByRole("button", { name: "Cambiar de usuario" }).click();
     await p.waitForURL("**/login");
@@ -236,10 +291,7 @@ const contextoDe = async (usuario) => {
   const clave = usuario || "invitado";
   if (contextos[clave]) return contextos[clave];
   const contexto = await navegador.newContext({ locale: "es-CO", timezoneId: process.env.ZONA_NAVEGADOR || "America/Bogota" });
-  if (usuario && COOKIES) {
-    if (!COOKIES[usuario]) throw new Error(`COOKIES_SESION no trae la sesión de ${usuario}`);
-    await contexto.addCookies([{ name: "token", value: COOKIES[usuario], url: new URL(API).origin, httpOnly: true }]);
-  } else if (usuario) {
+  if (usuario) {
     const res = await contexto.request.post(`${API}/auth/login`, { data: { correo: USUARIOS[usuario], contraseña: CLAVE } });
     if (!res.ok()) throw new Error(`Login de prueba falló para ${usuario}: ${res.status()} (¿ejecutaste npm run seed:dev?)`);
   }
@@ -247,7 +299,7 @@ const contextoDe = async (usuario) => {
   return contexto;
 };
 
-let errores = 0;
+let fallidas = 0;
 for (const [nombre, vista] of Object.entries(VISTAS)) {
   if (SOLO && !SOLO.includes(nombre)) continue;
   for (const ancho of ANCHOS) {
@@ -275,7 +327,7 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
       await page.screenshot({ path: archivo, fullPage: vista.completa !== false });
       console.log(`✓ ${archivo}${consola.length ? `  (errores de consola: ${consola.join(" | ").slice(0, 200)})` : ""}`);
     } catch (error) {
-      errores += 1;
+      fallidas += 1;
       console.error(`✗ ${nombre} ${ancho}px: ${error.message.split("\n")[0]}`);
     } finally {
       await page.close();
@@ -283,4 +335,5 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
   }
 }
 await navegador.close();
-process.exitCode = errores ? 1 : 0;
+detenerTodo();
+process.exitCode = fallidas ? 1 : 0;
