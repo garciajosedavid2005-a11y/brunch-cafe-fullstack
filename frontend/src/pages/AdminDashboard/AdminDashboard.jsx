@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Clock,
   LayoutGrid,
+  ListPlus,
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -23,6 +24,7 @@ import OrdersSection from "./sections/OrdersSection";
 import ReservationsSection from "./sections/ReservationsSection";
 import ProductsSection from "./sections/ProductsSection";
 import CategoriesSection from "./sections/CategoriesSection";
+import ModificadoresSection from "./sections/ModificadoresSection";
 import ReviewsSection from "./sections/ReviewsSection";
 import PaymentsSection from "./sections/PaymentsSection";
 import StatesSection from "./sections/StatesSection";
@@ -39,6 +41,7 @@ const sections = [
   { id: "reservations", label: "Reservas", icon: CalendarDays },
   { id: "products", label: "Productos", icon: Coffee },
   { id: "categories", label: "Categorías", icon: Tags },
+  { id: "modificadores", label: "Modificadores", icon: ListPlus }, // 1.3
   { id: "reviews", label: "Comentarios", icon: MessageSquareQuote },
   { id: "payments", label: "Métodos de Pago", icon: CreditCard },
   { id: "states", label: "Estados", icon: Sliders },
@@ -75,6 +78,8 @@ export default function AdminDashboard() {
         return <ProductsSection />;
       case "categories":
         return <CategoriesSection />;
+      case "modificadores":
+        return <ModificadoresSection />;
       case "reviews":
         return <ReviewsSection />;
       case "payments":

@@ -156,6 +156,27 @@ const VISTAS = {
     },
   },
   "admin-productos": { usuario: "admin", preparar: abrirPestanaAdmin("Productos") },
+  // 1.3 · estación por defecto, estación propia del producto y grupos de modificadores
+  "admin-categorias": { usuario: "admin", preparar: abrirPestanaAdmin("Categorías") },
+  "admin-categoria-form": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Categorías")(p);
+    await p.getByRole("button", { name: "Editar" }).first().click();
+  } },
+  "admin-producto-form": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Productos")(p);
+    await p.getByRole("button", { name: /^editar/i }).first().click();
+    await p.waitForTimeout(400);
+  } },
+  "admin-producto-form-final": { usuario: "admin", completa: false, preparar: async (p) => {
+    await VISTAS["admin-producto-form"].preparar(p);
+    await p.locator(".admin-modal-container").evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  } },
+  "admin-modificadores": { usuario: "admin", preparar: abrirPestanaAdmin("Modificadores") },
+  "admin-modificadores-form": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Modificadores")(p);
+    await p.getByRole("button", { name: "Editar" }).first().click();
+    await p.waitForTimeout(400);
+  } },
   "admin-pedidos": { usuario: "admin", preparar: abrirPestanaAdmin("Pedidos") },
   "admin-reservas": { usuario: "admin", preparar: abrirPestanaAdmin("Reservas") },
   "admin-resumen": { usuario: "admin", preparar: abrirPestanaAdmin("Resumen") },
@@ -172,6 +193,7 @@ const VISTAS = {
     },
   },
   "admin-roles": { usuario: "admin", preparar: abrirPestanaAdmin("Roles") },
+  "admin-metodos-pago": { usuario: "admin", preparar: abrirPestanaAdmin("Métodos de Pago") },
   "admin-usuarios": { usuario: "admin", preparar: abrirPestanaAdmin("Usuarios") },
   "admin-estados": { usuario: "admin", preparar: abrirPestanaAdmin("Estados") },
   "admin-comentarios": { usuario: "admin", preparar: abrirPestanaAdmin("Comentarios") },
@@ -241,6 +263,8 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
         }
         await page.evaluate(() => window.scrollTo(0, 0));
       }
+      // El último clic deja el puntero sobre el menú y su :hover sale en la foto: se aparta
+      await page.mouse.move(ancho - 2, 898);
       await page.waitForTimeout(900); // fin de las transiciones
       const archivo = join(SALIDA, `${nombre}-${ancho}.png`);
       await page.screenshot({ path: archivo, fullPage: vista.completa !== false });

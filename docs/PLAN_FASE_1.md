@@ -61,7 +61,7 @@ Cada ítem = 1 commit (o pocos) con tests, como en la Fase 0. Orden propuesto: 1
 - **Modificadores**: `GrupoModificadores { nombre, obligatorio, min, max, opciones: [{ nombre, precioExtra (COP entero ≥ 0), disponible }] }` y `Producto.gruposModificadores[]` (F1-4). Seed de ejemplo editable: Leche (entera, deslactosada, almendra con recargo), Tamaño (normal, grande con recargo), Término del huevo (obligatorio en platos con huevo) y Extras (con recargo). «Sin ingrediente» va como nota del ítem.
 - **Endpoints admin** (`catalogo:gestionar`) y pantalla en Admin › Productos (asignar estación y grupos).
 - `/api/v1/catalogo` añade estación y modificadores solo si se pide (`?incluir=modificadores`), para no cambiar la respuesta pública.
-- **Migración `migrate:1.3`** (`--dry-run` y `--down`): asigna estación por categoría a los productos existentes.
+- **Migración `migrate:1.3`** (`--dry-run` y `--down`): asigna la estación por defecto a las categorías existentes (bebidas → Barra, el resto → Cocina); los productos la heredan (decisión del 2026-11-07).
 
 ### 1.4 Modelo de cuenta y comanda (núcleo, sin pantallas)
 - **`Cuenta { codigo, canal (salon; para_llevar y domicilio en la Fase 6), mesas[], mesero, comensales (obligatorio, ≥ 1; F1-7), estado, subtotal, impuestos:null, propina:null, descuento:null, total, abiertaPor, abiertaEn, notas }`**.

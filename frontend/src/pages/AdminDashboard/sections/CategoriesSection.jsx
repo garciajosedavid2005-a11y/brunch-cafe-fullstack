@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Plus, Edit2, Trash2, Search, X, Tags, AlertCircle, Check } from "lucide-react";
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
@@ -10,16 +10,23 @@ export default function CategoriesSection() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [categoriaEnEdicion, setCategoriaEnEdicion] = useState(null); // null = crear nueva
   const [categoriaAEliminar, setCategoriaAEliminar] = useState(null);
+  // 1.3 · Estación por defecto de los productos de la categoría (F1-3)
+  const { items: estaciones, error: errorEstaciones, cargar: cargarEstaciones } = useAdminResource("/v1/admin/estaciones");
+  const estacionesActivas = estaciones.filter((e) => e.activa);
+  const idTituloModal = useId();
 
   // Formulario local
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
+    estacionId: "",
   });
 
   const abrirModalCrear = () => {
     setCategoriaEnEdicion(null);
-    setFormData({ nombre: "", descripcion: "" });
+    // F1-3: lo que no es bebida va a cocina; el admin puede elegir otra
+    const cocina = estacionesActivas.find((e) => e.codigo === "cocina");
+    setFormData({ nombre: "", descripcion: "", estacionId: cocina?.id || "" });
     setModalAbierto(true);
   };
 
@@ -28,13 +35,15 @@ export default function CategoriesSection() {
     setFormData({
       nombre: cat.nombre,
       descripcion: cat.descripcion,
+      // Una categoría anterior a migrate:1.3 no tiene estación: se pide elegirla
+      estacionId: cat.estacion?.id || "",
     });
     setModalAbierto(true);
   };
 
   const handleGuardar = async (e) => {
     e.preventDefault();
-    if (!formData.nombre.trim()) return;
+    if (!formData.nombre.trim() || !formData.estacionId) return;
 
     const guardada = categoriaEnEdicion
       ? await actualizar(categoriaEnEdicion.id, formData)
@@ -94,7 +103,7 @@ export default function CategoriesSection() {
       <AdminStatus cargando={cargando} error={error} onReintentar={cargar} />
       <div className="admin-card">
         <div className="admin-table-container">
-          <table className="admin-table">
+          <table className="admin-table" aria-label="Categorías del menú">
             <thead>
               <tr>
                 <th>Nombre de Categoría</th>
@@ -108,6 +117,12 @@ export default function CategoriesSection() {
                   <tr key={cat.id}>
                     <td>
                       <strong className="admin-table__client-name">{cat.nombre}</strong>
+                      {/* 1.3 · bajo el nombre (una columna más no cabía a 768 px) */}
+                      {cat.estacion ? (
+                        <span className="admin-salon__detalle">Estación: {cat.estacion.nombre}</span>
+                      ) : (
+                        <span className="admin-badge admin-badge--warning admin-categorias__sin-estacion">Sin estación</span>
+                      )}
                     </td>
                     <td>
                       <span className="admin-table__category-desc">{cat.descripcion}</span>
@@ -128,6 +143,7 @@ export default function CategoriesSection() {
                           className="admin-button--icon-danger"
                           onClick={() => setCategoriaAEliminar(cat)}
                           title="Eliminar categoría"
+                          aria-label={`Eliminar categoría ${cat.nombre}`}
                         >
                           <Trash2 size={15} />
                         </button>
@@ -155,13 +171,14 @@ export default function CategoriesSection() {
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
+            aria-labelledby={idTituloModal}
           >
             <div className="admin-modal-header">
               <div>
                 <span className="admin-badge admin-badge--neutral">
                   {categoriaEnEdicion ? "Modificar" : "Crear nueva"}
                 </span>
-                <h3 className="admin-modal-title">
+                <h3 className="admin-modal-title" id={idTituloModal}>
                   {categoriaEnEdicion ? "Editar Categoría" : "Nueva Categoría"}
                 </h3>
               </div>
@@ -195,6 +212,34 @@ export default function CategoriesSection() {
                 </div>
 
                 <div className="admin-form-group">
+                  <label htmlFor="cat-estacion" className="admin-form-label">
+                    Estación por defecto *
+                  </label>
+                  <select
+                    id="cat-estacion"
+                    className="admin-form-select"
+                    required
+                    aria-describedby="cat-estacion-ayuda"
+                    value={formData.estacionId}
+                    onChange={(e) => setFormData({ ...formData, estacionId: e.target.value })}
+                  >
+                    {!formData.estacionId && <option value="">Selecciona una estación</option>}
+                    {estacionesActivas.map((e) => (
+                      <option key={e.id} value={e.id}>{e.nombre}</option>
+                    ))}
+                  </select>
+                  <small id="cat-estacion-ayuda" className="admin-form-ayuda">
+                    Dónde se preparan sus productos (cocina o barra). Cada producto puede cambiarla.
+                  </small>
+                  {errorEstaciones && (
+                    <div className="admin-form-aviso" role="alert">
+                      <span>No se pudieron cargar las estaciones: {errorEstaciones}</span>
+                      <button type="button" className="admin-button--secondary-sm" onClick={cargarEstaciones}>Reintentar</button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="admin-form-group">
                   <label htmlFor="cat-desc" className="admin-form-label">
                     Descripción
                   </label>
@@ -219,7 +264,7 @@ export default function CategoriesSection() {
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="admin-button--primary" disabled={guardando}>
+                <button type="submit" className="admin-button--primary" disabled={guardando || !formData.estacionId}>
                   {categoriaEnEdicion ? "Guardar cambios" : "Crear categoría"}
                 </button>
               </div>

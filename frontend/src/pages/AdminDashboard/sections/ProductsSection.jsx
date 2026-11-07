@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useId, useState, useRef } from "react";
 import { Plus, Edit2, Trash2, Search, X, Coffee, Star, AlertCircle, Image as ImageIcon, UploadCloud } from "lucide-react";
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
@@ -16,6 +16,7 @@ const leerPrecio = (texto) => {
   return /^(\d+|\d{1,3}(\.\d{3})+)$/.test(limpio) ? Number(limpio.replace(/\./g, "")) : null;
 };
 const megas = (bytes) => (bytes / (1024 * 1024)).toLocaleString("es-CO", { maximumFractionDigits: 1 });
+const nombreGrupo = (g) => (g.activo === false ? `${g.nombre} (inactivo)` : g.nombre);
 
 export default function ProductsSection() {
   const { items: productos, cargando, error, guardando, cargar, crear, actualizar, eliminar } =
@@ -33,6 +34,11 @@ export default function ProductsSection() {
   const [productoAEliminar, setProductoAEliminar] = useState(null);
   const fileInputRef = useRef(null);
   const { avisar } = useDialogo();
+  // 1.3 · Estaciones (para sobrescribir la de la categoría) y grupos de modificadores
+  const { items: estaciones, error: errorEstaciones, cargar: cargarEstaciones } = useAdminResource("/v1/admin/estaciones");
+  const { items: grupos, error: errorGrupos, cargar: cargarGrupos } = useAdminResource("/v1/admin/grupos-modificadores");
+  const estacionesActivas = estaciones.filter((e) => e.activa);
+  const idTituloModal = useId();
 
   // Formulario local
   const [formData, setFormData] = useState({
@@ -42,7 +48,11 @@ export default function ProductsSection() {
     descripcion: "",
     imagen: "",
     destacado: false,
+    estacionId: "", // "" = hereda la de la categoría
+    grupos: [], // ids en el orden en que se ofrecen
   });
+  // Grupos asignados al abrir el formulario (para mostrar los inactivos que ya tenía)
+  const [gruposAsignados, setGruposAsignados] = useState([]);
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -87,7 +97,10 @@ export default function ProductsSection() {
       descripcion: "",
       imagen: "",
       destacado: false,
+      estacionId: "",
+      grupos: [],
     });
+    setGruposAsignados([]);
     setModalAbierto(true);
   };
 
@@ -100,9 +113,24 @@ export default function ProductsSection() {
       descripcion: prod.descripcion || "",
       imagen: prod.imagen || "",
       destacado: prod.destacado || false,
+      estacionId: prod.estacionId || "",
+      grupos: (prod.gruposModificadores || []).map((g) => g.id),
     });
+    setGruposAsignados(prod.gruposModificadores || []);
     setModalAbierto(true);
   };
+
+  // Marcados (en su orden) + activos sin marcar; un inactivo solo aparece mientras siga asignado
+  const grupoPorId = new Map([...gruposAsignados, ...grupos].map((g) => [g.id, g]));
+  const gruposDelForm = [
+    ...formData.grupos.map((id) => grupoPorId.get(id)).filter(Boolean),
+    ...grupos.filter((g) => g.activo && !formData.grupos.includes(g.id)),
+  ];
+  const alternarGrupo = (id) => setFormData((prev) => ({
+    ...prev,
+    grupos: prev.grupos.includes(id) ? prev.grupos.filter((g) => g !== id) : [...prev.grupos, id],
+  }));
+  const estacionHeredada = categorias.find((c) => c.id === formData.categoria)?.estacion?.nombre;
 
   const handleGuardar = async (e) => {
     e.preventDefault();
@@ -118,12 +146,14 @@ export default function ProductsSection() {
       return;
     }
     if (!formData.categoria) return;
+    const { categoria, estacionId, grupos: idsGrupos, ...resto } = formData;
     const datos = {
-      ...formData,
+      ...resto,
       precio,
-      categoriaId: formData.categoria,
+      categoriaId: categoria,
+      estacionId: estacionId || null, // null = hereda la de la categoría
+      gruposModificadoresIds: idsGrupos,
     };
-    delete datos.categoria;
     const guardado = productoEnEdicion
       ? await actualizar(productoEnEdicion.id, datos)
       : await crear(datos);
@@ -252,8 +282,18 @@ export default function ProductsSection() {
                           </span>
                           <span className="admin-products__etiquetas">
                             <span className="admin-badge admin-badge--neutral">{prod.categoria}</span>
+                            {prod.estacionEfectiva && (
+                              <span className="admin-badge admin-badge--info" title={prod.estacionId ? "Estación propia del producto" : "Estación de la categoría"}>
+                                {prod.estacionEfectiva.nombre}
+                              </span>
+                            )}
                             {!prod.disponible && <span className="admin-badge admin-badge--danger">Agotado</span>}
                           </span>
+                          {prod.gruposModificadores?.length > 0 && (
+                            <span className="admin-products__modificadores">
+                              {prod.gruposModificadores.length === 1 ? "1 grupo de modificadores" : `${prod.gruposModificadores.length} grupos de modificadores`}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -304,6 +344,7 @@ export default function ProductsSection() {
                           className="admin-button--icon-danger"
                           onClick={() => setProductoAEliminar(prod)}
                           title="Eliminar producto"
+                          aria-label={`Eliminar producto ${prod.nombre}`}
                         >
                           <Trash2 size={16} />
                         </button>
@@ -331,13 +372,14 @@ export default function ProductsSection() {
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
+            aria-labelledby={idTituloModal}
           >
             <div className="admin-modal-header">
               <div>
                 <span className="admin-badge admin-badge--neutral">
                   {productoEnEdicion ? "Modificar" : "Crear nuevo"}
                 </span>
-                <h3 className="admin-modal-title">
+                <h3 className="admin-modal-title" id={idTituloModal}>
                   {productoEnEdicion ? "Editar Producto" : "Nuevo Producto"}
                 </h3>
               </div>
@@ -440,6 +482,7 @@ export default function ProductsSection() {
                             className="admin-file-remove-btn"
                             onClick={handleRemoveImage}
                             title="Quitar imagen"
+                            aria-label="Quitar imagen"
                           >
                             <X size={16} />
                           </button>
@@ -479,6 +522,66 @@ export default function ProductsSection() {
                     }
                   />
                 </div>
+
+                {/* 1.3 · Estación (F1-3) y grupos de modificadores (F1-4) */}
+                <div className="admin-form-group">
+                  <label htmlFor="prod-estacion" className="admin-form-label">
+                    Estación
+                  </label>
+                  <select
+                    id="prod-estacion"
+                    className="admin-form-select"
+                    aria-describedby="prod-estacion-ayuda"
+                    value={formData.estacionId}
+                    onChange={(e) => setFormData({ ...formData, estacionId: e.target.value })}
+                  >
+                    <option value="">Heredar de la categoría ({estacionHeredada || "sin estación"})</option>
+                    {estacionesActivas.map((e) => (
+                      <option key={e.id} value={e.id}>{e.nombre}</option>
+                    ))}
+                  </select>
+                  <small id="prod-estacion-ayuda" className="admin-form-ayuda">
+                    Cámbiala solo si este producto se prepara en una estación distinta a la de su categoría.
+                  </small>
+                  {errorEstaciones && (
+                    <div className="admin-form-aviso" role="alert">
+                      <span>No se pudieron cargar las estaciones: {errorEstaciones}</span>
+                      <button type="button" className="admin-button--secondary-sm" onClick={cargarEstaciones}>Reintentar</button>
+                    </div>
+                  )}
+                </div>
+
+                <fieldset className="admin-products__grupos">
+                  <legend className="admin-form-label">Grupos de modificadores</legend>
+                  {/* Si no cargan, se dice (y se conservan los que ya tenía el producto) */}
+                  {errorGrupos && (
+                    <div className="admin-form-aviso" role="alert">
+                      <span>No se pudieron cargar los grupos de modificadores: {errorGrupos}. Se conservan los que ya tiene el producto.</span>
+                      <button type="button" className="admin-button--secondary-sm" onClick={cargarGrupos}>Reintentar</button>
+                    </div>
+                  )}
+                  {gruposDelForm.length > 0 ? (
+                    <div className="admin-products__grupos-lista">
+                      {gruposDelForm.map((g) => (
+                        <label key={g.id} className="admin-checkbox-label">
+                          <input
+                            type="checkbox"
+                            checked={formData.grupos.includes(g.id)}
+                            onChange={() => alternarGrupo(g.id)}
+                          />
+                          <span>{nombreGrupo(g)}</span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    !errorGrupos && <p className="admin-form-ayuda">No hay grupos activos. Créalos en Modificadores.</p>
+                  )}
+                  <small className="admin-form-ayuda">
+                    {formData.grupos.length > 0
+                      ? `Orden en la comanda: ${formData.grupos.map((id) => grupoPorId.get(id)).filter(Boolean).map(nombreGrupo).join(" → ")}`
+                      : "Sin modificadores. Los grupos se ofrecen en el orden en que los marques."}
+                  </small>
+                </fieldset>
 
                 <div className="admin-form-checkbox-row">
                   <label className="admin-checkbox-label">
