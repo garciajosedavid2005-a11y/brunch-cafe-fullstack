@@ -21,6 +21,10 @@ function normalizeUser(user) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Aviso para el login tras cerrar la sesión (1.1, «Cambiar de usuario»). Va en el contexto y no
+  // en el estado de la navegación: al vaciar el usuario, los guardas de rutas redirigen a /login
+  // por su cuenta y esa redirección pisaría el estado de la navegación
+  const [avisoLogin, setAvisoLogin] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -48,6 +52,7 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ correo: email, contraseña: password }),
     });
     const normalizedUser = normalizeUser(authenticatedUser);
+    setAvisoLogin("");
     setUser(normalizedUser);
     return normalizedUser;
   };
@@ -68,8 +73,9 @@ export function AuthProvider({ children }) {
     return normalizedUser;
   };
 
-  const logout = async () => {
+  const logout = async ({ aviso = "" } = {}) => {
     await apiRequest("/v1/auth/logout", { method: "POST" });
+    setAvisoLogin(aviso);
     setUser(null);
   };
 
@@ -82,6 +88,7 @@ export function AuthProvider({ children }) {
         login,
         register,
         logout,
+        avisoLogin,
         usuario: user && { ...user, correo: user.email },
         cargando: loading,
       }}

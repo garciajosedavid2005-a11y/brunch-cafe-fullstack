@@ -9,7 +9,7 @@ import "../Auth/Auth.css";
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, avisoLogin } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -61,6 +61,13 @@ const Login = () => {
             </p>
           </header>
 
+          {/* Tablet compartida (1.1, F1-10): aviso que deja «Cambiar de usuario» en el panel de staff */}
+          {avisoLogin && !mensaje && (
+            <div className="auth-animar-item auth-mensaje-exito" role="status">
+              {avisoLogin}
+            </div>
+          )}
+
           {mensaje && (
             <div
               className={`auth-animar-item ${
@@ -90,6 +97,7 @@ const Login = () => {
                   className="auth-input"
                   placeholder="tu.correo@ejemplo.com"
                   autoComplete="email"
+                  autoFocus={Boolean(avisoLogin)}
                   required
                   value={formData.email}
                   onChange={handleChange}

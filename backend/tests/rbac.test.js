@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
+import { ROLES_STAFF } from '../src/modulos/identidad/permisos.js'
 import jwt from 'jsonwebtoken'
 import { api } from './helpers/app.js'
 import { crearConSesion, rolId } from './helpers/usuarios.js'
@@ -22,6 +23,8 @@ const RUTAS_STAFF = [
     ['get', '/api/v1/admin/metodos-pago'],
     ['get', '/api/v1/admin/comentarios'],
 ]
+
+const permisosSembrados = (nombre) => ROLES_STAFF.find((r) => r.nombre === nombre).permisos
 
 describe('401 sin sesión, 403 sin permiso', () => {
     it.each(RUTAS_STAFF)('%s %s sin sesión → 401', async (metodo, ruta) => {
@@ -73,12 +76,8 @@ describe('401 sin sesión, 403 sin permiso', () => {
     it('/auth/me devuelve los permisos', async () => {
         const { sesion } = await crearConSesion('mesero')
         const me = await sesion.get('/api/v1/auth/me')
-        expect(me.body.user.permisos).toEqual([
-            'pedido:ver',
-            'pedido:cambiar_estado',
-            'reserva:ver',
-            'reserva:crear',
-        ])
+        // Los del rol sembrado (pedidos, reservas y, desde 1.1, salón)
+        expect(me.body.user.permisos).toEqual(permisosSembrados('mesero'))
     })
 
     it('login devuelve los permisos actuales del rol', async () => {
@@ -89,12 +88,8 @@ describe('401 sin sesión, 403 sin permiso', () => {
         })
 
         expect(res.status).toBe(200)
-        expect(res.body.permisos).toEqual([
-            'pedido:ver',
-            'pedido:cambiar_estado',
-            'reserva:ver',
-            'reserva:crear',
-        ])
+        // Los del rol sembrado (pedidos, reservas y, desde 1.1, salón)
+        expect(res.body.permisos).toEqual(permisosSembrados('mesero'))
     })
 })
 

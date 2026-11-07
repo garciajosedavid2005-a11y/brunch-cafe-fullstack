@@ -18,8 +18,8 @@ const opcionesBase = () => ({
     path: '/',
 })
 
-export const ponerCookieSesion = (res, token) => {
-    res.cookie(COOKIE_SESION, token, { ...opcionesBase(), maxAge: duracionEnMs(config.JWT_EXPIRES_IN) })
+export const ponerCookieSesion = (res, token, duracion = config.JWT_EXPIRES_IN) => {
+    res.cookie(COOKIE_SESION, token, { ...opcionesBase(), maxAge: duracionEnMs(duracion) })
 }
 
 export const borrarCookieSesion = (res) => {

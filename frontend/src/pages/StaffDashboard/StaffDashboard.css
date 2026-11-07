@@ -10,7 +10,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  white-space: nowrap; /* «Cerrar sesión» en una línea a 768 px (0.15f) */
+  white-space: nowrap; /* «Cambiar de usuario» en una línea a 768 px (0.15f, 1.1) */
 }
 
 .staff-dashboard__header-actions .dashboard-button svg {

@@ -1,8 +1,14 @@
 # Progreso Brunch Café
 
-## Fase actual: 0.16 — Integración de `developers` y correo de reservas (terminada; la Fase 1 empieza en una sesión nueva)
+## Fase actual: 1 — Salón y comandas (en curso)
 
-La Fase 1 (salón y comandas) **no ha empezado**: su plan está en [PLAN_FASE_1.md](PLAN_FASE_1.md), con las preguntas de negocio respondidas (F1-1 a F1-16).
+Plan en [PLAN_FASE_1.md](PLAN_FASE_1.md), con las preguntas de negocio respondidas (F1-1 a F1-16). Orden: 1.1 → 1.10 (1.8 pasa a la Fase 6).
+
+### Ítems Fase 1
+
+| ID | Ítem | Estado inicial | Estado actual | Commit | Notas |
+|---|---|---|---|---|---|
+| 1.1 | Permisos y sesión de staff | PARCIAL (frontend por permisos y `/staff` desde 0.15d) | HECHO (migración pendiente de aprobar) | (este commit) | **Permisos:** 13 claves de salón asignables (`salon:configurar`, `mesa:ver/operar/bloquear/unir`, `cuenta:abrir/ver/transferir/solicitar/cerrar_sin_cobro`, `comanda:tomar/enviar`, `item:anular`); el seed las da al mesero y al anfitrión al crear el rol (`PERMISOS_SALON`); `item:anular`, `cuenta:cerrar_sin_cobro` y `salon:configurar` solo el admin. Los endpoints llegan en 1.2 y 1.5. **Migración `migrate:1.1`** (`--dry-run`, `--down`, idempotente, escritura condicional; requiere 0.15): simulacro en la BD local → agrega 7 permisos al mesero y 6 al anfitrión; **no se ha aplicado**. **Sesión (F1-10):** 12 h para el personal sin `*` (`JWT_EXPIRES_IN_STAFF`), 2 h para cliente y admin; `autenticar` la vuelve a comprobar con el rol actual (`iat` + duración), así un mesero que pasa a cliente o admin no conserva las 12 h; duraciones del `.env` con unidad obligatoria. **«Cambiar de usuario»** en la cabecera de `/staff` (sustituye a «Cerrar sesión», que sigue en el navbar y en Seguridad): cierra la sesión y el login avisa «La sesión anterior se cerró…» con el foco en el correo; el aviso va en el contexto de sesión porque el guarda de `/staff` pisaba el estado de la navegación (lo detectó la captura; test de integración `CambiarDeUsuario`). Capturas `capturas/1.1-despues` (antes: `capturas/0.15-despues`). Revisores: security-reviewer, schema-reviewer, /review-migration y los del proyecto. Backend 342 tests, frontend 139. |
 
 ### 0.15 Integración de `developers` (2026-11-06)
 
@@ -48,7 +54,7 @@ La Fase 1 (salón y comandas) **no ha empezado**: su plan está en [PLAN_FASE_1.
 | 0.14b | Admin › Horarios: campos alineados | — | HECHO | (este commit) | «Anticipación mínima (minutos)» ocupaba dos líneas y su campo quedaba ~24 px más abajo que las horas. Etiqueta corta «Anticipación (min)» y la ayuda «Tiempo mínimo entre el pedido y la entrega» debajo del campo (`aria-describedby`; test). Cada campo ocupa tres filas compartidas con `subgrid` (etiqueta, control, ayuda): medido en Chromium, los controles de cada sección quedan a la misma altura a 1280, 1024 y 768 px, también con una etiqueta forzada a 2–3 líneas; selectores y campo numérico de 46 px. Columnas mínimas de 150 px para que los tres campos de Domicilio quepan en una línea a 1024 px. Capturas `capturas/horarios-admin-antes` y `horarios-admin-despues`. |
 | 0.13 | Endpoints staff de pedido | PARCIAL | HECHO | (este commit) | Ya existían listar (`pedido:ver`) y cambiar estado según transiciones (permiso por transición; cancelar con motivo vía `codigo: cancelado`), con tests en `estados-api.test.js`. Se añadió: filtros opcionales en `GET /api/v1/staff/pedidos` (`estado` por códigos, `fecha` = día de Bogotá, `limite` 1–200) y `X-Total-Count` (sin parámetros responde igual que antes); `GET /:id` con líneas e historial de Eventos (quién y cuándo); `PATCH /:id/cancelar { motivo }` (`pedido:cancelar`, motivo 3–300, misma máquina de estados y transacción); id mal formado → 404. CORS expone `X-Total-Count` e `Idempotent-Replayed`. README con la tabla de staff. Sin cambios en el frontend (la interfaz de staff es de la Fase 1). Backend 269 tests. |
 
-> **Fase 1 (salón y comandas):** plan en [PLAN_FASE_1.md](PLAN_FASE_1.md), con las preguntas de negocio respondidas el 2026-11-06 (decisiones F1-1 a F1-16). Sin código todavía: empieza cuando se apruebe la integración de `developers` (0.15).
+> **Fase 1 (salón y comandas):** en curso; tabla de ítems al principio de este archivo.
 >
 > El diagnóstico de la Fase A (mapa del repo, hallazgos T1–T11, N1–N8, riesgos) está en [DIAGNOSTICO_FASE_A.md](DIAGNOSTICO_FASE_A.md).
 
@@ -164,12 +170,22 @@ La Fase 1 (salón y comandas) **no ha empezado**: su plan está en [PLAN_FASE_1.
 - 2026-11-06 · F1-14 · Con la cuenta abierta se respeta el precio del momento en que se agregó el ítem (snapshot de nombre, precio y modificadores) · Brayan
 - 2026-11-06 · F1-15 · Reservas conectadas a mesas: fuera de la Fase 1 (Fase 4) · Brayan
 - 2026-11-06 · F1-16 · Node 22 LTS para desarrollo y CI: `.nvmrc` y `engines` en los `package.json`, documentado en el README · Brayan
+- 2026-11-06 · F1-10b · Sesión de 12 h solo para el personal sin `*`; el admin mantiene 2 h (acceso total, no trabaja en tablets compartidas). La duración se comprueba con el rol actual en cada petición · Brayan
+- 2026-11-07 · 1.1 · En la cabecera de `/staff`, «Cambiar de usuario» sustituye a «Cerrar sesión» (mismo efecto; «Cerrar sesión» sigue en el navbar y en Seguridad). Qué sección abre primero el panel con `mesa:ver` se decide en 1.6 · Claude (a confirmar por Brayan en la pausa de 1.6)
 - 2026-11-06 · Preparación de la Fase 1: se usa el plugin Backend Design (skills de modelado, migraciones, idempotencia, autorización y seguridad; `/review-migration`; subagentes `schema-reviewer` y `security-reviewer`) y se crean los subagentes del proyecto `revisor-reglas`, `revisor-backend`, `revisor-visual` y `explorador` en `.claude/agents/`. CLAUDE.md y las decisiones de PROGRESO tienen prioridad sobre el plugin · Brayan
 - 2026-11-05 · T4: `codigo` con contador atómico (colección `counters`, `findOneAndUpdate` + `$inc`) mientras exista `codigo` · Brayan
 
 ## Pendientes / preguntas abiertas
 
 **Abiertos**
+- **Migración 1.1 sin aplicar** en la BD local: simulacro listo (mesero +7, anfitrión +6 permisos). Requiere `mongodump` y aprobación.
+- **Qué sección abre primero `/staff` con `mesa:ver`** (PLAN §1.1): se decide en 1.6, cuando exista el plano de mesas.
+- **Sesión en tablets (revisión de seguridad de 1.1):** la cookie de 12 h es persistente (sobrevive al cierre del navegador) y no hay cierre por inactividad; si una tablet queda sin «Cambiar de usuario», la sesión sigue abierta. Opciones: cookie de sesión para el personal o cierre por inactividad (decisión de negocio; con el PIN de la Fase 2).
+- **Endurecimiento de JWT (revisión de seguridad de 1.1):** fijar `algorithms: ['HS256']` en `jwt.verify` y exigir `JWT_SECRET` de ≥ 32 caracteres.
+- **Cerrar sesión no revoca el token** (revisión de 1.1): solo borra la cookie; con 12 h, una cookie copiada de una tablet sirve hasta 12 h. Subir `tokenVersion` al cerrar sesión cerraría todas las sesiones del usuario: decisión de negocio, junto con la cookie persistente.
+- **Roles de personal con permisos de identidad** (`rol:gestionar`, `usuario:gestionar`) sin `*` (p. ej. un futuro gerente) reciben 12 h. ¿Deberían tener 2 h como el admin? Decidir cuando exista ese rol.
+- **Panel `/staff`: «Próxima reserva»** corta el texto («Sin próxi…» a 1280, «Sin …» a 768; visto en las capturas de 1.1, viene de 0.15f). Se rehace con el layout de tablet en 1.6.
+- **Restablecer contraseña** sube `tokenVersion` pero no invalida la caché de sesiones: una sesión robada sigue hasta 30 s (el cambio de contraseña normal sí la invalida).
 - **Claves de EmailJS en el historial de git:** el service ID `service_mn2rux3`, el template ID `template_r4mj66a` y la public key de EmailJS estuvieron en `FormularioReservas.jsx` desde el primer commit (`e4b78e8`) hasta 0.16, y siguen en el historial (el repositorio está en GitHub). Nunca estuvieron en un `.env`. Recomendado: regenerar la public key (o desactivar el servicio) en el panel de EmailJS; ya no se usan.
 - **SMTP real:** sin `SMTP_*` en `.env` no se envían los correos de recuperación ni de reservas (en desarrollo van al log). Configurarlo antes de producción.
 - **Registro:** aún permite inferir si un correo existe (éxito vs. error). Cerrarlo del todo requiere verificación por correo (fuera de alcance de la Fase 0).

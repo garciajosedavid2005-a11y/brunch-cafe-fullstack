@@ -179,6 +179,20 @@ const VISTAS = {
     await p.goto(`${FRONT}/cuenta`);
     await p.getByRole("button", { name: /seguridad/i }).click();
   } },
+  // Panel del personal (1.1: botón «Cambiar de usuario» en la cabecera)
+  "staff-resumen": { usuario: "mesero", preparar: (p) => p.goto(`${FRONT}/staff`) },
+  // Login tras «Cambiar de usuario». Cierra la sesión del contexto: con contraseña se vuelve
+  // a iniciar en cada ancho; con COOKIES_SESION se repone la cookie
+  "staff-cambio-usuario": { usuario: "mesero", preparar: async (p) => {
+    if (COOKIES) {
+      await p.context().addCookies([{ name: "token", value: COOKIES.mesero, url: new URL(API).origin, httpOnly: true }]);
+    } else {
+      await p.context().request.post(`${API}/auth/login`, { data: { correo: USUARIOS.mesero, contraseña: CLAVE } });
+    }
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: "Cambiar de usuario" }).click();
+    await p.waitForURL("**/login");
+  } },
 };
 
 // Sin --hide-scrollbars (Playwright lo pone por defecto): así se ven las barras de desplazamiento

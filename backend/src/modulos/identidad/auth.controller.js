@@ -2,8 +2,8 @@ import Usuario from './usuario.model.js'
 import Rol from './rol.model.js'
 import { ROL_CLIENTE } from './permisos.js'
 import bcrypt from 'bcryptjs'
-import { tokenDeSesion } from './jwt.js'
-import { ponerCookieSesion, borrarCookieSesion } from './cookies.js'
+import { borrarCookieSesion } from './cookies.js'
+import { abrirSesion } from './duracionSesion.js'
 import { AppError } from '../compartido/errors.js'
 import { solicitarRecuperacion as solicitar, restablecerContrasena as restablecer } from './recuperacion.service.js'
 
@@ -59,8 +59,7 @@ export const register = async (req, res) => {
     }
 
     // El token solo identifica al usuario; rol y permisos se leen de la BD en cada petición
-    const token = await tokenDeSesion(usuarioGuardado)
-    ponerCookieSesion(res, token)
+    await abrirSesion(res, usuarioGuardado, rolCliente)
     res.json(usuarioPublico(usuarioGuardado, rolCliente))
 }
 
@@ -77,8 +76,7 @@ export const login = async (req, res) => {
         throw new AppError(403, 'ACCOUNT_DISABLED', 'Tu cuenta está desactivada. Contacta al administrador.')
     }
 
-    const token = await tokenDeSesion(usuario)
-    ponerCookieSesion(res, token)
+    await abrirSesion(res, usuario, usuario.rol)
     res.json(usuarioPublico(usuario, usuario.rol))
 }
 

@@ -28,6 +28,8 @@ describe('Seed de roles base', () => {
             'pedido:cambiar_estado',
             'reserva:ver',
             'reserva:crear',
+            // Salón (1.1)
+            'mesa:ver', 'mesa:operar', 'cuenta:abrir', 'cuenta:ver', 'comanda:tomar', 'comanda:enviar', 'cuenta:solicitar',
         ])
         expect(porNombre.compras).toEqual([])
     })

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
 const state = vi.hoisted(() => ({
   user: {
@@ -32,6 +32,7 @@ describe("Panel de mesero", () => {
       permisos: ["pedido:ver", "pedido:cambiar_estado", "reserva:ver", "reserva:crear"],
     };
     state.apiRequest.mockReset();
+    state.logout.mockReset();
     state.apiRequest.mockImplementation((path) => {
       if (path === "/v1/staff/reservas") {
         return Promise.resolve([{
@@ -130,5 +131,39 @@ describe("Panel de mesero", () => {
     expect(screen.getByText("Listo")).toHaveClass("staff-dashboard__status--success");
     expect(screen.getByText("En camino")).toHaveClass("staff-dashboard__status--info");
     expect(screen.getAllByText(/\$\s1\.250\.000/)).toHaveLength(3);
+  });
+
+  it("«Cambiar de usuario» está a la vista, cierra la sesión y lleva al login sin volver a /staff (1.1, F1-10)", async () => {
+    state.logout.mockResolvedValue();
+    let destino = null;
+    function Destino() {
+      destino = useLocation();
+      return <p>Pantalla de login</p>;
+    }
+    render(
+      <MemoryRouter initialEntries={["/staff"]}>
+        <Routes>
+          <Route path="/staff" element={<StaffDashboard />} />
+          <Route path="/login" element={<Destino />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const boton = screen.getByRole("button", { name: "Cambiar de usuario" });
+    expect(screen.queryByRole("button", { name: "Cerrar sesión" })).not.toBeInTheDocument();
+    fireEvent.click(boton);
+
+    expect(await screen.findByText("Pantalla de login")).toBeInTheDocument();
+    expect(state.logout).toHaveBeenCalledWith({ aviso: "La sesión anterior se cerró. Ingresa con tu usuario." });
+    // Sin «from»: el siguiente usuario entra a su propio inicio
+    expect(destino.pathname).toBe("/login");
+    expect(destino.state).toBeNull();
+  });
+
+  it("si el cierre de sesión falla, se queda en el panel y lo avisa", async () => {
+    state.logout.mockRejectedValue(new Error("No se pudo conectar con el servidor"));
+    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    fireEvent.click(screen.getByRole("button", { name: "Cambiar de usuario" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo conectar con el servidor");
   });
 });

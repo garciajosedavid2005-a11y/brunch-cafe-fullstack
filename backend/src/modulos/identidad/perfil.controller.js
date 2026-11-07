@@ -1,7 +1,6 @@
 import { obtenerPerfil, actualizarPerfil, cambiarContrasena } from './perfil.service.js'
 import { perfilSchema, contrasenaSchema } from './perfil.schema.js'
-import { tokenDeSesion } from './jwt.js'
-import { ponerCookieSesion } from './cookies.js'
+import { abrirSesion } from './duracionSesion.js'
 
 // Forma v1: { perfil: { id, nombre, apellido, correo, telefono, rol, createdAt } }
 const formato = (u) => ({
@@ -24,6 +23,7 @@ export const editarMiPerfil = async (req, res) => {
 
 export const cambiarMiContrasena = async (req, res) => {
     const usuario = await cambiarContrasena(req.usuario.id, contrasenaSchema.parse(req.body))
-    ponerCookieSesion(res, await tokenDeSesion(usuario)) // esta sesión sigue abierta
+    // Esta sesión sigue abierta, con la duración del rol actual (req.usuario viene de la BD)
+    await abrirSesion(res, usuario, { nombre: req.usuario.rol, permisos: req.usuario.permisos })
     res.json({ message: 'Contraseña actualizada correctamente.' })
 }

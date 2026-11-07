@@ -27,6 +27,7 @@ Cada vez que traigas cambios de otra rama (`git pull`, fusión de `developers`, 
    | 3 | `npm run migrate:0.10 -- --dry-run` | Instantes UTC (`Reserva.inicio`, `Pedido.entregaEn`) |
    | 4 | `npm run migrate:0.12 -- --dry-run` | Elimina las colecciones heredadas (usa `-- --respaldo <carpeta>`) |
    | 5 | `npm run migrate:0.15 -- --dry-run` | `reserva:ver` y `reserva:crear` para el mesero (solo si tiene los permisos antiguos) |
+   | 6 | `npm run migrate:1.1 -- --dry-run` | Permisos de salón para mesero y anfitrión (solo si tienen los permisos anteriores a 1.1; requiere 0.15). Para revertir 1.1 y 0.15: primero `migrate:1.1 -- --down` |
 
    Antes de aplicar una que tenga cambios: respaldo con `mongodump` (ver «Migraciones y respaldo»). Luego el mismo comando sin `--dry-run`; para revertir, `-- --down` (también con `--dry-run`).
 4. **Datos base**: `npm run seed:base` solo inserta lo que falte (roles, estados, horarios, métodos de pago); no cambia lo que el admin personalizó.
@@ -34,7 +35,7 @@ Cada vez que traigas cambios de otra rama (`git pull`, fusión de `developers`, 
 
 ## Panel Mesero y recuperación de contraseña
 
-El rol nuevo `mesero` recibe `pedido:ver`, `pedido:cambiar_estado`, `reserva:ver` y `reserva:crear`. No recibe `reserva:cambiar_estado`; la confirmación y gestión de estados sigue dependiendo de ese permiso. El seed no sobrescribe permisos que un administrador ya haya personalizado. En una base existente, reinicia el backend para actualizar el catálogo y desde **Admin → Roles** asigna al rol Mesero los permisos que necesite. Para habilitar los módulos configurados por defecto, activa `pedido:ver`, `pedido:cambiar_estado`, `reserva:ver` y `reserva:crear`.
+El rol nuevo `mesero` recibe `pedido:ver`, `pedido:cambiar_estado`, `reserva:ver` y `reserva:crear`. No recibe `reserva:cambiar_estado`; la confirmación y gestión de estados sigue dependiendo de ese permiso. El seed no sobrescribe permisos que un administrador ya haya personalizado. En una base existente, reinicia el backend para actualizar el catálogo y desde **Admin → Roles** asigna al rol Mesero los permisos que necesite. Para habilitar los módulos configurados por defecto, activa `pedido:ver`, `pedido:cambiar_estado`, `reserva:ver` y `reserva:crear`. Desde 1.1 el mesero recibe además los permisos de salón (`mesa:ver`, `mesa:operar`, `cuenta:abrir`, `cuenta:ver`, `comanda:tomar`, `comanda:enviar`, `cuenta:solicitar`) y el anfitrión `mesa:ver`, `mesa:operar`, `mesa:bloquear`, `mesa:unir`, `cuenta:abrir` y `cuenta:transferir`; en una BD existente los agrega `npm run migrate:1.1`. `item:anular`, `cuenta:cerrar_sin_cobro` y `salon:configurar` quedan solo para el admin.
 
 El panel de Mesero inicia en Resumen y carga reservas y pedidos desde las rutas protegidas de `/api/v1/staff`. Perfil y cambio de contraseña usan las mismas rutas de cuenta ya disponibles.
 
@@ -134,7 +135,7 @@ Lee `seed-data/menu.json` (categorías con descripción y productos con `codigo`
 
 ### Seguridad de la sesión
 
-- Sesión en cookie `token` **httpOnly**, `sameSite` configurable (`lax` por defecto) y `secure` automático en producción; dura lo mismo que el JWT (`JWT_EXPIRES_IN`, **2 h** por defecto).
+- Sesión en cookie `token` **httpOnly**, `sameSite` configurable (`lax` por defecto) y `secure` automático en producción; dura lo mismo que el JWT. **Clientes y admin: 2 h** (`JWT_EXPIRES_IN`); **personal sin `*`** (mesero, anfitrión, cocina o un rol creado por el admin): **12 h** (`JWT_EXPIRES_IN_STAFF`), para el turno en tablet (F1-10). La duración se vuelve a comprobar en cada petición con el rol actual: si un mesero pasa a cliente o a admin, su sesión vale 2 h desde que se inició.
 - Token ausente, inválido o vencido → `401` (`UNAUTHORIZED`, `INVALID_TOKEN` o `SESSION_EXPIRED`); la cookie inválida se borra.
 - Login y registro responden con mensajes genéricos (no revelan si un correo está registrado).
 - Rate limit en memoria (una sola instancia): login 5 intentos **fallidos** cada 15 min por IP + correo; registro 10 por hora por IP → `429 TOO_MANY_REQUESTS`. Detrás de un proxy configura `TRUST_PROXY`.

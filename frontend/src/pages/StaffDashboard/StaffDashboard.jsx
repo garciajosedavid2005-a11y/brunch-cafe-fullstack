@@ -5,10 +5,10 @@ import {
   CalendarDays,
   Clock3,
   ListOrdered,
-  LogOut,
   Plus,
   ShieldCheck,
   UserRound,
+  UserRoundCog,
   Users,
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
@@ -25,6 +25,8 @@ import "../CustomerDashboard/CustomerDashboard.css";
 const claseDeEstado = (codigo) => `staff-dashboard__status staff-dashboard__status--${claseEstado(codigo).replace("admin-badge--", "")}`;
 
 const permisosDe = (user) => user?.permisos || [];
+
+const AVISO_CAMBIO_DE_USUARIO = "La sesión anterior se cerró. Ingresa con tu usuario.";
 
 export default function StaffDashboard() {
   const { user, logout } = useAuth();
@@ -118,11 +120,13 @@ export default function StaffDashboard() {
     { id: "seguridad", label: "Seguridad", icon: ShieldCheck },
   ];
 
-  const handleLogout = async () => {
+  // Tablets compartidas (F1-10): cierra la sesión y deja el login listo para el siguiente
+  // usuario, sin «from», para que cada uno entre a su propio inicio
+  const cambiarDeUsuario = async () => {
     setErrorPanel("");
     try {
-      await logout();
-      navigate("/login");
+      await logout({ aviso: AVISO_CAMBIO_DE_USUARIO });
+      navigate("/login", { replace: true });
     } catch (error) {
       setErrorPanel(error.message);
     }
@@ -169,10 +173,10 @@ export default function StaffDashboard() {
           <button
             className="dashboard-button dashboard-button--secondary"
             type="button"
-            onClick={handleLogout}
+            onClick={cambiarDeUsuario}
           >
-            <LogOut size={17} />
-            Cerrar sesión
+            <UserRoundCog size={18} aria-hidden="true" />
+            Cambiar de usuario
           </button>
         </div>
       </header>

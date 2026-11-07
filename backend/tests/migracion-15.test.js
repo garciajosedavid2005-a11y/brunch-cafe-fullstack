@@ -37,8 +37,11 @@ describe('Migración 0.15 (permisos del mesero en BDs existentes)', () => {
     })
 
     it('si ya tiene los permisos nuevos (BD nueva) no hace nada, y down solo quita lo que puso up', async () => {
+        // Desde 1.1 el seed también le da los permisos de salón: se compara con lo que había antes de down
+        const sembrados = (await mesero()).permisos
+        expect(sembrados).toEqual(expect.arrayContaining([...ANTIGUOS, 'reserva:ver', 'reserva:crear']))
         expect((await up(mongoose.connection.db)).accion).toBe('sin-cambios')
         expect(await down(mongoose.connection.db)).toMatchObject({ aplicado: false, quitar: [] })
-        expect((await mesero()).permisos).toEqual([...ANTIGUOS, 'reserva:ver', 'reserva:crear'])
+        expect((await mesero()).permisos).toEqual(sembrados)
     })
 })

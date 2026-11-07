@@ -3,6 +3,7 @@ import { verificarToken } from './jwt.js'
 import { COOKIE_SESION, borrarCookieSesion } from './cookies.js'
 import { cuerpoError } from '../compartido/errors.js'
 import { obtenerSesion } from './sesiones.js'
+import { duracionSesionMs } from './duracionSesion.js'
 
 const rechazar = (res, code, message) => {
     borrarCookieSesion(res)
@@ -15,7 +16,7 @@ const rechazar = (res, code, message) => {
  * El rol que pudiera traer el token NO se usa.
  *   req.usuario = { id, nombre, apellido, correo, rol, rolId, permisos, activo }
  * Sin sesión, token inválido/vencido, usuario borrado o desactivado, o versión
- * de sesión antigua (contraseña cambiada) → 401.
+ * de sesión antigua (contraseña cambiada) o sesión más larga que la que permite el rol actual → 401.
  */
 export const autenticar = async (req, res, next) => {
     const token = req.cookies?.[COOKIE_SESION]
@@ -43,6 +44,12 @@ export const autenticar = async (req, res, next) => {
     // (anterior a 0.7c: desde 0.12 ya no se acepta)
     if (payload.tv !== sesion.tokenVersion) {
         return rechazar(res, 'SESSION_REVOKED', 'Tu sesión se cerró por seguridad. Inicia sesión de nuevo.')
+    }
+
+    // Duración según el rol actual (1.1): un token de 12 h emitido a un mesero que hoy es
+    // cliente o admin solo vale 2 h desde que se emitió
+    if (!Number.isFinite(payload.iat) || Date.now() >= payload.iat * 1000 + duracionSesionMs(sesion)) {
+        return rechazar(res, 'SESSION_EXPIRED', 'Tu sesión expiró. Inicia sesión de nuevo.')
     }
 
     req.usuario = sesion
