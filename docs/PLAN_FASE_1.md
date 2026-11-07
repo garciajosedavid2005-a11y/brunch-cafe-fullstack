@@ -14,9 +14,11 @@
 | Precio histórico por línea | **HECHO para domicilio** (`nombreProducto`, `precioProducto`, `subtotal`) | `pedidos/detallePedido.model.js` |
 | Máquina de estados + Evento | **HECHO** para pedido y reserva; **PARCIAL** para la fase: `Evento.entidad` solo admite `pedido` y `reserva` | `compartido/estados.js`, `compartido/evento.model.js` |
 | Transacciones e idempotencia | **HECHO** (0.9): `conTransaccion()`, `Idempotency-Key` | `compartido/transacciones.js`, `compartido/idempotencia.js` |
-| Permisos por clave | **HECHO**; los roles de salón solo tienen permisos de pedidos/reservas web | `identidad/permisos.js` (`mesero`: `pedido:ver`, `pedido:cambiar_estado`; `anfitrion`: `reserva:ver`, `reserva:cambiar_estado`) |
+| Permisos por clave | **HECHO**; los roles de salón solo tienen permisos de pedidos/reservas web | `identidad/permisos.js` (`mesero`: `pedido:ver`, `pedido:cambiar_estado`, `reserva:ver`, `reserva:crear` desde 0.15; `anfitrion`: `reserva:ver`, `reserva:cambiar_estado`) |
 | Modalidad del pedido | **PARCIAL**: la máquina ya prevé `para_llevar`, pero `Pedido` no tiene el campo (todo es domicilio) | `compartido/estados.js:54` |
-| Frontend de staff | **FALTA**: el staff que inicia sesión va a `/cuenta` (el frontend solo distingue `admin`) | `frontend/src/App.jsx:24-44` |
+| Frontend de staff | **PARCIAL (0.15)**: panel `/staff` (Resumen, agenda de reservas, pedidos, perfil y seguridad) y rutas por permisos (`utils/permisos.js`, `esPersonal`). Falta el layout de tablet, el plano de mesas y «Cambiar de usuario» (1.6) | `frontend/src/pages/StaffDashboard/`, `frontend/src/App.jsx` |
+| Reservas registradas por el personal | **HECHO (0.15e)**: `POST /api/v1/staff/reservas` (`reserva:crear`), `usuario: null` + `registradaPor` | `salon/reservasStaff.controller.js` |
+| Recuperación de contraseña | **HECHO (0.15c)** | `identidad/recuperacion.service.js` |
 | Tiempo real | **FALTA** (llega en la Fase 2): sin Socket.IO ni SSE | — |
 | Datos locales | 6 categorías × 4 productos; 6 pedidos, 4 reservas, 24 eventos | BD local |
 
@@ -42,7 +44,7 @@ Cada ítem = 1 commit (o pocos) con tests, como en la Fase 0. Orden propuesto: 1
 ### 1.1 Permisos y sesión de staff
 - **Permisos nuevos** (catálogo en `identidad/permisos.js`): `salon:configurar` (zonas, mesas y estaciones), `mesa:ver`, `mesa:operar` (ocupar, liberar, `por_limpiar → libre`), `mesa:bloquear` (bloquear y desbloquear con motivo; F1-2), `mesa:unir`, `cuenta:abrir`, `cuenta:ver`, `cuenta:transferir` (F1-8), `comanda:tomar`, `comanda:enviar`, `item:anular` (después de enviado; F1-6), `cuenta:solicitar`, `cuenta:cerrar_sin_cobro` (F1-13).
 - **Asignación inicial**, solo al crear el rol, como hoy: `mesero` = ver/operar mesas, abrir/ver cuenta, tomar/enviar comanda y solicitar cuenta; `anfitrion` = ver/operar/bloquear mesas, unir mesas, abrir cuenta y transferirla. `item:anular` y `cuenta:cerrar_sin_cobro`: solo admin (`*`); un rol supervisor más adelante.
-- **Frontend**: la ruta de inicio depende de los permisos, no del nombre del rol. Con `mesa:ver` se entra a `/staff`; se corrige el pendiente «staff redirigido a `/cuenta`».
+- **Frontend**: ya hecho en 0.15d (rutas por permisos, `/staff`, test `sinRolesPorNombre`). Queda decidir con `mesa:ver` qué sección abre primero el panel.
 - **Sesión de staff de 12 h** (clientes: 2 h) y botón visible «Cambiar de usuario» para tablets compartidas (F1-10). El PIN por dispositivo queda para la Fase 2.
 - Tests: rutas protegidas por permiso, redirección por permisos, duración de la sesión según el rol.
 
@@ -88,6 +90,7 @@ Cada ítem = 1 commit (o pocos) con tests, como en la Fase 0. Orden propuesto: 1
 - **Cierre de cuenta**: el cobro es de la Fase 3. En la Fase 1 solo existe «cerrar sin cobro» (admin, con motivo), identificable en la Fase 3; el mesero solo solicita la cuenta (F1-13).
 
 ### 1.6 Pantalla `/staff` — plano de mesas (tablet)
+- **Punto de partida (0.15)**: `/staff` ya existe con el layout del sitio; se reutilizan Mi perfil, Seguridad, la agenda de reservas y la lista de pedidos.
 - **Layout propio**, separado del sitio público (sin navbar ni footer), pensado para 1024×768 horizontal y 768×1024 vertical, con objetivos táctiles de ≥ 44 px.
 - **Plano por zona** (pestañas): tarjetas de mesa con color por estado, número, comensales, mesero y tiempo ocupada; leyenda accesible (no solo color).
 - **Acciones por mesa** según permisos: abrir cuenta (comensales), ver cuenta, mover, unir, separar, limpiar y bloquear.

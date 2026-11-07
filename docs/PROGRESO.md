@@ -1,18 +1,26 @@
 # Progreso Brunch Café
 
-## Fase actual: 1 — Salón y comandas (panel de Mesero completado)
+## Fase actual: 0.15 — Integración de la rama `developers` (terminada; esperando aprobación para la Fase 1)
 
-### Ítems Fase 1
+La Fase 1 (salón y comandas) **no ha empezado**: su plan está en [PLAN_FASE_1.md](PLAN_FASE_1.md), con las preguntas de negocio respondidas (F1-1 a F1-16).
 
-| ID | Ítem | Estado | Notas |
-|---|---|---|---|
-| 1.1 | Panel operativo de Mesero y recuperación de contraseña | COMPLETADO | Integrados los cambios de `developers` en `jose2`. El panel abre en Resumen y muestra datos de reservas/pedidos según permisos; se verificaron visualmente Resumen, Reservas y Pedidos. Backend: lint y 287 pruebas; frontend: lint, 113 pruebas y build. Recuperación por enlace SMTP de un solo uso, válido 30 minutos, con respuesta genérica. |
+### 0.15 Integración de `developers` (2026-11-06)
 
-### Decisiones tomadas (2026-11-06)
+**Lo que trajo la rama** (commits 4b8a139…af3b94f, de Jose David Garcia; la rama la registró como «1.1 COMPLETADO»): panel de mesero en `/mesero` (Resumen, Reservas, Pedidos, Mi perfil, Seguridad), permisos `reserva:ver` y `reserva:crear` para el mesero, `POST /api/v1/staff/reservas`, permisos en la respuesta del login, recuperación de contraseña por correo (SMTP con nodemailer, token con hash de un solo uso y 30 min, respuesta genérica, rate limit, `tokenVersion`), mensaje de MongoDB Atlas (`querySrv`) y un `package.json` en la raíz con nodemailer. Test, lint y build estaban en verde, pero no cumplía todas las reglas de la Fase 0.
 
-- Mesero conserva los permisos de pedidos definidos en `developers` y suma `reserva:ver` y `reserva:crear`; no recibe `reserva:cambiar_estado`.
-- Los permisos de roles ya existentes no se sobrescriben automáticamente. En una BD existente, el administrador asigna los dos permisos nuevos desde **Admin → Roles**.
-- La recuperación se hace con enlace de un solo uso enviado por SMTP, con credenciales en variables de entorno y respuesta genérica.
+**Lo corregido** (diagnóstico aprobado por Brayan el 2026-11-06; un commit por ítem):
+
+| ID | Ítem | Estado | Commit | Notas |
+|---|---|---|---|---|
+| 0.15a | Node 22 LTS | HECHO | 0526655 | `.nvmrc` (22) y `"engines": ">=22.12 <23"` en backend y frontend; README (Node 22 y `npm install` tras traer otra rama: sin nodemailer el backend no arrancaba y el login decía «No se pudo conectar con el servidor»). Test `version-node`. |
+| 0.15b | Test de revocación inmediata | HECHO | 7a1bd34 | La rama lo había cambiado y ya no comprobaba ninguna revocación. Ahora quitar `pedido:ver` da 403 en la siguiente petición; comprobado que falla si se desactiva `invalidarSesionesDeRol`. |
+| 0.15c | Recuperación de contraseña | HECHO | e63159e | Responde 202 sin esperar al SMTP (el tiempo revelaba qué correos tienen cuenta); en desarrollo sin SMTP el enlace sale en el log (sin el correo); índice del token; el frontend quita el token de la URL. Tests: fallo de SMTP, vencimiento, log solo en desarrollo, 429. README «Probar sin SMTP». |
+| 0.15d | Frontend por permisos y `/staff` | HECHO | 6518eb8 | `utils/permisos.js` (`*` → /admin, personal → /staff, cliente → /cuenta); el backend devuelve `esPersonal`. Panel renombrado a `StaffDashboard` en `/staff`; `/mesero` redirige. Test `sinRolesPorNombre`: falla si el frontend compara el rol con un nombre. Se quitó el aviso «Tu panel de personal estará disponible próximamente» de /cuenta (ya no se podía mostrar). |
+| 0.15e | Reserva registrada por el personal | HECHO | ce778e2 | `usuario: null` + `registradaPor`; nombre y teléfono obligatorios, correo opcional; el cliente solo ve las suyas; Admin › Reservas y el panel muestran «Registrada por …». No había reservas a nombre de cuentas de personal en la BD local. |
+| 0.15f | Panel de staff visual | HECHO | 0ddc13d | Colores por estado como el admin, `formatearCOP`, `fechaLocal`/`horaLocal`, barra con «Mi panel» y sin carrito, columna del código a 145 px, «Cerrar sesión» en una línea. Test `formatosCentralizados`. Capturas `capturas/0.15-antes` y `capturas/0.15-despues` (1280, 1024 y 768 px). |
+| 0.15g | Migración `migrate:0.15` | HECHO (código) · **pendiente de aplicar** | 5a9c981 | Agrega `reserva:ver` y `reserva:crear` al mesero solo si tiene los permisos antiguos; `--dry-run`, `--down`. Respaldo `backups/pre-0.15-*` (mongodump) y `backups/0.15-rols-ejson`. Simulacro mostrado; se aplica cuando Brayan lo apruebe. Las BDs nuevas ya reciben los permisos del seed. |
+| — | `package.json` de la raíz | HECHO | cb60ca2 | Borrados `package.json`, `package-lock.json` y `node_modules` de la raíz (aprobado): nadie los usaba. |
+| 0.15h | Documentación | HECHO | (este commit) | PROGRESO y PLAN_FASE_1 (marca lo que ya existe). |
 
 ### Ítems Fase 0
 
@@ -128,6 +136,11 @@
 - 2026-11-05 · 0.12 · `migrate:0.12` guarda cada colección heredada en EJSON antes de eliminarla (además del mongodump) para que `--down` restaure sin herramientas externas · Claude
 - 2026-11-06 · Fase 0 aprobada; antes de la Fase 1 se hace el ítem 0.14 (ajustes visuales, pie de página y prueba con Node 22) · Brayan
 - 2026-11-06 · La rama `developers` (panel de mesero, recuperación de contraseña) se conserva, pero se ajusta a las reglas de la Fase 0 en el ítem 0.15 antes de empezar la Fase 1 · Brayan
+- 2026-11-06 · 0.15 · Reserva registrada por el personal: `usuario: null` + `registradaPor`; nombre y teléfono del cliente obligatorios, correo opcional; formulario vacío · Brayan
+- 2026-11-06 · 0.15 · Permisos del mesero en BDs existentes: migración `migrate:0.15` (mongodump previo, `--dry-run`, `--down`); el seed ya los da a las BDs nuevas · Brayan
+- 2026-11-06 · 0.15 · El panel de staff pasa a `/staff` (con redirección desde `/mesero`); el layout propio de tablet sigue siendo del ítem 1.6 · Brayan
+- 2026-11-06 · 0.15 · El frontend no compara nombres de rol: `*` → admin, `esPersonal` (lo calcula el backend) → staff; test que lo vigila · Brayan/Claude
+- 2026-11-06 · 0.15 · Se borran `package.json`, `package-lock.json` y `node_modules` de la raíz · Brayan
 
 **Fase 1: respuestas de negocio** (preguntas de [PLAN_FASE_1.md](PLAN_FASE_1.md), sección 5)
 - 2026-11-06 · F1-1 · Zonas y mesas editables desde Admin › Salón. Seed de ejemplo marcado como tal (Interior y Terraza, mesas de 2 y 4); los datos reales se cargan desde el admin. Solo se unen mesas de la misma zona marcadas como «combinable» · Brayan
@@ -151,11 +164,11 @@
 ## Pendientes / preguntas abiertas
 
 **Abiertos**
-- **Recuperar contraseña:** no existe en el backend (haría falta envío de correo). El enlace del login lo explica; queda para una fase posterior.
+- **Migración 0.15 sin aplicar en la BD local:** hasta aplicarla, el mesero local no ve la sección Reservas del panel ni registra reservas (`npm run migrate:0.15` tras aprobar el simulacro).
+- **Correo de confirmación de reservas por EmailJS (anterior a la Fase 0):** el formulario envía nombre y correo del cliente a EmailJS desde el navegador; contradice «no enviar el correo del usuario a servicios externos». Decidir si se mueve al backend (SMTP de 0.15c) o se quita.
 - **Registro:** aún permite inferir si un correo existe (éxito vs. error). Cerrarlo del todo requiere verificación por correo (fuera de alcance de la Fase 0).
 - **URLs de imágenes del menú en /api sin versión (pendiente futuro):** los productos guardan `/productos/menu/imagenes/<nombre>` y se sirven en `/api/productos/menu/imagenes/*`, la única ruta sin versión que queda tras 0.12. Moverlas a `/api/v1` requiere una migración de `Producto.imagen` (con `--dry-run`, `--down` y `mongodump`) y mantener la ruta vieja mientras haya URLs guardadas fuera de la BD.
 - **Horario de apertura:** la configuración solo tiene horarios de reservas y de domicilio; el pie y Nosotros muestran esos (título «Horarios», no «Horario de Atención»). Si el café quiere publicar un horario de apertura distinto, habría que añadirlo a la configuración.
-- **Staff en el frontend:** un usuario con rol de staff (mesero, etc.) que inicia sesión se redirige a `/cuenta` (el frontend solo distingue `admin`). La interfaz de staff llega en la Fase 1.
 - **Para llevar:** la transición `listo → entregado` está definida, pero se activa cuando el pedido tenga campo de modalidad (hoy todos son domicilio).
 - **Estados antiguos sin descripción:** "Pendiente" (pedido y reserva) y "Cancelada" (reserva) de la BD local no tienen descripción guardada. Se puede escribir desde el dashboard; no se migró.
 - **Crash intermitente de Vitest en Windows** (`3221226505` / `0xC0000409`): confirmado en 0.14 que depende de Node 24.15 en Windows (2 de 5 ejecuciones) y no aparece con Node 22 LTS (0 de 10). Decidido (F1-16): se fija Node 22 LTS con `.nvmrc` y `engines`; se aplica en la integración 0.15.
