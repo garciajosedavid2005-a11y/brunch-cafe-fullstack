@@ -66,6 +66,7 @@ No publiques `.env` ni incluyas credenciales en mensajes o commits. Si una contr
 | `npm run seed:base` | Roles, primer admin, estados y métodos de pago (ver abajo) |
 | `npm run seed:menu` | Menú inicial desde `seed-data/` (ver abajo) |
 | `npm run mongo:replica-set` | Inicia el replica set `rs0` de un nodo en el Mongo de `MONGO_URI` (idempotente; `-- --dry-run`) |
+| `npm run seed:salon` | Salón de ejemplo (Interior y Terraza, mesas de 2 y 4, marcadas como ejemplo); solo si no hay zonas (1.2) |
 | `npm run seed:dev` | Usuarios de prueba `*.dev@brunchcafe.test` (solo desarrollo; contraseña en `DEV_USUARIOS_PASSWORD`) |
 
 - La primera ejecución de `npm test` descarga el binario de `mongod` (~100 MB) y lo deja en caché; no necesita un Mongo instalado.
@@ -248,5 +249,7 @@ Desde 0.12 la API es solo `/api/v1`. Las rutas sin versión responden `404 NOT_F
 | PATCH | `/api/v1/admin/comentarios/:id/visibilidad` | `resena:moderar` | `{ visible }` |
 | DELETE | `/api/v1/admin/comentarios/:id` | `resena:moderar` | Borrar una reseña |
 | GET, PUT | `/api/v1/admin/horarios` | `horario:editar` | Ver y editar los horarios |
+| GET, POST, PUT, DELETE | `/api/v1/admin/zonas[/:id]` | `salon:configurar` | Zonas del salón `{ nombre, orden, activa }` (nombre único sin mayúsculas ni tildes → `409 ZONA_DUPLICADA`; con mesas no se borra → `409 ZONA_CON_MESAS`; no se desactiva con mesas en uso → `409 ZONA_CON_MESAS_EN_USO`) |
+| GET, POST, PUT, DELETE | `/api/v1/admin/mesas[/:id]` (`?zona=`) | `salon:configurar` | Mesas `{ numero, nombre?, zona, capacidad, combinable, activa }`; el estado no se asigna aquí. Número único → `409 MESA_NUMERO_DUPLICADO`; zona inexistente o inactiva → `400 ZONA_NO_VALIDA`; una mesa que no está libre no se borra, no se desactiva ni cambia de zona → `409 MESA_EN_USO` |
 
 Los pedidos se guardan en `Pedido` y `DetallePedido` (nombre y precio del momento en cada línea). El backend valida los productos contra el catálogo (existentes y disponibles) y calcula precios y total desde allí, sin confiar en importes del navegador. Las reservas se guardan en `Reserva` con un `Estado` del catálogo fijo. Las reseñas se guardan en `Comentario` (una por usuario y producto; las anteriores a 0.12 cuentan como no verificadas).

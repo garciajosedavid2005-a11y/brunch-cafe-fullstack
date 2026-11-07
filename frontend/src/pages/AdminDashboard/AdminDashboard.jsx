@@ -14,6 +14,7 @@ import {
   LogOut,
   ShieldCheck,
   Clock,
+  LayoutGrid,
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -28,6 +29,7 @@ import StatesSection from "./sections/StatesSection";
 import RolesSection from "./sections/RolesSection";
 import UsersSection from "./sections/UsersSection";
 import HorariosSection from "./sections/HorariosSection";
+import SalonSection from "./sections/SalonSection";
 import ProfileSection from "./sections/ProfileSection";
 import "./AdminDashboard.css";
 
@@ -41,6 +43,7 @@ const sections = [
   { id: "payments", label: "Métodos de Pago", icon: CreditCard },
   { id: "states", label: "Estados", icon: Sliders },
   { id: "horarios", label: "Horarios", icon: Clock },
+  { id: "salon", label: "Salón", icon: LayoutGrid },
   { id: "users", label: "Usuarios", icon: Users },
   { id: "roles", label: "Roles", icon: Shield },
   { id: "profile", label: "Mi Perfil", icon: UserRound },
@@ -80,6 +83,8 @@ export default function AdminDashboard() {
         return <StatesSection />;
       case "horarios":
         return <HorariosSection />;
+      case "salon":
+        return <SalonSection />;
       case "roles":
         return <RolesSection />;
       case "users":

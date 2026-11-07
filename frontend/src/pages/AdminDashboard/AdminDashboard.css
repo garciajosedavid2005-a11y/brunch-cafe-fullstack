@@ -2474,3 +2474,87 @@
   gap: 0.35rem;
   margin: 0.35rem 0;
 }
+
+/* ── Admin › Salón (1.2): zonas y mesas ── */
+.admin-salon__subheader {
+  margin-top: 1.5rem;
+  align-items: center;
+}
+
+.admin-salon__titulo {
+  margin: 0;
+  color: #2C0703;
+  font-family: var(--fuente-titulos);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.admin-salon__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Filtro propio: .admin-form-select fuerza width: 100% !important y Foundation da a todo
+   select width: 100% y margen inferior */
+.admin-salon__filtro {
+  width: auto;
+  height: auto;
+  margin: 0;
+  min-width: 11rem;
+  min-height: 44px;
+  padding: 0.55rem 0.9rem;
+  border: 1.5px solid #dec7be;
+  border-radius: 10px;
+  background-color: #fff; /* sin «background»: conservaría la flecha de Foundation */
+  color: #2C0703;
+  font: inherit;
+  font-size: 0.92rem;
+  padding-right: 2rem;
+}
+
+.admin-salon__filtro:focus {
+  border-color: var(--color-primario);
+  box-shadow: 0 0 0 3px rgba(137, 6, 32, 0.15);
+  outline: none;
+}
+
+.admin-salon__ejemplo {
+  margin-left: 0.5rem;
+}
+
+.admin-salon__detalle {
+  display: block;
+  margin-top: 0.2rem;
+  color: #6b5a55;
+  font-size: 0.82rem;
+}
+
+.admin-salon__marcas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+}
+
+.admin-salon__marcas:empty {
+  display: none;
+}
+
+/* Número y capacidad a la misma altura que el selector de zona */
+.admin-salon__fila .admin-form-input {
+  min-height: 44px;
+}
+
+.admin-salon__fila {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+/* Tablas del salón más compactas: caben con el menú lateral a 1024 px (1.2) */
+.admin-table.admin-salon__tabla th,
+.admin-table.admin-salon__tabla td {
+  padding-inline: 0.7rem;
+}

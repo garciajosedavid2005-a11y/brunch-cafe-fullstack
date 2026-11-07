@@ -11,6 +11,7 @@ import rolRoutes from '../../modulos/identidad/rol.routes.js'
 import permisoRoutes from '../../modulos/identidad/permiso.routes.js'
 import adminUsuarioRoutes from '../../modulos/identidad/adminUsuario.routes.js'
 import { productosAdminRouter } from '../../modulos/catalogo/producto.routes.js'
+import { zonasRouter, mesasRouter } from '../../modulos/salon/salonConfig.routes.js'
 import { horariosSchema } from '../../modulos/configuracion/horarios.schema.js'
 import { verHorariosAdmin, editarHorarios } from '../../modulos/configuracion/horarios.controller.js'
 
@@ -24,6 +25,8 @@ router.use('/roles', rolRoutes)
 router.use('/permisos', permisoRoutes)
 router.use('/metodos-pago', metodoPagoRoutes)
 router.use('/usuarios', adminUsuarioRoutes)
+router.use('/zonas', zonasRouter) // 1.2 · salon:configurar
+router.use('/mesas', mesasRouter)
 
 const comentarios = Router()
 comentarios.use(validateToken, requirePermission('resena:moderar'))

@@ -134,6 +134,11 @@ const VISTAS = {
     },
   },
   "admin-horarios": { usuario: "admin", preparar: abrirPestanaAdmin("Horarios") },
+  "admin-salon": { usuario: "admin", preparar: abrirPestanaAdmin("Salón") }, // 1.2
+  "admin-salon-mesa-form": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Salón")(p);
+    await p.getByRole("button", { name: "Nueva mesa" }).click();
+  } },
   // Respaldo de las tablas: un texto largo no debe ensanchar la página, solo el contenedor
   "admin-reservas-texto-largo": {
     usuario: "admin",
