@@ -6,7 +6,7 @@ import { conTransaccion } from '../compartido/transacciones.js'
 import { AppError, notFound } from '../compartido/errors.js'
 import { ROL_ADMIN, puedeOtorgarRol } from './permisos.js'
 import { invalidarSesionUsuario } from './sesiones.js'
-import { crearUsuarioAdmin } from './altaUsuario.service.js'
+import { crearUsuarioAdmin, reenviarEnlaceCreacion } from './altaUsuario.service.js'
 
 const formato = (usuario) => ({
     id: usuario._id,
@@ -15,6 +15,8 @@ const formato = (usuario) => ({
     correo: usuario.correo,
     telefono: usuario.telefono || '',
     activo: usuario.activo !== false,
+    // 1.5b · Aún no creó su contraseña (cuenta creada por el admin): la lista ofrece «Reenviar enlace»
+    accesoPendiente: usuario.contraseñaPendiente === true,
     rol: usuario.rol
         ? { id: usuario.rol._id, codigo: usuario.rol.nombre, nombre: usuario.rol.etiqueta || usuario.rol.nombre }
         : null,
@@ -25,6 +27,12 @@ const formato = (usuario) => ({
 export const crearUsuario = async (req, res) => {
     const { usuario, entrega } = await crearUsuarioAdmin(req.validado, req.usuario)
     res.status(201).json({ ...formato(usuario), entrega })
+}
+
+/** POST /api/v1/admin/usuarios/:id/reenviar-enlace (ajuste tras 1.5b). */
+export const reenviarEnlace = async (req, res) => {
+    const { usuario, entrega } = await reenviarEnlaceCreacion(req.params.id, req.usuario) // con el rol poblado
+    res.json({ ...formato(usuario), entrega })
 }
 
 export const listarUsuarios = async (req, res) => {

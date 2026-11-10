@@ -11,7 +11,7 @@ export const TIPOS_EVENTO = [
     'cambio_estado', 'item_agregado', 'item_modificado', 'item_quitado', 'item_anulado', 'ronda_enviada', 'ronda_descartada',
     // 1.5 · Operaciones de salón sobre la cuenta (la mesa deja además su cambio de estado)
     'cuenta_transferida', 'mesa_movida', 'mesas_unidas', 'mesa_separada',
-    'usuario_creado',
+    'usuario_creado', 'enlace_reenviado',
 ]
 const eventoSchema = new mongoose.Schema({
     entidad: {

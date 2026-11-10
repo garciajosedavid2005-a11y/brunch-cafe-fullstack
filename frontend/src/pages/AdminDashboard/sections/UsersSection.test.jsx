@@ -8,7 +8,7 @@ vi.mock("../../../services/api", () => ({
 }));
 vi.mock("../../../context/useAuth", () => ({ useAuth: () => ({ user: { id: "yo" } }) }));
 
-import { api } from "../../../services/api";
+import { api, apiRequest } from "../../../services/api";
 import UsersSection from "./UsersSection";
 
 const ROLES = [
@@ -174,6 +174,55 @@ describe("Usuarios (admin)", () => {
       fireEvent.click(within(dialogo).getByRole("button", { name: "Crear usuario" }));
       fireEvent.click(within(await screen.findByRole("dialog", { name: "Crear la cuenta" })).getByRole("button", { name: "Crear cuenta" }));
       expect(await screen.findByText(/ya está registrado/)).toBeInTheDocument();
+    });
+  });
+
+  // Ajuste tras 1.5b · «Reenviar enlace» solo para las cuentas que aún no crearon su contraseña
+  describe("Reenviar enlace", () => {
+    const montarConPendiente = async () => {
+      const lista = [...USUARIOS, usuario("nueva", { accesoPendiente: true })];
+      api.get.mockImplementation((ruta) => Promise.resolve(ruta === "/v1/admin/roles" ? ROLES : lista));
+      render(<DialogoProvider><UsersSection /></DialogoProvider>);
+      await screen.findByText("nueva@example.com");
+    };
+
+    it("solo aparece en las cuentas pendientes, que se marcan en texto", async () => {
+      await montarConPendiente();
+      expect(within(fila("nueva@example.com")).getByRole("button", { name: "Reenviar enlace" })).toBeInTheDocument();
+      expect(within(fila("nueva@example.com")).getByText(/sin contraseña/i)).toBeInTheDocument();
+      expect(within(fila("ana@example.com")).queryByRole("button", { name: "Reenviar enlace" })).not.toBeInTheDocument();
+    });
+
+    it("pide confirmación, llama al endpoint y avisa; cancelar no hace nada", async () => {
+      apiRequest.mockResolvedValue({ ...usuario("nueva", { accesoPendiente: true }), entrega: "correo" });
+      await montarConPendiente();
+      fireEvent.click(within(fila("nueva@example.com")).getByRole("button", { name: "Reenviar enlace" }));
+      const confirmacion = await screen.findByRole("dialog", { name: "Reenviar enlace" });
+      expect(confirmacion).toHaveTextContent(/el enlace anterior deja de servir/i);
+      fireEvent.click(within(confirmacion).getByRole("button", { name: "Cancelar" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Reenviar enlace" })).not.toBeInTheDocument());
+      expect(apiRequest).not.toHaveBeenCalled();
+
+      fireEvent.click(within(fila("nueva@example.com")).getByRole("button", { name: "Reenviar enlace" }));
+      fireEvent.click(within(await screen.findByRole("dialog", { name: "Reenviar enlace" })).getByRole("button", { name: "Reenviar" }));
+      await waitFor(() => expect(apiRequest).toHaveBeenCalledTimes(1));
+      const [ruta, opciones] = apiRequest.mock.calls[0];
+      expect(ruta).toBe("/v1/admin/usuarios/nueva/reenviar-enlace");
+      expect(opciones).toMatchObject({ method: "POST" });
+      expect(opciones.headers["Idempotency-Key"]).toMatch(/^[A-Za-z0-9_-]{8,100}$/);
+      const aviso = await screen.findByRole("dialog", { name: "Enlace reenviado" });
+      expect(aviso).toHaveTextContent(/24 horas/);
+    });
+
+    it("un 409 muestra el mensaje del servidor y recarga la lista", async () => {
+      const error = Object.assign(new Error("Esta persona ya creó su contraseña."), { status: 409 });
+      apiRequest.mockRejectedValue(error);
+      await montarConPendiente();
+      const cargasAntes = api.get.mock.calls.filter(([r]) => r === "/v1/admin/usuarios").length;
+      fireEvent.click(within(fila("nueva@example.com")).getByRole("button", { name: "Reenviar enlace" }));
+      fireEvent.click(within(await screen.findByRole("dialog", { name: "Reenviar enlace" })).getByRole("button", { name: "Reenviar" }));
+      expect(await screen.findByRole("alertdialog")).toHaveTextContent("Esta persona ya creó su contraseña.");
+      await waitFor(() => expect(api.get.mock.calls.filter(([r]) => r === "/v1/admin/usuarios").length).toBeGreaterThan(cargasAntes));
     });
   });
 });

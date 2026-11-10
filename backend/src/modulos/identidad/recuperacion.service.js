@@ -92,7 +92,7 @@ export const restablecerContrasena = async ({ token, nueva }) => {
         },
         {
             $set: { contraseña: contrasenaHash },
-            $unset: { passwordResetTokenHash: 1, passwordResetExpiresAt: 1 },
+            $unset: { passwordResetTokenHash: 1, passwordResetExpiresAt: 1, contraseñaPendiente: 1 },
             $inc: { tokenVersion: 1 },
         },
         { returnDocument: 'after', runValidators: true },

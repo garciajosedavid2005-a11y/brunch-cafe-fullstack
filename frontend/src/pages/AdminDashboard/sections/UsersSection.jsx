@@ -3,6 +3,7 @@ import { Search, Lock, UserPlus, X } from "lucide-react";
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
 import { useAuth } from "../../../context/useAuth";
+import { apiRequest } from "../../../services/api";
 import { useDialogo } from "../../../context/useDialogo";
 import { plural } from "../adminFormat";
 
@@ -15,6 +16,13 @@ const MENSAJE_ENTREGA = {
   correo: (correo) => `Enviamos a ${correo} el enlace «Crea tu contraseña». Vence en 24 horas y sirve una sola vez.`,
   registro_desarrollo: () => "El enlace «Crea tu contraseña» quedó en el registro del servidor (desarrollo sin SMTP). Vence en 24 horas y sirve una sola vez.",
   sin_smtp: () => "La cuenta se creó, pero el correo del sistema no está configurado: el enlace «Crea tu contraseña» no se envió. Cuando se configure, la persona puede pedir un enlace nuevo con «¿Olvidaste tu contraseña?».",
+};
+
+// Ajuste tras 1.5b · Aviso tras reenviar el enlace, según cómo salió
+const MENSAJE_REENVIO = {
+  correo: (correo) => `Enviamos a ${correo} un enlace nuevo «Crea tu contraseña». Vence en 24 horas; el anterior ya no sirve.`,
+  registro_desarrollo: () => "El enlace nuevo quedó en el registro del servidor (desarrollo sin SMTP). Vence en 24 horas; el anterior ya no sirve.",
+  sin_smtp: () => "Se generó un enlace nuevo, pero el correo del sistema no está configurado: no se envió. El anterior ya no sirve.",
 };
 
 /** Formulario de alta (1.5b): sin contraseña; la persona la crea con el enlace. */
@@ -89,13 +97,14 @@ function FormularioCrear({ roles, guardando, onCrear, onCerrar }) {
 // Pantalla mínima: lista de usuarios, alta de cuentas (1.5b), cambio de rol y activar/desactivar.
 // Las protecciones (último admin, auto-bloqueo) las aplica el backend; aquí se confirman las acciones.
 export default function UsersSection() {
-  const { items: usuarios, cargando, error, guardando, cargar, parchear, crear } =
+  const { items: usuarios, setItems, cargando, error, guardando, cargar, parchear, crear } =
     useAdminResource("/v1/admin/usuarios");
   const { items: roles } = useAdminResource("/v1/admin/roles");
   const { user } = useAuth();
   const { confirmar, avisar } = useDialogo();
   const [busqueda, setBusqueda] = useState("");
   const [creando, setCreando] = useState(false);
+  const [reenviando, setReenviando] = useState("");
 
   const texto = busqueda.toLowerCase();
   const filtrados = usuarios.filter((u) =>
@@ -154,6 +163,32 @@ export default function UsersSection() {
     if (!nuevo) return; // el error ya se mostró (p. ej. 409 correo registrado)
     setCreando(false);
     await avisar({ titulo: "Cuenta creada", mensaje: (MENSAJE_ENTREGA[nuevo.entrega] || MENSAJE_ENTREGA.correo)(nuevo.correo) });
+  };
+
+  const reenviarEnlace = async (usuario) => {
+    const { confirmado } = await confirmar({
+      titulo: "Reenviar enlace",
+      mensaje: "¿Enviar un enlace nuevo para crear la contraseña? El enlace anterior deja de servir.",
+      detalle: resumenUsuario(usuario),
+      confirmarTexto: "Reenviar",
+      cancelarTexto: "Cancelar",
+    });
+    if (!confirmado) return;
+    setReenviando(usuario.id);
+    try {
+      // Una clave por confirmación: un reintento de red no envía otro correo
+      const clave = globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+      const actualizado = await apiRequest(`/v1/admin/usuarios/${usuario.id}/reenviar-enlace`, {
+        method: "POST", body: JSON.stringify({}), headers: { "Idempotency-Key": clave },
+      });
+      setItems((lista) => lista.map((u) => (u.id === usuario.id ? { ...u, ...actualizado } : u)));
+      await avisar({ titulo: "Enlace reenviado", mensaje: (MENSAJE_REENVIO[actualizado.entrega] || MENSAJE_REENVIO.correo)(usuario.correo) });
+    } catch (e) {
+      if (e.status === 409) cargar(); // p. ej. ya creó su contraseña: la lista se refresca ya, sin esperar al aviso
+      await avisar({ tipo: "error", titulo: "No se pudo reenviar el enlace", mensaje: e.message });
+    } finally {
+      setReenviando("");
+    }
   };
 
   const cambiarActivo = async (usuario) => {
@@ -256,6 +291,9 @@ export default function UsersSection() {
                         <span className={`admin-badge ${usuario.activo ? "admin-badge--success" : "admin-badge--danger"}`}>
                           {usuario.activo ? "Activo" : "Inactivo"}
                         </span>
+                        {usuario.accesoPendiente && (
+                          <div className="admin-users__pendiente">Sin contraseña aún</div>
+                        )}
                       </td>
                       <td>
                         {esYo ? (
@@ -266,14 +304,26 @@ export default function UsersSection() {
                             <small>No puedes desactivarte ni cambiar tu propio rol.</small>
                           </div>
                         ) : (
-                          <button
-                            type="button"
-                            className="admin-button--secondary-sm"
-                            disabled={guardando}
-                            onClick={() => cambiarActivo(usuario)}
-                          >
-                            {usuario.activo ? "Desactivar" : "Activar"}
-                          </button>
+                          <div className="admin-users__acciones">
+                            {usuario.accesoPendiente && usuario.activo && (
+                              <button
+                                type="button"
+                                className="admin-button--secondary-sm"
+                                disabled={guardando || reenviando === usuario.id}
+                                onClick={() => reenviarEnlace(usuario)}
+                              >
+                                Reenviar enlace
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="admin-button--secondary-sm"
+                              disabled={guardando}
+                              onClick={() => cambiarActivo(usuario)}
+                            >
+                              {usuario.activo ? "Desactivar" : "Activar"}
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>

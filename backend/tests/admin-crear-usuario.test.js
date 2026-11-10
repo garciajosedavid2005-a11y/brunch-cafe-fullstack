@@ -195,3 +195,128 @@ describe('Crear usuario desde el admin', () => {
         espia.mockRestore()
     })
 })
+
+// Ajuste tras 1.5b · «Reenviar enlace» para las cuentas que aún no crearon su contraseña
+describe('Reenviar el enlace «Crea tu contraseña»', () => {
+    const reenviar = (id, sesion = admin) => sesion.post(`${RUTA}/${id}/reenviar-enlace`).send({})
+    const ultimaUrl = () => correoMock.enviar.mock.calls.at(-1)[0].url
+    const definir = (url, nueva = 'mi-clave-nueva-1') =>
+        api().post('/api/v1/auth/restablecer-contrasena').send({ token: tokenDe(url), nueva })
+
+    it('la lista marca las cuentas pendientes; crear la contraseña quita la marca', async () => {
+        const { body } = await crear()
+        await esperarAltasPendientes()
+        expect(body.accesoPendiente).toBe(true)
+        const lista = await admin.get(RUTA)
+        expect(lista.body.find((u) => u.id === body.id).accesoPendiente).toBe(true)
+        expect(lista.body.find((u) => u.id === String(adminUsuario._id)).accesoPendiente).toBe(false)
+        expect((await definir(ultimaUrl())).status).toBe(200)
+        expect((await admin.get(RUTA)).body.find((u) => u.id === body.id).accesoPendiente).toBe(false)
+    })
+
+    it('invalida el enlace anterior, genera uno nuevo de 24 h y deja un Evento con quién lo reenvió', async () => {
+        const { body } = await crear()
+        await esperarAltasPendientes()
+        const primera = ultimaUrl()
+        const res = await reenviar(body.id)
+        expect(res.status, JSON.stringify(res.body)).toBe(200)
+        expect(res.body).toMatchObject({ id: body.id, accesoPendiente: true, entrega: 'correo' })
+        await esperarAltasPendientes()
+        const segunda = ultimaUrl()
+        expect(tokenDe(segunda)).not.toBe(tokenDe(primera))
+        const usuario = await conToken('laura.gomez@example.com')
+        expect((usuario.passwordResetExpiresAt - Date.now()) / 3_600_000).toBeGreaterThan(23.9)
+
+        expect((await definir(primera)).status).toBe(400) // el anterior ya no sirve
+        expect((await definir(segunda)).status).toBe(200)
+        const evento = await Evento.findOne({ entidad: 'usuario', entidadId: usuario._id, tipo: 'enlace_reenviado' }).lean()
+        expect(evento).toMatchObject({ usuario: adminUsuario._id })
+    })
+
+    it('si ya creó su contraseña → 409; inactiva → 409; inexistente → 404', async () => {
+        const { body } = await crear()
+        await esperarAltasPendientes()
+        await definir(ultimaUrl())
+        const ya = await reenviar(body.id)
+        expect(ya.status).toBe(409)
+        expect(ya.body.error.code).toBe('CONTRASENA_YA_CREADA')
+
+        const otra = (await crear({ ...datos, correo: 'otra@example.com' })).body
+        await Usuario.updateOne({ _id: otra.id }, { activo: false })
+        expect((await reenviar(otra.id)).body.error.code).toBe('USUARIO_INACTIVO')
+        expect((await reenviar('65a000000000000000000000')).status).toBe(404)
+        expect((await reenviar('xyz')).status).toBe(404)
+    })
+
+    const hashDe = async (id) => (await Usuario.findById(id).select('+passwordResetTokenHash')).passwordResetTokenHash
+    const reenviados = (id) => Evento.countDocuments({ entidad: 'usuario', entidadId: id, tipo: 'enlace_reenviado' })
+
+    it('sin usuario:gestionar → 403; nadie reenvía a quien tiene más permisos que él (sin efectos); a un cliente sí', async () => {
+        const { body } = await crear({ ...datos, rolId: await rolId('admin') })
+        const { body: cliente } = await crear({ ...datos, correo: 'cliente.nuevo@example.com', rolId: await rolId('cliente') })
+        await esperarAltasPendientes()
+        const { sesion: mesero } = await crearConSesion('mesero')
+        expect((await reenviar(body.id, mesero)).status).toBe(403)
+        const { default: Rol } = await import('../src/modulos/identidad/rol.model.js')
+        await Rol.updateOne({ nombre: 'mesero' }, { $addToSet: { permisos: 'usuario:gestionar' } })
+        const { limpiarCacheSesiones } = await import('../src/modulos/identidad/sesiones.js')
+        limpiarCacheSesiones()
+        const hashAntes = await hashDe(body.id)
+        correoMock.enviar.mockClear()
+        const res = await reenviar(body.id, mesero) // la cuenta es de un admin
+        expect(res.status).toBe(403)
+        expect(res.body.error.message).toMatch(/permisos que tú no tienes/)
+        expect(await hashDe(body.id)).toBe(hashAntes)
+        expect(await reenviados(body.id)).toBe(0)
+        await esperarAltasPendientes()
+        expect(correoMock.enviar).not.toHaveBeenCalled()
+        expect((await reenviar(cliente.id, mesero)).status).toBe(200) // control: a un cliente pendiente sí
+    })
+
+    it('si crea su contraseña entre la lectura y la escritura → 409 sin tocar nada', async () => {
+        const { body } = await crear()
+        await esperarAltasPendientes()
+        const hashAntes = await hashDe(body.id)
+        const original = Usuario.updateOne.bind(Usuario)
+        const espia = vi.spyOn(Usuario, 'updateOne').mockImplementationOnce(async (...args) => {
+            await original({ _id: body.id }, { $unset: { contraseñaPendiente: 1 } }) // la persona la creó justo ahora
+            return original(...args)
+        })
+        correoMock.enviar.mockClear()
+        const res = await reenviar(body.id)
+        espia.mockRestore()
+        expect(res.status).toBe(409)
+        expect(res.body.error.code).toBe('CONTRASENA_YA_CREADA')
+        expect(await hashDe(body.id)).toBe(hashAntes)
+        expect(await reenviados(body.id)).toBe(0)
+        await esperarAltasPendientes()
+        expect(correoMock.enviar).not.toHaveBeenCalled()
+    })
+
+    it('si el Evento falla, el enlace anterior sigue sirviendo y no se envía nada', async () => {
+        const { body } = await crear()
+        await esperarAltasPendientes()
+        const primera = ultimaUrl()
+        correoMock.enviar.mockClear()
+        const espia = vi.spyOn(Evento, 'create').mockRejectedValueOnce(new Error('falla simulada'))
+        expect((await reenviar(body.id)).status).toBe(500)
+        espia.mockRestore()
+        await esperarAltasPendientes()
+        expect(correoMock.enviar).not.toHaveBeenCalled()
+        expect((await definir(primera)).status).toBe(200)
+    })
+
+    it('con la misma Idempotency-Key un doble clic envía un solo correo', async () => {
+        const { body } = await crear()
+        await esperarAltasPendientes()
+        correoMock.enviar.mockClear()
+        const pedir = () => admin.post(`${RUTA}/${body.id}/reenviar-enlace`).set('Idempotency-Key', 'reenviar-0001').send({})
+        expect((await pedir()).status).toBe(200)
+        const repetida = await pedir()
+        expect(repetida.status).toBe(200)
+        expect(repetida.headers['idempotent-replayed']).toBe('true')
+        await esperarAltasPendientes()
+        expect(correoMock.enviar).toHaveBeenCalledTimes(1)
+        expect(await reenviados(body.id)).toBe(1)
+    })
+})

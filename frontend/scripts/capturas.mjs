@@ -263,6 +263,15 @@ const VISTAS = {
   "admin-roles": { usuario: "admin", preparar: abrirPestanaAdmin("Roles") },
   "admin-metodos-pago": { usuario: "admin", preparar: abrirPestanaAdmin("Métodos de Pago") },
   "admin-usuarios": { usuario: "admin", preparar: abrirPestanaAdmin("Usuarios") },
+  // Ajuste tras 1.5b · Una cuenta creada por el admin que aún no definió su contraseña: «Reenviar enlace»
+  "admin-usuarios-pendiente": { usuario: "admin", preparar: async (p) => {
+    const roles = await (await p.context().request.get(`${API}/admin/roles`)).json();
+    const mesero = roles.find((r) => r.nombre === "mesero" || r.codigo === "mesero");
+    await p.context().request.post(`${API}/admin/usuarios`, {
+      data: { nombre: "Nueva", apellido: "Prueba", correo: "nueva.dev@brunchcafe.test", rolId: mesero.id },
+    });
+    await abrirPestanaAdmin("Usuarios")(p);
+  } },
   // 1.5b · Formulario «Crear usuario» (sin contraseña: la persona la crea con el enlace)
   "admin-usuarios-crear": { usuario: "admin", completa: false, preparar: async (p) => {
     await abrirPestanaAdmin("Usuarios")(p);

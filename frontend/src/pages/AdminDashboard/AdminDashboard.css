@@ -1108,6 +1108,19 @@
 }
 
 /* 1.5b · Crear usuario: dos campos por fila en el modal pequeño (el pie cabe sin desplazar a 900 px) */
+.admin-users__pendiente {
+  margin-top: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #74560f; /* sobre blanco ~6:1 */
+}
+
+.admin-users__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
 .admin-users__fila {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 0 1rem;

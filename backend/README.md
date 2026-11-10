@@ -287,6 +287,7 @@ Cualquiera con el permiso opera cualquier cuenta (F1-17); `mesero` es el respons
 | Método | Ruta | Permiso | Acción |
 |---|---|---|---|
 | POST | `/api/v1/admin/usuarios` | `usuario:gestionar` | Crear usuario `{ nombre, apellido, correo, telefono?, rolId }` → 201 con `entrega` (`correo` \| `registro_desarrollo` \| `sin_smtp`). Sin contraseña: se envía «Crea tu contraseña» (24 h, un solo uso; en desarrollo sin SMTP, al log). Correo registrado → `409 USUARIO_EXISTENTE`; crear un admin exige `*` (1.5b) |
+| POST | `/api/v1/admin/usuarios/:id/reenviar-enlace` | `usuario:gestionar` | Solo cuentas que aún no crearon su contraseña (`accesoPendiente` en la lista): invalida el enlace anterior, genera uno nuevo de 24 h y deja un Evento `enlace_reenviado`. Ya creada → `409 CONTRASENA_YA_CREADA`; inactiva → `409 USUARIO_INACTIVO`; una cuenta con más permisos que quien reenvía → 403 |
 | GET | `/api/v1/admin/categorias` | — (público) | Listar categorías (con su `estacion`) |
 | POST, PUT, DELETE | `/api/v1/admin/categorias[/:id]` | `catalogo:gestionar` | Crear, editar y borrar (con productos no se borra → `409 CATEGORIA_EN_USO` con `details.productos`); `estacionId` (sin él, Cocina; no admite `null`) |
 | GET, POST, PUT, DELETE | `/api/v1/admin/productos[/:id]` | `catalogo:gestionar` | Gestionar productos (imagen ≤ 2 MB, precio entero, `disponible`, `estacionId` propia o `null`, `gruposModificadoresIds`); responden `estacionId`, `estacionEfectiva` y `gruposModificadores` |
