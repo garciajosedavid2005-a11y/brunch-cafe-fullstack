@@ -153,4 +153,4 @@ Cada ítem = 1 commit (o pocos) con tests, como en la Fase 0. Orden propuesto: 1
 
 ## 6. Fuera de alcance de la Fase 1
 
-KDS, tiempo real y PIN por dispositivo (Fase 2), cobro, impuestos, propina, división de cuenta y comprobantes (Fase 3), reservas conectadas a mesas (Fase 4), inventario y reportes (Fase 5), para llevar, domicilio dentro del motor de cuentas y fidelización (Fase 6).
+KDS, tiempo real y PIN por dispositivo (Fase 2), cobro, impuestos, propina, división de cuenta y comprobante interno (Fase 3), facturación electrónica DIAN (fuera del proyecto: la Fase 3 emite un comprobante interno con consecutivo, desglose y la leyenda «Documento no válido como factura electrónica»; la integración con la DIAN es trabajo futuro), reservas conectadas a mesas (Fase 4), inventario y reportes (Fase 5), para llevar, domicilio dentro del motor de cuentas y fidelización (Fase 6).
