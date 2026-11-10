@@ -108,4 +108,72 @@ describe("Usuarios (admin)", () => {
     await montar();
     expect(screen.getByText("3 usuarios")).toBeInTheDocument();
   });
+
+  // 1.5b · Crear usuario: el admin no escribe la contraseña; se confirma antes de crear
+  describe("Crear usuario", () => {
+    const llenar = (dialogo, datos) => {
+      for (const [etiqueta, valor] of Object.entries(datos)) {
+        fireEvent.change(within(dialogo).getByLabelText(etiqueta), { target: { value: valor } });
+      }
+    };
+    const abrirFormulario = async () => {
+      await montar();
+      fireEvent.click(screen.getByRole("button", { name: "Crear usuario" }));
+      return screen.getByRole("dialog", { name: "Crear usuario" });
+    };
+
+    it("el formulario pide nombre, apellido, correo, teléfono opcional y rol (sin contraseña)", async () => {
+      const dialogo = await abrirFormulario();
+      for (const etiqueta of [/^Nombre/, /^Apellido/, /^Correo/, /^Teléfono/, /^Rol/]) {
+        expect(within(dialogo).getByLabelText(etiqueta)).toBeInTheDocument();
+      }
+      expect(within(dialogo).queryByLabelText(/contraseña/i)).not.toBeInTheDocument();
+      const opciones = within(within(dialogo).getByLabelText(/^Rol/)).getAllByRole("option").map((o) => o.textContent);
+      expect(opciones).toEqual(expect.arrayContaining(["Administrador", "Mesero", "Cliente"]));
+      expect(within(dialogo).getByText(/enlace para crear su contraseña/i)).toBeInTheDocument();
+    });
+
+    it("confirma con el diálogo y crea; avisa que se envió el enlace", async () => {
+      api.post.mockResolvedValue({ ...usuario("laura"), correo: "laura@example.com", entrega: "correo" });
+      const dialogo = await abrirFormulario();
+      llenar(dialogo, { "Nombre *": "Laura", "Apellido *": "Gómez", "Correo *": "laura@example.com", "Rol *": "r-mesero" });
+      fireEvent.click(within(dialogo).getByRole("button", { name: "Crear usuario" }));
+
+      const confirmacion = await screen.findByRole("dialog", { name: "Crear la cuenta" });
+      expect(confirmacion).toHaveTextContent("laura@example.com");
+      expect(confirmacion).toHaveTextContent("Mesero");
+      expect(api.post).not.toHaveBeenCalled();
+      fireEvent.click(within(confirmacion).getByRole("button", { name: "Crear cuenta" }));
+
+      await waitFor(() => expect(api.post).toHaveBeenCalledWith("/v1/admin/usuarios", {
+        nombre: "Laura", apellido: "Gómez", correo: "laura@example.com", rolId: "r-mesero",
+      }));
+      const aviso = await screen.findByRole("dialog", { name: "Cuenta creada" });
+      expect(aviso).toHaveTextContent(/Crea tu contraseña/);
+      expect(aviso).toHaveTextContent(/24 horas/);
+      expect(await screen.findByText("laura@example.com")).toBeInTheDocument();
+    });
+
+    it("cancelar la confirmación no crea nada", async () => {
+      const dialogo = await abrirFormulario();
+      llenar(dialogo, { "Nombre *": "Laura", "Apellido *": "Gómez", "Correo *": "laura@example.com", "Rol *": "r-mesero" });
+      fireEvent.click(within(dialogo).getByRole("button", { name: "Crear usuario" }));
+      const confirmacion = await screen.findByRole("dialog", { name: "Crear la cuenta" });
+      fireEvent.click(within(confirmacion).getByRole("button", { name: "Cancelar" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Crear la cuenta" })).not.toBeInTheDocument());
+      expect(api.post).not.toHaveBeenCalled();
+      expect(screen.getByRole("dialog", { name: "Crear usuario" })).toBeInTheDocument();
+    });
+
+    it("correo ya registrado: muestra el mensaje del servidor", async () => {
+      const error = new Error("Ese correo ya está registrado. Busca la cuenta en la lista o usa otro correo.");
+      error.status = 409;
+      api.post.mockRejectedValue(error);
+      const dialogo = await abrirFormulario();
+      llenar(dialogo, { "Nombre *": "Ana", "Apellido *": "Apellido", "Correo *": "ana@example.com", "Rol *": "r-cliente" });
+      fireEvent.click(within(dialogo).getByRole("button", { name: "Crear usuario" }));
+      fireEvent.click(within(await screen.findByRole("dialog", { name: "Crear la cuenta" })).getByRole("button", { name: "Crear cuenta" }));
+      expect(await screen.findByText(/ya está registrado/)).toBeInTheDocument();
+    });
+  });
 });

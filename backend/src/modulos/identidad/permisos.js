@@ -43,6 +43,14 @@ export const PERMISOS = [
 export const CLAVES = PERMISOS.map((p) => p.clave)
 export const CLAVES_ASIGNABLES = PERMISOS.filter((p) => !p.reservado).map((p) => p.clave)
 
+/**
+ * 1.5b · ¿Puede quien tiene `permisosSesion` dar el rol con `permisosRol`? Solo si ya tiene cada uno
+ * de esos permisos (quien tiene `*` puede dar cualquiera). Evita que un gestor de usuarios sin `*`
+ * cree o ascienda cuentas con más poder que el suyo (p. ej. un rol con `*`).
+ */
+export const puedeOtorgarRol = (permisosSesion = [], permisosRol = []) =>
+    permisosSesion.includes(COMODIN) || permisosRol.every((clave) => clave !== COMODIN && permisosSesion.includes(clave))
+
 // Roles con reglas fijas
 export const ROL_ADMIN = 'admin'
 export const ROL_CLIENTE = 'cliente'

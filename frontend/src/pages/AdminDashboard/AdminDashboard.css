@@ -1107,6 +1107,12 @@
   gap: 1.25rem;
 }
 
+/* 1.5b · Crear usuario: dos campos por fila en el modal pequeño (el pie cabe sin desplazar a 900 px) */
+.admin-users__fila {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0 1rem;
+}
+
 .admin-modal-box {
   background: #fbf6f3;
   padding: 1.1rem;

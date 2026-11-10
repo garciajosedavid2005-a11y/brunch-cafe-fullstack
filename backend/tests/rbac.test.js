@@ -217,14 +217,17 @@ describe('Protecciones de administradores', () => {
         // b deja de ser admin (a sigue): permitido
         expect((await a.sesion.patch(`/api/v1/admin/usuarios/${b.usuario._id}`).send({ activo: false })).status).toBe(200)
 
-        // Un usuario con usuario:gestionar en otro rol intenta degradar al último admin
+        // Un usuario con usuario:gestionar en otro rol intenta degradar al último admin. Desde 1.5b
+        // ni siquiera puede tocar a quien tiene más permisos que él (403); la regla del último admin
+        // sigue en el servidor (la prueba la carrera de dos admins en transacciones.test.js)
         await Rol.create({ nombre: 'supervisor', permisos: ['usuario:gestionar'] })
         const sup = await crearConSesion('supervisor')
         const res = await sup.sesion.patch(`/api/v1/admin/usuarios/${a.usuario._id}`).send({ rolId: await rolId('cliente') })
-        expect(res.status).toBe(409)
-        expect(res.body.error.code).toBe('ULTIMO_ADMIN')
+        expect(res.status).toBe(403)
         const res2 = await sup.sesion.patch(`/api/v1/admin/usuarios/${a.usuario._id}`).send({ activo: false })
-        expect(res2.body.error.code).toBe('ULTIMO_ADMIN')
+        expect(res2.status).toBe(403)
+        const sigue = await Usuario.findById(a.usuario._id).populate('rol', 'nombre')
+        expect({ activo: sigue.activo, rol: sigue.rol.nombre }).toEqual({ activo: true, rol: 'admin' })
     })
 
     it('un admin inactivo no cuenta como admin activo', async () => {
@@ -233,7 +236,8 @@ describe('Protecciones de administradores', () => {
         await Rol.create({ nombre: 'supervisor', permisos: ['usuario:gestionar'] })
         const sup = await crearConSesion('supervisor')
         const res = await sup.sesion.patch(`/api/v1/admin/usuarios/${a.usuario._id}`).send({ activo: false })
-        expect(res.body.error.code).toBe('ULTIMO_ADMIN')
+        expect(res.status).toBe(403) // 1.5b: un gestor sin * no toca a un admin
+        expect((await Usuario.findById(a.usuario._id)).activo).toBe(true)
     })
 
     it('valida el cuerpo del PATCH de usuarios', async () => {

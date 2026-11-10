@@ -3,9 +3,10 @@ import Usuario from './usuario.model.js'
 import Rol from './rol.model.js'
 import Contador from '../compartido/contador.model.js'
 import { conTransaccion } from '../compartido/transacciones.js'
-import { AppError, badRequest, notFound } from '../compartido/errors.js'
-import { ROL_ADMIN } from './permisos.js'
+import { AppError, notFound } from '../compartido/errors.js'
+import { ROL_ADMIN, puedeOtorgarRol } from './permisos.js'
 import { invalidarSesionUsuario } from './sesiones.js'
+import { crearUsuarioAdmin } from './altaUsuario.service.js'
 
 const formato = (usuario) => ({
     id: usuario._id,
@@ -19,6 +20,12 @@ const formato = (usuario) => ({
         : null,
     createdAt: usuario.createdAt,
 })
+
+/** POST /api/v1/admin/usuarios { nombre, apellido, correo, telefono?, rolId } → 201 (1.5b). */
+export const crearUsuario = async (req, res) => {
+    const { usuario, entrega } = await crearUsuarioAdmin(req.validado, req.usuario)
+    res.status(201).json({ ...formato(usuario), entrega })
+}
 
 export const listarUsuarios = async (req, res) => {
     const usuarios = await Usuario.find()
@@ -55,13 +62,22 @@ export const actualizarUsuario = async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) throw notFound('Usuario no encontrado')
     const { activo, rolId } = req.validado
 
-    const usuario = await Usuario.findById(req.params.id).populate('rol', 'nombre etiqueta')
+    const usuario = await Usuario.findById(req.params.id).populate('rol', 'nombre etiqueta permisos')
     if (!usuario) throw notFound('Usuario no encontrado')
+    // 1.5b · Solo se edita a quien no tiene más permisos que uno (un gestor sin * no desactiva ni
+    // degrada a un admin)
+    if (!puedeOtorgarRol(req.usuario.permisos || [], usuario.rol?.permisos || [])) {
+        throw new AppError(403, 'FORBIDDEN', 'No puedes modificar una cuenta que tiene permisos que tú no tienes.')
+    }
 
     let rolNuevo = null
     if (rolId !== undefined) {
         rolNuevo = await Rol.findById(rolId)
-        if (!rolNuevo) throw badRequest('El rol seleccionado no existe')
+        if (!rolNuevo) throw new AppError(400, 'ROL_NO_VALIDO', 'El rol seleccionado no existe.')
+        // 1.5b · Nadie asigna un rol con permisos que no tiene (igual que al crear)
+        if (!puedeOtorgarRol(req.usuario.permisos || [], rolNuevo.permisos || [])) {
+            throw new AppError(403, 'FORBIDDEN', 'No puedes asignar un rol que tiene permisos que tú no tienes.')
+        }
     }
 
     const esAdminHoy = usuario.rol?.nombre === ROL_ADMIN && usuario.activo !== false

@@ -263,6 +263,11 @@ const VISTAS = {
   "admin-roles": { usuario: "admin", preparar: abrirPestanaAdmin("Roles") },
   "admin-metodos-pago": { usuario: "admin", preparar: abrirPestanaAdmin("Métodos de Pago") },
   "admin-usuarios": { usuario: "admin", preparar: abrirPestanaAdmin("Usuarios") },
+  // 1.5b · Formulario «Crear usuario» (sin contraseña: la persona la crea con el enlace)
+  "admin-usuarios-crear": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Usuarios")(p);
+    await p.getByRole("button", { name: "Crear usuario" }).click();
+  } },
   "admin-estados": { usuario: "admin", preparar: abrirPestanaAdmin("Estados") },
   "admin-comentarios": { usuario: "admin", preparar: abrirPestanaAdmin("Comentarios") },
   comentarios: { preparar: (p) => p.goto(`${FRONT}/comentarios`) },

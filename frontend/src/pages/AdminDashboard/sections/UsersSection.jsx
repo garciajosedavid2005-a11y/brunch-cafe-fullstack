@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Search, Lock } from "lucide-react";
+import { useId, useState } from "react";
+import { Search, Lock, UserPlus, X } from "lucide-react";
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
 import { useAuth } from "../../../context/useAuth";
@@ -8,15 +8,94 @@ import { plural } from "../adminFormat";
 
 const etiquetaRol = (rol) => rol?.etiqueta || rol?.nombre || "Sin rol";
 
-// Pantalla mínima: lista de usuarios, cambio de rol y activar/desactivar.
+const NUEVO_USUARIO = { nombre: "", apellido: "", correo: "", telefono: "", rolId: "" };
+
+// 1.5b · Mensaje tras crear según cómo sale el enlace (lo decide el backend con su configuración SMTP)
+const MENSAJE_ENTREGA = {
+  correo: (correo) => `Enviamos a ${correo} el enlace «Crea tu contraseña». Vence en 24 horas y sirve una sola vez.`,
+  registro_desarrollo: () => "El enlace «Crea tu contraseña» quedó en el registro del servidor (desarrollo sin SMTP). Vence en 24 horas y sirve una sola vez.",
+  sin_smtp: () => "La cuenta se creó, pero el correo del sistema no está configurado: el enlace «Crea tu contraseña» no se envió. Cuando se configure, la persona puede pedir un enlace nuevo con «¿Olvidaste tu contraseña?».",
+};
+
+/** Formulario de alta (1.5b): sin contraseña; la persona la crea con el enlace. */
+function FormularioCrear({ roles, guardando, onCrear, onCerrar }) {
+  const id = useId();
+  const [datos, setDatos] = useState(NUEVO_USUARIO);
+  const campo = (nombre) => ({
+    id: `${id}-${nombre}`,
+    value: datos[nombre],
+    onChange: (e) => setDatos((d) => ({ ...d, [nombre]: e.target.value })),
+  });
+  const enviar = (e) => {
+    e.preventDefault();
+    const { telefono, ...resto } = datos;
+    const limpio = Object.fromEntries(Object.entries(resto).map(([k, v]) => [k, v.trim()]));
+    onCrear(telefono.trim() ? { ...limpio, telefono: telefono.trim() } : limpio);
+  };
+
+  return (
+    <div className="admin-modal-overlay" onClick={onCerrar}>
+      <div className="admin-modal-container admin-modal-container--sm" onClick={(e) => e.stopPropagation()}
+        role="dialog" aria-modal="true" aria-labelledby={`${id}-titulo`}>
+        <div className="admin-modal-header">
+          <h3 className="admin-modal-title" id={`${id}-titulo`}>Crear usuario</h3>
+          <button type="button" className="admin-modal-close" onClick={onCerrar} aria-label="Cerrar">
+            <X size={20} />
+          </button>
+        </div>
+        <form onSubmit={enviar}>
+          <div className="admin-modal-body">
+            <p className="admin-users__ayuda">
+              No escribes la contraseña: le enviaremos un enlace para crear su contraseña (vence en 24 horas).
+            </p>
+            <div className="admin-modal-grid admin-users__fila">
+            <div className="admin-form-group">
+              <label htmlFor={`${id}-nombre`} className="admin-form-label">Nombre *</label>
+              <input className="admin-form-input" required maxLength={60} autoComplete="off" {...campo("nombre")} />
+            </div>
+            <div className="admin-form-group">
+              <label htmlFor={`${id}-apellido`} className="admin-form-label">Apellido *</label>
+              <input className="admin-form-input" required maxLength={60} autoComplete="off" {...campo("apellido")} />
+            </div>
+            </div>
+            <div className="admin-modal-grid admin-users__fila">
+            <div className="admin-form-group">
+              <label htmlFor={`${id}-correo`} className="admin-form-label">Correo *</label>
+              <input className="admin-form-input" type="email" required maxLength={254} autoComplete="off" {...campo("correo")} />
+            </div>
+            <div className="admin-form-group">
+              <label htmlFor={`${id}-telefono`} className="admin-form-label">Teléfono (opcional)</label>
+              <input className="admin-form-input" type="tel" maxLength={30} autoComplete="off" {...campo("telefono")} />
+            </div>
+            </div>
+            <div className="admin-form-group">
+              <label htmlFor={`${id}-rolId`} className="admin-form-label">Rol *</label>
+              <select className="admin-form-select" required {...campo("rolId")}>
+                <option value="">Elige un rol</option>
+                {roles.map((rol) => <option key={rol.id} value={rol.id}>{etiquetaRol(rol)}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="admin-modal-actions">
+            <button type="button" className="admin-button--secondary-sm" onClick={onCerrar}>Cancelar</button>
+            <button type="submit" className="admin-button--primary" disabled={guardando}>Crear usuario</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Pantalla mínima: lista de usuarios, alta de cuentas (1.5b), cambio de rol y activar/desactivar.
 // Las protecciones (último admin, auto-bloqueo) las aplica el backend; aquí se confirman las acciones.
 export default function UsersSection() {
-  const { items: usuarios, cargando, error, guardando, cargar, parchear } =
+  const { items: usuarios, cargando, error, guardando, cargar, parchear, crear } =
     useAdminResource("/v1/admin/usuarios");
   const { items: roles } = useAdminResource("/v1/admin/roles");
   const { user } = useAuth();
-  const { confirmar } = useDialogo();
+  const { confirmar, avisar } = useDialogo();
   const [busqueda, setBusqueda] = useState("");
+  const [creando, setCreando] = useState(false);
 
   const texto = busqueda.toLowerCase();
   const filtrados = usuarios.filter((u) =>
@@ -53,6 +132,30 @@ export default function UsersSection() {
     if (confirmado) await parchear(usuario.id, { rolId });
   };
 
+  const crearUsuario = async (datos) => {
+    const rol = roles.find((r) => r.id === datos.rolId);
+    const { confirmado } = await confirmar({
+      titulo: "Crear la cuenta",
+      mensaje: "¿Crear esta cuenta? Le enviaremos un enlace para que cree su contraseña.",
+      detalle: (
+        <>
+          <strong>{`${datos.nombre} ${datos.apellido}`}</strong>
+          <br />
+          {datos.correo}
+          <br />
+          <span>Rol: {etiquetaRol(rol)}</span>
+        </>
+      ),
+      confirmarTexto: "Crear cuenta",
+      cancelarTexto: "Cancelar",
+    });
+    if (!confirmado) return;
+    const nuevo = await crear(datos);
+    if (!nuevo) return; // el error ya se mostró (p. ej. 409 correo registrado)
+    setCreando(false);
+    await avisar({ titulo: "Cuenta creada", mensaje: (MENSAJE_ENTREGA[nuevo.entrega] || MENSAJE_ENTREGA.correo)(nuevo.correo) });
+  };
+
   const cambiarActivo = async (usuario) => {
     if (usuario.activo) {
       const { confirmado } = await confirmar({
@@ -79,10 +182,18 @@ export default function UsersSection() {
         <div>
           <h2 className="admin-section__title">Usuarios</h2>
           <p className="admin-section__subtitle">
-            Asigna roles y activa o desactiva cuentas. Un usuario desactivado pierde el acceso de inmediato.
+            Crea cuentas, asigna roles y activa o desactiva cuentas. Un usuario desactivado pierde el acceso de inmediato.
           </p>
         </div>
+        <button type="button" className="admin-button--primary" onClick={() => setCreando(true)}>
+          <UserPlus size={18} aria-hidden="true" />
+          Crear usuario
+        </button>
       </div>
+
+      {creando && (
+        <FormularioCrear roles={roles} guardando={guardando} onCrear={crearUsuario} onCerrar={() => setCreando(false)} />
+      )}
 
       <div className="admin-toolbar">
         <div className="admin-search-wrapper">

@@ -34,6 +34,25 @@ describe("Recuperar contraseña", () => {
     });
   });
 
+  // 1.5b · Cuenta creada por el admin: el mismo enlace sirve para crear la contraseña
+  it("con tipo=crear dice «Crea tu contraseña» y usa el mismo enlace de un solo uso", async () => {
+    apiRequest.mockResolvedValue({ message: "Contraseña restablecida." });
+    render(
+      <MemoryRouter initialEntries={["/restablecer-contrasena?token=abc&tipo=crear"]}>
+        <RecuperarContrasena />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Crea tu contraseña");
+    fireEvent.change(screen.getByLabelText("Nueva contraseña", { exact: true }), { target: { value: "clave-nueva-123" } });
+    fireEvent.change(screen.getByLabelText(/confirma la nueva contraseña/i), { target: { value: "clave-nueva-123" } });
+    fireEvent.click(screen.getByRole("button", { name: /crear contraseña/i }));
+    expect(await screen.findByRole("status")).toHaveTextContent(/contraseña creada/i);
+    expect(apiRequest).toHaveBeenCalledWith("/v1/auth/restablecer-contrasena", {
+      method: "POST",
+      body: JSON.stringify({ token: "abc", nueva: "clave-nueva-123" }),
+    });
+  });
+
   it("envía la nueva contraseña al confirmar un enlace válido", async () => {
     apiRequest.mockResolvedValue({ message: "Contraseña restablecida." });
     render(

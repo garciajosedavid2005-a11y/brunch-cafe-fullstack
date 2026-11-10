@@ -9,6 +9,8 @@ export default function RecuperarContrasena() {
   const [searchParams, setSearchParams] = useSearchParams();
   // El token se guarda en memoria y se quita de la dirección (historial, capturas, Referer): 0.15c
   const [token] = useState(() => searchParams.get("token") || "");
+  // 1.5b · Cuenta creada por el admin: el mismo enlace de un solo uso sirve para crear la contraseña
+  const [crear] = useState(() => Boolean(searchParams.get("token")) && searchParams.get("tipo") === "crear");
 
   useEffect(() => {
     if (searchParams.has("token")) setSearchParams({}, { replace: true });
@@ -40,7 +42,7 @@ export default function RecuperarContrasena() {
             method: "POST",
             body: JSON.stringify({ correo }),
           });
-      setMensaje({ error: false, texto: resultado.message });
+      setMensaje({ error: false, texto: crear ? "Contraseña creada. Ya puedes iniciar sesión." : resultado.message });
       setCompletado(true);
     } catch (error) {
       setMensaje({ error: true, texto: error.message });
@@ -62,10 +64,12 @@ export default function RecuperarContrasena() {
           <header className="auth-header">
             <span className="auth-header__subtitulo-acento">Seguridad de tu cuenta</span>
             <h1 className="auth-header__titulo">
-              {token ? "Restablece tu contraseña" : "Recuperar contraseña"}
+              {crear ? "Crea tu contraseña" : token ? "Restablece tu contraseña" : "Recuperar contraseña"}
             </h1>
             <p className="auth-header__descripcion">
-              {token
+              {crear
+                ? "Tu cuenta de Brunch Café está lista: elige la contraseña con la que vas a entrar."
+                : token
                 ? "Elige una contraseña nueva para volver a entrar a tu cuenta."
                 : "Te enviaremos un enlace de un solo uso a tu correo."}
             </p>
@@ -137,7 +141,7 @@ export default function RecuperarContrasena() {
                 <button type="submit" className="auth-boton-primario" disabled={cargando}>
                   {cargando ? "Procesando..." : (
                     <>
-                      <span>{token ? "Restablecer contraseña" : "Enviar enlace"}</span>
+                      <span>{crear ? "Crear contraseña" : token ? "Restablecer contraseña" : "Enviar enlace"}</span>
                       <ArrowRight size={18} />
                     </>
                   )}

@@ -3,13 +3,15 @@ import mongoose from 'mongoose'
 // Bitácora de pedidos, reservas y (1.4) mesas y cuentas (solo se agregan registros).
 // Los cambios de una comanda (ítems y rondas) se registran en su cuenta (entidad 'cuenta', con
 // datos.comanda): así el historial de una cuenta sale con el índice { entidad, entidadId, createdAt }.
-export const ENTIDADES_EVENTO = ['pedido', 'reserva', 'mesa', 'cuenta']
+// 1.5b · 'usuario': alta de cuentas desde el admin (quién la creó)
+export const ENTIDADES_EVENTO = ['pedido', 'reserva', 'mesa', 'cuenta', 'usuario']
 // Los Eventos anteriores a 1.4 no guardan `tipo` (se leen como 'cambio_estado' por el default): un filtro
 // por tipo debe usar { tipo: { $in: ['cambio_estado', null] } } para incluirlos.
 export const TIPOS_EVENTO = [
     'cambio_estado', 'item_agregado', 'item_modificado', 'item_quitado', 'item_anulado', 'ronda_enviada', 'ronda_descartada',
     // 1.5 · Operaciones de salón sobre la cuenta (la mesa deja además su cambio de estado)
     'cuenta_transferida', 'mesa_movida', 'mesas_unidas', 'mesa_separada',
+    'usuario_creado',
 ]
 const eventoSchema = new mongoose.Schema({
     entidad: {
