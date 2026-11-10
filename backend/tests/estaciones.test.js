@@ -47,8 +47,8 @@ describe('Permisos de estaciones', () => {
         expect((await sesion.delete(`${ESTACIONES}/${cocina._id}`)).status).toBe(403)
     })
 
-    it.each(rutas)('%s %s como mesero o anfitrión (sin salon:configurar) → 403', async (metodo, ruta) => {
-        for (const rol of ['mesero', 'anfitrion']) {
+    it.each(rutas)('%s %s como mesero o cocina (sin salon:configurar) → 403', async (metodo, ruta) => {
+        for (const rol of ['mesero', 'cocina']) {
             const { sesion } = await crearConSesion(rol)
             expect((await sesion[metodo](ruta).send({})).status).toBe(403)
         }

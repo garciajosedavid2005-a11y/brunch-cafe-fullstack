@@ -50,20 +50,21 @@ describe('401 sin sesión, 403 sin permiso', () => {
         }
     })
 
-    it('mesero ve pedidos y reservas, pero no roles, usuarios ni cambia estados de reserva', async () => {
+    it('mesero ve pedidos y reservas y cambia su estado (1.5b), pero no roles ni usuarios', async () => {
         const { sesion } = await crearConSesion('mesero')
         expect((await sesion.get('/api/v1/staff/pedidos')).status).toBe(200)
         expect((await sesion.get('/api/v1/admin/estados?tipo=pedido')).status).toBe(200)
         expect((await sesion.get('/api/v1/admin/roles')).status).toBe(403)
         expect((await sesion.get('/api/v1/admin/usuarios')).status).toBe(403)
         expect((await sesion.get('/api/v1/staff/reservas')).status).toBe(200)
-        expect((await sesion.patch('/api/v1/staff/reservas/000000000000000000000000/estado').send({ codigo: 'confirmada' })).status).toBe(403)
+        // Con el permiso pasa la autorización (la reserva no existe → 404, no 403)
+        expect((await sesion.patch('/api/v1/staff/reservas/000000000000000000000000/estado').send({ codigo: 'confirmada' })).status).not.toBe(403)
     })
 
-    it('anfitrión ve reservas pero no pedidos', async () => {
-        const { sesion } = await crearConSesion('anfitrion')
-        expect((await sesion.get('/api/v1/staff/reservas')).status).toBe(200)
-        expect((await sesion.get('/api/v1/staff/pedidos')).status).toBe(403)
+    it('cocina ve pedidos pero no reservas', async () => {
+        const { sesion } = await crearConSesion('cocina')
+        expect((await sesion.get('/api/v1/staff/pedidos')).status).toBe(200)
+        expect((await sesion.get('/api/v1/staff/reservas')).status).toBe(403)
     })
 
     it('un rol embebido en el token se ignora: manda la BD', async () => {
@@ -152,8 +153,9 @@ describe('Revocación inmediata', () => {
         const admin = await crearConSesion('admin')
         const mesero = await crearConSesion('mesero')
         expect((await mesero.sesion.get('/api/v1/staff/pedidos')).status).toBe(200)
+        await Rol.create({ nombre: 'compras-test', permisos: ['reserva:ver'] }) // un rol que ve reservas pero no pedidos
 
-        await admin.sesion.patch(`/api/v1/admin/usuarios/${mesero.usuario._id}`).send({ rolId: await rolId('anfitrion') })
+        await admin.sesion.patch(`/api/v1/admin/usuarios/${mesero.usuario._id}`).send({ rolId: await rolId('compras-test') })
         expect((await mesero.sesion.get('/api/v1/staff/pedidos')).status).toBe(403)
         expect((await mesero.sesion.get('/api/v1/staff/reservas')).status).toBe(200)
     })
@@ -301,9 +303,9 @@ describe('Protecciones de roles', () => {
         expect((await sesion.delete(`/api/v1/admin/roles/${creado.body.id}`)).status).toBe(200)
     })
 
-    it('ninguno de los 9 roles de sistema se puede eliminar (0.7b)', async () => {
+    it('ninguno de los 7 roles de sistema se puede eliminar (0.7b; 1.5b sin anfitrion ni compras)', async () => {
         const { sesion } = await crearConSesion('admin')
-        const sistema = ['admin', 'cliente', 'mesero', 'anfitrion', 'cocina', 'barista', 'cajero', 'repartidor', 'compras']
+        const sistema = ['admin', 'cliente', 'mesero', 'cocina', 'barista', 'cajero', 'repartidor']
         const lista = (await sesion.get('/api/v1/admin/roles')).body
         for (const codigo of sistema) {
             const rol = lista.find((r) => r.codigo === codigo)
@@ -312,7 +314,7 @@ describe('Protecciones de roles', () => {
             expect(res.status, codigo).toBe(403)
             expect(res.body.error.code).toBe('ROL_PROTEGIDO')
         }
-        expect(await Rol.countDocuments({ nombre: { $in: sistema } })).toBe(9)
+        expect(await Rol.countDocuments({ nombre: { $in: sistema } })).toBe(7)
     })
 
     it('rol con usuarios: 409 ROL_CON_USUARIOS con plural correcto (0.7b)', async () => {
@@ -348,7 +350,7 @@ describe('Protecciones de roles', () => {
 // 0.15d: el frontend decide por permisos; esPersonal distingue al personal (aunque no tenga
 // permisos todavía) del cliente, sin que el frontend compare nombres de rol
 describe('esPersonal en el login y en /auth/me', () => {
-    it.each([['cliente', false], ['mesero', true], ['anfitrion', true], ['admin', true]])('%s → esPersonal=%s', async (rol, esperado) => {
+    it.each([['cliente', false], ['mesero', true], ['cocina', true], ['admin', true]])('%s → esPersonal=%s', async (rol, esperado) => {
         const { usuario, sesion } = await crearConSesion(rol)
         expect((await sesion.get('/api/v1/auth/me')).body.user.esPersonal).toBe(esperado)
         const login = await api().post('/api/v1/auth/login').send({ correo: usuario.correo, contraseña: 'secreta123' })

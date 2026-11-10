@@ -41,12 +41,12 @@ describe('Reservas del staff: /api/v1/staff/reservas', () => {
         const { body } = await cliente.post('/api/v1/cliente/reservas').send(datosReserva())
         expect((await cliente.get('/api/v1/staff/reservas')).status).toBe(403)
 
-        const { sesion: anfitrion } = await crearConSesion('anfitrion')
-        const lista = await anfitrion.get('/api/v1/staff/reservas')
+        const { sesion: gestor } = await crearConSesion('mesero') // 1.5b: el mesero gestiona las reservas
+        const lista = await gestor.get('/api/v1/staff/reservas')
         expect(lista.status).toBe(200)
         expect(lista.body[0]).toMatchObject({ id: body.reservation._id, estadoCodigo: 'pendiente' })
 
-        const res = await anfitrion.patch(`/api/v1/staff/reservas/${body.reservation._id}/estado`).send({ codigo: 'confirmada' })
+        const res = await gestor.patch(`/api/v1/staff/reservas/${body.reservation._id}/estado`).send({ codigo: 'confirmada' })
         expect(res.status).toBe(200)
         expect(res.body.estadoCodigo).toBe('confirmada')
     })
@@ -105,11 +105,12 @@ describe('Reserva registrada por el personal: POST /api/v1/staff/reservas', () =
         expect((await mesero.post('/api/v1/staff/reservas').send(sinCampo)).status).toBe(201)
     })
 
-    it('sin reserva:crear → 403; el mesero no cambia estados', async () => {
-        const { sesion: anfitrion } = await crearConSesion('anfitrion')
-        expect((await anfitrion.post('/api/v1/staff/reservas').send(datosStaff())).status).toBe(403)
+    it('sin reserva:crear → 403; el mesero confirma la reserva que registró (1.5b)', async () => {
+        const { sesion: cocina } = await crearConSesion('cocina')
+        expect((await cocina.post('/api/v1/staff/reservas').send(datosStaff())).status).toBe(403)
         const { sesion: mesero } = await crearConSesion('mesero')
         const { body } = await mesero.post('/api/v1/staff/reservas').send(datosStaff())
-        expect((await mesero.patch(`/api/v1/staff/reservas/${body.reservation.id}/estado`).send({ codigo: 'confirmada' })).status).toBe(403)
+        expect((await mesero.patch(`/api/v1/staff/reservas/${body.reservation.id}/estado`).send({ codigo: 'confirmada' })).status).toBe(200)
+        expect((await cocina.patch(`/api/v1/staff/reservas/${body.reservation.id}/estado`).send({ codigo: 'sentada' })).status).toBe(403)
     })
 })

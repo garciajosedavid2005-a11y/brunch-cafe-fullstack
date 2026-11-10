@@ -48,7 +48,7 @@ describe("Rutas de staff", () => {
   });
 
   it("cualquier rol de personal (no solo «mesero») entra a /staff desde /cuenta", async () => {
-    responder(usuario("anfitrion", "Anfitrión", { permisos: ["reserva:ver"] }));
+    responder(usuario("cocina", "Cocina", { permisos: ["pedido:ver"] }));
     abrir("/cuenta");
     expect(await screen.findByRole("heading", { name: /resumen del turno/i })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/staff");

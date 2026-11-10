@@ -432,7 +432,7 @@ export const abrirCuenta = async (datos, sesion) => {
     const { mesaId, comensales, notas, meseroId } = validar(abrirCuentaSchema, datos)
     const otroMesero = Boolean(meseroId) && meseroId !== String(sesion.id)
     if (otroMesero) exigirPermiso(sesion, 'cuenta:transferir')
-    // El responsable puede tomar comandas: quien no puede (p. ej. el anfitrión) indica el mesero
+    // El responsable puede tomar comandas: quien no puede (un rol sin comanda:tomar) indica el mesero
     if (!otroMesero && !tienePermiso(permisosDe(sesion), 'comanda:tomar')) {
         throw error(400, 'MESERO_REQUERIDO', 'Elige el mesero que atenderá la mesa.')
     }

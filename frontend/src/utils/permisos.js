@@ -10,7 +10,7 @@ export const tienePermiso = (user, clave) => {
 // Panel de administración: el permiso comodín "*"
 export const esAdministrador = (user) => permisosDe(user).includes("*");
 
-// Personal sin "*" (mesero, anfitrión, cocina…): lo indica el backend con esPersonal,
+// Personal sin "*" (mesero, cocina…): lo indica el backend con esPersonal,
 // así un rol nuevo o sin permisos todavía no cae en el portal del cliente
 export const esPersonal = (user) => Boolean(user?.esPersonal) && !esAdministrador(user);
 

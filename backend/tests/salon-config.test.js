@@ -39,8 +39,8 @@ describe('Permisos de la configuración del salón', () => {
         expect((await api()[metodo](ruta).send({})).status).toBe(401)
     })
 
-    it.each(rutas)('%s %s como mesero o anfitrión (sin salon:configurar) → 403', async (metodo, ruta) => {
-        for (const rol of ['mesero', 'anfitrion']) {
+    it.each(rutas)('%s %s como mesero o cocina (sin salon:configurar) → 403', async (metodo, ruta) => {
+        for (const rol of ['mesero', 'cocina']) {
             const { sesion } = await crearConSesion(rol)
             const res = await sesion[metodo](ruta).send({})
             expect(res.status).toBe(403)

@@ -39,7 +39,7 @@ const cambiarRol = async (usuario, nombre) => {
 describe('Duración de la sesión según el rol (F1-10)', () => {
     it.each([
         ['mesero', 12],
-        ['anfitrion', 12],
+        ['barista', 12],
         ['cocina', 12],
         ['cliente', 2],
         ['admin', 2],

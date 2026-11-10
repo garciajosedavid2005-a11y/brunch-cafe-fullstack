@@ -1,4 +1,4 @@
-# Plan de la Fase 1 — Salón y comandas (roles: Mesero, Anfitrión)
+# Plan de la Fase 1 — Salón y comandas (rol: Mesero; el anfitrión se eliminó en 1.5b)
 
 > Estado: **preguntas de negocio respondidas (2026-11-06), sin código**. Empieza cuando se apruebe la integración de la rama `developers` (ítem 0.15 de PROGRESO). Las respuestas están en la sección 5 y en las decisiones F1-1 a F1-16 de PROGRESO.
 >
@@ -14,7 +14,7 @@
 | Precio histórico por línea | **HECHO para domicilio** (`nombreProducto`, `precioProducto`, `subtotal`) | `pedidos/detallePedido.model.js` |
 | Máquina de estados + Evento | **HECHO** para pedido y reserva; **PARCIAL** para la fase: `Evento.entidad` solo admite `pedido` y `reserva` | `compartido/estados.js`, `compartido/evento.model.js` |
 | Transacciones e idempotencia | **HECHO** (0.9): `conTransaccion()`, `Idempotency-Key` | `compartido/transacciones.js`, `compartido/idempotencia.js` |
-| Permisos por clave | **HECHO**; los roles de salón solo tienen permisos de pedidos/reservas web | `identidad/permisos.js` (`mesero`: `pedido:ver`, `pedido:cambiar_estado`, `reserva:ver`, `reserva:crear` desde 0.15; `anfitrion`: `reserva:ver`, `reserva:cambiar_estado`) |
+| Permisos por clave | **HECHO**; los roles de salón solo tienen permisos de pedidos/reservas web | `identidad/permisos.js` (`mesero`: `pedido:ver`, `pedido:cambiar_estado`, `reserva:ver`, `reserva:crear` desde 0.15; `anfitrion` (rol eliminado en 1.5b): `reserva:ver`, `reserva:cambiar_estado`) |
 | Modalidad del pedido | **PARCIAL**: la máquina ya prevé `para_llevar`, pero `Pedido` no tiene el campo (todo es domicilio) | `compartido/estados.js:54` |
 | Frontend de staff | **PARCIAL (0.15)**: panel `/staff` (Resumen, agenda de reservas, pedidos, perfil y seguridad) y rutas por permisos (`utils/permisos.js`, `esPersonal`). Falta el layout de tablet, el plano de mesas y «Cambiar de usuario» (1.6) | `frontend/src/pages/StaffDashboard/`, `frontend/src/App.jsx` |
 | Reservas registradas por el personal | **HECHO (0.15e)**: `POST /api/v1/staff/reservas` (`reserva:crear`), `usuario: null` + `registradaPor` | `salon/reservasStaff.controller.js` |
@@ -43,7 +43,7 @@ Cada ítem = 1 commit (o pocos) con tests, como en la Fase 0. Orden propuesto: 1
 
 ### 1.1 Permisos y sesión de staff
 - **Permisos nuevos** (catálogo en `identidad/permisos.js`): `salon:configurar` (zonas, mesas y estaciones), `mesa:ver`, `mesa:operar` (ocupar, liberar, `por_limpiar → libre`), `mesa:bloquear` (bloquear y desbloquear con motivo; F1-2), `mesa:unir`, `cuenta:abrir`, `cuenta:ver`, `cuenta:transferir` (F1-8), `comanda:tomar`, `comanda:enviar`, `item:anular` (después de enviado; F1-6), `cuenta:solicitar`, `cuenta:cerrar_sin_cobro` (F1-13).
-- **Asignación inicial**, solo al crear el rol, como hoy: `mesero` = ver/operar mesas, abrir/ver cuenta, tomar/enviar comanda y solicitar cuenta; `anfitrion` = ver/operar/bloquear mesas, unir mesas, abrir cuenta y transferirla. `item:anular` y `cuenta:cerrar_sin_cobro`: solo admin (`*`); un rol supervisor más adelante.
+- **Asignación inicial** (1.5b: sin rol anfitrión; el mesero recibe también `reserva:cambiar_estado`, `mesa:bloquear`, `mesa:unir` y `cuenta:transferir`), solo al crear el rol, como hoy: `mesero` = ver/operar mesas, abrir/ver cuenta, tomar/enviar comanda y solicitar cuenta; `anfitrion` (eliminado) = ver/operar/bloquear mesas, unir mesas, abrir cuenta y transferirla. `item:anular` y `cuenta:cerrar_sin_cobro`: solo admin (`*`); un rol supervisor más adelante.
 - **Frontend**: ya hecho en 0.15d (rutas por permisos, `/staff`, test `sinRolesPorNombre`). Queda decidir con `mesa:ver` qué sección abre primero el panel.
 - **Sesión de staff de 12 h** (clientes: 2 h) y botón visible «Cambiar de usuario» para tablets compartidas (F1-10). El PIN por dispositivo queda para la Fase 2.
 - Tests: rutas protegidas por permiso, redirección por permisos, duración de la sesión según el rol.
@@ -135,13 +135,13 @@ Cada ítem = 1 commit (o pocos) con tests, como en la Fase 0. Orden propuesto: 1
 | # | Pregunta | Respuesta | Efecto en el plan |
 |---|---|---|---|
 | 1 | Zonas y mesas reales | Editables desde Admin › Salón. Seed de ejemplo marcado como tal (Interior y Terraza, mesas de 2 y 4). Se unen mesas de la misma zona marcadas «combinable» | 1.2 |
-| 2 | Estados de mesa y quién los cambia | Confirmados `libre / ocupada / cuenta_pedida / por_limpiar / bloqueada`. `por_limpiar → libre`: mesero y anfitrión (`mesa:operar`). Bloquear/desbloquear: anfitrión y admin, con motivo | 1.1 (`mesa:bloquear`), 1.5 |
+| 2 | Estados de mesa y quién los cambia | Confirmados `libre / ocupada / cuenta_pedida / por_limpiar / bloqueada`. `por_limpiar → libre`: mesero (`mesa:operar`; 1.5b: sin anfitrión). Bloquear/desbloquear: mesero y admin (1.5b), con motivo | 1.1 (`mesa:bloquear`), 1.5 |
 | 3 | Estaciones | Cocina y Barra; por categoría (bebidas → barra, el resto → cocina), con cambio por producto | 1.3 |
 | 4 | Modificadores | Grupos con recargo opcional (COP entero ≥ 0), obligatorio u opcional, mín./máx. Seed editable: Leche, Tamaño, Término del huevo (obligatorio en platos con huevo), Extras; «sin ingrediente» como nota | 1.3 |
 | 5 | Rondas | Cada ronda completa; sin «tiempos» ni «marchar». Nota libre por ítem | 1.7 |
 | 6 | Anular ítems enviados | Solo `item:anular` (admin por ahora; supervisor más adelante), motivo obligatorio; no se cobra; queda en `Evento` para mermas (Fase 5). Antes de enviar, el mesero quita libremente | 1.1, 1.4, 1.5 |
 | 7 | Comensales y cuentas por mesa | Comensales obligatorios (≥ 1). Una sola cuenta por mesa; división en la Fase 3 | 1.4 |
-| 8 | Transferir cuenta | Anfitrión y admin (`cuenta:transferir`), motivo opcional | 1.1, 1.5 |
+| 8 | Transferir cuenta | Mesero y admin (`cuenta:transferir`; 1.5b: antes anfitrión y admin), motivo opcional | 1.1, 1.5, 1.5b |
 | 9 | Unir mesas | Comparten una sola cuenta. Se separan solo si la cuenta no tiene ítems enviados; si los tiene, división en la Fase 3 | 1.5 (`/mesas/:id/separar`) |
 | 10 | Acceso en tablet | Correo y contraseña; sesión de 12 h solo para staff (clientes 2 h). Tablets compartidas: botón «Cambiar de usuario». PIN por dispositivo en la Fase 2 | 1.1, 1.6 |
 | 11 | Domicilio → Cuenta | Opción A: sigue en `Pedido` hasta la Fase 6 | 1.9 |

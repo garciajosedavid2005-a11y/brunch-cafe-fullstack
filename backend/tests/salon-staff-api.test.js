@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import { api } from './helpers/app.js'
 import { crearConSesion } from './helpers/usuarios.js'
 import { categoriaDePrueba } from './helpers/datos.js'
+import Rol from '../src/modulos/identidad/rol.model.js'
 import Zona from '../src/modulos/salon/zona.model.js'
 import Mesa from '../src/modulos/salon/mesa.model.js'
 import Cuenta from '../src/modulos/salon/cuenta.model.js'
@@ -19,7 +20,7 @@ let mesero
 let meseroUsuario
 let otroMesero
 let otroMeseroUsuario
-let anfitrion
+let recepcion
 let admin
 let interior
 let terraza
@@ -34,7 +35,10 @@ beforeEach(async () => {
     await Promise.all([Cuenta.init(), Comanda.init(), Mesa.init(), Zona.init()])
     ;({ sesion: mesero, usuario: meseroUsuario } = await crearConSesion('mesero'))
     ;({ sesion: otroMesero, usuario: otroMeseroUsuario } = await crearConSesion('mesero'))
-    ;({ sesion: anfitrion } = await crearConSesion('anfitrion'))
+    // 1.5b: sin rol anfitrión. «recepcion» es un rol de prueba con permisos de mesa y cuenta pero sin
+    // tomar comandas (lo que tenía el anfitrión), para probar MESERO_REQUERIDO y los 403 por permiso
+    await Rol.create({ nombre: 'recepcion', permisos: ['mesa:ver', 'mesa:operar', 'mesa:bloquear', 'mesa:unir', 'cuenta:abrir', 'cuenta:transferir'] })
+    ;({ sesion: recepcion } = await crearConSesion('recepcion'))
     ;({ sesion: admin } = await crearConSesion('admin'))
     interior = await Zona.create({ nombre: 'Interior', orden: 1 })
     terraza = await Zona.create({ nombre: 'Terraza', orden: 2 })
@@ -84,11 +88,11 @@ describe('Permisos', () => {
         }
     })
 
-    it('cada rol solo lo suyo: el mesero no une, no transfiere ni anula; el anfitrión no toma comandas', async () => {
+    it('cada uno lo suyo: el mesero une y transfiere (1.5b) pero no anula ni cierra sin cobro; sin comanda:tomar no se toman comandas', async () => {
         const cuenta = await abrir()
-        expect((await mesero.post(`${BASE}/mesas/unir`).send({ principalId: String(m1._id), mesaIds: [String(m2._id)] })).status).toBe(403)
-        expect((await mesero.post(`${BASE}/cuentas/${cuenta.id}/transferir`).send({ meseroId: String(otroMeseroUsuario._id) })).status).toBe(403)
-        expect((await anfitrion.post(`${BASE}/cuentas/${cuenta.id}/items`).send({ productoId: String(latte._id), cantidad: 1 })).status).toBe(403)
+        expect((await mesero.post(`${BASE}/mesas/unir`).send({ principalId: String(m1._id), mesaIds: [String(m2._id)] })).status).toBe(200)
+        expect((await mesero.post(`${BASE}/cuentas/${cuenta.id}/transferir`).send({ meseroId: String(otroMeseroUsuario._id) })).status).toBe(200)
+        expect((await recepcion.post(`${BASE}/cuentas/${cuenta.id}/items`).send({ productoId: String(latte._id), cantidad: 1 })).status).toBe(403)
         const enviada = await enviar(await agregar(cuenta))
         const itemId = enviada.rondas[0].items[0].id
         expect((await mesero.post(`${BASE}/cuentas/${cuenta.id}/items/${itemId}/anular`).send({ motivo: 'demora' })).status).toBe(403)
@@ -168,20 +172,24 @@ describe('Abrir cuenta (POST /mesas/:id/abrir)', () => {
         expect(await Cuenta.countDocuments()).toBe(1)
     })
 
-    it('el anfitrión puede abrirla a nombre de un mesero; el mesero no puede asignar a otro; un cliente no es mesero', async () => {
-        const cuenta = await abrir(m1, anfitrion, { meseroId: String(meseroUsuario._id) })
+    it('con cuenta:transferir se abre a nombre de otro mesero (también el mesero, 1.5b); sin él no; un cliente no es mesero', async () => {
+        const cuenta = await abrir(m1, recepcion, { meseroId: String(meseroUsuario._id) })
         expect(cuenta.mesero).toBe(String(meseroUsuario._id))
-        const res = await mesero.post(`${BASE}/mesas/${m2._id}/abrir`).send({ comensales: 2, meseroId: String(otroMeseroUsuario._id) })
+        const delMesero = await abrir(m3, mesero, { meseroId: String(otroMeseroUsuario._id) })
+        expect(delMesero.mesero).toBe(String(otroMeseroUsuario._id))
+        await Rol.create({ nombre: 'sin-transferir', permisos: ['cuenta:abrir', 'comanda:tomar'] })
+        const { sesion: sinTransferir } = await crearConSesion('sin-transferir')
+        const res = await sinTransferir.post(`${BASE}/mesas/${m2._id}/abrir`).send({ comensales: 2, meseroId: String(otroMeseroUsuario._id) })
         expect(res.status).toBe(403)
         const { usuario: cliente } = await crearConSesion('cliente')
-        const otra = await anfitrion.post(`${BASE}/mesas/${m2._id}/abrir`).send({ comensales: 2, meseroId: String(cliente._id) })
+        const otra = await recepcion.post(`${BASE}/mesas/${m2._id}/abrir`).send({ comensales: 2, meseroId: String(cliente._id) })
         expect(otra.status).toBe(400)
         expect(otra.body.error.code).toBe('MESERO_NO_VALIDO')
         expect(await estadoMesa(m2)).toBe('libre')
     })
 
-    it('quien no toma comandas (anfitrión) debe indicar el mesero → 400 MESERO_REQUERIDO', async () => {
-        const res = await anfitrion.post(`${BASE}/mesas/${m1._id}/abrir`).send({ comensales: 2 })
+    it('quien no toma comandas debe indicar el mesero → 400 MESERO_REQUERIDO', async () => {
+        const res = await recepcion.post(`${BASE}/mesas/${m1._id}/abrir`).send({ comensales: 2 })
         expect(res.status).toBe(400)
         expect(res.body.error.code).toBe('MESERO_REQUERIDO')
         expect(await Cuenta.countDocuments()).toBe(0)
@@ -271,9 +279,9 @@ describe('Detalle de la cuenta (GET /cuentas/:id)', () => {
 })
 
 describe('Transferir (F1-8)', () => {
-    it('el anfitrión cambia el mesero responsable, con motivo opcional y Evento', async () => {
+    it('quien tiene cuenta:transferir cambia el mesero responsable, con motivo opcional y Evento', async () => {
         const cuenta = await abrir()
-        const transferida = esperar(await anfitrion.post(`${BASE}/cuentas/${cuenta.id}/transferir`)
+        const transferida = esperar(await recepcion.post(`${BASE}/cuentas/${cuenta.id}/transferir`)
             .send({ meseroId: String(otroMeseroUsuario._id), motivo: 'cambio de turno' }), 200)
         expect(transferida.mesero).toBe(String(otroMeseroUsuario._id))
         const detalle = esperar(await otroMesero.get(`${BASE}/cuentas/${cuenta.id}`), 200)
@@ -281,17 +289,17 @@ describe('Transferir (F1-8)', () => {
             tipo: 'cuenta_transferida', motivo: 'cambio de turno',
             meseroAnterior: { id: String(meseroUsuario._id) }, meseroNuevo: { id: String(otroMeseroUsuario._id) },
         })
-        const igual = await anfitrion.post(`${BASE}/cuentas/${cuenta.id}/transferir`).send({ meseroId: String(otroMeseroUsuario._id) })
+        const igual = await recepcion.post(`${BASE}/cuentas/${cuenta.id}/transferir`).send({ meseroId: String(otroMeseroUsuario._id) })
         expect(igual.body.error.code).toBe('MISMO_MESERO')
         const { usuario: cocinero } = await crearConSesion('cocina')
-        const invalido = await anfitrion.post(`${BASE}/cuentas/${cuenta.id}/transferir`).send({ meseroId: String(cocinero._id) })
+        const invalido = await recepcion.post(`${BASE}/cuentas/${cuenta.id}/transferir`).send({ meseroId: String(cocinero._id) })
         expect(invalido.body.error.code).toBe('MESERO_NO_VALIDO')
     })
 
     it('lista de meseros: usuarios activos cuyo rol puede tomar comandas', async () => {
         const { usuario: inactivo } = await crearConSesion('mesero')
         await inactivo.updateOne({ activo: false })
-        const lista = esperar(await anfitrion.get(`${BASE}/meseros`), 200)
+        const lista = esperar(await recepcion.get(`${BASE}/meseros`), 200)
         const ids = lista.map((m) => m.id)
         expect(ids).toContain(String(meseroUsuario._id))
         expect(ids).not.toContain(String(inactivo._id))
@@ -324,7 +332,7 @@ describe('Mover (POST /mesas/:id/mover)', () => {
 describe('Unir y separar (F1-9)', () => {
     it('une mesas combinables de la misma zona en una cuenta; se separan sin ítems enviados', async () => {
         const cuenta = await abrir(m1)
-        const unida = esperar(await anfitrion.post(`${BASE}/mesas/unir`).send({ principalId: String(m1._id), mesaIds: [String(m2._id)] }), 200)
+        const unida = esperar(await recepcion.post(`${BASE}/mesas/unir`).send({ principalId: String(m1._id), mesaIds: [String(m2._id)] }), 200)
         expect(unida.mesas.map((m) => m.numero)).toEqual([1, 2])
         expect(String((await Mesa.findById(m2._id).lean()).cuentaActual)).toBe(cuenta.id)
         const plano = esperar(await mesero.get(`${BASE}/mesas`), 200)
@@ -334,17 +342,17 @@ describe('Unir y separar (F1-9)', () => {
         // Con mesas unidas no se mueve a otra zona
         expect((await mesero.post(`${BASE}/mesas/${m2._id}/mover`).send({ mesaDestinoId: String(t1._id) })).body.error.code).toBe('MESA_NO_COMBINABLE')
 
-        const separada = esperar(await anfitrion.post(`${BASE}/mesas/${m2._id}/separar`).send({}), 200)
+        const separada = esperar(await recepcion.post(`${BASE}/mesas/${m2._id}/separar`).send({}), 200)
         expect(separada.mesas.map((m) => m.numero)).toEqual([1])
         expect(await Mesa.findById(m2._id).lean()).toMatchObject({ estado: 'por_limpiar', cuentaActual: null })
-        expect((await anfitrion.post(`${BASE}/mesas/${m1._id}/separar`).send({})).body.error.code).toBe('MESA_NO_UNIDA')
+        expect((await recepcion.post(`${BASE}/mesas/${m1._id}/separar`).send({})).body.error.code).toBe('MESA_NO_UNIDA')
         expect(await verificarConsistenciaSalon()).toMatchObject({ ok: true })
     })
 
     it('no combinable, de otra zona u ocupada → 409 y no cambia nada', async () => {
         await abrir(m1)
         await abrir(t1)
-        const unir = (mesaIds) => anfitrion.post(`${BASE}/mesas/unir`).send({ principalId: String(m1._id), mesaIds: mesaIds.map(String) })
+        const unir = (mesaIds) => recepcion.post(`${BASE}/mesas/unir`).send({ principalId: String(m1._id), mesaIds: mesaIds.map(String) })
         expect((await unir([m3._id])).body.error.code).toBe('MESA_NO_COMBINABLE')
         expect((await unir([t1._id])).body.error.code).toBe('MESA_NO_COMBINABLE')
         await abrir(m2)
@@ -355,10 +363,10 @@ describe('Unir y separar (F1-9)', () => {
 
     it('con ítems enviados (aunque estén anulados) no se separan', async () => {
         const cuenta = await abrir(m1)
-        esperar(await anfitrion.post(`${BASE}/mesas/unir`).send({ principalId: String(m1._id), mesaIds: [String(m2._id)] }), 200)
+        esperar(await recepcion.post(`${BASE}/mesas/unir`).send({ principalId: String(m1._id), mesaIds: [String(m2._id)] }), 200)
         const enviada = await enviar(await agregar(cuenta))
         esperar(await admin.post(`${BASE}/cuentas/${cuenta.id}/items/${enviada.rondas[0].items[0].id}/anular`).send({ motivo: 'demora' }), 200)
-        const res = await anfitrion.post(`${BASE}/mesas/${m2._id}/separar`).send({})
+        const res = await recepcion.post(`${BASE}/mesas/${m2._id}/separar`).send({})
         expect(res.status).toBe(409)
         expect(res.body.error.code).toBe('CUENTA_CON_ITEMS_ENVIADOS')
     })
@@ -367,12 +375,12 @@ describe('Unir y separar (F1-9)', () => {
 describe('Concurrencia en transferir, mover, unir y separar', () => {
     it('con una versión vieja → 409 CUENTA_MODIFICADA y no cambia nada', async () => {
         const cuenta = await abrir(m1)
-        esperar(await anfitrion.post(`${BASE}/mesas/unir`).send({ principalId: String(m1._id), mesaIds: [String(m2._id)] }), 200)
+        esperar(await recepcion.post(`${BASE}/mesas/unir`).send({ principalId: String(m1._id), mesaIds: [String(m2._id)] }), 200)
         const vieja = cuenta.version
         const intentos = [
-            anfitrion.post(`${BASE}/cuentas/${cuenta.id}/transferir`).send({ meseroId: String(otroMeseroUsuario._id), versionEsperada: vieja }),
+            recepcion.post(`${BASE}/cuentas/${cuenta.id}/transferir`).send({ meseroId: String(otroMeseroUsuario._id), versionEsperada: vieja }),
             mesero.post(`${BASE}/mesas/${m1._id}/mover`).send({ mesaDestinoId: String(t1._id), versionEsperada: vieja }),
-            anfitrion.post(`${BASE}/mesas/${m2._id}/separar`).send({ versionEsperada: vieja }),
+            recepcion.post(`${BASE}/mesas/${m2._id}/separar`).send({ versionEsperada: vieja }),
         ]
         for (const res of await Promise.all(intentos)) {
             expect(res.status).toBe(409)
@@ -388,11 +396,11 @@ describe('Concurrencia en transferir, mover, unir y separar', () => {
         const cuenta = await abrir(m1)
         expect((await mesero.post(`${BASE}/mesas/${m1._id}/mover`).send({ mesaDestinoId: String(m1._id) })).body.error.code).toBe('MESA_DESTINO_NO_VALIDA')
         await otroMeseroUsuario.updateOne({ activo: false })
-        expect((await anfitrion.post(`${BASE}/cuentas/${cuenta.id}/transferir`).send({ meseroId: String(otroMeseroUsuario._id) })).body.error.code)
+        expect((await recepcion.post(`${BASE}/cuentas/${cuenta.id}/transferir`).send({ meseroId: String(otroMeseroUsuario._id) })).body.error.code)
             .toBe('MESERO_NO_VALIDO')
         const enviada = await enviar(await agregar(cuenta))
         esperar(await mesero.post(`${BASE}/cuentas/${cuenta.id}/solicitar`).send({ versionEsperada: enviada.version }), 200)
-        const unir = await anfitrion.post(`${BASE}/mesas/unir`).send({ principalId: String(m1._id), mesaIds: [String(m2._id)] })
+        const unir = await recepcion.post(`${BASE}/mesas/unir`).send({ principalId: String(m1._id), mesaIds: [String(m2._id)] })
         expect(unir.status).toBe(409)
         expect(unir.body.error.code).toBe('CUENTA_NO_EDITABLE')
     })

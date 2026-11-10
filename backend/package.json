@@ -19,6 +19,7 @@
     "migrate:0.15": "node scripts/migrar-0.15-permisos-mesero.js",
     "migrate:1.1": "node scripts/migrar-1.1-permisos-salon.js",
     "migrate:1.3": "node scripts/migrar-1.3-estaciones.js",
+    "migrate:1.5b": "node scripts/migrar-1.5b-quitar-roles.js",
     "seed:dev": "node scripts/seed-dev.js",
     "seed:salon": "node scripts/seed-salon.js",
     "seed:modificadores": "node scripts/seed-modificadores.js",

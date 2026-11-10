@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import mongoose from 'mongoose'
 import { up, down, MARCA } from '../src/migraciones/m11-permisos-salon.js'
 
@@ -14,6 +14,13 @@ const ANFITRION_NUEVOS = ['mesa:ver', 'mesa:operar', 'mesa:bloquear', 'mesa:unir
 
 // El setup siembra los roles con los permisos de 1.1; aquí se simula una BD anterior
 const dejar = (nombre, permisos) => roles().updateOne({ nombre }, { $set: { permisos }, $unset: { [MARCA]: 1 } })
+// 1.5b: el setup ya no siembra el rol anfitrion; aquí se recrea como estaba en 1.1
+const asegurarAnfitrion = () => roles().updateOne(
+    { nombre: 'anfitrion' },
+    { $setOnInsert: { nombre: 'anfitrion', etiqueta: 'Anfitrión', esSistema: true, permisos: [...ANFITRION_ANTES, ...ANFITRION_NUEVOS] } },
+    { upsert: true },
+)
+beforeEach(asegurarAnfitrion)
 const comoAntes = async () => {
     await dejar('mesero', MESERO_ANTES)
     await dejar('anfitrion', ANFITRION_ANTES)
@@ -70,11 +77,12 @@ describe('Migración 1.1 (permisos de salón en BDs existentes)', () => {
     })
 
     it('en una BD nueva (ya con los permisos) no hace nada, y down solo quita lo que puso up', async () => {
+        const antes = await permisosDe('mesero') // desde 1.5b, con más permisos que los de 1.1
         const r = porRol(await up(db()))
         expect(r.mesero.accion).toBe('sin-cambios')
         expect(r.anfitrion.accion).toBe('sin-cambios')
         await down(db())
-        expect(await permisosDe('mesero')).toEqual([...MESERO_ANTES, ...MESERO_NUEVOS])
+        expect(await permisosDe('mesero')).toEqual(antes)
     })
 
     it('si un permiso agregado por up se quitó a mano, down no falla y quita solo los demás', async () => {

@@ -95,9 +95,9 @@ describe('Pedidos: transiciones de staff', () => {
     })
 
     it('un rol con solo pedido:cancelar entra a la ruta pero no puede avanzar', async () => {
-        const rolSoloCancela = await crearConSesion('compras')
+        const rolSoloCancela = await crearConSesion('repartidor')
         const { default: Rol } = await import('../src/modulos/identidad/rol.model.js')
-        await Rol.updateOne({ nombre: 'compras' }, { permisos: ['pedido:cancelar'] })
+        await Rol.updateOne({ nombre: 'repartidor' }, { permisos: ['pedido:cancelar'] })
         const { invalidarSesionesDeRol } = await import('../src/modulos/identidad/sesiones.js')
         invalidarSesionesDeRol(rolSoloCancela.usuario.rol)
 
@@ -130,25 +130,26 @@ describe('Pedidos: cancelación por el cliente', () => {
 })
 
 describe('Reservas: transiciones', () => {
-    let cliente, anfitrion, reservaId
+    let cliente, gestor, reservaId
     const cambiar = (sesion, codigo, extra = {}) =>
         sesion.patch(`/api/v1/staff/reservas/${reservaId}/estado`).send({ codigo, ...extra })
 
     beforeEach(async () => {
         cliente = (await crearConSesion('cliente')).sesion
-        anfitrion = await crearConSesion('anfitrion')
+        // 1.5b: el mesero gestiona las reservas (antes, el anfitrión)
+        gestor = await crearConSesion('mesero')
         reservaId = await crearReserva(cliente)
     })
 
-    it('anfitrión: confirmada → sentada → completada, con eventos; luego no se reabre', async () => {
+    it('mesero: confirmada → sentada → completada, con eventos; luego no se reabre', async () => {
         for (const codigo of ['confirmada', 'sentada', 'completada']) {
-            const res = await cambiar(anfitrion.sesion, codigo)
+            const res = await cambiar(gestor.sesion, codigo)
             expect(res.status, codigo).toBe(200)
             expect(res.body.estadoCodigo).toBe(codigo)
         }
         expect((await eventosDe(reservaId)).map((e) => e.a)).toEqual(['pendiente', 'confirmada', 'sentada', 'completada'])
 
-        const reabrir = await cambiar(anfitrion.sesion, 'confirmada')
+        const reabrir = await cambiar(gestor.sesion, 'confirmada')
         expect(reabrir.status).toBe(409)
         expect(reabrir.body.error.code).toBe('ESTADO_FINAL')
 
@@ -157,35 +158,35 @@ describe('Reservas: transiciones', () => {
     })
 
     it('check-in sin confirmar deja Evento con su motivo (0.7b)', async () => {
-        const res = await cambiar(anfitrion.sesion, 'sentada')
+        const res = await cambiar(gestor.sesion, 'sentada')
         expect(res.status).toBe(200)
         expect((await eventosDe(reservaId)).at(-1)).toMatchObject({ de: 'pendiente', a: 'sentada', motivo: 'check-in sin confirmar' })
     })
 
     it('staff cancela una reserva solo con motivo (0.7b)', async () => {
-        const sinMotivo = await cambiar(anfitrion.sesion, 'cancelada')
+        const sinMotivo = await cambiar(gestor.sesion, 'cancelada')
         expect(sinMotivo.status).toBe(400)
         expect(sinMotivo.body.error.code).toBe('MOTIVO_REQUERIDO')
-        const ok = await cambiar(anfitrion.sesion, 'cancelada', { motivo: 'Sin cupo' })
+        const ok = await cambiar(gestor.sesion, 'cancelada', { motivo: 'Sin cupo' })
         expect(ok.status).toBe(200)
         expect((await eventosDe(reservaId)).at(-1)).toMatchObject({ a: 'cancelada', motivo: 'Sin cupo' })
     })
 
     it('no_show solo desde confirmada', async () => {
-        expect((await cambiar(anfitrion.sesion, 'no_show')).status).toBe(409)
-        await cambiar(anfitrion.sesion, 'confirmada')
-        const res = await cambiar(anfitrion.sesion, 'no_show')
+        expect((await cambiar(gestor.sesion, 'no_show')).status).toBe(409)
+        await cambiar(gestor.sesion, 'confirmada')
+        const res = await cambiar(gestor.sesion, 'no_show')
         expect(res.status).toBe(200)
         expect(res.body.esFinal).toBe(true)
     })
 
-    it('mesero (sin reserva:cambiar_estado) → 403', async () => {
-        const { sesion: mesero } = await crearConSesion('mesero')
-        expect((await cambiar(mesero, 'confirmada')).status).toBe(403)
+    it('un rol sin reserva:cambiar_estado (cocina) → 403', async () => {
+        const { sesion: cocina } = await crearConSesion('cocina')
+        expect((await cambiar(cocina, 'confirmada')).status).toBe(403)
     })
 
     it('cliente edita una reserva confirmada → vuelve a pendiente con evento "editada por cliente"', async () => {
-        await cambiar(anfitrion.sesion, 'confirmada')
+        await cambiar(gestor.sesion, 'confirmada')
         const res = await cliente.patch(`/api/v1/cliente/reservas/${reservaId}`).send(datosReserva({ personas: 4 }))
         expect(res.status).toBe(200)
         expect(res.body.reservation).toMatchObject({ status: 'pending', personas: 4 })
@@ -199,8 +200,8 @@ describe('Reservas: transiciones', () => {
     })
 
     it('el cliente no edita ni cancela una reserva ya sentada', async () => {
-        await cambiar(anfitrion.sesion, 'confirmada')
-        await cambiar(anfitrion.sesion, 'sentada')
+        await cambiar(gestor.sesion, 'confirmada')
+        await cambiar(gestor.sesion, 'sentada')
         expect((await cliente.patch(`/api/v1/cliente/reservas/${reservaId}`).send(datosReserva())).status).toBe(404)
         const cancelar = await cliente.patch(`/api/v1/cliente/reservas/${reservaId}/cancelar`)
         expect(cancelar.status).toBe(409)

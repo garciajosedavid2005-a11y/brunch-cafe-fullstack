@@ -35,7 +35,7 @@ const error = async (promesa) => {
 
 let mesero
 let otroMesero
-let anfitrion
+let sinComandas
 let admin
 let zona
 let mesa
@@ -51,7 +51,8 @@ beforeEach(async () => {
     await Promise.all([Cuenta.createIndexes(), Comanda.createIndexes(), Mesa.createIndexes()])
     mesero = sesionDe('mesero', PERMISOS_SALON.mesero)
     otroMesero = sesionDe('mesero', PERMISOS_SALON.mesero)
-    anfitrion = sesionDe('anfitrion', PERMISOS_SALON.anfitrion)
+    // 1.5b: sin rol anfitrión; una sesión con permisos de mesa y cuenta pero sin tomar comandas
+    sinComandas = sesionDe('recepcion', ['mesa:ver', 'mesa:operar', 'mesa:bloquear', 'mesa:unir', 'cuenta:abrir', 'cuenta:transferir'])
     admin = sesionDe('admin', ['*'])
     cocina = await Estacion.findOne({ codigo: 'cocina' }).lean()
     barra = await Estacion.findOne({ codigo: 'barra' }).lean()
@@ -177,7 +178,7 @@ describe('Abrir cuenta (F1-7)', () => {
         const otra = await Mesa.collection.insertOne({
             numero: 10, nombre: '', zona: zona._id, capacidad: 2, estado: 'libre', combinable: false, activa: true, ejemplo: false,
         })
-        const bloqueada = await cambiarEstadoMesa(String(otra.insertedId), { a: 'bloqueada', motivo: 'mantenimiento' }, anfitrion)
+        const bloqueada = await cambiarEstadoMesa(String(otra.insertedId), { a: 'bloqueada', motivo: 'mantenimiento' }, sinComandas)
         expect(bloqueada.estado).toBe('bloqueada')
     })
 
@@ -318,7 +319,7 @@ describe('Agregar ítems: snapshot, modificadores y disponibilidad (F1-14)', () 
         const [agregado] = await eventos({ tipo: 'item_agregado' })
         expect(String(agregado.usuario)).toBe(otroMesero.id)
         // Sin comanda:tomar no
-        expect(await error(agregarLatte(cuenta, anfitrion))).toMatchObject({ status: 403, code: 'FORBIDDEN' })
+        expect(await error(agregarLatte(cuenta, sinComandas))).toMatchObject({ status: 403, code: 'FORBIDDEN' })
     })
 
     it('una cuenta cerrada no admite ítems (409 ESTADO_FINAL)', async () => {
@@ -376,7 +377,7 @@ describe('Enviar la ronda', () => {
         const cuenta = await abrir()
         await agregarLatte(cuenta)
         const actual = await obtenerCuenta(cuenta.id, mesero)
-        expect(await error(enviarRonda(cuenta.id, { numeroRonda: 1, versionEsperada: actual.version }, anfitrion)))
+        expect(await error(enviarRonda(cuenta.id, { numeroRonda: 1, versionEsperada: actual.version }, sinComandas)))
             .toMatchObject({ status: 403, code: 'FORBIDDEN' })
         expect(await error(enviarRonda(cuenta.id, { numeroRonda: 1 }, mesero))).toMatchObject({ status: 400, code: 'VALIDATION_ERROR' })
         await enviarRonda(cuenta.id, { numeroRonda: 1, versionEsperada: actual.version }, mesero)
@@ -589,7 +590,7 @@ describe('Solicitar la cuenta', () => {
 
     it('exige cuenta:solicitar y la versión vigente', async () => {
         const enviada = await cuentaConEnvio()
-        expect(await error(solicitarCuenta(enviada.id, { versionEsperada: enviada.version }, anfitrion)))
+        expect(await error(solicitarCuenta(enviada.id, { versionEsperada: enviada.version }, sinComandas)))
             .toMatchObject({ status: 403, code: 'FORBIDDEN' })
         expect(await error(solicitarCuenta(enviada.id, { versionEsperada: enviada.version - 1 }, mesero)))
             .toMatchObject({ status: 409, code: 'CUENTA_MODIFICADA' })
@@ -600,8 +601,8 @@ describe('Cancelar la cuenta (D4)', () => {
     it('desde abierta sin ítems enviados: estado final cancelada, borrador descartado con Evento y mesa por limpiar', async () => {
         const cuenta = await abrir()
         const { cuenta: conBorrador } = await agregarLatte(cuenta)
-        const cancelada = await cancelarCuenta(cuenta.id, { motivo: 'abierta por error', versionEsperada: conBorrador.version }, anfitrion)
-        expect(cancelada).toMatchObject({ estado: 'cancelada', pendiente: 0, rondas: [], motivoCierre: 'abierta por error', cerradaPor: anfitrion.id })
+        const cancelada = await cancelarCuenta(cuenta.id, { motivo: 'abierta por error', versionEsperada: conBorrador.version }, sinComandas)
+        expect(cancelada).toMatchObject({ estado: 'cancelada', pendiente: 0, rondas: [], motivoCierre: 'abierta por error', cerradaPor: sinComandas.id })
         expect(await Comanda.countDocuments()).toBe(0)
         expect(await Mesa.findById(mesa._id).lean()).toMatchObject({ estado: 'por_limpiar', cuentaActual: null })
         const tipos = (await eventos({ entidad: 'cuenta' })).map((e) => `${e.tipo}:${e.a ?? ''}`)
@@ -668,10 +669,10 @@ describe('Transiciones manuales de la mesa', () => {
         await cancelarCuenta(cuenta.id, { motivo: 'error', versionEsperada: cuenta.version }, mesero)
         expect(await error(cambiarEstadoMesa(String(mesa._id), { a: 'libre' }, sesionDe('cocina', [])))).toMatchObject({ status: 403 })
         expect((await cambiarEstadoMesa(String(mesa._id), { a: 'libre' }, mesero)).estado).toBe('libre')
-        expect(await error(cambiarEstadoMesa(String(mesa._id), { a: 'bloqueada' }, anfitrion))).toMatchObject({ status: 400, code: 'MOTIVO_REQUERIDO' })
-        await cambiarEstadoMesa(String(mesa._id), { a: 'bloqueada', motivo: 'pata rota' }, anfitrion)
+        expect(await error(cambiarEstadoMesa(String(mesa._id), { a: 'bloqueada' }, sinComandas))).toMatchObject({ status: 400, code: 'MOTIVO_REQUERIDO' })
+        await cambiarEstadoMesa(String(mesa._id), { a: 'bloqueada', motivo: 'pata rota' }, sinComandas)
         expect(await error(abrir())).toMatchObject({ status: 409, code: 'MESA_NO_DISPONIBLE' })
-        await cambiarEstadoMesa(String(mesa._id), { a: 'libre', motivo: 'arreglada' }, anfitrion)
+        await cambiarEstadoMesa(String(mesa._id), { a: 'libre', motivo: 'arreglada' }, sinComandas)
         const ultimos = (await eventos({ entidad: 'mesa', entidadId: mesa._id })).slice(-3)
         expect(ultimos.map((e) => [e.de, e.a, e.motivo])).toEqual([
             ['por_limpiar', 'libre', ''], ['libre', 'bloqueada', 'pata rota'], ['bloqueada', 'libre', 'arreglada'],

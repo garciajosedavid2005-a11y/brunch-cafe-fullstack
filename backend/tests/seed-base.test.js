@@ -17,7 +17,7 @@ describe('Seed de roles base', () => {
         await sembrarRoles()
         const roles = await Rol.find().sort({ nombre: 1 }).lean()
         expect(roles.map((r) => r.nombre)).toEqual(
-            ['admin', 'anfitrion', 'barista', 'cajero', 'cliente', 'cocina', 'compras', 'mesero', 'repartidor']
+            ['admin', 'barista', 'cajero', 'cliente', 'cocina', 'mesero', 'repartidor']
         )
         expect(roles.every((r) => r.esSistema)).toBe(true)
         const porNombre = Object.fromEntries(roles.map((r) => [r.nombre, r.permisos]))
@@ -28,10 +28,13 @@ describe('Seed de roles base', () => {
             'pedido:cambiar_estado',
             'reserva:ver',
             'reserva:crear',
-            // Salón (1.1)
-            'mesa:ver', 'mesa:operar', 'cuenta:abrir', 'cuenta:ver', 'comanda:tomar', 'comanda:enviar', 'cuenta:solicitar',
+            'reserva:cambiar_estado', // 1.5b: tareas del anfitrión
+            // Salón (1.1; 1.5b suma bloquear, unir y transferir)
+            'mesa:ver', 'mesa:operar', 'mesa:bloquear', 'mesa:unir', 'cuenta:abrir', 'cuenta:ver', 'cuenta:transferir',
+            'comanda:tomar', 'comanda:enviar', 'cuenta:solicitar',
         ])
-        expect(porNombre.compras).toEqual([])
+        expect(porNombre.compras).toBeUndefined() // 1.5b: roles anfitrion y compras eliminados
+        expect(porNombre.anfitrion).toBeUndefined()
     })
 
     it('fuerza los permisos de admin y cliente, pero respeta los editados en roles de staff', async () => {
@@ -54,7 +57,7 @@ describe('Seed de roles base', () => {
     it('pone la etiqueta del catálogo si la guardada es el código, vacía o ausente, sin pisar las personalizadas', async () => {
         await sembrarRoles()
         await Rol.updateOne({ nombre: 'cliente' }, { $set: { etiqueta: 'cliente' } })
-        await Rol.updateOne({ nombre: 'anfitrion' }, { $set: { etiqueta: 'anfitrion' } })
+        await Rol.updateOne({ nombre: 'repartidor' }, { $set: { etiqueta: 'repartidor' } })
         await Rol.updateOne({ nombre: 'mesero' }, { $set: { etiqueta: 'mesero de sala' } })
         await Rol.updateOne({ nombre: 'cocina' }, { $set: { etiqueta: 'COCINA' } })
         // Rol creado antes de que existiera el campo: sin etiqueta (la UI mostraba el código)
@@ -63,7 +66,7 @@ describe('Seed de roles base', () => {
         await sembrarRoles()
         const etiquetas = Object.fromEntries((await Rol.find().lean()).map((r) => [r.nombre, r.etiqueta]))
         expect(etiquetas.cliente).toBe('Cliente')
-        expect(etiquetas.anfitrion).toBe('Anfitrión')
+        expect(etiquetas.repartidor).toBe('Repartidor')
         expect(etiquetas.mesero).toBe('mesero de sala')
         expect(etiquetas.cocina).toBe('COCINA')
         expect(etiquetas.barista).toBe('Barista')

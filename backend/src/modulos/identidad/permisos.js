@@ -55,13 +55,16 @@ export const puedeOtorgarRol = (permisosSesion = [], permisosRol = []) =>
 export const ROL_ADMIN = 'admin'
 export const ROL_CLIENTE = 'cliente'
 
-// Permisos de salón de la Fase 1 por rol (1.1). item:anular, cuenta:cerrar_sin_cobro y
-// salon:configurar no son de ningún rol de staff: solo el admin ("*") por ahora (F1-6, F1-13).
-// La migración 1.1 los agregó a los roles ya creados con una copia fija de esta lista
-// (src/migraciones/m11-permisos-salon.js); un cambio aquí necesita su propia migración.
+// Permisos de salón de la Fase 1 (1.1). item:anular, cuenta:cerrar_sin_cobro y salon:configurar
+// no son de ningún rol de staff: solo el admin ("*") por ahora (F1-6, F1-13).
+// 1.5b: el rol anfitrión se eliminó y sus tareas (bloquear y unir mesas, transferir cuentas y
+// gestionar el estado de las reservas) pasaron al mesero. Las migraciones 1.1 y 1.5b usan copias
+// fijas de estas listas; un cambio aquí necesita su propia migración.
 export const PERMISOS_SALON = {
-    mesero: ['mesa:ver', 'mesa:operar', 'cuenta:abrir', 'cuenta:ver', 'comanda:tomar', 'comanda:enviar', 'cuenta:solicitar'],
-    anfitrion: ['mesa:ver', 'mesa:operar', 'mesa:bloquear', 'mesa:unir', 'cuenta:abrir', 'cuenta:transferir'],
+    mesero: [
+        'mesa:ver', 'mesa:operar', 'mesa:bloquear', 'mesa:unir', 'cuenta:abrir', 'cuenta:ver', 'cuenta:transferir',
+        'comanda:tomar', 'comanda:enviar', 'cuenta:solicitar',
+    ],
 }
 
 // Roles de staff con permisos mínimos (se amplían en cada fase).
@@ -70,20 +73,13 @@ export const ROLES_STAFF = [
     {
         nombre: 'mesero',
         etiqueta: 'Mesero',
-        descripcion: 'Atiende mesas y toma comandas.',
-        permisos: ['pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear', ...PERMISOS_SALON.mesero],
-    },
-    {
-        nombre: 'anfitrion',
-        etiqueta: 'Anfitrión',
-        descripcion: 'Recibe clientes y gestiona reservas.',
-        permisos: ['reserva:ver', 'reserva:cambiar_estado', ...PERMISOS_SALON.anfitrion],
+        descripcion: 'Atiende mesas, toma comandas y gestiona las reservas.',
+        permisos: ['pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear', 'reserva:cambiar_estado', ...PERMISOS_SALON.mesero],
     },
     { nombre: 'cocina', etiqueta: 'Cocina', descripcion: 'Prepara los platos.', permisos: ['pedido:ver'] },
     { nombre: 'barista', etiqueta: 'Barista', descripcion: 'Prepara las bebidas.', permisos: ['pedido:ver'] },
     { nombre: 'cajero', etiqueta: 'Cajero', descripcion: 'Cobra cuentas y gestiona la caja.', permisos: ['pedido:ver'] },
     { nombre: 'repartidor', etiqueta: 'Repartidor', descripcion: 'Entrega pedidos a domicilio.', permisos: ['pedido:ver'] },
-    { nombre: 'compras', etiqueta: 'Compras', descripcion: 'Gestiona proveedores e inventario.', permisos: [] },
 ]
 
 export const tienePermiso = (permisosUsuario = [], clave) =>

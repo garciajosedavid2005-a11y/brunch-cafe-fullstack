@@ -20,18 +20,17 @@ describe('Permisos de salón (1.1)', () => {
         expect(guardados.every((p) => p.reservado === false)).toBe(true)
     })
 
-    it('mesero: ver y operar mesas, abrir y ver cuenta, tomar y enviar comanda, solicitar cuenta', async () => {
+    // 1.5b: el mesero asume también las tareas del anfitrión (rol eliminado)
+    it('mesero: mesas (ver, operar, bloquear, unir), cuentas (abrir, ver, transferir, solicitar), comandas y reservas', async () => {
         expect(await permisosDe('mesero')).toEqual([
-            'pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear',
-            'mesa:ver', 'mesa:operar', 'cuenta:abrir', 'cuenta:ver', 'comanda:tomar', 'comanda:enviar', 'cuenta:solicitar',
+            'pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear', 'reserva:cambiar_estado',
+            'mesa:ver', 'mesa:operar', 'mesa:bloquear', 'mesa:unir', 'cuenta:abrir', 'cuenta:ver', 'cuenta:transferir',
+            'comanda:tomar', 'comanda:enviar', 'cuenta:solicitar',
         ])
     })
 
-    it('anfitrión: ver, operar, bloquear y unir mesas, abrir y transferir cuenta', async () => {
-        expect(await permisosDe('anfitrion')).toEqual([
-            'reserva:ver', 'reserva:cambiar_estado',
-            'mesa:ver', 'mesa:operar', 'mesa:bloquear', 'mesa:unir', 'cuenta:abrir', 'cuenta:transferir',
-        ])
+    it('ya no existen los roles anfitrion ni compras (1.5b)', async () => {
+        expect(await Rol.countDocuments({ nombre: { $in: ['anfitrion', 'compras'] } })).toBe(0)
     })
 
     it('item:anular, cuenta:cerrar_sin_cobro y salon:configurar no los tiene ningún rol de staff (solo el admin con "*")', async () => {

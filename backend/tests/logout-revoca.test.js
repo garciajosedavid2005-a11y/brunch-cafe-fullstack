@@ -18,7 +18,7 @@ const loginCon = async (rol) => {
 const perfilCon = (cookie) => api().get('/api/v1/cliente/perfil').set('Cookie', cookie)
 
 describe('Cerrar sesión revoca el token del personal (1.1b)', () => {
-    it.each(['mesero', 'anfitrion', 'admin'])('%s: tras cerrar sesión, la cookie anterior recibe 401', async (rol) => {
+    it.each(['mesero', 'cocina', 'admin'])('%s: tras cerrar sesión, la cookie anterior recibe 401', async (rol) => {
         const { sesion, cookie } = await loginCon(rol)
         expect((await perfilCon(cookie)).status).toBe(200)
 

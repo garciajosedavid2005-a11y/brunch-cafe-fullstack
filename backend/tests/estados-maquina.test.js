@@ -105,33 +105,33 @@ describe('Transiciones de pedido', () => {
 })
 
 describe('Transiciones de reserva', () => {
-    const ANFITRION = ['reserva:ver', 'reserva:cambiar_estado']
+    const GESTOR_RESERVAS = ['reserva:ver', 'reserva:cambiar_estado']
 
     it('flujo completo: pendiente → confirmada → sentada → completada', () => {
         const flujo = ['pendiente', 'confirmada', 'sentada', 'completada']
         for (let i = 0; i < flujo.length - 1; i++) {
-            expect(() => validarTransicion('reserva', flujo[i], flujo[i + 1], { permisos: ANFITRION })).not.toThrow()
+            expect(() => validarTransicion('reserva', flujo[i], flujo[i + 1], { permisos: GESTOR_RESERVAS })).not.toThrow()
         }
     })
 
     it('no_show solo desde confirmada; cancelar desde pendiente o confirmada', () => {
-        expect(() => validarTransicion('reserva', 'confirmada', 'no_show', { permisos: ANFITRION })).not.toThrow()
-        expect(codigoError(() => validarTransicion('reserva', 'pendiente', 'no_show', { permisos: ANFITRION })))
+        expect(() => validarTransicion('reserva', 'confirmada', 'no_show', { permisos: GESTOR_RESERVAS })).not.toThrow()
+        expect(codigoError(() => validarTransicion('reserva', 'pendiente', 'no_show', { permisos: GESTOR_RESERVAS })))
             .toEqual({ status: 409, code: 'TRANSICION_INVALIDA' })
-        expect(() => validarTransicion('reserva', 'confirmada', 'cancelada', { permisos: ANFITRION, motivo: 'Llamó a cancelar' })).not.toThrow()
-        expect(codigoError(() => validarTransicion('reserva', 'sentada', 'cancelada', { permisos: ANFITRION, motivo: 'x' })))
+        expect(() => validarTransicion('reserva', 'confirmada', 'cancelada', { permisos: GESTOR_RESERVAS, motivo: 'Llamó a cancelar' })).not.toThrow()
+        expect(codigoError(() => validarTransicion('reserva', 'sentada', 'cancelada', { permisos: GESTOR_RESERVAS, motivo: 'x' })))
             .toEqual({ status: 409, code: 'TRANSICION_INVALIDA' })
     })
 
     it('staff cancela una reserva solo con motivo (0.7b)', () => {
         for (const de of ['pendiente', 'confirmada']) {
-            expect(codigoError(() => validarTransicion('reserva', de, 'cancelada', { permisos: ANFITRION })))
+            expect(codigoError(() => validarTransicion('reserva', de, 'cancelada', { permisos: GESTOR_RESERVAS })))
                 .toEqual({ status: 400, code: 'MOTIVO_REQUERIDO' })
         }
     })
 
     it('check-in sin confirmar: pendiente → sentada (staff) con motivo por defecto (0.7b)', () => {
-        expect(validarTransicion('reserva', 'pendiente', 'sentada', { permisos: ANFITRION }).motivo).toBe('check-in sin confirmar')
+        expect(validarTransicion('reserva', 'pendiente', 'sentada', { permisos: GESTOR_RESERVAS }).motivo).toBe('check-in sin confirmar')
         expect(codigoError(() => validarTransicion('reserva', 'pendiente', 'sentada', { permisos: ['reserva:ver'] })))
             .toEqual({ status: 403, code: 'FORBIDDEN' })
         expect(codigoError(() => validarTransicion('reserva', 'pendiente', 'sentada', { actor: 'cliente' })))

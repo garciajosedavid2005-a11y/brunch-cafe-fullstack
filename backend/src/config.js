@@ -17,7 +17,7 @@ const envSchema = z.object({
   MONGO_URI: z.string().min(1, 'MONGO_URI es requerido en el .env'),
   JWT_SECRET: z.string().min(1, 'JWT_SECRET es requerido en el .env'),
   JWT_EXPIRES_IN: duracionSchema.default('2h'),
-  // Personal sin "*" (mesero, anfitrión, cocina…) en tablets del local (F1-10)
+  // Personal sin "*" (mesero, cocina…) en tablets del local (F1-10)
   JWT_EXPIRES_IN_STAFF: duracionSchema.default('12h'),
   // Uno o varios orígenes separados por coma
   CLIENT_URL: z.string().default('http://localhost:5173'),
