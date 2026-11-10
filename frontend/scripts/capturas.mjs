@@ -34,7 +34,7 @@ const ANCHOS = (process.env.ANCHOS || "1280,1024,768").split(",").map(Number);
 const SOLO = process.env.SOLO ? process.env.SOLO.split(",") : null;
 const SALIDA = join(process.cwd(), "capturas", ETIQUETA);
 
-const SOLO_PUBLICAS = SOLO && SOLO.every((v) => ["inicio", "menu", "nosotros", "nosotros-ubicacion", "pie", "comentarios"].includes(v));
+const SOLO_PUBLICAS = SOLO && SOLO.every((v) => ["inicio", "menu", "login", "registro", "nosotros", "nosotros-ubicacion", "pie", "comentarios"].includes(v));
 if (!CLAVE && !SOLO_PUBLICAS) {
   console.error("Define DEV_USUARIOS_PASSWORD (≥ 10 caracteres) en el entorno o en backend/.env.");
   process.exit(1);
@@ -101,6 +101,9 @@ const abrirPestanaAdmin = (nombre) => async (page) => {
 const VISTAS = {
   inicio: { preparar: (p) => p.goto(`${FRONT}/`) },
   menu: { preparar: (p) => p.goto(`${FRONT}/menu`) },
+  // 1.5b · Login y registro (botón «Continuar con Google»), sin sesión
+  login: { preparar: (p) => p.goto(`${FRONT}/login`) },
+  registro: { preparar: (p) => p.goto(`${FRONT}/registro`) },
   nosotros: { preparar: (p) => p.goto(`${FRONT}/nosotros`) },
   // Tarjeta de ubicación de Nosotros y pie de página (horarios)
   "nosotros-ubicacion": {

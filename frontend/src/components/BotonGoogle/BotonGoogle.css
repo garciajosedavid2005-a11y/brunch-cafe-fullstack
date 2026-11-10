@@ -1,0 +1,66 @@
+/* 1.5b · Botón «Continuar con Google» (guías de marca de Google Identity, tema claro).
+   Fondo #FFFFFF, borde 1px #747775, texto #1F1F1F (~16:1), Roboto Medium 14/20, logo de 20 px con
+   10 px hasta el texto. Alto 44 px (el estándar de Google es 40; el proyecto exige ≥ 44). */
+.boton-google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #747775;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1f1f1f;
+  font-family: "Roboto", Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.25px;
+  cursor: pointer;
+  transition: background-color 0.218s, box-shadow 0.218s;
+}
+
+/* Estados de Google: capa del color del texto al 8 % (hover) y 12 % (pulsado) */
+.boton-google:hover {
+  background: #f2f2f2;
+  box-shadow: 0 1px 2px #3c404326, 0 1px 3px 1px #3c404326;
+}
+
+.boton-google:active {
+  background: #e9e9e9;
+}
+
+.boton-google:focus-visible {
+  outline: 3px solid var(--color-primario, #890620);
+  outline-offset: 2px;
+}
+
+.boton-google__logo {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.boton-google__texto {
+  color: #1f1f1f;
+  font-family: "Roboto", Arial, sans-serif; /* la regla base de span pondría Montserrat */
+}
+
+.boton-google__separador {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0;
+  color: #6a5752;
+  font-size: 0.85rem;
+}
+
+.boton-google__separador::before,
+.boton-google__separador::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e2d3cd;
+}

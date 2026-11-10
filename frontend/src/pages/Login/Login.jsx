@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import AuthBanner from "../Auth/AuthBanner";
+import BotonGoogle, { SeparadorO } from "../../components/BotonGoogle/BotonGoogle";
 import { useAuth } from "../../context/useAuth";
 import { rutaInicio } from "../../utils/permisos";
 import "../Auth/Auth.css";
@@ -163,7 +164,13 @@ const Login = () => {
             </div>
           </form>
 
-          <footer className="auth-footer-enlace auth-animar-item auth-delay-7">
+          {/* 1.5b · Sin integración real: solo avisa que estará disponible próximamente */}
+          <div className="auth-animar-item auth-delay-7 auth-google">
+            <SeparadorO />
+            <BotonGoogle />
+          </div>
+
+          <footer className="auth-footer-enlace auth-animar-item auth-delay-8">
             ¿Aún no tienes una cuenta?
             <Link to="/registro" className="auth-footer-link">
               Regístrate aquí

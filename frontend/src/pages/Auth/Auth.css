@@ -44,6 +44,7 @@
 .auth-delay-6 { animation-delay: 0.48s; }
 .auth-delay-7 { animation-delay: 0.54s; }
 .auth-delay-8 { animation-delay: 0.60s; }
+.auth-delay-9 { animation-delay: 0.66s; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    2. CONTENEDOR PRINCIPAL & ESTRUCTURA SPLIT-SCREEN
@@ -338,6 +339,12 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+.auth-google {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1.25rem;
 }
 
 .auth-form-fila-doble {

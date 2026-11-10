@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Mail, Phone, Lock, Eye, EyeOff, Sparkles } from "lucide-react";
 import AuthBanner from "../Auth/AuthBanner";
+import BotonGoogle, { SeparadorO } from "../../components/BotonGoogle/BotonGoogle";
 import { useAuth } from "../../context/useAuth";
 import "../Auth/Auth.css";
 
@@ -257,8 +258,14 @@ const Registro = () => {
             </div>
           </form>
 
+          {/* 1.5b · Sin integración real: solo avisa que estará disponible próximamente */}
+          <div className="auth-animar-item auth-delay-8 auth-google">
+            <SeparadorO />
+            <BotonGoogle />
+          </div>
+
           {/* Pie: Enlace a Login */}
-          <footer className="auth-footer-enlace auth-animar-item auth-delay-8">
+          <footer className="auth-footer-enlace auth-animar-item auth-delay-9">
             ¿Ya tienes una cuenta?
             <Link to="/login" className="auth-footer-link">
               Inicia sesión
