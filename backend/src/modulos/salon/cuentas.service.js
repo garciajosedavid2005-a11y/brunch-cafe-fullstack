@@ -6,6 +6,7 @@ import Zona from './zona.model.js'
 import Producto from '../catalogo/producto.model.js'
 import Categoria from '../catalogo/categoria.model.js'
 import Estacion from '../catalogo/estacion.model.js'
+import Usuario from '../identidad/usuario.model.js'
 import GrupoModificadores from '../catalogo/grupoModificadores.model.js'
 import { estacionEfectiva } from '../catalogo/estaciones.js'
 import { AppError } from '../compartido/errors.js'
@@ -20,7 +21,9 @@ import { calcularItem, subtotalRonda, totalesCuenta } from './totales.js'
 import {
     validar, abrirCuentaSchema, agregarItemSchema, modificarItemSchema, versionOpcionalSchema,
     enviarRondaSchema, cambioCuentaSchema, anularItemSchema, cambioMesaSchema,
+    transferirSchema, moverSchema, unirSchema,
 } from './cuentas.schema.js'
+import { MAX_MESAS_POR_CUENTA } from './cuenta.model.js'
 
 // 1.4 · Núcleo de cuenta y comanda (sin endpoints: llegan en 1.5 y reciben `sesion` = req.usuario).
 // Reglas:
@@ -195,6 +198,20 @@ const reabrirSiHaceFalta = async (cuenta, { sesion, session }) => {
     await cambiarEstadoCuenta(cuenta, 'abierta', { sesion, session, motivo: 'se agregó un ítem' })
 }
 
+/**
+ * F1-18: si en una cuenta pedida ya no queda ningún ítem enviado sin anular, vuelve sola a abierta
+ * (mesas → ocupada). Cancelar sigue sin permitirse (hubo envíos): la cierra el admin sin cobro.
+ */
+const reabrirSiTodoAnulado = async (cuenta, { sesion, session }) => {
+    if (cuenta.estado !== 'cuenta_pedida') return
+    const queda = await Comanda.exists({ cuenta: cuenta._id, estado: 'enviada', items: { $elemMatch: { estado: { $ne: 'anulado' } } } }).session(session)
+    if (queda) return
+    const motivo = 'se anularon todos los ítems'
+    MAQUINA_CUENTA.validar('cuenta_pedida', 'abierta', { via: 'sistema' })
+    await moverMesas(cuenta, 'cuenta_pedida', 'ocupada', { sesion, session, motivo })
+    await cambiarEstadoCuenta(cuenta, 'abierta', { sesion, session, motivo })
+}
+
 /** Borra la ronda en borrador (al cancelar o cerrar) y deja Evento con lo que tenía. */
 const descartarBorrador = async (cuenta, { sesion, session }) => {
     const borrador = await borradorDe(cuenta._id, session)
@@ -361,10 +378,10 @@ const exigirBorrador = (comanda) => {
     }
 }
 
-/** Cuenta.create; si el índice único dice que la mesa ya está en otra cuenta abierta (dato incoherente), 409. */
-const crearCuentaOConflicto = async (docs, opciones) => {
+/** Si el índice único dice que la mesa ya está en otra cuenta abierta (dato incoherente), 409 en vez de 500. */
+const siMesaEnOtraCuenta = async (operacion) => {
     try {
-        return await Cuenta.create(docs, opciones)
+        return await operacion()
     } catch (e) {
         if (e?.code === 11000 && 'mesas.mesa' in (e.keyPattern || {})) {
             throw error(409, 'MESAS_INCONSISTENTES',
@@ -373,6 +390,32 @@ const crearCuentaOConflicto = async (docs, opciones) => {
         throw e
     }
 }
+const crearCuentaOConflicto = (docs, opciones) => siMesaEnOtraCuenta(() => Cuenta.create(docs, opciones))
+
+/** 1.5 · El responsable de una cuenta: usuario activo cuyo rol puede tomar comandas. */
+const exigirMeseroValido = async (meseroId, session) => {
+    const usuario = await Usuario.findById(meseroId).select('activo rol').populate('rol', 'permisos').session(session).lean()
+    if (!usuario || usuario.activo === false || !tienePermiso(usuario.rol?.permisos || [], 'comanda:tomar')) {
+        throw error(400, 'MESERO_NO_VALIDO', 'Elige un usuario activo que pueda tomar comandas.')
+    }
+}
+
+const mesaNoEncontrada = () => error(404, 'MESA_NO_ENCONTRADA', 'La mesa no existe.')
+
+/** Mesa con cuenta abierta (para mover, unir y separar). */
+const mesaConCuenta = async (mesaId, session) => {
+    if (!mongoose.isValidObjectId(mesaId)) throw mesaNoEncontrada()
+    const mesa = await Mesa.findById(mesaId).session(session).lean()
+    if (!mesa) throw mesaNoEncontrada()
+    if (!mesa.cuentaActual) throw error(409, 'MESA_SIN_CUENTA', `La mesa ${mesa.numero} no tiene una cuenta abierta.`)
+    return mesa
+}
+
+/** «Toca» la zona activa (igual que al abrir: desactivarla a la vez entra en conflicto). */
+const tocarZonaActiva = (zonaId, session) =>
+    Zona.findOneAndUpdate({ _id: zonaId, activa: true }, { $currentDate: { updatedAt: true } }, { returnDocument: 'after', session })
+
+const copiaDeMesa = (mesa, zona) => ({ mesa: mesa._id, numero: mesa.numero, nombre: mesa.nombre || '', zona: zona._id, zonaNombre: zona.nombre })
 
 // ── Operaciones ────────────────────────────────────────────────────────────────────────
 export const obtenerCuenta = async (cuentaId, sesion) => {
@@ -386,7 +429,13 @@ export const obtenerCuenta = async (cuentaId, sesion) => {
 /** Abre la cuenta de una mesa libre (F1-7): mesa → ocupada y apunta a la cuenta. */
 export const abrirCuenta = async (datos, sesion) => {
     exigirPermiso(sesion, 'cuenta:abrir')
-    const { mesaId, comensales, notas } = validar(abrirCuentaSchema, datos)
+    const { mesaId, comensales, notas, meseroId } = validar(abrirCuentaSchema, datos)
+    const otroMesero = Boolean(meseroId) && meseroId !== String(sesion.id)
+    if (otroMesero) exigirPermiso(sesion, 'cuenta:transferir')
+    // El responsable puede tomar comandas: quien no puede (p. ej. el anfitrión) indica el mesero
+    if (!otroMesero && !tienePermiso(permisosDe(sesion), 'comanda:tomar')) {
+        throw error(400, 'MESERO_REQUERIDO', 'Elige el mesero que atenderá la mesa.')
+    }
     // Fuera de la transacción: un reintento no consume otro número (los huecos son aceptables)
     const codigo = `C-${String(await siguienteValor('cuenta')).padStart(6, '0')}`
 
@@ -400,6 +449,7 @@ export const abrirCuenta = async (datos, sesion) => {
             { _id: mesa.zona, activa: true }, { $currentDate: { updatedAt: true } }, { returnDocument: 'after', session },
         )
         if (!zona) throw noDisponible(`La zona de la mesa ${mesa.numero} está inactiva.`)
+        if (otroMesero) await exigirMeseroValido(meseroId, session)
 
         MAQUINA_MESA.validar('libre', 'ocupada', { via: 'sistema' })
         const cuentaId = new ObjectId()
@@ -414,8 +464,8 @@ export const abrirCuenta = async (datos, sesion) => {
             _id: cuentaId,
             codigo,
             canal: 'salon',
-            mesas: [{ mesa: mesa._id, numero: mesa.numero, nombre: mesa.nombre || '', zona: zona._id, zonaNombre: zona.nombre }],
-            mesero: sesion.id,
+            mesas: [copiaDeMesa(mesa, zona)],
+            mesero: otroMesero ? meseroId : sesion.id,
             comensales,
             estado: 'abierta',
             abiertaPor: sesion.id,
@@ -570,11 +620,12 @@ export const anularItem = async (cuentaId, itemId, datos, sesion) => {
         item.set({ estado: 'anulado', anulacion: { motivo, detalle: detalleMotivo || '', por: sesion.id, en: new Date() } })
         comanda.subtotal = subtotalRonda(comanda.items)
         await comanda.save({ session })
-        await guardarCuenta(cuenta, session)
         await registrarEvento({
             entidad: 'cuenta', entidadId: cuenta._id, tipo: 'item_anulado', de, a: 'anulado', motivo: texto, ...quien(sesion),
             datos: { comanda: comanda._id, numeroRonda: comanda.numeroRonda, item: resumenItem(item) }, session,
         })
+        await reabrirSiTodoAnulado(cuenta, { sesion, session })
+        await guardarCuenta(cuenta, session)
         return detalle(cuenta, session)
     })
 }
@@ -660,5 +711,171 @@ export const cambiarEstadoMesa = async (mesaId, datos, sesion) => {
         if (!actualizada) throw error(409, 'CONFLICTO_ESTADO', 'La mesa cambió mientras la editabas. Recarga e intenta de nuevo.')
         await registrarEvento({ entidad: 'mesa', entidadId: mesa._id, de: mesa.estado, a, motivo: texto, ...quien(sesion), session })
         return { id: String(actualizada._id), numero: actualizada.numero, estado: actualizada.estado }
+    })
+}
+
+// ── 1.5 · Transferir, mover, unir y separar (F1-8, F1-9) ───────────────────────────────
+/** F1-8: cambia el mesero responsable (cuenta:transferir, motivo opcional). */
+export const transferirCuenta = async (cuentaId, datos, sesion) => {
+    exigirPermiso(sesion, 'cuenta:transferir')
+    const { meseroId, motivo, versionEsperada } = validar(transferirSchema, datos)
+
+    return conTransaccion(async (session) => {
+        const cuenta = await tocarCuenta(cuentaId, { versionEsperada }, session)
+        if (String(cuenta.mesero) === meseroId) throw error(409, 'MISMO_MESERO', 'La cuenta ya es de ese mesero.')
+        await exigirMeseroValido(meseroId, session)
+        const anterior = cuenta.mesero
+        cuenta.mesero = meseroId
+        await guardarCuenta(cuenta, session)
+        await registrarEvento({
+            entidad: 'cuenta', entidadId: cuenta._id, tipo: 'cuenta_transferida', motivo: motivo || '', ...quien(sesion),
+            datos: { de: anterior, a: new ObjectId(meseroId) }, session,
+        })
+        return detalle(cuenta, session)
+    })
+}
+
+/**
+ * Mueve la cuenta de una mesa a otra libre (mesa:operar), con la cuenta abierta (no pedida). Si la
+ * cuenta tiene mesas unidas, el destino debe ser de la misma zona y combinable (F1-1). La mesa que
+ * se deja pasa a por limpiar.
+ */
+export const moverCuenta = async (mesaOrigenId, datos, sesion) => {
+    exigirPermiso(sesion, 'mesa:operar')
+    const { mesaDestinoId, versionEsperada } = validar(moverSchema, datos)
+    if (mesaDestinoId === String(mesaOrigenId)) throw error(400, 'MESA_DESTINO_NO_VALIDA', 'Elige una mesa distinta.')
+
+    return conTransaccion(async (session) => {
+        const origen = await mesaConCuenta(mesaOrigenId, session)
+        const cuenta = await tocarCuenta(origen.cuentaActual, { versionEsperada, estados: ['abierta'] }, session)
+        const destino = await Mesa.findById(mesaDestinoId).session(session).lean()
+        if (!destino) throw mesaNoEncontrada()
+        if (!destino.activa || destino.estado !== 'libre' || destino.cuentaActual) {
+            throw error(409, 'MESA_NO_DISPONIBLE', `La mesa ${destino.numero} no está libre.`, { estado: destino.estado })
+        }
+        if (cuenta.mesas.length > 1 && (String(destino.zona) !== String(origen.zona) || !destino.combinable)) {
+            throw error(409, 'MESA_NO_COMBINABLE', `La cuenta tiene mesas unidas: la mesa ${destino.numero} debe ser de la misma zona y combinable.`)
+        }
+        const zona = await tocarZonaActiva(destino.zona, session)
+        if (!zona) throw error(409, 'MESA_NO_DISPONIBLE', `La zona de la mesa ${destino.numero} está inactiva.`)
+
+        MAQUINA_MESA.validar('ocupada', 'por_limpiar', { via: 'sistema' })
+        MAQUINA_MESA.validar('libre', 'ocupada', { via: 'sistema' })
+        const dejada = await Mesa.updateOne(
+            { _id: origen._id, cuentaActual: cuenta._id, estado: 'ocupada' },
+            { $set: { estado: 'por_limpiar', cuentaActual: null } }, { session, runValidators: true },
+        )
+        const ocupada = await Mesa.updateOne(
+            { _id: destino._id, activa: true, estado: 'libre', cuentaActual: null },
+            { $set: { estado: 'ocupada', cuentaActual: cuenta._id } }, { session, runValidators: true },
+        )
+        if (dejada.matchedCount !== 1 || ocupada.matchedCount !== 1) {
+            throw error(409, 'MESAS_INCONSISTENTES', 'Las mesas cambiaron mientras movías la cuenta. Recarga e intenta de nuevo.')
+        }
+        const posicion = cuenta.mesas.findIndex((m) => String(m.mesa) === String(origen._id))
+        if (posicion === -1) throw error(409, 'MESAS_INCONSISTENTES', 'La mesa no figura en su cuenta. Avisa al administrador (npm run verificar:salon).')
+        cuenta.mesas.splice(posicion, 1, copiaDeMesa(destino, zona))
+        await siMesaEnOtraCuenta(() => guardarCuenta(cuenta, session))
+
+        const datosEvento = { cuenta: cuenta._id, codigo: cuenta.codigo, de: origen.numero, a: destino.numero }
+        const motivo = `cuenta movida de la mesa ${origen.numero} a la ${destino.numero}`
+        await registrarEvento({ entidad: 'mesa', entidadId: origen._id, de: 'ocupada', a: 'por_limpiar', motivo, ...quien(sesion), datos: datosEvento, session })
+        await registrarEvento({ entidad: 'mesa', entidadId: destino._id, de: 'libre', a: 'ocupada', motivo, ...quien(sesion), datos: datosEvento, session })
+        await registrarEvento({ entidad: 'cuenta', entidadId: cuenta._id, tipo: 'mesa_movida', motivo, ...quien(sesion), datos: datosEvento, session })
+        return detalle(cuenta, session)
+    })
+}
+
+/**
+ * F1-9: une mesas libres a la cuenta abierta de la mesa principal (mesa:unir). Todas de la misma
+ * zona, activas y combinables (F1-1); comparten la cuenta. Unir dos cuentas no se permite (Fase 3).
+ */
+export const unirMesas = async (datos, sesion) => {
+    exigirPermiso(sesion, 'mesa:unir')
+    const { principalId, mesaIds, versionEsperada } = validar(unirSchema, datos)
+    if (new Set(mesaIds).size !== mesaIds.length || mesaIds.includes(principalId)) {
+        throw error(400, 'MESAS_REPETIDAS', 'Hay mesas repetidas en la unión.')
+    }
+
+    return conTransaccion(async (session) => {
+        const principal = await mesaConCuenta(principalId, session)
+        const cuenta = await tocarCuenta(principal.cuentaActual, { versionEsperada, estados: ['abierta'] }, session)
+        if (cuenta.mesas.length + mesaIds.length > MAX_MESAS_POR_CUENTA) {
+            throw error(409, 'DEMASIADAS_MESAS', `Una cuenta tiene como máximo ${MAX_MESAS_POR_CUENTA} mesas.`)
+        }
+        const nuevas = await Mesa.find({ _id: { $in: mesaIds } }).sort({ numero: 1 }).session(session).lean()
+        if (nuevas.length !== mesaIds.length) throw mesaNoEncontrada()
+        const noCombinables = [principal, ...nuevas].filter((m) => !m.combinable || String(m.zona) !== String(principal.zona))
+        if (noCombinables.length) {
+            throw error(409, 'MESA_NO_COMBINABLE',
+                `Solo se unen mesas combinables de la misma zona (mesa ${noCombinables.map((m) => m.numero).join(', ')}).`,
+                { mesas: noCombinables.map((m) => m.numero) })
+        }
+        const ocupadas = nuevas.filter((m) => !m.activa || m.estado !== 'libre' || m.cuentaActual)
+        if (ocupadas.length) {
+            throw error(409, 'MESA_NO_DISPONIBLE', `La mesa ${ocupadas.map((m) => m.numero).join(', ')} no está libre.`,
+                { mesas: ocupadas.map((m) => m.numero) })
+        }
+        const zona = await tocarZonaActiva(principal.zona, session)
+        if (!zona) throw error(409, 'MESA_NO_DISPONIBLE', 'La zona de estas mesas está inactiva.')
+
+        MAQUINA_MESA.validar('libre', 'ocupada', { via: 'sistema' })
+        const { matchedCount } = await Mesa.updateMany(
+            { _id: { $in: nuevas.map((m) => m._id) }, activa: true, estado: 'libre', cuentaActual: null },
+            { $set: { estado: 'ocupada', cuentaActual: cuenta._id } }, { session, runValidators: true },
+        )
+        if (matchedCount !== nuevas.length) throw error(409, 'MESA_NO_DISPONIBLE', 'Alguna mesa dejó de estar libre. Recarga e intenta de nuevo.')
+        cuenta.mesas.push(...nuevas.map((m) => copiaDeMesa(m, zona)))
+        await siMesaEnOtraCuenta(() => guardarCuenta(cuenta, session))
+
+        for (const m of nuevas) {
+            await registrarEvento({
+                entidad: 'mesa', entidadId: m._id, de: 'libre', a: 'ocupada', motivo: `unida a la mesa ${principal.numero}`, ...quien(sesion),
+                datos: { cuenta: cuenta._id, codigo: cuenta.codigo, principal: principal.numero }, session,
+            })
+        }
+        await registrarEvento({
+            entidad: 'cuenta', entidadId: cuenta._id, tipo: 'mesas_unidas', ...quien(sesion),
+            datos: { principal: principal.numero, mesas: nuevas.map((m) => m.numero) }, session,
+        })
+        return detalle(cuenta, session)
+    })
+}
+
+/**
+ * F1-9: separa una mesa de su cuenta (mesa:unir) mientras la cuenta no tenga ítems enviados
+ * (también si se anularon, como al cancelar). La mesa separada pasa a por limpiar.
+ */
+export const separarMesa = async (mesaId, datos, sesion) => {
+    exigirPermiso(sesion, 'mesa:unir')
+    const { versionEsperada } = validar(versionOpcionalSchema, datos)
+
+    return conTransaccion(async (session) => {
+        const mesa = await mesaConCuenta(mesaId, session)
+        const cuenta = await tocarCuenta(mesa.cuentaActual, { versionEsperada, estados: ['abierta'] }, session)
+        if (!cuenta.mesas.some((m) => String(m.mesa) === String(mesa._id))) {
+            throw error(409, 'MESAS_INCONSISTENTES', 'La mesa no figura en su cuenta. Avisa al administrador (npm run verificar:salon).')
+        }
+        if (cuenta.mesas.length < 2) throw error(409, 'MESA_NO_UNIDA', `La mesa ${mesa.numero} no está unida a otras.`)
+        if (await Comanda.exists({ cuenta: cuenta._id, estado: 'enviada' }).session(session)) {
+            throw error(409, 'CUENTA_CON_ITEMS_ENVIADOS',
+                'La cuenta ya tiene ítems enviados: las mesas no se separan (la división de la cuenta llega en la Fase 3).')
+        }
+        MAQUINA_MESA.validar('ocupada', 'por_limpiar', { via: 'sistema' })
+        const { matchedCount } = await Mesa.updateOne(
+            { _id: mesa._id, cuentaActual: cuenta._id, estado: 'ocupada' },
+            { $set: { estado: 'por_limpiar', cuentaActual: null } }, { session, runValidators: true },
+        )
+        if (matchedCount !== 1) throw error(409, 'MESAS_INCONSISTENTES', 'La mesa cambió mientras la separabas. Recarga e intenta de nuevo.')
+        cuenta.mesas = cuenta.mesas.filter((m) => String(m.mesa) !== String(mesa._id))
+        await guardarCuenta(cuenta, session)
+
+        const motivo = `separada de la cuenta ${cuenta.codigo}`
+        await registrarEvento({
+            entidad: 'mesa', entidadId: mesa._id, de: 'ocupada', a: 'por_limpiar', motivo, ...quien(sesion),
+            datos: { cuenta: cuenta._id, codigo: cuenta.codigo }, session,
+        })
+        await registrarEvento({ entidad: 'cuenta', entidadId: cuenta._id, tipo: 'mesa_separada', ...quien(sesion), datos: { mesa: mesa.numero }, session })
+        return detalle(cuenta, session)
     })
 }

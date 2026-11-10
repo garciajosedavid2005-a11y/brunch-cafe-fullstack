@@ -556,6 +556,37 @@ describe('Solicitar la cuenta', () => {
             .toMatchObject({ status: 409, code: 'RONDA_PENDIENTE' })
     })
 
+    it('F1-18: anular el último ítem no anulado de una cuenta pedida la reabre (cuenta abierta, mesa ocupada, con Evento)', async () => {
+        const cuenta = await abrir()
+        await agregarLatte(cuenta)
+        await agregarLatte(cuenta)
+        const enviada = await enviar(cuenta.id)
+        const pedida = await solicitarCuenta(cuenta.id, { versionEsperada: enviada.version }, mesero)
+        const [primero, segundo] = pedida.rondas[0].items
+
+        // Queda uno sin anular: sigue pedida
+        const unaAnulada = await anularItem(cuenta.id, primero.id, { motivo: 'error_toma' }, admin)
+        expect(unaAnulada.estado).toBe('cuenta_pedida')
+        expect((await Mesa.findById(mesa._id).lean()).estado).toBe('cuenta_pedida')
+
+        // Era el último: vuelve sola a abierta y la mesa a ocupada
+        const reabierta = await anularItem(cuenta.id, segundo.id, { motivo: 'demora' }, admin)
+        expect(reabierta).toMatchObject({ estado: 'abierta', subtotal: 0, total: 0 })
+        expect((await Mesa.findById(mesa._id).lean()).estado).toBe('ocupada')
+        const deCuenta = await eventos({ entidad: 'cuenta', entidadId: new ObjectId(cuenta.id), tipo: 'cambio_estado' })
+        expect(deCuenta.at(-1)).toMatchObject({ de: 'cuenta_pedida', a: 'abierta', usuario: new ObjectId(admin.id) })
+        expect(deCuenta.at(-1).motivo).toMatch(/anul/i)
+        const deMesa = await eventos({ entidad: 'mesa', entidadId: mesa._id })
+        expect(deMesa.at(-1)).toMatchObject({ de: 'cuenta_pedida', a: 'ocupada' })
+
+        // Cancelar sigue sin permitirse (hubo ítems enviados): la cierra el admin sin cobro
+        expect(await error(cancelarCuenta(cuenta.id, { motivo: 'x', versionEsperada: reabierta.version }, mesero)))
+            .toMatchObject({ status: 409, code: 'CUENTA_CON_ITEMS_ENVIADOS' })
+        const cerrada = await cerrarSinCobro(cuenta.id, { motivo: 'todo anulado', versionEsperada: reabierta.version }, admin)
+        expect(cerrada.estado).toBe('cerrada_sin_cobro')
+        expect(await verificarConsistenciaSalon()).toMatchObject({ ok: true })
+    })
+
     it('exige cuenta:solicitar y la versión vigente', async () => {
         const enviada = await cuentaConEnvio()
         expect(await error(solicitarCuenta(enviada.id, { versionEsperada: enviada.version }, anfitrion)))

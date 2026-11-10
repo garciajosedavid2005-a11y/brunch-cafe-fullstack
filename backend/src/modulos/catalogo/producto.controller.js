@@ -80,7 +80,7 @@ export const listarCatalogo = async (req, res) => {
 }
 
 // Estación efectiva y grupos ACTIVOS de cada producto (opciones agotadas incluidas, con disponible)
-const extrasDeModificadores = async (productos) => {
+export const extrasDeModificadores = async (productos) => {
     // Un producto cuya categoría ya no existe queda sin estación (no rompe el catálogo)
     const idsCategorias = [...new Set(productos.map((p) => p.categoria?._id).filter(Boolean).map(String))]
     const idsGrupos = [...new Set(productos.flatMap((p) => (p.gruposModificadores || []).map(String)))]

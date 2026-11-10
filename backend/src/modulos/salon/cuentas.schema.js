@@ -3,14 +3,17 @@ import mongoose from 'mongoose'
 import { requerido, textoOpcional } from '../compartido/comunes.schema.js'
 import { AppError, detallesZod } from '../compartido/errors.js'
 import { MOTIVOS_ANULACION } from '../compartido/estadosSalon.js'
-import { MAX_COMENSALES } from './cuenta.model.js'
+import { MAX_COMENSALES, MAX_MESAS_POR_CUENTA } from './cuenta.model.js'
 import { MAX_CANTIDAD } from './comanda.model.js'
 import { MAX_SELECCION } from '../catalogo/grupoModificadores.model.js'
 import { MAX_GRUPOS_POR_PRODUCTO } from '../catalogo/producto.model.js'
 
 // 1.4 · Entradas del servicio de cuentas (los endpoints de 1.5 las reutilizan). Solo se aceptan los
 // campos declarados (strict): precios, estados o el mesero nunca llegan del cliente.
-const id = (campo) => z.string(requerido(campo)).refine(mongoose.isValidObjectId, { error: `${campo} no es válido` })
+// En minúsculas: '65AB…' y '65ab…' son el mismo ObjectId (las comparaciones de texto no se equivocan)
+const id = (campo) => z.string(requerido(campo))
+    .refine(mongoose.isValidObjectId, { error: `${campo} no es válido` })
+    .transform((valor) => valor.toLowerCase())
 const enteroEntre = (campo, min, max) => z.number(requerido(campo))
     .int({ error: `${campo} debe ser un número entero` })
     .min(min, { error: `${campo} debe ser al menos ${min}` })
@@ -25,6 +28,19 @@ export const abrirCuentaSchema = z.strictObject({
     mesaId: id('La mesa'),
     comensales: enteroEntre('Los comensales', 1, MAX_COMENSALES),
     notas: textoOpcional('Las notas', 300),
+    // 1.5 · Otro responsable distinto de quien abre exige cuenta:transferir (F1-8)
+    meseroId: id('El mesero').optional(),
+})
+
+// 1.5 · Transferir, mover, unir y separar (F1-8, F1-9). La versión es opcional (como al agregar).
+export const transferirSchema = z.strictObject({ meseroId: id('El mesero'), motivo, versionEsperada: version(false) })
+export const moverSchema = z.strictObject({ mesaDestinoId: id('La mesa de destino'), versionEsperada: version(false) })
+export const unirSchema = z.strictObject({
+    principalId: id('La mesa principal'),
+    mesaIds: z.array(id('La mesa'), { error: 'Indica las mesas que quieres unir' })
+        .min(1, { error: 'Elige al menos una mesa para unir' })
+        .max(MAX_MESAS_POR_CUENTA - 1, { error: `Una cuenta tiene como máximo ${MAX_MESAS_POR_CUENTA} mesas` }),
+    versionEsperada: version(false),
 })
 
 export const agregarItemSchema = z.strictObject({

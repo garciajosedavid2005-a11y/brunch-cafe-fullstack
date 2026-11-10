@@ -3,6 +3,8 @@ import { crearConSesion } from './helpers/usuarios.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
 import Pedido from '../src/modulos/pedidos/pedido.model.js'
 import { categoriaDePrueba } from './helpers/datos.js'
+import SolicitudIdempotente from '../src/modulos/compartido/solicitudIdempotente.model.js'
+import { EN_CURSO_MAXIMO_MS } from '../src/modulos/compartido/idempotencia.js'
 
 describe('Idempotency-Key en la creación de pedidos (0.9)', () => {
     let cliente
@@ -74,5 +76,54 @@ describe('Idempotency-Key en la creación de pedidos (0.9)', () => {
         const repetida = await cliente.post('/api/v1/cliente/pedidos').set('Idempotency-Key', 'alias-0001').send(cuerpo)
         expect(repetida.headers['idempotent-replayed']).toBe('true')
         expect(await Pedido.countDocuments()).toBe(1)
+    })
+
+    // 1.5 · Si el proceso cae a mitad de una petición, la clave no queda «en curso» 24 h
+    describe('clave que quedó en curso (el proceso cayó)', () => {
+        /** Deja la clave como si el proceso hubiera caído hace `msAtras` con la petición a medias. */
+        const dejarEnCurso = async (clave, msAtras) => {
+            expect((await pedir(clave)).status).toBe(201)
+            await Pedido.deleteMany({})
+            await SolicitudIdempotente.updateOne(
+                { clave },
+                { $set: { estado: 'en_proceso', createdAt: new Date(Date.now() - msAtras) }, $unset: { status: '', cuerpo: '' } },
+            )
+        }
+
+        it('caduca en pocos minutos (no 24 h)', () => {
+            expect(EN_CURSO_MAXIMO_MS).toBeGreaterThanOrEqual(60_000)
+            expect(EN_CURSO_MAXIMO_MS).toBeLessThanOrEqual(5 * 60_000)
+        })
+
+        it('reciente → 409 IDEMPOTENCY_IN_PROGRESS', async () => {
+            await dejarEnCurso('caida-reciente', 10_000)
+            const res = await pedir('caida-reciente')
+            expect(res.status).toBe(409)
+            expect(res.body.error.code).toBe('IDEMPOTENCY_IN_PROGRESS')
+            expect(await Pedido.countDocuments()).toBe(0)
+        })
+
+        it('vencida → la petición se procesa de nuevo y la clave queda completada', async () => {
+            await dejarEnCurso('caida-vencida', EN_CURSO_MAXIMO_MS + 1000)
+            const res = await pedir('caida-vencida')
+            expect(res.status).toBe(201)
+            expect(res.headers['idempotent-replayed']).toBeUndefined()
+            expect(await Pedido.countDocuments()).toBe(1)
+            const repetida = await pedir('caida-vencida')
+            expect(repetida.headers['idempotent-replayed']).toBe('true')
+            expect(await Pedido.countDocuments()).toBe(1)
+        })
+
+        it('vencida con otros datos → 422 (la huella sigue mandando)', async () => {
+            await dejarEnCurso('caida-otra', EN_CURSO_MAXIMO_MS + 1000)
+            expect((await pedir('caida-otra', { ...cuerpo, barrio: 'Norte' })).status).toBe(422)
+        })
+
+        it('dos reintentos simultáneos sobre una clave vencida: solo uno la retoma', async () => {
+            await dejarEnCurso('caida-doble', EN_CURSO_MAXIMO_MS + 1000)
+            const respuestas = await Promise.all([pedir('caida-doble'), pedir('caida-doble')])
+            expect(respuestas.map((r) => r.status).sort()).toEqual([201, 409])
+            expect(await Pedido.countDocuments()).toBe(1)
+        })
     })
 })

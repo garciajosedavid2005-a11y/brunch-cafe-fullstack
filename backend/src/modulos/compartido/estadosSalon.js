@@ -36,6 +36,8 @@ export const MAQUINA_CUENTA = crearMaquina({
     transiciones: [
         { de: 'abierta', a: 'cuenta_pedida', permiso: 'cuenta:solicitar' },
         { de: 'cuenta_pedida', a: 'abierta', permiso: 'comanda:tomar' }, // agregar un ítem la reabre (D2)
+        // F1-18: anular el último ítem no anulado la reabre sola (consecuencia de la anulación ya autorizada)
+        { de: 'cuenta_pedida', a: 'abierta', via: 'sistema' },
         { de: ['abierta', 'cuenta_pedida'], a: 'cerrada_sin_cobro', permiso: 'cuenta:cerrar_sin_cobro', requiereMotivo: true },
         // Cobro: Fase 3, sin uso aún. Permiso provisional: quién cobra y cierra se decide en la Fase 3
         { de: 'cuenta_pedida', a: 'cerrada', permiso: 'caja:cerrar' },
