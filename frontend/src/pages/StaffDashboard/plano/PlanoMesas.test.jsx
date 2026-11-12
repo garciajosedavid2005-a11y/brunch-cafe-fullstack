@@ -215,12 +215,22 @@ describe("Plano de mesas", () => {
     expect(JSON.parse(llamadasA("/v1/staff/salon/mesas/unir")[0][1].body)).toEqual({ principalId: "m1", mesaIds: ["m2"], versionEsperada: 4 });
   });
 
-  it("una mesa no combinable no ofrece «Unir mesas»: dice dónde cambiarlo", async () => {
+  // 1.7b · El mesero solo ve que no es combinable; dónde cambiarlo, solo quien configura el salón
+  it("una mesa no combinable no ofrece «Unir mesas»: el mesero solo ve el aviso, sin dónde cambiarlo", async () => {
     respuestas.plano = { ...PLANO(), mesas: [mesa(1, "ocupada", { combinable: false, cuenta: cuenta() }), mesa(2, "libre")] };
     pintar();
     fireEvent.click(await screen.findByRole("button", { name: /^Mesa 1\b/ }));
     const panel = screen.getByRole("region", { name: "Mesa 1" });
     expect(within(panel).queryByRole("button", { name: "Unir mesas" })).not.toBeInTheDocument();
+    expect(within(panel).getByText("Esta mesa no es combinable")).toBeInTheDocument();
+    expect(within(panel).queryByText(/Admin › Salón/)).not.toBeInTheDocument();
+  });
+
+  it("con salon:configurar el aviso dice dónde cambiarlo", async () => {
+    respuestas.plano = { ...PLANO(), mesas: [mesa(1, "ocupada", { combinable: false, cuenta: cuenta() }), mesa(2, "libre")] };
+    pintar([...MESERO, "salon:configurar"]);
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 1\b/ }));
+    const panel = screen.getByRole("region", { name: "Mesa 1" });
     expect(within(panel).getByText("Esta mesa no es combinable (cámbialo en Admin › Salón)")).toBeInTheDocument();
   });
 

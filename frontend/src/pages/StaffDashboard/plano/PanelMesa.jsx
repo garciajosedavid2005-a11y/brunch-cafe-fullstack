@@ -223,7 +223,10 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
           </button>
         )}
         {abierta && !mesa.combinable && puede(permisos, "mesa:unir") && (
-          <p className="panel-mesa__nota panel-mesa__nota--recuadro">Esta mesa no es combinable (cámbialo en Admin › Salón)</p>
+          <p className="panel-mesa__nota panel-mesa__nota--recuadro">
+            {/* 1.7b · Dónde cambiarlo solo le sirve a quien configura el salón */}
+            {puede(permisos, "salon:configurar") ? "Esta mesa no es combinable (cámbialo en Admin › Salón)" : "Esta mesa no es combinable"}
+          </p>
         )}
         {abierta && cuenta.mesas.length > 1 && puede(permisos, "mesa:unir") && (
           <button type="button" className="plano__boton plano__boton--secundario" disabled={enviando} onClick={separar}>
