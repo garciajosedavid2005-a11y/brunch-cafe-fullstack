@@ -4,7 +4,7 @@
 
 **Siguiente: Fase 2 (cocina y barra, KDS).** Plan en [PLAN_FASE_2.md](PLAN_FASE_2.md), escrito el 2026-11-12, sin código: espera las respuestas de Brayan a sus preguntas de negocio (sección 5).
 
-Plan en [PLAN_FASE_1.md](PLAN_FASE_1.md), con las preguntas de negocio respondidas (F1-1 a F1-16; F1-17 en 1.4). Orden: 1.1 → 1.10 (1.8 pasa a la Fase 6).
+Plan en [PLAN_FASE_1.md](PLAN_FASE_1.md), con las preguntas de negocio respondidas (F1-1 a F1-16; F1-17 en 1.4). Orden: 1.1 → 1.13 (1.8 pasa a la Fase 6; 1.11–1.13 pedidos tras las pruebas).
 
 ### Ítems Fase 1
 
