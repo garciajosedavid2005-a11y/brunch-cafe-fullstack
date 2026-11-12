@@ -4,6 +4,7 @@ import {
   CalendarCheck2,
   CalendarDays,
   Clock3,
+  LayoutGrid,
   ListOrdered,
   Plus,
   ShieldCheck,
@@ -18,6 +19,7 @@ import { formatearCOP } from "../../utils/moneda";
 import { claseEstado } from "../AdminDashboard/components/estadoUtils";
 import ProfileSection from "../CustomerDashboard/sections/ProfileSection";
 import SecuritySection from "../CustomerDashboard/sections/SecuritySection";
+import PlanoMesas from "./plano/PlanoMesas";
 import "./StaffDashboard.css";
 import "../CustomerDashboard/CustomerDashboard.css";
 
@@ -35,7 +37,9 @@ export default function StaffDashboard() {
   const puedeVerReservas = permisos.includes("reserva:ver");
   const puedeCrearReservas = permisos.includes("reserva:crear");
   const puedeVerPedidos = permisos.includes("pedido:ver");
-  const [seccion, setSeccion] = useState("resumen");
+  const puedeVerMesas = permisos.includes("mesa:ver") || permisos.includes("*");
+  // Con mesa:ver, el panel abre primero el plano de mesas (decisión 1.6 del 2026-11-07)
+  const [seccion, setSeccion] = useState(() => (puedeVerMesas ? "mesas" : "resumen"));
   const [estadoReservas, setEstadoReservas] = useState(() => ({
     permiso: puedeVerReservas,
     datos: [],
@@ -111,6 +115,7 @@ export default function StaffDashboard() {
   const siguienteReserva = reservasHoy.find((reserva) => String(reserva.hora) >= ahora);
 
   const navigation = [
+    ...(puedeVerMesas ? [{ id: "mesas", label: "Mesas", icon: LayoutGrid }] : []),
     { id: "resumen", label: "Resumen", icon: CalendarCheck2 },
     ...(puedeVerReservas || puedeCrearReservas
       ? [{ id: "reservas", label: "Reservas", icon: CalendarDays }]
@@ -151,59 +156,54 @@ export default function StaffDashboard() {
     }
   };
 
+  // 1.6 · Layout propio para tablet (sin navbar ni pie del sitio): cabecera compacta, pestañas
+  // táctiles y el contenido a todo el ancho
   return (
-    <main className="customer-dashboard staff-dashboard">
-      <header className="customer-dashboard__header staff-dashboard__header">
-        <div>
-          <span className="customer-dashboard__eyebrow">BRUNCH CAFÉ · ÁREA DE SALA</span>
-          <h1>Hola, {user?.nombre}</h1>
-          <p>Resumen del turno y acceso a los módulos habilitados para tu rol.</p>
+    <main className="staff-tablet">
+      <header className="staff-tablet__cabecera">
+        <div className="staff-tablet__marca">
+          <span className="staff-tablet__marca-nombre">Brunch Café</span>
+          <span className="staff-tablet__marca-area">Sala</span>
         </div>
-        <div className="staff-dashboard__header-actions">
+        <div className="staff-tablet__usuario">
+          <h1 className="staff-tablet__hola">Hola, {user?.nombre}</h1>
+          <strong className="staff-tablet__rol">{user?.roleLabel || "Personal"}</strong>
+        </div>
+        <div className="staff-tablet__acciones">
           {puedeCrearReservas && (
-            <button
-              className="dashboard-button staff-dashboard__reserve-button"
-              type="button"
-              onClick={() => navigate("/reservas")}
-            >
-              <Plus size={18} />
+            <button className="staff-tablet__boton" type="button" onClick={() => navigate("/reservas")}>
+              <Plus size={18} aria-hidden="true" />
               Nueva reserva
             </button>
           )}
-          <button
-            className="dashboard-button dashboard-button--secondary"
-            type="button"
-            onClick={cambiarDeUsuario}
-          >
+          <button className="staff-tablet__boton staff-tablet__boton--cambiar" type="button" onClick={cambiarDeUsuario}>
             <UserRoundCog size={18} aria-hidden="true" />
             Cambiar de usuario
           </button>
         </div>
       </header>
 
-      {errorPanel && <p className="dashboard-notice is-error" role="alert">{errorPanel}</p>}
+      <nav className="staff-tablet__nav" aria-label="Secciones del panel de personal">
+        {navigation.map(({ id, label, icon }) => (
+          <button
+            key={id}
+            type="button"
+            className={seccion === id ? "is-active" : ""}
+            aria-current={seccion === id ? "page" : undefined}
+            onClick={() => setSeccion(id)}
+          >
+            {createElement(icon, { size: 20, "aria-hidden": true })}
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
 
-      <div className="customer-dashboard__layout">
-        <nav className="customer-dashboard__nav" aria-label="Secciones del panel de personal">
-          <span className="staff-dashboard__nav-title">Panel de sala</span>
-          {navigation.map(({ id, label, icon }) => (
-            <button
-              key={id}
-              type="button"
-              className={seccion === id ? "is-active" : ""}
-              aria-current={seccion === id ? "page" : undefined}
-              onClick={() => setSeccion(id)}
-            >
-              {createElement(icon, { size: 19, "aria-hidden": true })}
-              <span>{label}</span>
-            </button>
-          ))}
-          <div className="staff-dashboard__nav-note">
-            <strong>{user?.roleLabel || "Personal"}</strong>
-            <span>El menú muestra solo los módulos autorizados para tu cuenta.</span>
-          </div>
-        </nav>
+      {errorPanel && <p className="dashboard-notice is-error staff-tablet__aviso" role="alert">{errorPanel}</p>}
 
+      <div className="staff-tablet__contenido">
+        {seccion === "mesas" && <PlanoMesas permisos={permisos} />}
+
+        {seccion !== "mesas" && (
         <section className="customer-dashboard__content" aria-live="polite">
           {seccion === "resumen" && (
             <div>
@@ -417,6 +417,7 @@ export default function StaffDashboard() {
           {seccion === "perfil" && <ProfileSection />}
           {seccion === "seguridad" && <SecuritySection />}
         </section>
+        )}
       </div>
     </main>
   );

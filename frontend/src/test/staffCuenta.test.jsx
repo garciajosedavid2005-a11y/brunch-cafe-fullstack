@@ -40,6 +40,21 @@ describe("Rutas de staff", () => {
     expect(screen.queryByText(/panel de administración/i)).not.toBeInTheDocument();
   });
 
+  it("en /staff el personal usa el layout de tablet: sin la navegación ni el pie del sitio (1.6)", async () => {
+    responder(usuario("mesero", "Mesero", { permisos: ["pedido:ver"] }));
+    abrir("/staff");
+    expect(await screen.findByRole("navigation", { name: /secciones del panel de personal/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Menú" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cambiar de usuario" })).toBeInTheDocument();
+  });
+
+  it("con mesa:ver, /staff abre primero el plano de mesas (1.6)", async () => {
+    responder(usuario("mesero", "Mesero", { permisos: ["mesa:ver"] }));
+    abrir("/staff");
+    expect(await screen.findByRole("heading", { name: "Plano de mesas" })).toBeInTheDocument();
+  });
+
   it("la ruta vieja /mesero redirige a /staff", async () => {
     responder(usuario("mesero", "Mesero", { permisos: ["pedido:ver"] }));
     abrir("/mesero");

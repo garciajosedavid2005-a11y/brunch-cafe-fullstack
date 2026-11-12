@@ -30,7 +30,11 @@ const leerClave = async () => {
 };
 const CLAVE = await leerClave();
 const ETIQUETA = process.argv[2] || "actual";
-const ANCHOS = (process.env.ANCHOS || "1280,1024,768").split(",").map(Number);
+// Cada tamaño es un ancho (alto 900, página completa) o ANCHOxALTO (1.6: pantalla de tablet, solo lo visible)
+const TAMANOS = (process.env.ANCHOS || "1280,1024,768").split(",").map((t) => {
+  const [ancho, alto] = t.toLowerCase().split("x").map(Number);
+  return { ancho, alto: alto || 900, etiqueta: alto ? `${ancho}x${alto}` : `${ancho}`, pantalla: Boolean(alto) };
+});
 const SOLO = process.env.SOLO ? process.env.SOLO.split(",") : null;
 // 1.5c · MEDIR_TACTIL=1: además de la captura, mide los botones visibles y lista los de < 44 px de alto
 const MEDIR_TACTIL = process.env.MEDIR_TACTIL === "1";
@@ -292,7 +296,22 @@ const VISTAS = {
     await p.getByRole("button", { name: /seguridad/i }).click();
   } },
   // Panel del personal (1.1: botón «Cambiar de usuario» en la cabecera)
-  "staff-resumen": { usuario: "mesero", preparar: (p) => p.goto(`${FRONT}/staff`) },
+  // 1.6: con mesa:ver el panel abre en el plano; el resumen está en su pestaña
+  "staff-resumen": { usuario: "mesero", preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("navigation", { name: /secciones del panel/i }).getByRole("button", { name: "Resumen" }).click();
+  } },
+  // 1.6 · Plano de mesas (tablet): /staff abre en el plano para quien tiene mesa:ver
+  "staff-plano": { usuario: "mesero", preparar: (p) => p.goto(`${FRONT}/staff`) },
+  // Panel de una mesa ocupada (acciones) y de una libre (abrir cuenta con comensales)
+  "staff-plano-ocupada": { usuario: "mesero", preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: /^Mesa 1,/ }).click();
+  } },
+  "staff-plano-libre": { usuario: "mesero", preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: /^Mesa 2,/ }).click();
+  } },
   // Login tras «Cambiar de usuario». Cierra la sesión del contexto: se vuelve a iniciar en cada ancho
   "staff-cambio-usuario": { usuario: "mesero", preparar: async (p) => {
     await p.context().request.post(`${API}/auth/login`, { data: { correo: USUARIOS.mesero, contraseña: CLAVE } });
@@ -322,15 +341,16 @@ const contextoDe = async (usuario) => {
 let fallidas = 0;
 for (const [nombre, vista] of Object.entries(VISTAS)) {
   if (SOLO && !SOLO.includes(nombre)) continue;
-  for (const ancho of ANCHOS) {
+  for (const { ancho, alto, etiqueta, pantalla } of TAMANOS) {
     const page = await (await contextoDe(vista.usuario)).newPage();
     const consola = [];
     page.on("console", (m) => m.type() === "error" && consola.push(m.text()));
     try {
-      await page.setViewportSize({ width: ancho, height: 900 });
+      await page.setViewportSize({ width: ancho, height: alto });
       await vista.preparar(page);
       await page.waitForLoadState("networkidle");
-      if (vista.completa !== false) {
+      const completa = vista.completa !== false && !pantalla;
+      if (completa) {
         // Recorre la página como un usuario: las secciones con animación de entrada
         // (IntersectionObserver) solo aparecen al pasar por el viewport
         const alto = await page.evaluate(() => document.documentElement.scrollHeight);
@@ -341,22 +361,22 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
         await page.evaluate(() => window.scrollTo(0, 0));
       }
       // El último clic deja el puntero sobre el menú y su :hover sale en la foto: se aparta
-      await page.mouse.move(ancho - 2, 898);
+      await page.mouse.move(ancho - 2, alto - 2);
       await page.waitForTimeout(900); // fin de las transiciones
       if (MEDIR_TACTIL) {
         const medidas = await page.evaluate(() => [...document.querySelectorAll('button, [role="button"], input[type="submit"], input[type="button"]')]
           .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden"; })
           .map((el) => { const r = el.getBoundingClientRect(); return { alto: Math.round(r.height * 10) / 10, ancho: Math.round(r.width * 10) / 10, clase: el.className?.baseVal ?? el.className, texto: (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 30) }; })
           .filter((m) => m.alto < 44));
-        for (const m of medidas) pequenos.push({ vista: nombre, tamano: ancho, ...m });
-        console.log(`  ${medidas.length ? `⚠ ${medidas.length} botón(es) < 44 px` : "✓ todos los botones ≥ 44 px"} (${nombre} ${ancho})`);
+        for (const m of medidas) pequenos.push({ vista: nombre, tamano: etiqueta, ...m });
+        console.log(`  ${medidas.length ? `⚠ ${medidas.length} botón(es) < 44 px` : "✓ todos los botones ≥ 44 px"} (${nombre} ${etiqueta})`);
       }
-      const archivo = join(SALIDA, `${nombre}-${ancho}.png`);
-      await page.screenshot({ path: archivo, fullPage: vista.completa !== false });
+      const archivo = join(SALIDA, `${nombre}-${etiqueta}.png`);
+      await page.screenshot({ path: archivo, fullPage: completa });
       console.log(`✓ ${archivo}${consola.length ? `  (errores de consola: ${consola.join(" | ").slice(0, 200)})` : ""}`);
     } catch (error) {
       fallidas += 1;
-      console.error(`✗ ${nombre} ${ancho}px: ${error.message.split("\n")[0]}`);
+      console.error(`✗ ${nombre} ${etiqueta}px: ${error.message.split("\n")[0]}`);
     } finally {
       await page.close();
     }

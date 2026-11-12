@@ -100,14 +100,20 @@ function ReservationsRoute() {
   );
 }
 
+// 1.6 · /staff tiene su propio layout de tablet: sin la navegación ni el pie del sitio público
+const RUTAS_STAFF = ["/staff", "/dashboard/staff"];
+const esRutaStaff = (ruta) => RUTAS_STAFF.some((r) => ruta === r || ruta.startsWith(`${r}/`));
+
 function AppRoutes() {
   const { user } = useAuth();
+  const location = useLocation();
   const sinPie = esAdministrador(user) || esPersonal(user);
+  const enTablet = esPersonal(user) && esRutaStaff(location.pathname);
 
   return (
     <>
-      <Navbar />
-      <div className="main-content">
+      {!enTablet && <Navbar />}
+      <div className={`main-content${enTablet ? " main-content--staff" : ""}`}>
         <Routes>
           <Route path="/" element={<HomeRoute />} />
           <Route path="/menu" element={<Menu />} />

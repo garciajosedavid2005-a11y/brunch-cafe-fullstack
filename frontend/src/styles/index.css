@@ -85,6 +85,11 @@ select {
   }
 }
 
+/* 1.6 · Layout de tablet de /staff: sin navbar, así que sin el hueco que deja para ella */
+.main-content.main-content--staff {
+  padding: 0;
+}
+
 @media (max-width: 640px) {
   .main-content {
     padding: 0 0.75rem 1rem;

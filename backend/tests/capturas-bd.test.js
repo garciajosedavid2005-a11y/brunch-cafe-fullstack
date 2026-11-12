@@ -4,6 +4,11 @@ import Usuario from '../src/modulos/identidad/usuario.model.js'
 import Categoria from '../src/modulos/catalogo/categoria.model.js'
 import GrupoModificadores from '../src/modulos/catalogo/grupoModificadores.model.js'
 import Zona from '../src/modulos/salon/zona.model.js'
+import Mesa from '../src/modulos/salon/mesa.model.js'
+import Cuenta from '../src/modulos/salon/cuenta.model.js'
+import Comanda from '../src/modulos/salon/comanda.model.js'
+import Evento from '../src/modulos/compartido/evento.model.js'
+import { verificarConsistenciaSalon } from '../src/modulos/salon/consistencia.js'
 import Pedido from '../src/modulos/pedidos/pedido.model.js'
 import Reserva from '../src/modulos/salon/reserva.model.js'
 import { BD_CAPTURAS, uriDeCapturas, exigirBdCapturas, prepararBdCapturas, sembrarDatosCapturas } from '../src/seeds/capturas.js'
@@ -57,6 +62,24 @@ describe('Preparar la BD de capturas', () => {
         expect(await Categoria.countDocuments()).toBeGreaterThan(0)
         expect(await GrupoModificadores.countDocuments()).toBe(4)
         expect(await Zona.countDocuments()).toBe(2)
+        // 1.6 · Salón en servicio para el plano: 3 cuentas abiertas (una pedida), una bloqueada y una por limpiar
+        const estados = Object.fromEntries((await Mesa.find().lean()).map((m) => [m.numero, m.estado]))
+        expect(estados).toMatchObject({ 1: 'ocupada', 2: 'libre', 3: 'cuenta_pedida', 4: 'bloqueada', 6: 'ocupada', 7: 'por_limpiar' })
+        expect(await Cuenta.countDocuments({ estado: { $in: ['abierta', 'cuenta_pedida'] } })).toBe(3)
+        expect(await Cuenta.countDocuments({ estado: 'cancelada' })).toBe(1)
+        expect(await Comanda.countDocuments({ estado: 'enviada' })).toBe(2)
+        const minutos = async (numero) => {
+            const cuenta = await Cuenta.findOne({ 'mesas.numero': numero, estado: { $in: ['abierta', 'cuenta_pedida'] } }).lean()
+            return (Date.now() - cuenta.abiertaEn) / 60_000
+        }
+        expect(await minutos(1)).toBeGreaterThanOrEqual(35)
+        expect(await minutos(3)).toBeGreaterThanOrEqual(80)
+        expect(await Evento.countDocuments({ entidad: 'mesa', a: 'bloqueada', motivo: 'Mantenimiento' })).toBe(1)
+        // Los Eventos se corren con la cuenta: ninguno es anterior a su apertura
+        const pedida = await Cuenta.findOne({ estado: 'cuenta_pedida' }).lean()
+        const [primero] = await Evento.find({ entidad: 'cuenta', entidadId: pedida._id }).sort({ createdAt: 1 }).lean()
+        expect(Math.abs(primero.createdAt - pedida.abiertaEn)).toBeLessThan(60_000)
+        expect(await verificarConsistenciaSalon()).toMatchObject({ ok: true })
         // Un pedido y una reserva del cliente de prueba (las vistas de detalle los necesitan)
         expect(await Pedido.countDocuments()).toBe(1)
         expect(await Reserva.countDocuments()).toBe(1)
