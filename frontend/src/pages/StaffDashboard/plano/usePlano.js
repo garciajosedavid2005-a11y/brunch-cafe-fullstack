@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiRequest } from "../../../services/api";
 
-// 1.6 Â· Plano por polling (sin tiempo real hasta la Fase 2): cada INTERVALO_MS, al volver a la
-// pestaÃ±a y a demanda. Si una actualizaciÃ³n falla se conserva el Ãºltimo plano y se avisa.
+// 1.6 · Plano por polling (sin tiempo real hasta la Fase 2): cada INTERVALO_MS, al volver a la
+// pestaña y a demanda. Si una actualización falla se conserva el último plano y se avisa.
 export const INTERVALO_MS = 10_000;
 
-// 1.7 Â· `activo: false` (se estÃ¡ viendo una cuenta) pausa el polling; al reactivarlo recarga enseguida
+// 1.7 · `activo: false` (se está viendo una cuenta) pausa el polling; al reactivarlo recarga enseguida
 export function usePlano({ activo = true } = {}) {
   const [plano, setPlano] = useState(null);
   const [error, setError] = useState("");
-  const [actualizadoEn, setActualizadoEn] = useState(null); // hora local del Ãºltimo Ã©xito
+  const [actualizadoEn, setActualizadoEn] = useState(null); // hora local del último éxito
   const [cargando, setCargando] = useState(true);
   const enCurso = useRef(false);
   const montado = useRef(true);
 
-  // Los cambios de estado van en los callbacks de la peticiÃ³n (nunca sÃ­ncronos en el efecto)
+  // Los cambios de estado van en los callbacks de la petición (nunca síncronos en el efecto)
   const recargar = useCallback(() => {
     if (enCurso.current) return Promise.resolve();
     enCurso.current = true;

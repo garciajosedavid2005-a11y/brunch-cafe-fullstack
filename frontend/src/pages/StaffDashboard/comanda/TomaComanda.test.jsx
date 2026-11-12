@@ -190,14 +190,36 @@ describe("Ronda en curso (borrador)", () => {
     expect(llamadas(ruta, "POST")[0][1].headers["Idempotency-Key"]).toMatch(/^[A-Za-z0-9_-]{8,100}$/);
   });
 
-  it("409 CUENTA_MODIFICADA: recarga la cuenta y avisa", async () => {
+  // 1.7b · Otro mesero sumó un ítem a la misma ronda: el envío choca (409), se avisa, se recarga la
+  // cuenta (versión 5) y el borrador sigue ahí, con lo suyo y lo del otro; el reintento va con la versión nueva
+  it("409 CUENTA_MODIFICADA al enviar: avisa, recarga la cuenta y no pierde el borrador", async () => {
     respuestas.post = () => Promise.reject(error(409, "CUENTA_MODIFICADA", "La cuenta cambió mientras la editabas."));
     await pintar();
     const cargas = llamadas(`${BASE}/cuentas/c1`).length;
+    const deOtro = item("i4", "Agua", { estado: "borrador", precioBase: 4000, precioUnitario: 4000, subtotal: 4000 });
+    const vigente = CUENTA({ version: 5, pendiente: 13000 });
+    vigente.rondas[1] = { ...vigente.rondas[1], subtotal: 13000, items: [...vigente.rondas[1].items, deOtro] };
+    respuestas.cuenta = vigente;
+
     fireEvent.click(screen.getByRole("button", { name: "Enviar ronda 2" }));
     await confirmarDialogo("Enviar la ronda 2", "Enviar");
-    expect(await screen.findByRole("dialog", { name: /La cuenta cambió/ })).toHaveTextContent(/otra persona/i);
+    const aviso = await screen.findByRole("dialog", { name: /La cuenta cambió/ });
+    expect(aviso).toHaveTextContent(/otra persona/i);
     await waitFor(() => expect(llamadas(`${BASE}/cuentas/c1`).length).toBeGreaterThan(cargas));
+    fireEvent.click(within(aviso).getByRole("button", { name: "Entendido" }));
+
+    const ronda = screen.getByRole("region", { name: "Ronda en curso" });
+    await waitFor(() => expect(within(ronda).getByText("Agua")).toBeInTheDocument());
+    expect(within(ronda).getByText("Latte")).toBeInTheDocument();
+    expect(within(ronda).getByText("Sin azúcar", { exact: false })).toBeInTheDocument();
+    expect(llamadas(`${BASE}/cuentas/c1/items/i3`, "DELETE")).toHaveLength(0);
+
+    respuestas.post = () => Promise.resolve({});
+    fireEvent.click(screen.getByRole("button", { name: "Enviar ronda 2" }));
+    await confirmarDialogo("Enviar la ronda 2", "Enviar");
+    const ruta = `${BASE}/cuentas/c1/rondas/2/enviar`;
+    await waitFor(() => expect(llamadas(ruta, "POST")).toHaveLength(2));
+    expect(JSON.parse(llamadas(ruta, "POST")[1][1].body)).toEqual({ versionEsperada: 5 });
   });
 
   it("PRODUCT_UNAVAILABLE: marca los ítems afectados de la ronda", async () => {
@@ -267,6 +289,19 @@ describe("Refresco de la cuenta (polling)", () => {
     Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
     await act(async () => { await vi.advanceTimersByTimeAsync(31_000); });
     expect(cargas()).toBe(inicial + 1);
+  });
+
+  // 1.7b · Como el plano: también al volver a la pestaña, al enfocar la ventana y al recuperar la red
+  it("recarga al volver a la pestaña, al enfocar la ventana y al recuperar la conexión", async () => {
+    await pintar();
+    const cargas = () => llamadas(`${BASE}/cuentas/c1`).filter(([, o = {}]) => !o.method).length;
+    const inicial = cargas();
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    await waitFor(() => expect(cargas()).toBe(inicial + 1));
+    act(() => { window.dispatchEvent(new Event("focus")); });
+    await waitFor(() => expect(cargas()).toBe(inicial + 2));
+    act(() => { window.dispatchEvent(new Event("online")); });
+    await waitFor(() => expect(cargas()).toBe(inicial + 3));
   });
 });
 

@@ -3,7 +3,8 @@ import { apiRequest } from "../../../services/api";
 import { BASE } from "./estadosComanda";
 
 // 1.7 · Cuenta por polling, como el plano (sin tiempo real hasta la Fase 2): otro mesero puede sumar
-// ítems a la misma cuenta (F1-17). Cada INTERVALO_MS con la pestaña visible, al volver a ella y a demanda.
+// ítems a la misma cuenta (F1-17). Cada INTERVALO_MS con la pestaña visible, al volver a ella, al enfocar
+// la ventana (1.7b, como el plano), al recuperar la conexión y a demanda.
 export const INTERVALO_MS = 15_000;
 
 export function useCuenta(cuentaId) {
@@ -29,11 +30,13 @@ export function useCuenta(cuentaId) {
     }, INTERVALO_MS);
     const alVolver = () => document.visibilityState === "visible" && recargar();
     document.addEventListener("visibilitychange", alVolver);
+    window.addEventListener("focus", alVolver);
     window.addEventListener("online", recargar);
     return () => {
       montado.current = false;
       window.clearInterval(intervalo);
       document.removeEventListener("visibilitychange", alVolver);
+      window.removeEventListener("focus", alVolver);
       window.removeEventListener("online", recargar);
     };
   }, [recargar]);
