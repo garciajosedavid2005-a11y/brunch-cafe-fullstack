@@ -47,9 +47,11 @@ describe('Referencias por ObjectId (0.6)', () => {
         expect(detalle.productoId).toBe(7)
     })
 
-    it('pedido con productoRef inválido o inexistente → 400', async () => {
+    it('pedido con productoRef inválido → 400; inexistente → 404 PRODUCTO_NO_ENCONTRADO (como las cuentas, 1.14)', async () => {
         expect((await pedir([{ productoRef: 'no-es-un-id', cantidad: 1 }])).status).toBe(400)
-        expect((await pedir([{ productoRef: String(new mongoose.Types.ObjectId()), cantidad: 1 }])).status).toBe(400)
+        const inexistente = await pedir([{ productoRef: String(new mongoose.Types.ObjectId()), cantidad: 1 }])
+        expect(inexistente.status).toBe(404)
+        expect(inexistente.body.error.code).toBe('PRODUCTO_NO_ENCONTRADO')
     })
 
     it('el código numérico (productoId) ya no se acepta: solo productoRef (0.12)', async () => {

@@ -41,8 +41,9 @@ describe('Formato único de errores sin normalizador (0.11)', () => {
 
         const invalido = await cliente.post('/api/v1/cliente/pedidos').send({ items: [] })
         expect(invalido.status).toBe(400)
-        expect(invalido.body.error).toMatchObject({ code: 'BAD_REQUEST', message: 'Revisa los productos y datos de entrega.' })
-        expect(invalido.body.error.details.fieldErrors).toHaveProperty('items')
+        // 1.14 · El pedido usa el formato de validación de las cuentas
+        expect(invalido.body.error.code).toBe('VALIDATION_ERROR')
+        expect(invalido.body.error.details.map((d) => d.campo)).toContain('items')
 
         const metodo = await admin.delete(`/api/v1/admin/metodos-pago/${id}`)
         expect(metodo.body).toEqual({ error: { code: 'NOT_FOUND', message: 'Método de pago no encontrado' } })

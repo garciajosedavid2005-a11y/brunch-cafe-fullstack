@@ -10,7 +10,7 @@ import MetodoPago from './metodoPago.model.js';
 import Producto from '../catalogo/producto.model.js';
 import { STATUS_CLIENTE } from '../compartido/estados.js';
 import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../compartido/estados.service.js';
-import { cuerpoError } from '../compartido/errors.js';
+import { AppError, detallesZod, notFound } from '../compartido/errors.js';
 import { referenciaProducto, resolverProductos } from '../catalogo/referenciaProducto.schema.js';
 import { telefono, textoOpcional } from '../compartido/comunes.schema.js';
 import { esDireccionValida, MENSAJE_DIRECCION, normalizarDireccion } from '../compartido/direccion.js';
@@ -117,143 +117,139 @@ export const listarMetodosPagoActivos = async (req, res, next) => {
   }
 };
 
-export const crearPedido = async (req, res, next) => {
+// Índices de las líneas del pedido que cumplen `condicion` (para que el carrito las marque)
+const lineasDonde = (items, condicion) => items.flatMap((item, i) => (condicion(item) ? [i] : []));
+
+// 1.14 · Mismo formato de errores que las cuentas: AppError por el manejador central, validación como
+// VALIDATION_ERROR con [{ campo, mensaje }] y `details.lineas` en los errores de una línea del carrito
+export const crearPedido = async (req, res) => {
   const parsed = orderSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json(cuerpoError('BAD_REQUEST', 'Revisa los productos y datos de entrega.', parsed.error.flatten()));
+    const details = detallesZod(parsed.error);
+    throw new AppError(400, 'VALIDATION_ERROR', details[0]?.mensaje || 'Revisa los productos y datos de entrega.', details);
   }
 
   const horarios = await obtenerHorarios();
   const disponibles = horasDomicilio(horarios);
   if (!disponibles.includes(parsed.data.hora)) {
-    return res.status(400).json(cuerpoError(
-      'HORA_NO_DISPONIBLE', mensajeHoraDomicilio(horarios, disponibles), { horasDisponibles: disponibles },
-    ));
+    throw new AppError(400, 'HORA_NO_DISPONIBLE', mensajeHoraDomicilio(horarios, disponibles), { horasDisponibles: disponibles });
   }
 
   const productoDe = await resolverProductos(Producto, parsed.data.items);
   const products = parsed.data.items.map(productoDe).filter(Boolean);
-  if (parsed.data.items.some((item) => !productoDe(item))) {
-    return res.status(400).json(cuerpoError('BAD_REQUEST', 'Uno o más productos ya no están disponibles en el menú.'));
+  const inexistentes = lineasDonde(parsed.data.items, (item) => !productoDe(item));
+  if (inexistentes.length) {
+    throw new AppError(404, 'PRODUCTO_NO_ENCONTRADO', 'Uno o más productos ya no están en el menú. Quítalos del carrito para continuar.', { lineas: inexistentes });
   }
   // Agotados: existen pero no se pueden pedir (el carrito pudo llenarse antes de que se agotaran)
   const agotados = products.filter((product) => product.disponible === false);
   if (agotados.length) {
-    const nombres = agotados.map((product) => product.nombre).join(', ');
-    return res.status(409).json(cuerpoError(
-      'PRODUCT_UNAVAILABLE',
-      `${agotados.length === 1 ? 'Este producto está agotado' : 'Estos productos están agotados'}: ${nombres}. ${agotados.length === 1 ? 'Quítalo' : 'Quítalos'} del carrito para continuar.`,
-      { productos: agotados.map((product) => product.codigo) },
-    ));
+    // Uno por producto aunque vaya en varias líneas (por _id: `codigo` no es obligatorio)
+    const unicos = [...new Map(agotados.map((product) => [String(product._id), product])).values()];
+    const nombres = unicos.map((product) => product.nombre).join(', ');
+    throw new AppError(
+      409, 'PRODUCT_UNAVAILABLE',
+      `${unicos.length === 1 ? 'Este producto está agotado' : 'Estos productos están agotados'}: ${nombres}. ${unicos.length === 1 ? 'Quítalo' : 'Quítalos'} del carrito para continuar.`,
+      {
+        productos: unicos.map((product) => product.codigo ?? null),
+        lineas: lineasDonde(parsed.data.items, (item) => productoDe(item).disponible === false),
+      },
+    );
   }
 
   // 1.12 · Opciones validadas con el MISMO validador que las cuentas (obligatorio, mín./máx., opción
   // disponible, grupo activo y del producto). Precio y subtotal salen del catálogo, nunca del cliente.
-  let lines;
-  try {
-    const gruposDe = await gruposActivosDeVarios(products);
-    lines = parsed.data.items.map((item, linea) => {
-      const product = productoDe(item);
-      let modificadores;
-      try {
-        modificadores = validarModificadores(gruposDe(product), item.modificadores);
-      } catch (error) {
-        // Qué línea del carrito corregir (el mismo plato puede ir en varias)
-        if (error.details && typeof error.details === 'object') Object.assign(error.details, { linea, producto: product.nombre });
-        throw error;
-      }
-      const { precioUnitario, subtotal } = calcularItem({ precioBase: product.precio, modificadores, cantidad: item.cantidad });
-      return {
-        productId: product.codigo,
-        productRef: product._id,
-        name: product.nombre,
-        basePrice: product.precio,
-        unitPrice: precioUnitario,
-        quantity: item.cantidad,
-        subtotal,
-        modificadores,
-        nota: item.nota,
-      };
+  const gruposDe = await gruposActivosDeVarios(products);
+  const lines = parsed.data.items.map((item, linea) => {
+    const product = productoDe(item);
+    let modificadores;
+    try {
+      modificadores = validarModificadores(gruposDe(product), item.modificadores);
+    } catch (error) {
+      // Qué línea del carrito corregir (el mismo plato puede ir en varias). `linea` se mantiene por
+      // compatibilidad con 1.12; `lineas` es la forma común de todos los errores de línea (1.14)
+      if (error.details && typeof error.details === 'object') Object.assign(error.details, { linea, lineas: [linea], producto: product.nombre });
+      throw error;
+    }
+    const { precioUnitario, subtotal } = calcularItem({ precioBase: product.precio, modificadores, cantidad: item.cantidad });
+    return {
+      productId: product.codigo,
+      productRef: product._id,
+      name: product.nombre,
+      basePrice: product.precio,
+      unitPrice: precioUnitario,
+      quantity: item.cantidad,
+      subtotal,
+      modificadores,
+      nota: item.nota,
+    };
+  });
+
+  const [pending, paymentMethod] = await Promise.all([
+    estadoPorCodigo('pedido', 'pendiente'),
+    MetodoPago.findOne({ _id: parsed.data.metodoPagoId, activo: { $ne: false } }),
+  ]);
+  if (!paymentMethod) throw new AppError(400, 'METODO_PAGO_NO_DISPONIBLE', 'El método de pago ya no está disponible. Actualiza la página y elige otro.');
+
+  // Pedido, líneas (con nombre y precio del momento) y Evento inicial en una transacción (0.9):
+  // si algo falla no queda nada a medias
+  const { order, details } = await conTransaccion(async (session) => {
+    const [creado] = await Pedido.create([{
+      usuario: req.usuario.id,
+      estado: pending._id,
+      metodoPago: paymentMethod._id,
+      total: lines.reduce((total, line) => total + line.subtotal, 0),
+      nombreEntrega: parsed.data.nombre,
+      telefono: parsed.data.telefono,
+      direccion: parsed.data.direccion,
+      barrio: parsed.data.barrio,
+      horaEntrega: parsed.data.hora,
+      indicaciones: parsed.data.indicaciones,
+    }], { session });
+    const lineas = await DetallePedido.insertMany(lines.map((line) => ({
+      pedido: creado._id,
+      producto: line.productRef,
+      productoId: line.productId,
+      nombreProducto: line.name,
+      precioProducto: line.basePrice,
+      precioUnitario: line.unitPrice,
+      modificadores: line.modificadores,
+      nota: line.nota,
+      cantidad: line.quantity,
+      subtotal: line.subtotal,
+    })), { session });
+    await registrarEvento({
+      entidad: 'pedido', entidadId: creado._id, a: 'pendiente', usuario: req.usuario.id, actor: req.usuario.rol || 'cliente', session,
     });
-  } catch (error) {
-    return next(error);
-  }
+    return { order: creado, details: lineas };
+  });
 
-  try {
-    const [pending, paymentMethod] = await Promise.all([
-      estadoPorCodigo('pedido', 'pendiente'),
-      MetodoPago.findOne({ _id: parsed.data.metodoPagoId, activo: { $ne: false } }),
-    ]);
-    if (!paymentMethod) return res.status(400).json(cuerpoError('BAD_REQUEST', 'El método de pago ya no está disponible. Actualiza la página y elige otro.'));
-
-    // Pedido, líneas (con nombre y precio del momento) y Evento inicial en una transacción (0.9):
-    // si algo falla no queda nada a medias
-    const { order, details } = await conTransaccion(async (session) => {
-      const [creado] = await Pedido.create([{
-        usuario: req.usuario.id,
-        estado: pending._id,
-        metodoPago: paymentMethod._id,
-        total: lines.reduce((total, line) => total + line.subtotal, 0),
-        nombreEntrega: parsed.data.nombre,
-        telefono: parsed.data.telefono,
-        direccion: parsed.data.direccion,
-        barrio: parsed.data.barrio,
-        horaEntrega: parsed.data.hora,
-        indicaciones: parsed.data.indicaciones,
-      }], { session });
-      const lineas = await DetallePedido.insertMany(lines.map((line) => ({
-        pedido: creado._id,
-        producto: line.productRef,
-        productoId: line.productId,
-        nombreProducto: line.name,
-        precioProducto: line.basePrice,
-        precioUnitario: line.unitPrice,
-        modificadores: line.modificadores,
-        nota: line.nota,
-        cantidad: line.quantity,
-        subtotal: line.subtotal,
-      })), { session });
-      await registrarEvento({
-        entidad: 'pedido', entidadId: creado._id, a: 'pendiente', usuario: req.usuario.id, actor: req.usuario.rol || 'cliente', session,
-      });
-      return { order: creado, details: lineas };
-    });
-
-    const populatedOrder = await Pedido.findById(order._id)
-      .populate('estado', POBLAR_ESTADO)
-      .populate('metodoPago', 'nombre')
-      .lean();
-    return res.status(201).json({ order: serializeOrder(populatedOrder, details) });
-  } catch (error) {
-    return next(error);
-  }
+  const populatedOrder = await Pedido.findById(order._id)
+    .populate('estado', POBLAR_ESTADO)
+    .populate('metodoPago', 'nombre')
+    .lean();
+  return res.status(201).json({ order: serializeOrder(populatedOrder, details) });
 };
 
-export const verMiPedido = async (req, res, next) => {
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(404).json(cuerpoError('NOT_FOUND', 'No se encontró el pedido.'));
-  }
-  try {
-    const order = await Pedido.findOne({ _id: req.params.id, usuario: req.usuario.id })
-      .populate('estado', POBLAR_ESTADO)
-      .populate('metodoPago', 'nombre')
-      .lean();
-    if (!order) return res.status(404).json(cuerpoError('NOT_FOUND', 'No se encontró el pedido.'));
-    const details = await DetallePedido.find({ pedido: order._id }).lean();
-    return res.json({ order: serializeOrder(order, details) });
-  } catch (error) {
-    return next(error);
-  }
+const PEDIDO_NO_ENCONTRADO = 'No se encontró el pedido.';
+
+export const verMiPedido = async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) throw notFound(PEDIDO_NO_ENCONTRADO);
+  const order = await Pedido.findOne({ _id: req.params.id, usuario: req.usuario.id })
+    .populate('estado', POBLAR_ESTADO)
+    .populate('metodoPago', 'nombre')
+    .lean();
+  if (!order) throw notFound(PEDIDO_NO_ENCONTRADO);
+  const details = await DetallePedido.find({ pedido: order._id }).lean();
+  return res.json({ order: serializeOrder(order, details) });
 };
 
 // El cliente solo puede cancelar su pedido mientras está pendiente
 // Requiere validateSchema(cancelacionClienteSchema) en la ruta
 export const cancelarMiPedido = async (req, res) => {
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(404).json(cuerpoError('NOT_FOUND', 'No se encontró el pedido.'));
-  }
+  if (!mongoose.isValidObjectId(req.params.id)) throw notFound(PEDIDO_NO_ENCONTRADO);
   const order = await Pedido.findOne({ _id: req.params.id, usuario: req.usuario.id }).populate('estado', 'codigo');
-  if (!order) return res.status(404).json(cuerpoError('NOT_FOUND', 'No se encontró el pedido.'));
+  if (!order) throw notFound(PEDIDO_NO_ENCONTRADO);
 
   await cambiarEstado({
     tipo: 'pedido',

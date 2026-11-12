@@ -138,7 +138,7 @@ describe('POST /api/v1/cliente/pedidos con modificadores (1.12)', () => {
     it('una nota de más de 140 caracteres → 400 con el mensaje en español y sin crear nada', async () => {
         const res = await pedir([huevosCon([elegir(termino, 'Fritos')], { nota: 'x'.repeat(141) })])
         expect(res.status).toBe(400)
-        expect(res.body.error.code).toBe('BAD_REQUEST')
+        expect(res.body.error.code).toBe('VALIDATION_ERROR')
         expect(JSON.stringify(res.body.error.details)).toMatch(/La nota no puede superar 140 caracteres/)
         expect(await Pedido.countDocuments()).toBe(0)
     })

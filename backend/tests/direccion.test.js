@@ -120,7 +120,8 @@ describe('Validación de direcciones (1.11)', () => {
             metodoPagoId: metodos.body[0].id,
         })
         expect(res.status).toBe(400)
-        expect(res.body.error.code).toBe('BAD_REQUEST')
-        expect(res.body.error.details.fieldErrors.direccion).toEqual([MENSAJE_DIRECCION])
+        // 1.14 · Formato de las cuentas: VALIDATION_ERROR con [{ campo, mensaje }]
+        expect(res.body.error.code).toBe('VALIDATION_ERROR')
+        expect(res.body.error.details).toEqual([{ campo: 'direccion', mensaje: MENSAJE_DIRECCION }])
     })
 })

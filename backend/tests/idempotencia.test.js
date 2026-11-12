@@ -56,6 +56,18 @@ describe('Idempotency-Key en la creación de pedidos (0.9)', () => {
         expect((await pedir('compra-0003')).status).toBe(201)
     })
 
+    it('1.14 · un 409 PRODUCT_UNAVAILABLE tampoco deja la clave usada (se reintenta con los mismos datos)', async () => {
+        await Producto.updateOne({ codigo: 11 }, { disponible: false })
+        const agotado = await pedir('compra-0004')
+        expect(agotado.status).toBe(409)
+        expect(agotado.body.error.code).toBe('PRODUCT_UNAVAILABLE')
+        await Producto.updateOne({ codigo: 11 }, { disponible: true })
+        const reintento = await pedir('compra-0004')
+        expect(reintento.status).toBe(201)
+        expect(reintento.headers['idempotent-replayed']).toBeUndefined()
+        expect(await Pedido.countDocuments()).toBe(1)
+    })
+
     it('las claves son por usuario', async () => {
         const { sesion: otro } = await crearConSesion('cliente')
         await pedir('compartida-01')

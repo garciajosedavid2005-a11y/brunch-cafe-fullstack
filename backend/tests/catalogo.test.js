@@ -128,7 +128,8 @@ describe('Productos no disponibles (agotados)', () => {
         expect(res.status).toBe(409)
         expect(res.body.error.code).toBe('PRODUCT_UNAVAILABLE')
         expect(res.body.error.message).toContain('Waffle')
-        expect(res.body.error.details).toEqual({ productos: [2] })
+        // 1.14 · Además, qué líneas del carrito marcar
+        expect(res.body.error.details).toEqual({ productos: [2], lineas: [1] })
     })
 })
 
