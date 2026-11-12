@@ -17,8 +17,14 @@ export default function useAnchoAccionesFijas(contenedorRef) {
         target.closest("table")?.style.setProperty("--ancho-acciones", `${ancho}px`);
       }
     });
-    const enlazadas = new WeakSet();
+    const enlazadas = new Set();
     const enlazar = () => {
+      // Las cabeceras que salieron de la página (otra pestaña del admin) dejan de observarse
+      for (const th of enlazadas) {
+        if (th.isConnected) continue;
+        medidor.unobserve(th);
+        enlazadas.delete(th);
+      }
       for (const th of raiz.querySelectorAll(SELECTOR)) {
         if (enlazadas.has(th)) continue;
         enlazadas.add(th);

@@ -147,6 +147,13 @@ describe("Campos de formulario del admin (≥ 44 px de alto, 1.6b)", () => {
     const maximos = reglas.flatMap((c) => declaraciones(c, "max-height")).map(enPx).filter((px) => px !== null);
     for (const max of maximos) expect(max).toBeGreaterThanOrEqual(44);
   });
+
+  // Una regla más específica (p. ej. `.admin-form-select.admin-select-rol { min-height: 40px }`) ganaría
+  it.each(CAMPOS)("%s: ninguna regla que la incluya (también compuesta) fija un min-height menor de 44 px", (clase) => {
+    const conLaClase = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, sel]) => sel.includes(clase)).map(([, , cuerpo]) => cuerpo);
+    const minimos = conLaClase.flatMap((c) => declaraciones(c, "min-height")).map(enPx).filter((px) => px !== null);
+    for (const min of minimos) expect(min).toBeGreaterThanOrEqual(44);
+  });
 });
 
 describe("Botones con texto del admin (≥ 44 px de alto, 1.5c)", () => {

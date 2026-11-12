@@ -429,7 +429,7 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
           .map((el) => { const r = el.getBoundingClientRect(); return { alto: Math.round(r.height * 10) / 10, ancho: Math.round(r.width * 10) / 10, clase: el.className?.baseVal ?? el.className, texto: (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 30) }; })
           .filter((m) => m.alto < 44));
         for (const m of medidas) pequenos.push({ vista: nombre, tamano: etiqueta, ...m });
-        console.log(`  ${medidas.length ? `⚠ ${medidas.length} botón(es) < 44 px` : "✓ todos los botones ≥ 44 px"} (${nombre} ${etiqueta})`);
+        console.log(`  ${medidas.length ? `⚠ ${medidas.length} control(es) < 44 px` : "✓ todos los botones y campos ≥ 44 px"} (${nombre} ${etiqueta})`);
       }
       if (MEDIR_SOLAPES) {
         // 1.6b · Columnas que la columna fija de acciones tapa sin desplazar la tabla (por fila, en px)
@@ -481,7 +481,7 @@ if (MEDIR_TACTIL) {
   const { writeFile } = await import("node:fs/promises");
   await writeFile(join(SALIDA, "medicion-tactil.json"), JSON.stringify(pequenos, null, 2));
   console.log(`
-Medición táctil: ${pequenos.length} botón(es) < 44 px → ${join(SALIDA, "medicion-tactil.json")}`);
+Medición táctil: ${pequenos.length} control(es) < 44 px → ${join(SALIDA, "medicion-tactil.json")}`);
 }
 if (MEDIR_SOLAPES) {
   const { writeFile } = await import("node:fs/promises");

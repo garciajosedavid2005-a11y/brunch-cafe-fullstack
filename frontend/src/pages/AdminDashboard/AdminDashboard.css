@@ -1926,7 +1926,7 @@
 /* Desplegable de rol: Foundation fija una altura que corta el texto */
 .admin-form-select.admin-select-rol {
   height: auto !important;
-  min-height: 40px;
+  min-height: 44px; /* 1.6b: objetivo táctil (antes 40px) */
   padding: 0.5rem 2.4rem 0.5rem 0.75rem !important; /* 1.3: sitio para la flecha */
   line-height: 1.4 !important;
   font-size: 0.88rem !important;
@@ -2862,12 +2862,34 @@
 
 /* 1.6b · Campos de formulario del admin a 44 px de alto como mínimo (medían 37,7–42,9 px: Foundation
    les da 2.4375rem; medido con MEDIR_TACTIL=1 npm run capturas, que mide también input, select y
-   textarea). min-height gana a cualquier height menor de otras reglas; la búsqueda ya mide 46 px. */
+   textarea). min-height gana a cualquier height menor de otras reglas (sin !important: ninguna regla de
+   estos campos fija un min-height menor); la búsqueda ya mide 46 px. */
 .admin-form-input,
 .admin-form-select,
 .admin-form-textarea,
 .estado-selector__select,
 .admin-select-status,
 .admin-salon__filtro {
-  min-height: 44px !important;
+  min-height: 44px;
+}
+
+/* 1.6b · Con dos columnas fijas, la zona que se desplaza es estrecha: a 1024 y 768 px el correo del
+   usuario se parte (el selector de Rol no quedaba cortado bajo Estado) y a ≤ 800 px el selector de
+   estado de Pedidos y Reservas se estrecha (medía 170 px como mínimo). */
+.admin-users__correo {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 800px) {
+  .admin-table--acciones-fijas .estado-selector .estado-selector__select {
+    min-width: 0;
+    max-width: 150px;
+  }
+}
+
+/* Con la columna de estado fija, la sombra la lleva ella; Acciones conserva solo la línea fina */
+.admin-table--acciones-fijas:has(.admin-col-estado) th:last-child,
+.admin-table--acciones-fijas:has(.admin-col-estado) td:last-child:not([colspan]) {
+  box-shadow: inset 1px 0 0 #e6d3cc;
 }

@@ -10,6 +10,7 @@ let avisar;
 class ResizeObserverFalso {
   constructor(cb) { avisar = cb; observados = []; }
   observe(el) { observados.push(el); }
+  unobserve(el) { observados = observados.filter((o) => o !== el); }
   disconnect() { observados = []; }
 }
 
@@ -52,6 +53,19 @@ describe("useAnchoAccionesFijas", () => {
     act(() => getByText("mostrar").click());
     const tabla = await findByTestId("tabla");
     await vi.waitFor(() => expect(observados).toContain(tabla.querySelector("th:last-child")));
+  });
+
+  it("deja de observar las cabeceras de las tablas que salen de la página", async () => {
+    vi.stubGlobal("ResizeObserver", ResizeObserverFalso);
+    function Alterna() {
+      const [visible, setVisible] = useState(true);
+      return <><button onClick={() => setVisible(false)}>ocultar</button><Tabla conTabla={visible} /></>;
+    }
+    const { getByText, getByTestId } = render(<Alterna />);
+    const th = getByTestId("tabla").querySelector("th:last-child");
+    expect(observados).toContain(th);
+    act(() => getByText("ocultar").click());
+    await vi.waitFor(() => expect(observados).not.toContain(th));
   });
 
   it("sin ResizeObserver no falla (la columna de estado queda en su sitio)", () => {
