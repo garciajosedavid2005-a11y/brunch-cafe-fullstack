@@ -48,7 +48,8 @@
     gap: 0.9rem;
     background: var(--color-blanco);
     border-radius: 16px;
-    padding: 0.95rem 1.1rem;
+    /* 1.14 · Menos relleno vertical: el campo en sí ocupa el alto (≥ 44 px táctiles) */
+    padding: 0.35rem 1.1rem;
     min-height: 58px;
     border: 1px solid var(--color-suave);
     transition:
@@ -85,7 +86,8 @@
     border: none !important;
     outline: none !important;
     width: 100%;
-    height: 100%;
+    height: auto;
+    min-height: 44px;
     display: flex;
     align-items: center;
     font-size: 0.93rem;
@@ -295,6 +297,11 @@
 
     .carrito-formulario__titulo {
         font-size: 1.6rem;
+    }
+
+    /* 1.14 · En móvil el icono va en su propia fila: le devuelve el aire de arriba */
+    .carrito-formulario__campo {
+        padding: 0.75rem 1.1rem;
     }
 
     .carrito-formulario__botones {

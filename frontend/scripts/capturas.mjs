@@ -279,10 +279,13 @@ const VISTAS = {
     preparar: async (p) => {
       await p.goto(`${FRONT}/menu`);
       await p.waitForLoadState("networkidle");
-      const agregar = p.getByRole("button", { name: "Agregar al carrito" });
-      await agregar.nth(0).click({ force: true });
-      await agregar.nth(0).click({ force: true });
-      await agregar.nth(1).click({ force: true });
+      // 1.14 · Platos sin opciones (desde 1.12 los que tienen abren el diálogo y taparían los clics)
+      const catalogo = await (await p.context().request.get(`${API}/catalogo?incluir=modificadores`)).json();
+      const [uno, dos] = catalogo.productos.filter((pr) => pr.disponible !== false && !pr.modificadores?.length);
+      const agregar = (pr) => p.locator(`#producto-${pr.codigo}`).getByRole("button", { name: "Agregar al carrito" }).click({ force: true });
+      await agregar(uno);
+      await agregar(uno);
+      await agregar(dos);
       const enlace = p.locator(".menu__item-carrito a");
       if (!(await enlace.isVisible())) await p.locator(".navbar__hamburger").click(); // navbar colapsado
       await enlace.click();

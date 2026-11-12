@@ -135,6 +135,7 @@
   border: 0;
   cursor: pointer;
   font-family: inherit;
+  min-height: 44px; /* 1.14 · objetivo táctil (medía 31 px) */
 }
 
 .navbar__logout:disabled {
