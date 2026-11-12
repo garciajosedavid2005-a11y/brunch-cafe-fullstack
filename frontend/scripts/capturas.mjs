@@ -107,6 +107,14 @@ const abrirPestanaAdmin = (nombre) => async (page) => {
   await page.waitForLoadState("networkidle");
 };
 
+// 1.7b · Muestra todas las opciones del primer <select> del panel de la mesa (cuando termina de cargar)
+const desplegarSelect = async (p) => {
+  const select = p.locator(".panel-mesa select").first();
+  await select.waitFor();
+  await p.waitForFunction(() => !document.querySelector(".panel-mesa select")?.disabled);
+  await select.evaluate((s) => { s.size = s.options.length; s.style.height = "auto"; s.style.backgroundImage = "none"; });
+};
+
 // 1.7 · Ayudas de la toma de comanda. `disponibilidad` usa una sesión de admin aparte (BD de capturas)
 let sesionAdmin = null;
 const disponibilidad = async (nombre, disponible) => {
@@ -369,6 +377,19 @@ const VISTAS = {
     await p.getByRole("button", { name: /^Mesa 1,/ }).click();
     await p.getByRole("button", { name: "Unir mesas" }).click();
     await p.locator(".panel-mesa").evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  } },
+  // 1.7b · Lista «Mesero responsable» (abrir) y «Nuevo mesero» (transferir). Un <select> nativo no se ve
+  // abierto en una captura: se le da size para que muestre todas sus opciones
+  "staff-plano-meseros": { usuario: "mesero", preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: /^Mesa 2,/ }).click();
+    await desplegarSelect(p);
+  } },
+  "staff-plano-transferir": { usuario: "mesero", preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: /^Mesa 1,/ }).click();
+    await p.getByRole("button", { name: "Transferir" }).click();
+    await desplegarSelect(p);
   } },
   // Tarjeta seleccionada con un estado largo (la etiqueta no debe cambiar de posición al seleccionarla)
   "staff-plano-bloqueada": { usuario: "mesero", preparar: async (p) => {

@@ -43,12 +43,13 @@ const BASICO = ["mesa:ver", "mesa:operar", "cuenta:abrir", "comanda:tomar"];
 
 let respuestas;
 beforeEach(() => {
-  respuestas = { plano: PLANO() };
+  // 1.7b · El backend marca con «yo» al usuario conectado (si atiende mesas)
+  respuestas = { plano: PLANO(), meseros: [{ id: "u2", nombre: "Luis G." }, { id: "u1", nombre: "Ana P." }, { id: "u9", nombre: "Mesero P.", yo: true }] };
   estado.confirmar.mockReset();
   estado.apiRequest.mockReset();
   estado.apiRequest.mockImplementation((ruta, opciones = {}) => {
     if (ruta === "/v1/staff/salon/mesas") return Promise.resolve(respuestas.plano);
-    if (ruta === "/v1/staff/salon/meseros") return Promise.resolve([{ id: "u1", nombre: "Ana P." }, { id: "u2", nombre: "Luis G." }]);
+    if (ruta === "/v1/staff/salon/meseros") return Promise.resolve(respuestas.meseros);
     if (opciones.method === "POST") return Promise.resolve({ id: "c9" });
     return Promise.reject(new Error(`Ruta inesperada ${ruta}`));
   });
@@ -110,6 +111,8 @@ describe("Plano de mesas", () => {
     const panel = screen.getByRole("region", { name: "Mesa 2" });
     fireEvent.click(within(panel).getByRole("button", { name: "Sumar comensal" }));
     expect(within(panel).getByText("3", { selector: "output" })).toBeInTheDocument();
+    // 1.7b · Espera la lista de meseros (el responsable por defecto, «yo», sale de ella)
+    await waitFor(() => expect(within(panel).getByRole("button", { name: "Abrir cuenta" })).toBeEnabled());
     fireEvent.click(within(panel).getByRole("button", { name: "Abrir cuenta" }));
     await waitFor(() => expect(llamadasA("/v1/staff/salon/mesas/m2/abrir")).toHaveLength(1));
     const [, opciones] = llamadasA("/v1/staff/salon/mesas/m2/abrir")[0];
@@ -118,7 +121,46 @@ describe("Plano de mesas", () => {
     await waitFor(() => expect(llamadasA("/v1/staff/salon/mesas").length).toBeGreaterThanOrEqual(2));
   });
 
+  // 1.7b · Mesero responsable: el usuario conectado una sola vez, primero y elegido; después los demás por nombre
+  it("la lista de meseros pone al usuario conectado primero como «(yo)», elegido, y los demás por nombre", async () => {
+    pintar();
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 2\b/ }));
+    const panel = screen.getByRole("region", { name: "Mesa 2" });
+    const selector = await within(panel).findByRole("combobox", { name: "Mesero responsable" });
+    await waitFor(() => expect(selector).toBeEnabled());
+    expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual(["Mesero P. (yo)", "Ana P.", "Luis G."]);
+    expect(selector).toHaveValue("u9");
+    fireEvent.change(selector, { target: { value: "u1" } });
+    fireEvent.click(within(panel).getByRole("button", { name: "Abrir cuenta" }));
+    await waitFor(() => expect(llamadasA("/v1/staff/salon/mesas/m2/abrir")).toHaveLength(1));
+    expect(JSON.parse(llamadasA("/v1/staff/salon/mesas/m2/abrir")[0][1].body)).toEqual({ comensales: 2, meseroId: "u1" });
+  });
+
+  it("quien no atiende mesas (p. ej. el admin) no sale como «yo»: debe elegir un mesero", async () => {
+    respuestas.meseros = respuestas.meseros.filter((m) => !m.yo);
+    pintar(["*"]);
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 2\b/ }));
+    const panel = screen.getByRole("region", { name: "Mesa 2" });
+    const selector = await within(panel).findByRole("combobox", { name: "Mesero responsable" });
+    await waitFor(() => expect(selector).toBeEnabled());
+    expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual(["Elige un mesero", "Ana P.", "Luis G."]);
+    fireEvent.click(within(panel).getByRole("button", { name: "Abrir cuenta" }));
+    expect(await within(panel).findByRole("alert")).toHaveTextContent("Elige el mesero que atenderá la mesa.");
+    expect(llamadasA("/v1/staff/salon/mesas/m2/abrir")).toHaveLength(0);
+  });
+
+  it("transferir usa la misma lista, sin el mesero actual de la cuenta", async () => {
+    pintar();
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 1\b/ }));
+    const panel = screen.getByRole("region", { name: "Mesa 1" });
+    fireEvent.click(within(panel).getByRole("button", { name: "Transferir" }));
+    const selector = await within(panel).findByRole("combobox", { name: "Nuevo mesero" });
+    await waitFor(() => expect(selector).toBeEnabled());
+    expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual(["Elige un mesero", "Mesero P. (yo)", "Luis G."]);
+  });
+
   it("quien no toma comandas debe elegir el mesero al abrir", async () => {
+    respuestas.meseros = respuestas.meseros.filter((m) => !m.yo);
     pintar(SIN_COMANDAS);
     fireEvent.click(await screen.findByRole("button", { name: /^Mesa 2\b/ }));
     const panel = screen.getByRole("region", { name: "Mesa 2" });

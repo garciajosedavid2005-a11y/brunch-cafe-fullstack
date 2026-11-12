@@ -23,6 +23,14 @@ const motivoNoUnible = (m, cuenta) => {
   return null;
 };
 
+// 1.7b · Lista de responsables (abrir y transferir): el backend ya deja solo a quien atiende mesas,
+// sin administradores ni clientes, y marca con «yo» al usuario conectado. Va primero, una sola vez,
+// como «Nombre A. (yo)»; los demás, por nombre.
+const ordenarMeseros = (lista = []) => [
+  ...lista.filter((m) => m.yo).map((m) => ({ ...m, etiqueta: `${m.nombre} (yo)` })),
+  ...lista.filter((m) => !m.yo).sort((a, b) => a.nombre.localeCompare(b.nombre, "es")).map((m) => ({ ...m, etiqueta: m.nombre })),
+];
+
 export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, onVerCuenta }) {
   const id = useId();
   const tituloRef = useRef(null);
@@ -44,6 +52,12 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
   const eligeMesero = puede(permisos, "cuenta:transferir") || !tomaComandas;
   const necesitaMeseros = (mesa.estado === "libre" && !cuenta && puede(permisos, "cuenta:abrir") && eligeMesero) || modo === "transferir";
   const { etiqueta, icono } = datosEstado(mesa.estado);
+  const opcionesMesero = meseros ? ordenarMeseros(meseros) : null;
+  const yoId = opcionesMesero?.find((m) => m.yo)?.id || "";
+  // Al abrir, el usuario conectado queda elegido por defecto si atiende mesas
+  const meseroAbrir = meseroId || yoId;
+  // Mientras llega la lista no se abre: el responsable por defecto depende de ella
+  const cargandoMeseros = eligeMesero && !meseros && !error;
 
   useEffect(() => { tituloRef.current?.focus(); }, []);
 
@@ -74,11 +88,14 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
   };
 
   const abrirCuenta = async () => {
-    if (!tomaComandas && !meseroId) {
+    // Si la lista no cargó (error), se abre a nombre propio y el backend decide (MESERO_REQUERIDO)
+    if (eligeMesero && meseros && !meseroAbrir) {
       setError("Elige el mesero que atenderá la mesa.");
       return;
     }
-    const ok = await ejecutar(`/mesas/${mesa.id}/abrir`, { comensales, ...(meseroId ? { meseroId } : {}) },
+    // Sin meseroId la cuenta queda a nombre de quien la abre
+    const otro = eligeMesero && meseroAbrir !== yoId ? { meseroId: meseroAbrir } : {};
+    const ok = await ejecutar(`/mesas/${mesa.id}/abrir`, { comensales, ...otro },
       { "Idempotency-Key": claveAbrir.current });
     if (ok) claveAbrir.current = nuevaClave();
   };
@@ -173,13 +190,13 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
           {eligeMesero && (
             <label className="panel-mesa__campo">
               <span>Mesero responsable</span>
-              <select value={meseroId} onChange={(e) => setMeseroId(e.target.value)} disabled={!meseros}>
-                <option value="">{tomaComandas ? "Yo" : meseros ? "Elige un mesero" : "Cargando…"}</option>
-                {(meseros || []).map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+              <select value={meseroAbrir} onChange={(e) => setMeseroId(e.target.value)} disabled={!meseros}>
+                {!yoId && <option value="">{meseros ? "Elige un mesero" : "Cargando…"}</option>}
+                {(opcionesMesero || []).map((m) => <option key={m.id} value={m.id}>{m.etiqueta}</option>)}
               </select>
             </label>
           )}
-          <button type="button" className="plano__boton plano__boton--primario" disabled={enviando} onClick={abrirCuenta}>
+          <button type="button" className="plano__boton plano__boton--primario" disabled={enviando || cargandoMeseros} onClick={abrirCuenta}>
             Abrir cuenta
           </button>
         </div>
@@ -235,7 +252,7 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
         )}
         {cuenta && puede(permisos, "cuenta:transferir") && (
           <button type="button" className="plano__boton plano__boton--secundario" aria-expanded={modo === "transferir"}
-            onClick={() => setModo(modo === "transferir" ? null : "transferir")}>
+            onClick={() => { setMeseroId(""); setModo(modo === "transferir" ? null : "transferir"); }}>
             Transferir
           </button>
         )}
@@ -289,7 +306,7 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
             <span>Nuevo mesero</span>
             <select value={meseroId} onChange={(e) => setMeseroId(e.target.value)} disabled={!meseros}>
               <option value="">{meseros ? "Elige un mesero" : "Cargando…"}</option>
-              {(meseros || []).filter((m) => m.id !== cuenta.mesero?.id).map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+              {(opcionesMesero || []).filter((m) => m.id !== cuenta.mesero?.id).map((m) => <option key={m.id} value={m.id}>{m.etiqueta}</option>)}
             </select>
           </label>
           <label className="panel-mesa__campo">

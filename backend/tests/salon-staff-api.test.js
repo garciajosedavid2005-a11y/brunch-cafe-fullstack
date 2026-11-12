@@ -307,6 +307,42 @@ describe('Transferir (F1-8)', () => {
     })
 })
 
+describe('Responsable de la cuenta: solo quien atiende mesas (1.7b)', () => {
+    it('la lista excluye administradores y clientes, marca al usuario conectado y va por nombre', async () => {
+        const { usuario: adminUsuario } = await crearConSesion('admin')
+        const { usuario: cliente } = await crearConSesion('cliente')
+        const lista = esperar(await mesero.get(`${BASE}/meseros`), 200)
+        const ids = lista.map((m) => m.id)
+        expect(ids).not.toContain(String(adminUsuario._id))
+        expect(ids).not.toContain(String(cliente._id))
+        expect(lista.filter((m) => m.yo)).toEqual([expect.objectContaining({ id: String(meseroUsuario._id) })])
+        const nombres = lista.map((m) => m.nombre)
+        expect(nombres).toEqual([...nombres].sort((a, b) => a.localeCompare(b, 'es')))
+        const deRecepcion = esperar(await recepcion.get(`${BASE}/meseros`), 200)
+        expect(deRecepcion.some((m) => m.yo)).toBe(false)
+    })
+
+    it('abrir o transferir a un administrador → 400 MESERO_NO_VALIDO con un mensaje claro', async () => {
+        const { usuario: adminUsuario } = await crearConSesion('admin')
+        const res = await recepcion.post(`${BASE}/mesas/${m1._id}/abrir`).send({ comensales: 2, meseroId: String(adminUsuario._id) })
+        expect(res.status).toBe(400)
+        expect(res.body.error).toMatchObject({ code: 'MESERO_NO_VALIDO', message: expect.stringMatching(/no puede atender mesas/) })
+        expect(await estadoMesa(m1)).toBe('libre')
+        const cuenta = await abrir()
+        const transferir = await recepcion.post(`${BASE}/cuentas/${cuenta.id}/transferir`).send({ meseroId: String(adminUsuario._id) })
+        expect(transferir.status).toBe(400)
+        expect(transferir.body.error.code).toBe('MESERO_NO_VALIDO')
+    })
+
+    it('el administrador (permiso *) no queda como responsable: debe elegir un mesero', async () => {
+        const res = await admin.post(`${BASE}/mesas/${m1._id}/abrir`).send({ comensales: 2 })
+        expect(res.status).toBe(400)
+        expect(res.body.error.code).toBe('MESERO_REQUERIDO')
+        const cuenta = await abrir(m1, admin, { meseroId: String(meseroUsuario._id) })
+        expect(cuenta.mesero).toBe(String(meseroUsuario._id))
+    })
+})
+
 describe('Mover (POST /mesas/:id/mover)', () => {
     it('lleva la cuenta a una mesa libre; la que deja pasa a por limpiar', async () => {
         const cuenta = await abrir(m1)

@@ -16,7 +16,7 @@ import { registrarEvento } from '../compartido/estados.service.js'
 import {
     MAQUINA_MESA, MAQUINA_CUENTA, MAQUINA_ITEM, ESTADOS_CUENTA_ABIERTA, MESA_SEGUN_CUENTA,
 } from '../compartido/estadosSalon.js'
-import { tienePermiso } from '../identidad/permisos.js'
+import { atiendeMesas, tienePermiso } from '../identidad/permisos.js'
 import { calcularItem, subtotalRonda, totalesCuenta } from './totales.js'
 import {
     validar, abrirCuentaSchema, agregarItemSchema, modificarItemSchema, versionOpcionalSchema,
@@ -392,11 +392,11 @@ const siMesaEnOtraCuenta = async (operacion) => {
 }
 const crearCuentaOConflicto = (docs, opciones) => siMesaEnOtraCuenta(() => Cuenta.create(docs, opciones))
 
-/** 1.5 · El responsable de una cuenta: usuario activo cuyo rol puede tomar comandas. */
+/** 1.5 · El responsable de una cuenta: usuario activo que atiende mesas (1.7b: sin el comodín del admin). */
 const exigirMeseroValido = async (meseroId, session) => {
     const usuario = await Usuario.findById(meseroId).select('activo rol').populate('rol', 'permisos').session(session).lean()
-    if (!usuario || usuario.activo === false || !tienePermiso(usuario.rol?.permisos || [], 'comanda:tomar')) {
-        throw error(400, 'MESERO_NO_VALIDO', 'Elige un usuario activo que pueda tomar comandas.')
+    if (!usuario || usuario.activo === false || !atiendeMesas(usuario.rol?.permisos)) {
+        throw error(400, 'MESERO_NO_VALIDO', 'Ese usuario no puede atender mesas: elige un mesero activo.')
     }
 }
 
@@ -432,8 +432,8 @@ export const abrirCuenta = async (datos, sesion) => {
     const { mesaId, comensales, notas, meseroId } = validar(abrirCuentaSchema, datos)
     const otroMesero = Boolean(meseroId) && meseroId !== String(sesion.id)
     if (otroMesero) exigirPermiso(sesion, 'cuenta:transferir')
-    // El responsable puede tomar comandas: quien no puede (un rol sin comanda:tomar) indica el mesero
-    if (!otroMesero && !tienePermiso(permisosDe(sesion), 'comanda:tomar')) {
+    // El responsable atiende mesas: quien no (un rol sin comanda:tomar o el admin) indica el mesero
+    if (!otroMesero && !atiendeMesas(permisosDe(sesion))) {
         throw error(400, 'MESERO_REQUERIDO', 'Elige el mesero que atenderá la mesa.')
     }
     // Fuera de la transacción: un reintento no consume otro número (los huecos son aceptables)

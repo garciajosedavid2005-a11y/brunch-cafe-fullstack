@@ -9,7 +9,7 @@ import Producto from '../catalogo/producto.model.js'
 import Categoria from '../catalogo/categoria.model.js'
 import { AppError } from '../compartido/errors.js'
 import { ESTADOS_CUENTA_ABIERTA } from '../compartido/estadosSalon.js'
-import { tienePermiso, COMODIN } from '../identidad/permisos.js'
+import { tienePermiso } from '../identidad/permisos.js'
 import { extrasDeModificadores } from '../catalogo/producto.controller.js'
 import { urlPublica } from '../catalogo/imagenesProducto.js'
 import { obtenerCuenta } from './cuentas.service.js'
@@ -166,11 +166,12 @@ export const catalogoSalon = async (sesion) => {
     }
 }
 
-/** Usuarios activos que pueden ser responsables de una cuenta (su rol tiene comanda:tomar). */
+/** Usuarios activos que pueden ser responsables de una cuenta: su rol tiene comanda:tomar, sin
+ * administradores (comodín) ni clientes (1.7b). «yo» marca al usuario conectado. */
 export const listarMeseros = async (sesion) => {
     exigirAlguno(sesion, ['cuenta:transferir', 'cuenta:abrir'])
-    const roles = await Rol.find({ permisos: { $in: ['comanda:tomar', COMODIN] } }).select('_id').lean()
+    const roles = await Rol.find({ permisos: 'comanda:tomar' }).select('_id').lean()
     const usuarios = await Usuario.find({ rol: { $in: roles.map((r) => r._id) }, activo: { $ne: false } })
         .sort({ nombre: 1, apellido: 1 }).limit(MAX_MESEROS).select('nombre apellido').lean()
-    return usuarios.map((u) => ({ id: String(u._id), nombre: nombreCorto(u) }))
+    return usuarios.map((u) => ({ id: String(u._id), nombre: nombreCorto(u), yo: String(u._id) === String(sesion.id) }))
 }

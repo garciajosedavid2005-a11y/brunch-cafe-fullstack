@@ -82,5 +82,9 @@ export const ROLES_STAFF = [
     { nombre: 'repartidor', etiqueta: 'Repartidor', descripcion: 'Entrega pedidos a domicilio.', permisos: ['pedido:ver'] },
 ]
 
+// 1.7b · Atiende mesas quien tiene comanda:tomar en su rol, sin contar el comodín: el administrador
+// puede operar en /staff (F1-19), pero no queda como mesero responsable de una cuenta
+export const atiendeMesas = (permisosUsuario = []) => permisosUsuario.includes('comanda:tomar')
+
 export const tienePermiso = (permisosUsuario = [], clave) =>
     permisosUsuario.includes(COMODIN) || permisosUsuario.includes(clave)
