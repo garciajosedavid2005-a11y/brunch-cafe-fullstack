@@ -235,6 +235,18 @@ const VISTAS = {
       await p.waitForLoadState("networkidle");
     },
   },
+  // 1.11 · Dirección: «Cra 36b Oriente #30-06» se acepta y una sin número muestra el ejemplo
+  "carrito-direccion": {
+    usuario: "cliente",
+    completa: false,
+    preparar: async (p) => {
+      await VISTAS.carrito.preparar(p);
+      const direccion = p.getByPlaceholder("Ej: Calle 8 # 12-34");
+      await direccion.fill("Barrio Centro");
+      await p.getByRole("button", { name: "FINALIZAR COMPRA" }).click();
+      await direccion.scrollIntoViewIfNeeded();
+    },
+  },
   // Reservas: fecha de la próxima semana para ver todas las horas del día (0.8)
   reservas: {
     usuario: "cliente",

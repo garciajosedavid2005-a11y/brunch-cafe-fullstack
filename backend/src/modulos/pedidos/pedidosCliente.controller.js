@@ -11,6 +11,7 @@ import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../compartido/e
 import { cuerpoError } from '../compartido/errors.js';
 import { referenciaProducto, resolverProductos } from '../catalogo/referenciaProducto.schema.js';
 import { telefono } from '../compartido/comunes.schema.js';
+import { esDireccionValida, MENSAJE_DIRECCION, normalizarDireccion } from '../compartido/direccion.js';
 import { horasDomicilio, hora12, textoAnticipacion, textoRango } from '../configuracion/horarios.reglas.js';
 import { obtenerHorarios } from '../configuracion/horarios.service.js';
 import { conTransaccion } from '../compartido/transacciones.js';
@@ -23,10 +24,8 @@ const orderSchema = z.object({
   nombre: z.string().trim().min(3).max(50),
   // Obligatorio para el domicilio (el formulario lo prellena con el del perfil)
   telefono: telefono(),
-  direccion: z.string().trim().min(5).max(60).regex(
-    /^(calle|cl|carrera|cra|avenida|av|transversal|tv|diagonal|dg)\s*\d+[a-zA-Z]?\s*(sur|norte|este|oeste)?\s*#\s*\d+[a-zA-Z]?\s*-\s*\d+[a-zA-Z]?$/i,
-    'Ingresa una dirección válida. Ejemplo: Carrera 36B #30-06.'
-  ),
+  // 1.11 · Validación flexible, la misma del frontend (compartido/direccion.js)
+  direccion: z.string().max(200).transform(normalizarDireccion).refine(esDireccionValida, MENSAJE_DIRECCION),
   // Solo horas en punto; el rango y la anticipación los da la configuración de horarios
   hora: z.string().regex(/^([01]\d|2[0-3]):00$/, 'Elige una hora de entrega en punto (HH:00).'),
   barrio: z.string().trim().min(3).max(40),

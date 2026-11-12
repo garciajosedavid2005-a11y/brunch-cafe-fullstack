@@ -19,8 +19,8 @@ export const fechaFutura = (dias = 7) => {
 
 let codigoProducto = 100
 
-/** Crea un pedido pendiente desde el portal del cliente y devuelve su id. */
-export const crearPedido = async (sesionCliente) => {
+/** Crea un pedido pendiente desde el portal del cliente y devuelve su id (`extra` cambia campos del cuerpo). */
+export const crearPedido = async (sesionCliente, extra = {}) => {
     codigoProducto += 1
     const categoria = await Categoria.findOneAndUpdate(
         { nombre: 'Bebidas' }, { $setOnInsert: { nombre: 'Bebidas' } }, { upsert: true, returnDocument: 'after' }
@@ -35,6 +35,7 @@ export const crearPedido = async (sesionCliente) => {
         hora: '10:00',
         barrio: 'Centro',
         metodoPagoId: metodos.body[0].id,
+        ...extra,
     })
     if (res.status !== 201) throw new Error(`No se creó el pedido de prueba: ${JSON.stringify(res.body)}`)
     return res.body.order._id

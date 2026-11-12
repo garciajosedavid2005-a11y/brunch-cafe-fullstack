@@ -1,4 +1,5 @@
 import "./CarritoFormulario.css"
+import { esDireccionValida, MENSAJE_DIRECCION } from '../../utils/direccion'
 import { useDialogo } from '../../context/useDialogo'
 import { FaUser, FaMapMarkerAlt, FaClock, FaHome, FaStickyNote, FaCreditCard, FaMoneyBillWave, FaPhone } from 'react-icons/fa'
 import { useCarrito } from '../../context/CarritoContext'
@@ -108,12 +109,11 @@ const CarritoFormulario = () => {
                 'Ingrese un nombre válido (solo letras y mínimo 3 caracteres)'
         }
 
-        const direccionRegex =/^(calle|cl|carrera|cra|avenida|av|transversal|tv|diagonal|dg)\s*\d+[a-zA-Z]?\s*(sur|norte|este|oeste)?\s*#\s*\d+[a-zA-Z]?\s*-\s*\d+[a-zA-Z]?$/i
+        // 1.11 · La misma validación flexible que el backend (utils/direccion.js)
         if (!formData.direccion.trim()) {
             nuevosErrores.direccion = 'La dirección es requerida'
-        } else if (!direccionRegex.test(formData.direccion.trim())) {
-            nuevosErrores.direccion =
-                'Ingrese una dirección válida. Ej: Carrera 36B #30-06'
+        } else if (!esDireccionValida(formData.direccion)) {
+            nuevosErrores.direccion = MENSAJE_DIRECCION
         }
 
         if (!formData.telefono.trim()) {

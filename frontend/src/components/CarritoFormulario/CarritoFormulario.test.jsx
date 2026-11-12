@@ -53,6 +53,23 @@ describe("Checkout: hora de entrega y teléfono", () => {
     expect(await screen.findByLabelText(/teléfono de contacto/i)).toHaveValue("300 123 4567");
   });
 
+  // 1.11 · «Cra 36b Oriente #30-06» es una dirección válida; una sin número se rechaza con el ejemplo
+  it("acepta direcciones con abreviatura, letra y punto cardinal, y rechaza las que no tienen número", async () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-05T07:30:00-05:00") });
+    montar();
+    const direccion = screen.getByPlaceholderText("Ej: Calle 8 # 12-34");
+    fireEvent.change(direccion, { target: { name: "direccion", value: "Barrio Centro" } });
+    fireEvent.click(await screen.findByRole("button", { name: "FINALIZAR COMPRA" }));
+    expect(await screen.findByText("Ingresa una dirección válida. Ejemplo: Cra 36B Oriente #30-06.")).toBeInTheDocument();
+    fireEvent.change(direccion, { target: { name: "direccion", value: "Cra 36b Oriente #30-06" } });
+    fireEvent.change(screen.getByPlaceholderText("Barrio o conjunto..."), { target: { name: "barrio", value: "Centro" } });
+    await within(screen.getByLabelText(/hora de entrega/i)).findByRole("option", { name: /10:00/ });
+    fireEvent.change(screen.getByLabelText(/hora de entrega/i), { target: { name: "hora", value: "10:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "FINALIZAR COMPRA" }));
+    expect(await screen.findByRole("button", { name: "Confirmar Pedido" })).toBeInTheDocument();
+    expect(screen.queryByText(/Ingresa una dirección válida/)).not.toBeInTheDocument();
+  });
+
   it("envía una Idempotency-Key, la reutiliza al reintentar y usa otra en la compra siguiente", async () => {
     vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-05T07:30:00-05:00") });
     let intentos = 0;
