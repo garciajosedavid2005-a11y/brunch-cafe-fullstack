@@ -32,6 +32,13 @@ export const PERMISOS = [
     { clave: 'comanda:tomar', modulo: 'salon', descripcion: 'Agregar y quitar ítems de la ronda en borrador' },
     { clave: 'comanda:enviar', modulo: 'salon', descripcion: 'Enviar la ronda a cocina y barra' },
     { clave: 'item:anular', modulo: 'salon', descripcion: 'Anular un ítem ya enviado, con motivo' },
+    // Fase 2 · cocina y barra (PLAN_FASE_2 §2, F2-2, F2-3, F2-5)
+    { clave: 'kds:ver', modulo: 'cocina', descripcion: 'Ver la pantalla de cocina (KDS) de su estación' },
+    { clave: 'item:preparar', modulo: 'cocina', descripcion: 'Marcar ítems en preparación y listos' },
+    { clave: 'pedido:preparar', modulo: 'cocina', descripcion: 'Preparar pedidos a domicilio (confirmado → en preparación → listo)' },
+    { clave: 'item:servir', modulo: 'salon', descripcion: 'Marcar como servidos los ítems listos' },
+    { clave: 'producto:agotar', modulo: 'catalogo', descripcion: 'Marcar un producto u opción como agotado' },
+    { clave: 'producto:reactivar', modulo: 'catalogo', descripcion: 'Volver a ofrecer un producto u opción agotado' },
     // Fases futuras (reservados)
     { clave: 'caja:abrir', modulo: 'caja', descripcion: 'Abrir turno de caja', reservado: true },
     { clave: 'caja:cerrar', modulo: 'caja', descripcion: 'Cerrar turno de caja y arqueo', reservado: true },
@@ -67,6 +74,14 @@ export const PERMISOS_SALON = {
     ],
 }
 
+// Permisos de cocina y barra de la Fase 2 (2.1). La migración 2.1 usa una copia fija de esta lista;
+// un cambio aquí necesita su propia migración. El admin los tiene todos por "*".
+export const PERMISOS_COCINA = {
+    mesero: ['item:servir', 'producto:agotar'],
+    cocina: ['kds:ver', 'item:preparar', 'pedido:preparar', 'producto:agotar', 'producto:reactivar'],
+    barista: ['kds:ver', 'item:preparar', 'pedido:preparar', 'producto:agotar', 'producto:reactivar'],
+}
+
 // Roles de staff con permisos mínimos (se amplían en cada fase).
 // El seed solo los asigna al crear el rol; después los edita el admin.
 export const ROLES_STAFF = [
@@ -74,10 +89,10 @@ export const ROLES_STAFF = [
         nombre: 'mesero',
         etiqueta: 'Mesero',
         descripcion: 'Atiende mesas, toma comandas y gestiona las reservas.',
-        permisos: ['pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear', 'reserva:cambiar_estado', ...PERMISOS_SALON.mesero],
+        permisos: ['pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear', 'reserva:cambiar_estado', ...PERMISOS_SALON.mesero, ...PERMISOS_COCINA.mesero],
     },
-    { nombre: 'cocina', etiqueta: 'Cocina', descripcion: 'Prepara los platos.', permisos: ['pedido:ver'] },
-    { nombre: 'barista', etiqueta: 'Barista', descripcion: 'Prepara las bebidas.', permisos: ['pedido:ver'] },
+    { nombre: 'cocina', etiqueta: 'Cocina', descripcion: 'Prepara los platos.', permisos: ['pedido:ver', ...PERMISOS_COCINA.cocina] },
+    { nombre: 'barista', etiqueta: 'Barista', descripcion: 'Prepara las bebidas.', permisos: ['pedido:ver', ...PERMISOS_COCINA.barista] },
     { nombre: 'cajero', etiqueta: 'Cajero', descripcion: 'Cobra cuentas y gestiona la caja.', permisos: ['pedido:ver'] },
     { nombre: 'repartidor', etiqueta: 'Repartidor', descripcion: 'Entrega pedidos a domicilio.', permisos: ['pedido:ver'] },
 ]

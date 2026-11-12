@@ -32,6 +32,7 @@ describe('Seed de roles base', () => {
             // Salón (1.1; 1.5b suma bloquear, unir y transferir)
             'mesa:ver', 'mesa:operar', 'mesa:bloquear', 'mesa:unir', 'cuenta:abrir', 'cuenta:ver', 'cuenta:transferir',
             'comanda:tomar', 'comanda:enviar', 'cuenta:solicitar',
+            'item:servir', 'producto:agotar', // 2.1 (F2-2, F2-5)
         ])
         expect(porNombre.compras).toBeUndefined() // 1.5b: roles anfitrion y compras eliminados
         expect(porNombre.anfitrion).toBeUndefined()

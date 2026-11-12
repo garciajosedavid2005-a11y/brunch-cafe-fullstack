@@ -21,11 +21,12 @@ describe('Permisos de salón (1.1)', () => {
     })
 
     // 1.5b: el mesero asume también las tareas del anfitrión (rol eliminado)
-    it('mesero: mesas (ver, operar, bloquear, unir), cuentas (abrir, ver, transferir, solicitar), comandas y reservas', async () => {
+    it('mesero: mesas (ver, operar, bloquear, unir), cuentas (abrir, ver, transferir, solicitar), comandas, reservas y (2.1) servir y agotar', async () => {
         expect(await permisosDe('mesero')).toEqual([
             'pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear', 'reserva:cambiar_estado',
             'mesa:ver', 'mesa:operar', 'mesa:bloquear', 'mesa:unir', 'cuenta:abrir', 'cuenta:ver', 'cuenta:transferir',
             'comanda:tomar', 'comanda:enviar', 'cuenta:solicitar',
+            'item:servir', 'producto:agotar', // 2.1 (F2-2, F2-5)
         ])
     })
 

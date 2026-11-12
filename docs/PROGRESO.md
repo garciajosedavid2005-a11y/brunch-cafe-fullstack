@@ -1,8 +1,17 @@
 # Progreso Brunch Café
 
-## Fase actual: 1 — Salón y comandas (cerrada el 2026-11-12, pendiente de la revisión final de Brayan)
+## Fase actual: 2 — Cocina y barra, KDS (en curso desde el 2026-11-12)
 
-**Siguiente: Fase 2 (cocina y barra, KDS).** Plan en [PLAN_FASE_2.md](PLAN_FASE_2.md), aprobado por Brayan el 2026-11-12 con las decisiones F2-1 a F2-10.
+Plan en [PLAN_FASE_2.md](PLAN_FASE_2.md) (aprobado; decisiones F2-1 a F2-10). Orden: 2.1 → 2.9.
+
+### Ítems Fase 2
+
+| ID | Ítem | Estado inicial | Estado actual | Commit | Notas |
+|---|---|---|---|---|---|
+| 2.1 | Permisos y roles de cocina y barra | FALTA | EN CURSO (código hecho; migración real pendiente de aprobación) | (este commit) | **Catálogo:** `kds:ver`, `item:preparar` y `pedido:preparar` (módulo `cocina`, «Cocina y barra» en Admin › Roles), `item:servir` (salón) y `producto:agotar` / `producto:reactivar` (catálogo), asignables. **Seed** (al crear el rol, `PERMISOS_COCINA`): cocina y barista reciben `kds:ver`, `item:preparar`, `pedido:preparar`, `producto:agotar` y `producto:reactivar`; el mesero, `item:servir` y `producto:agotar` (F2-2, F2-3, F2-5); el admin, todo por `*`. **Migración `migrate:2.1`** (`m21-permisos-cocina.js`, copia fija), con el criterio de estado exacto de 1.1: solo agrega a mesero, cocina o barista sus claves si el rol no tiene ninguna (BD anterior a 2.1), conservando el resto; con todas, `sin-cambios`; con algunas, `personalizado` (el admin ya decidió, p. ej. quitó `producto:agotar`) y no se toca. Escritura condicional (sin marca y sin ninguna clave: si el admin cambia el rol entre medias, `cambio-concurrente` y salida 1), marca `_migracion21` con lo agregado, idempotente, `--down` quita solo lo marcado, `--dry-run` en los dos sentidos y argumentos desconocidos rechazados (`leerArgumentos`). Tests: `permisos-cocina.test.js` (4), `migracion-21.test.js` (7: copia fija literal, simulacro, up/down, rol sembrado con una clave quitada a propósito, cambio concurrente, down tras quitar una a mano, rol inexistente) y Roles con el grupo «Cocina y barra». `/review-migration` sobre `m21-permisos-cocina.js`: sin bloqueantes ni nada que corregir (3 documentos, `$addToSet` condicional, `--down` exacto). Revisores: revisor-reglas y revisor-backend (criterio de estado exacto, carrera, `leerArgumentos`, salida 1, copia fija literal). |
+
+## Fase 1 — Salón y comandas (cerrada el 2026-11-12, pendiente de la revisión final de Brayan)
+
 
 Plan en [PLAN_FASE_1.md](PLAN_FASE_1.md), con las preguntas de negocio respondidas (F1-1 a F1-16; F1-17 en 1.4). Orden: 1.1 → 1.14 (1.8 pasa a la Fase 6; 1.11–1.14 pedidos tras las pruebas).
 
@@ -279,6 +288,7 @@ Plan en [PLAN_FASE_1.md](PLAN_FASE_1.md), con las preguntas de negocio respondid
 - 2026-11-12 · Fase 2 · Se aprueba el diseño de PLAN_FASE_2 (módulo `cocina`, SSE con bus en memoria y polling de respaldo, eventos solo con ids, tiempos en el ítem). Tras 1.15 se avanza por los ítems en orden sin esperar aprobación, salvo migración real, borrados, decisión de negocio nueva, problema sin resolver en 2 intentos y las pausas visuales de 2.5 (KDS a 1280×800 y 1920×1080) y 2.6 (aviso al mesero y «Servir» a 1024×768 y 768×1024) · Brayan
 - 2026-11-12 · 1.15 · Horarios: un reintento de red de un PUT ya aplicado (misma `versionEsperada`) responde 409 aunque el cambio quedó guardado; es intencionado (el admin recarga y ve su cambio), como en las cuentas · Claude (a confirmar por Brayan)
 - 2026-11-12 · 1.15 · Reseñas: producto inexistente pasa de 400 a `404 PRODUCTO_NO_ENCONTRADO`, como el pedido · Claude (a confirmar por Brayan)
+- 2026-11-12 · 2.1 · Las rutas por permiso hacia `/kds` (inicio en `/kds` con `kds:ver` y sin `mesa:ver`; enlace desde `/staff` con los dos) se implementan en 2.5, junto con la pantalla: hasta entonces cocina y barista siguen entrando a `/staff` como hoy, sin una ruta vacía · Claude (a confirmar por Brayan)
 - 2026-11-06 · Preparación de la Fase 1: se usa el plugin Backend Design (skills de modelado, migraciones, idempotencia, autorización y seguridad; `/review-migration`; subagentes `schema-reviewer` y `security-reviewer`) y se crean los subagentes del proyecto `revisor-reglas`, `revisor-backend`, `revisor-visual` y `explorador` en `.claude/agents/`. CLAUDE.md y las decisiones de PROGRESO tienen prioridad sobre el plugin · Brayan
 - 2026-11-05 · T4: `codigo` con contador atómico (colección `counters`, `findOneAndUpdate` + `$inc`) mientras exista `codigo` · Brayan
 

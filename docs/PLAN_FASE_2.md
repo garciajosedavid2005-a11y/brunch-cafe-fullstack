@@ -50,7 +50,7 @@
 Cada ítem = 1 commit (o pocos) con tests primero, revisores y capturas, como en la Fase 1.
 
 ### 2.1 Permisos y roles de cocina y barra
-- Claves nuevas (`kds:ver`, `item:preparar`, `item:servir`, `producto:agotar`, `producto:reactivar`) en el catálogo, con la asignación inicial que salga de las preguntas 2 y 5.
+- Claves nuevas (`kds:ver`, `item:preparar`, `item:servir`, `pedido:preparar`, `producto:agotar`, `producto:reactivar`) en el catálogo, con la asignación de F2-2, F2-3 y F2-5. Las rutas a `/kds` pasan a 2.5 (con la pantalla).
 - **Migración `migrate:2.1`**, idempotente y con `--dry-run` y `--down`, para los roles existentes. Pasa por `/review-migration`, se anota en el README («Al traer cambios») y **se detiene para pedir aprobación**, con `mongodump` antes de aplicarla.
 - Rutas por permiso, nunca por el nombre del rol (0.15d, test `sinRolesPorNombre`): con `kds:ver` y sin `mesa:ver`, el inicio es `/kds`; con los dos, `/staff` muestra un enlace a `/kds`.
 

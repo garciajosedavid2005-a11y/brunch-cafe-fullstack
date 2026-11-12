@@ -33,6 +33,7 @@ const TITULO_MODULO = {
   inventario: "Inventario",
   reportes: "Reportes",
   salon: "Salón",
+  cocina: "Cocina y barra", // 2.1
 };
 const tituloModulo = (modulo) => TITULO_MODULO[modulo] || modulo.charAt(0).toUpperCase() + modulo.slice(1);
 
