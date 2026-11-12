@@ -39,7 +39,20 @@ Cada vez que traigas cambios de otra rama (`git pull`, fusión de `developers`, 
 
 El rol nuevo `mesero` recibe `pedido:ver`, `pedido:cambiar_estado`, `reserva:ver` y `reserva:crear`. No recibe `reserva:cambiar_estado`; la confirmación y gestión de estados sigue dependiendo de ese permiso. El seed no sobrescribe permisos que un administrador ya haya personalizado. En una base existente, reinicia el backend para actualizar el catálogo y desde **Admin → Roles** asigna al rol Mesero los permisos que necesite. Para habilitar los módulos configurados por defecto, activa `pedido:ver`, `pedido:cambiar_estado`, `reserva:ver` y `reserva:crear`. Desde 1.1 el mesero recibe además los permisos de salón (`mesa:ver`, `mesa:operar`, `cuenta:abrir`, `cuenta:ver`, `comanda:tomar`, `comanda:enviar`, `cuenta:solicitar`) ; en una BD existente los agrega `npm run migrate:1.1`. **Desde 1.5b no hay rol anfitrión:** el mesero recibe además sus tareas (`reserva:cambiar_estado`, `mesa:bloquear`, `mesa:unir`, `cuenta:transferir`; en una BD existente, `npm run migrate:1.5b`). `item:anular`, `cuenta:cerrar_sin_cobro` y `salon:configurar` quedan solo para el admin.
 
-El panel de Mesero inicia en Resumen y carga reservas y pedidos desde las rutas protegidas de `/api/v1/staff`. Perfil y cambio de contraseña usan las mismas rutas de cuenta ya disponibles.
+### Panel de sala (`/staff`, Fase 1)
+
+Pensado para tablet (1024×768 en horizontal y 768×1024 en vertical, botones de 44 px o más), con su propio layout sin la barra ni el pie del sitio. Las pestañas dependen de los permisos del rol, nunca de su nombre:
+
+- **Mesas** (`mesa:ver`; es la primera si está): plano por zonas con el estado de cada mesa en texto e icono. El panel de la mesa permite abrir la cuenta (comensales y mesero responsable), bloquear, marcar limpia, mover, unir, separar y transferir.
+- **Toma de comanda** («Ver cuenta / Tomar comanda» desde una mesa con cuenta): menú por categorías, modificadores, nota, ronda en curso, «Enviar ronda» (con `Idempotency-Key` y versión de la cuenta), rondas enviadas, anular con motivo (`item:anular`), solicitar y cancelar la cuenta. Subtotal sin impuestos ni propina hasta la Fase 3.
+- **Cuentas** (`cuenta:ver` o `pedido:ver`): vista de solo lectura «Cuentas abiertas» con el salón y los domicilios en curso (1.9).
+- **Resumen**, **Reservas** y **Pedidos** (según `reserva:*` y `pedido:*`), y **Mi perfil** y **Seguridad**.
+- **«Cambiar de usuario»** cierra la sesión en tablets compartidas (la del personal dura 12 h).
+- **El administrador** entra desde «Panel de sala» en la cabecera del admin (F1-19) para anular ítems. Su inicio sigue siendo `/admin`. No queda como mesero responsable: al abrir una cuenta elige un mesero.
+
+Sin tiempo real hasta la Fase 2. El plano se refresca cada 10 s y la cuenta y «Cuentas abiertas» cada 15 s, siempre con la pestaña visible. También se refrescan al volver a la pestaña, al enfocar la ventana, al recuperar la conexión y con «Actualizar». Si otra persona cambió la cuenta mientras la editabas, la API responde `409 CUENTA_MODIFICADA` y la tablet recarga y avisa.
+
+**Probar en local:** `npm run seed:dev` crea `admin.dev`, `mesero.dev` y `cliente.dev` (@brunchcafe.test), con la contraseña de `DEV_USUARIOS_PASSWORD`. Las zonas y mesas de ejemplo las crea `npm run seed:salon` (solo si no hay zonas) y se editan en Admin › Salón.
 
 Para habilitar el enlace de recuperación configura `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` y, opcionalmente, `SMTP_FROM` en `backend/.env`. La solicitud se hace en `POST /api/v1/auth/recuperar-contrasena`; el enlace de un solo uso vence a los 30 minutos y actualiza la contraseña en `POST /api/v1/auth/restablecer-contrasena`. La API responde siempre `202` con el mismo mensaje y sin esperar el envío: así ni la respuesta ni su tiempo revelan si existe una cuenta. El token se guarda con hash (SHA-256), es de un solo uso, vence a los 30 minutos y, al usarlo, sube `tokenVersion` (se cierran todas las sesiones). Límites: 5 solicitudes y 10 restablecimientos por hora por IP. Si el envío falla, el enlace se invalida y el error se registra sin el correo.
 
