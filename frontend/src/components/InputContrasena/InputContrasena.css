@@ -1,0 +1,50 @@
+/* Revisión de 1.6 · Botón de mostrar u ocultar la contraseña: 44×44 px dentro del campo, a la derecha.
+   El icono #6a5752 sobre los fondos de los campos (#ffffff, #faf7f4) supera 3:1 (objeto gráfico). */
+.input-contrasena {
+  position: relative;
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  margin: 0;
+}
+
+.input-contrasena .input-contrasena__campo {
+  padding-right: 48px !important; /* deja sitio al botón (las hojas del login y del admin fijan el padding con !important) */
+  margin-bottom: 0 !important; /* Foundation le pone 1rem: el centro del contenedor no sería el del campo */
+}
+
+.input-contrasena__boton {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #6a5752;
+  line-height: 0;
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.input-contrasena__boton:hover {
+  background: #f3e9e5;
+  color: #2c0703;
+}
+
+.input-contrasena__boton:focus-visible {
+  outline: 3px solid #890620;
+  outline-offset: -3px;
+}
+
+.input-contrasena__boton[aria-pressed="true"] {
+  color: #890620;
+}

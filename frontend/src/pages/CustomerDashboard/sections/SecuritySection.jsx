@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SectionHeading from "../SectionHeading";
+import InputContrasena from "../../../components/InputContrasena/InputContrasena";
 import { useAuth } from "../../../context/useAuth";
 import useDatosCuenta, { etiquetaRolCuenta, fechaRegistro } from "../../../hooks/useDatosCuenta";
 import useCambioContrasena from "../../../hooks/useCambioContrasena";
@@ -9,18 +10,16 @@ import useCambioContrasena from "../../../hooks/useCambioContrasena";
 function CampoContrasena({ id, etiqueta, valor, onChange, error, autoComplete }) {
   return (
     <div className="dashboard-field">
-      <label htmlFor={id}>
-        {etiqueta}
-        <input
-          id={id}
-          type="password"
-          value={valor}
-          onChange={onChange}
-          autoComplete={autoComplete}
-          aria-invalid={Boolean(error)}
-          aria-describedby={error ? `${id}-error` : undefined}
-        />
-      </label>
+      {/* La etiqueta no envuelve el campo: dentro va el botón de mostrar, que no es parte de su nombre */}
+      <label htmlFor={id}>{etiqueta}</label>
+      <InputContrasena
+        id={id}
+        value={valor}
+        onChange={onChange}
+        autoComplete={autoComplete}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
+      />
       {error && <small id={`${id}-error`} className="dashboard-field-error">{error}</small>}
     </div>
   );

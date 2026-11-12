@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../../context/useAuth";
 import { apiRequest } from "../../../services/api";
+import InputContrasena from "../../../components/InputContrasena/InputContrasena";
 import useCambioContrasena from "../../../hooks/useCambioContrasena";
 
 export default function ProfileSection() {
@@ -248,13 +249,14 @@ export default function ProfileSection() {
 
           <form onSubmit={cambio.enviar} className="admin-form" noValidate>
             <div className="admin-form-group">
-              <label className="admin-form-label">
+              <label className="admin-form-label" htmlFor="perfil-clave-actual">
                 Contraseña Actual
               </label>
               <div className="admin-input-icon-wrapper">
                 <Lock size={18} className="admin-input-icon" />
-                <input
-                  type="password"
+                <InputContrasena
+                  id="perfil-clave-actual"
+                  autoComplete="current-password"
                   className="admin-form-input admin-input--with-icon"
                   placeholder="••••••••"
                   value={cambio.datos.actual}
@@ -266,13 +268,14 @@ export default function ProfileSection() {
 
             <div className="admin-modal-grid">
               <div className="admin-form-group">
-                <label className="admin-form-label">
+                <label className="admin-form-label" htmlFor="perfil-clave-nueva">
                   Nueva Contraseña
                 </label>
                 <div className="admin-input-icon-wrapper">
                   <KeyRound size={18} className="admin-input-icon" />
-                  <input
-                    type="password"
+                  <InputContrasena
+                    id="perfil-clave-nueva"
+                    autoComplete="new-password"
                     className="admin-form-input admin-input--with-icon"
                     placeholder="Mínimo 6 caracteres"
                     value={cambio.datos.nueva}
@@ -283,13 +286,14 @@ export default function ProfileSection() {
               </div>
 
               <div className="admin-form-group">
-                <label className="admin-form-label">
+                <label className="admin-form-label" htmlFor="perfil-clave-confirmar">
                   Confirmar Nueva Contraseña
                 </label>
                 <div className="admin-input-icon-wrapper">
                   <KeyRound size={18} className="admin-input-icon" />
-                  <input
-                    type="password"
+                  <InputContrasena
+                    id="perfil-clave-confirmar"
+                    autoComplete="new-password"
                     className="admin-form-input admin-input--with-icon"
                     placeholder="Repite la contraseña"
                     value={cambio.datos.confirmar}

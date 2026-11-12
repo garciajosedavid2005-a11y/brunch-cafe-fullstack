@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, Lock, Mail } from "lucide-react";
 import AuthBanner from "../Auth/AuthBanner";
+import InputContrasena from "../../components/InputContrasena/InputContrasena";
 import { apiRequest } from "../../services/api";
 import "../Auth/Auth.css";
 
@@ -105,10 +106,9 @@ export default function RecuperarContrasena() {
                     <label htmlFor="recuperacion-nueva" className="auth-label">Nueva contraseña</label>
                     <div className="auth-input-wrapper">
                       <span className="auth-input-icono" aria-hidden="true"><Lock size={18} /></span>
-                      <input
+                      <InputContrasena
                         id="recuperacion-nueva"
                         className="auth-input"
-                        type="password"
                         autoComplete="new-password"
                         minLength={6}
                         maxLength={128}
@@ -122,10 +122,9 @@ export default function RecuperarContrasena() {
                     <label htmlFor="recuperacion-confirmacion" className="auth-label">Confirma la nueva contraseña</label>
                     <div className="auth-input-wrapper">
                       <span className="auth-input-icono" aria-hidden="true"><Lock size={18} /></span>
-                      <input
+                      <InputContrasena
                         id="recuperacion-confirmacion"
                         className="auth-input"
-                        type="password"
                         autoComplete="new-password"
                         minLength={6}
                         maxLength={128}

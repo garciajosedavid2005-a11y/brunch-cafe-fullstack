@@ -1746,6 +1746,7 @@
 .admin-input-icon {
   position: absolute;
   left: 0.85rem;
+  z-index: 3; /* por encima del campo de contraseña, que va en un contenedor posicionado (InputContrasena) */
   color: var(--color-primario);
   pointer-events: none;
 }

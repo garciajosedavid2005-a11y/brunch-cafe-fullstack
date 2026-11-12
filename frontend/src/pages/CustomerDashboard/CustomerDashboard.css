@@ -125,6 +125,13 @@
   font-weight: 600;
 }
 
+/* Campo de contraseña de Seguridad: etiqueta y campo hermanos (el botón de mostrar no va en la etiqueta) */
+.dashboard-field {
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+}
+
 .dashboard-form input,
 .dashboard-form textarea,
 .dashboard-form select {
