@@ -8,8 +8,10 @@
 import heroBg from "../../assets/hero-reservas.jpg";
 import datos from "../../data/heroReservas.json";
 import "./HeroReservas.css";
+import { useMarcarPortada } from "../../context/usePortada";
 
 const HeroReservas = () => {
+  useMarcarPortada(); // 2.0b · navbar transparente sobre la foto
   const imagen = datos.imagen || heroBg;
 
   return (

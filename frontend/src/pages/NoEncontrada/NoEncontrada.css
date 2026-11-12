@@ -1,0 +1,73 @@
+/* 2.0b · Página no encontrada (misma tarjeta que el aviso de /reservas sin sesión) */
+.no-encontrada {
+  min-height: 55vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+}
+
+.no-encontrada__tarjeta {
+  width: min(100%, 520px);
+  padding: clamp(2rem, 6vw, 3.5rem);
+  border: 1px solid #eadbd5;
+  border-radius: 22px;
+  background: linear-gradient(145deg, #fffdfa, #f7e7e2);
+  box-shadow: 0 20px 55px #2c07031c;
+  color: var(--color-oscuro);
+  text-align: center;
+}
+
+.no-encontrada__tarjeta > span {
+  color: var(--color-primario);
+  font-size: 2.2rem;
+}
+
+.no-encontrada h1 {
+  margin: 0.5rem 0;
+  color: var(--color-oscuro);
+  font-size: clamp(1.7rem, 5vw, 2.4rem);
+}
+
+.no-encontrada p {
+  margin: 0;
+  color: #594742;
+  line-height: 1.6;
+}
+
+.no-encontrada__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.no-encontrada__boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 1.4rem;
+  border: 1.5px solid var(--color-primario);
+  border-radius: 999px;
+  color: var(--color-primario);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.no-encontrada__boton:hover,
+.no-encontrada__boton:focus-visible {
+  background: var(--color-suave);
+  color: var(--color-oscuro);
+}
+
+.no-encontrada__boton--principal {
+  background: var(--color-primario);
+  color: var(--color-marfil);
+}
+
+.no-encontrada__boton--principal:hover,
+.no-encontrada__boton--principal:focus-visible {
+  background: var(--color-oscuro);
+  color: var(--color-marfil);
+}

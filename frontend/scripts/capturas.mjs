@@ -42,6 +42,10 @@ const pequenos = [];
 // 1.6b · MEDIR_SOLAPES=1: en las tablas con acciones fijas, lista las columnas que quedan debajo de ellas
 const MEDIR_SOLAPES = process.env.MEDIR_SOLAPES === "1";
 const solapes = [];
+// 2.0b · Siempre que haya navbar público: contraste de sus enlaces (normal, activo y hover) y de las
+// barras de la hamburguesa contra lo que hay detrás de verdad (capas compuestas); sobre una foto no se
+// puede calcular y se informa aparte. Texto ≥ 4,5:1; barras de la hamburguesa (no texto) ≥ 3:1
+const contrastesNavbar = [];
 const SALIDA = join(process.cwd(), "capturas", ETIQUETA);
 
 const SOLO_PUBLICAS = SOLO && SOLO.every((v) => ["inicio", "menu", "login", "registro", "nosotros", "nosotros-ubicacion", "pie", "comentarios"].includes(v));
@@ -211,6 +215,99 @@ const agregarRondaDeEjemplo = async (p) => {
   await limonada.waitFor({ state: "detached" });
 };
 
+// 2.0b · Contraste de un elemento del navbar contra el fondo compuesto que tiene detrás (en el navegador)
+const medirElementoNavbar = (el, estado) => {
+  const rgba = (texto) => {
+    const m = texto.match(/rgba?\(([^)]+)\)/);
+    if (!m) return null;
+    const [r, g, b, a = 1] = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+    return { r, g, b, a };
+  };
+  const sobre = (arriba, abajo) => ({
+    r: arriba.r * arriba.a + abajo.r * (1 - arriba.a),
+    g: arriba.g * arriba.a + abajo.g * (1 - arriba.a),
+    b: arriba.b * arriba.a + abajo.b * (1 - arriba.a),
+    a: 1,
+  });
+  const lum = ({ r, g, b }) => [r, g, b].map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  }).reduce((s, c, i) => s + c * [0.2126, 0.7152, 0.0722][i], 0);
+  const r = el.getBoundingClientRect();
+  const [x, y] = [r.left + r.width / 2, r.top + r.height / 2];
+  // Capas en ese punto, de arriba abajo, hasta una opaca; una foto (img o background-image) no se mide
+  const capas = [];
+  let sobreFoto = false;
+  for (const capa of document.elementsFromPoint(x, y)) {
+    if (capa === el || el.contains(capa)) continue;
+    const estilo = getComputedStyle(capa);
+    if (["IMG", "VIDEO", "CANVAS", "PICTURE"].includes(capa.tagName) || (estilo.backgroundImage && estilo.backgroundImage !== "none")) {
+      sobreFoto = true;
+      break;
+    }
+    const fondo = rgba(estilo.backgroundColor);
+    if (fondo && fondo.a > 0) capas.push(fondo);
+    if (fondo?.a === 1) break;
+  }
+  const esBarra = el.matches(".navbar__hamburger span");
+  const esIcono = el.tagName === "IMG";
+  // Icono (carrito): el color de verdad es el de los píxeles opacos del PNG, con su filtro
+  // (en el navbar transparente, brightness(0) invert(1) lo vuelve blanco)
+  const colorIcono = () => {
+    const filtro = getComputedStyle(el).filter || "";
+    if (/brightness\(0\)/.test(filtro) && /invert\(1\)/.test(filtro)) return { r: 255, g: 255, b: 255, a: 1 };
+    const c = document.createElement("canvas");
+    c.width = el.naturalWidth || 32;
+    c.height = el.naturalHeight || 32;
+    const g = c.getContext("2d");
+    g.drawImage(el, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let [r, gg, b, n] = [0, 0, 0, 0];
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 128) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; n += 1; }
+    return n ? { r: r / n, g: gg / n, b: b / n, a: 1 } : { r: 0, g: 0, b: 0, a: 1 };
+  };
+  const textoFg = esIcono ? colorIcono() : rgba(getComputedStyle(el)[esBarra ? "backgroundColor" : "color"]);
+  const fondo = capas.reverse().reduce((abajo, arriba) => sobre(arriba, abajo), { r: 255, g: 255, b: 255, a: 1 });
+  const fg = sobre(textoFg, fondo);
+  const [claro, oscuro] = [lum(fg), lum(fondo)].sort((a, b) => b - a);
+  const hex = ({ r: rr, g, b }) => `#${[rr, g, b].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`;
+  return {
+    texto: esBarra ? "(barra de la hamburguesa)" : esIcono ? `(icono) ${el.alt || ""}` : (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 30),
+    estado, color: hex(fg), fondo: hex(fondo), sobreFoto,
+    minimo: esBarra || esIcono ? 3 : 4.5, // gráficos (no texto): 3:1
+    ratio: Math.round(((claro + 0.05) / (oscuro + 0.05)) * 100) / 100,
+  };
+};
+// Enlaces con texto, el icono del carrito (su <img>) y las barras de la hamburguesa
+const SELECTOR_NAVBAR = ".top-bar .menu a, .top-bar .menu button, .top-bar .menu img, .navbar__hamburger span";
+const medirContrasteNavbar = async (page) => {
+  if (!(await page.locator(".top-bar").first().isVisible().catch(() => false))) return null;
+  const medidas = await page.evaluate(({ selector, medir }) => {
+    const fn = new Function(`return (${medir})`)();
+    // Solo lo que se ve: un navbar transparente (absoluto) queda fuera de la pantalla al bajar
+    const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < window.innerHeight && getComputedStyle(el).visibility !== "hidden"; };
+    // Un enlace sin texto que solo envuelve un icono (el carrito) se mide por su <img>
+    const soloIcono = (el) => el.tagName === "A" && !el.textContent.trim() && el.querySelector("img");
+    return [...document.querySelectorAll(selector)].filter(visible).filter((el) => !soloIcono(el))
+      .map((el) => fn(el, (el.closest("a") || el).classList.contains("active") ? "activo" : "normal"));
+  }, { selector: SELECTOR_NAVBAR, medir: medirElementoNavbar.toString() });
+  // Hover: se pasa el puntero por cada enlace o botón visible del menú
+  const enlaces = page.locator(".top-bar .menu a, .top-bar .menu button");
+  for (let i = 0; i < await enlaces.count(); i += 1) {
+    const enlace = enlaces.nth(i);
+    if (!(await enlace.isVisible())) continue;
+    if (!(await enlace.evaluate((el) => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight; }))) continue;
+    await enlace.hover();
+    await page.waitForTimeout(300); // transición de color
+    medidas.push(await enlace.evaluate((el, medir) => {
+      const objetivo = !el.textContent.trim() && el.querySelector("img") ? el.querySelector("img") : el;
+      return new Function(`return (${medir})`)()(objetivo, "hover");
+    }, medirElementoNavbar.toString()));
+  }
+  await page.mouse.move(1, 899);
+  return medidas;
+};
+
 // nombre → { usuario, preparar(page), completa }
 const VISTAS = {
   inicio: { preparar: (p) => p.goto(`${FRONT}/`) },
@@ -224,6 +321,19 @@ const VISTAS = {
     if (await hamburguesa.isVisible()) await hamburguesa.click();
   } },
   registro: { preparar: (p) => p.goto(`${FRONT}/registro`) },
+  // 2.0b · Páginas sin foto de portada (navbar sobre fondo claro)
+  "recuperar-contrasena": { preparar: (p) => p.goto(`${FRONT}/recuperar-contrasena`) },
+  // Sin sesión, /reservas avisa y a los 1,8 s lleva al login: el reloj se congela para la foto
+  "reservas-sin-sesion": { preparar: async (p) => {
+    // Reloj instalado y en pausa: el temporizador de 1,8 s no avanza mientras se mide y se captura
+    const ahora = Date.now();
+    await p.clock.install({ time: ahora });
+    await p.clock.pauseAt(ahora + 1000);
+    await p.goto(`${FRONT}/reservas`);
+    await p.getByRole("heading", { name: "Inicia sesión para reservar" }).waitFor();
+  } },
+  "pagina-inexistente": { preparar: (p) => p.goto(`${FRONT}/esta-pagina-no-existe`) },
+  perfil: { usuario: "cliente", preparar: (p) => p.goto(`${FRONT}/perfil`) },
   nosotros: { preparar: (p) => p.goto(`${FRONT}/nosotros`) },
   // Tarjeta de ubicación de Nosotros y pie de página (horarios)
   "nosotros-ubicacion": {
@@ -740,6 +850,26 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
       // El último clic deja el puntero sobre el menú y su :hover sale en la foto: se aparta
       await page.mouse.move(ancho - 2, alto - 2);
       await page.waitForTimeout(900); // fin de las transiciones
+      // 2.0b · Contraste del navbar público (siempre que lo haya). Arriba de la página y, en las
+      // páginas largas, tras bajar y volver a subir un poco (el navbar reaparece sobre el contenido)
+      const medirNavbar = async (momento) => {
+        const medidas = await medirContrasteNavbar(page);
+        if (!medidas) return;
+        const bajos = medidas.filter((m) => !m.sobreFoto && m.ratio < m.minimo);
+        const sobreFoto = medidas.filter((m) => m.sobreFoto).length;
+        for (const m of medidas) contrastesNavbar.push({ vista: nombre, tamano: etiqueta, momento, ...m });
+        console.log(`  ${bajos.length ? `⚠ navbar: ${bajos.length} elemento(s) bajo el contraste mínimo (${bajos.map((m) => `«${m.texto}» ${m.estado} ${m.ratio}:1`).slice(0, 4).join(", ")})` : "✓ navbar con contraste suficiente"}${sobreFoto ? ` · ${sobreFoto} sobre foto (no medible)` : ""} (${nombre} ${etiqueta}, ${momento})`);
+      };
+      await medirNavbar("arriba");
+      if (completa && await page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight + 600)) {
+        await page.evaluate(() => window.scrollTo(0, 900));
+        await page.waitForTimeout(200);
+        await page.evaluate(() => window.scrollTo(0, 700)); // al subir, el navbar vuelve a mostrarse
+        await page.waitForTimeout(700);
+        await medirNavbar("tras desplazar");
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.waitForTimeout(700);
+      }
       if (MEDIR_TACTIL) {
         // 1.6b · También los campos de formulario (no las casillas, radios ni el selector de archivo)
         const medidas = await page.evaluate(() => [...document.querySelectorAll('button, [role="button"], input[type="submit"], input[type="button"], input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="submit"]):not([type="button"]), select, textarea')]
@@ -802,10 +932,19 @@ if (MEDIR_TACTIL) {
   console.log(`
 Medición táctil: ${pequenos.length} control(es) < 44 px → ${join(SALIDA, "medicion-tactil.json")}`);
 }
+if (contrastesNavbar.length) {
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(join(SALIDA, "medicion-contraste-navbar.json"), JSON.stringify(contrastesNavbar, null, 2));
+  const bajos = contrastesNavbar.filter((m) => !m.sobreFoto && m.ratio < m.minimo);
+  console.log(`
+Contraste del navbar: ${bajos.length} medida(s) bajo el mínimo de ${contrastesNavbar.length} → ${join(SALIDA, "medicion-contraste-navbar.json")}`);
+  if (bajos.length) process.exitCode = 1;
+}
 if (MEDIR_SOLAPES) {
   const { writeFile } = await import("node:fs/promises");
   await writeFile(join(SALIDA, "medicion-solapes.json"), JSON.stringify(solapes, null, 2));
   console.log(`
 Medición de solapes: ${solapes.length} columna(s) tapada(s) → ${join(SALIDA, "medicion-solapes.json")}`);
 }
-process.exitCode = fallidas ? 1 : 0;
+// No se pisa el 1 de las mediciones (contraste del navbar, paleta)
+if (fallidas) process.exitCode = 1;

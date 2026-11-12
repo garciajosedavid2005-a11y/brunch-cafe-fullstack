@@ -27,4 +27,23 @@ describe("Contraste del navbar claro", () => {
     expect(color).toMatch(/^#/);
     expect(contraste(color, variables["--color-fondo"])).toBeGreaterThanOrEqual(4.5);
   });
+
+  // 2.0b · El estado activo no se comunica solo por color: subrayado (text-decoration; el reset de
+  // Foundation anula los bordes de .menu li a con !important)
+  it("el enlace activo y el hover llevan subrayado, también en el navbar transparente", () => {
+    const bloque = escritorio.match(/\.menu \.access\.active,\s*\.menu \.access:hover\s*\{([^}]*)\}/)?.[1] || "";
+    expect(bloque).toMatch(/text-decoration-line:\s*underline/);
+    expect(bloque).toMatch(/text-decoration-thickness:\s*2px/);
+  });
+
+  // 2.0b · Sobre la portada bordó de Nosotros el activo y el hover en --color-suave daban 4,44:1:
+  // el texto normal, el activo y el hover del navbar transparente se leen sobre el bordó (≥ 4.5:1)
+  it("navbar transparente: normal, activo y hover se leen sobre la portada bordó (≥ 4.5:1)", () => {
+    const normal = colorDe(escritorio, "\\.top-bar--transparente \\.access");
+    const activo = colorDe(escritorio, "\\.top-bar--transparente \\.access:hover,\\s*\\.top-bar--transparente \\.menu \\.active");
+    for (const color of [normal, activo]) {
+      expect(color).toMatch(/^#/);
+      expect(contraste(color, variables["--color-primario"])).toBeGreaterThanOrEqual(4.5);
+    }
+  });
 });

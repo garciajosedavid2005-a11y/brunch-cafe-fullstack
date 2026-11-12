@@ -7,26 +7,22 @@ import { esAdministrador, esPersonal } from "../../utils/permisos";
 import compras from "../../assets/carrito-de-compras.png";
 import logoOscuro from "../../assets/logoOscuro.png";
 import logoClaro from "../../assets/logoClaro.png";
+import { useHayPortada } from "../../context/usePortada";
 import "./navbar.css";
-
-const rutasTransparentes = [
-  "/",
-  "/reservas",
-  "/nosotros",
-  "/comentarios",
-];
 
 const Navbar = () => {
     const location = useLocation();
-    return <NavbarContent key={location.key} pathname={location.pathname} />;
+    return <NavbarContent key={location.key} />;
 };
 
-const NavbarContent = ({ pathname }) => {
+const NavbarContent = () => {
     const [oculta, setOculta] = useState(false);
     const [menuAbierto, setMenuAbierto] = useState(false);
     const [cerrandoSesion, setCerrandoSesion] = useState(false);
     
-    const esTransparente = rutasTransparentes.includes(pathname);
+    // 2.0b · Transparente (texto claro) solo sobre una foto de portada montada, no según la ruta:
+    // /reservas sin sesión no tiene foto y el texto claro no se veía sobre el fondo rosado
+    const esTransparente = useHayPortada();
     const { productos } = useCarrito();
     const { user, loading, logout } = useAuth();
     const { avisar } = useDialogo();

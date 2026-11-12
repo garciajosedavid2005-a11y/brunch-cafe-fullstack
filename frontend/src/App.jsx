@@ -1,3 +1,5 @@
+import { PortadaProvider } from "./context/PortadaContext";
+import NoEncontrada from "./pages/NoEncontrada/NoEncontrada";
 import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import Navbar from "./components/Navbar/Navbar";
@@ -135,6 +137,8 @@ function AppRoutes() {
           {/* Rutas anteriores del panel (rama developers) */}
           <Route path="/mesero" element={<Navigate to="/staff" replace />} />
           <Route path="/dashboard/mesero" element={<Navigate to="/staff" replace />} />
+          {/* 2.0b · Ruta desconocida */}
+          <Route path="*" element={<NoEncontrada />} />
         </Routes>
       </div>
       {!sinPie && <Footer />}
@@ -148,7 +152,9 @@ function App() {
       <DialogoProvider>
         <AuthProvider>
           <CarritoProvider>
-            <AppRoutes />
+            <PortadaProvider>
+              <AppRoutes />
+            </PortadaProvider>
           </CarritoProvider>
         </AuthProvider>
       </DialogoProvider>

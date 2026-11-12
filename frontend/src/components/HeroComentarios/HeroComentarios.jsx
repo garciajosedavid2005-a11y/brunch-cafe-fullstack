@@ -1,8 +1,10 @@
 import heroBg from "../../assets/hero-Comentarios.jpg";
 import datos from "../../data/heroComentarios.json";
 import "./HeroComentarios.css";
+import { useMarcarPortada } from "../../context/usePortada";
 
 const HeroComentarios = () => {
+  useMarcarPortada(); // 2.0b · navbar transparente sobre la foto
   const imagen = datos.imagen || heroBg;
   return (
     <section className="hero-comentarios">

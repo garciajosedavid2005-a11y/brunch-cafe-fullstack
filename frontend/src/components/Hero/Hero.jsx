@@ -8,6 +8,7 @@ import {
 import DIAPOSITIVAS from "../../data/heroSlides.json";
 
 import "./Hero.css";
+import { useMarcarPortada } from "../../context/usePortada";
 
 /* ════════════════════════════════
    Configuración
@@ -101,6 +102,8 @@ const Hero = ({
   colorFondo,
   centrado = false,
 }) => {
+  // 2.0b · Portada con foto (o fondo bordó): el navbar va transparente con texto claro
+  useMarcarPortada();
   const [actual, setActual] =
     useState(0);
 

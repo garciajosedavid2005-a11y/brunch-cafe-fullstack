@@ -159,6 +159,15 @@
   border-bottom-color: var(--color-primario);
 }
 
+/* 2.0b · El activo y el hover se marcan también con subrayado (no solo con color). Con text-decoration:
+   el reset de Foundation anula los bordes de .menu li a con !important */
+.menu .access.active,
+.menu .access:hover {
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+}
+
 .top-bar--transparente .access {
   color: var(--color-marfil);
 }
@@ -170,13 +179,15 @@
   color: var(--color-marfil);
 }
 
+/* 2.0b · Sobre la portada bordó, --color-suave daba 4,44:1: marfil, y el estado lo marca el subrayado */
 .top-bar--transparente .access:hover,
 .top-bar--transparente .menu .active {
-  color: var(--color-suave);
+  color: var(--color-marfil);
 }
 
-.top-bar--transparente .menu .active {
-  border-bottom-color: var(--color-suave);
+.top-bar--transparente .menu .active,
+.top-bar--transparente .access:hover {
+  border-bottom-color: var(--color-marfil);
 }
 
 /* =========================
