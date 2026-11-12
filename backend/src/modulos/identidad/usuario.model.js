@@ -65,4 +65,7 @@ const usuarioSchema = new mongoose.Schema({
     timestamps: true
 })
 
+// Lista de meseros (1.5/1.7b): usuarios activos de los roles que atienden mesas. No destructivo.
+usuarioSchema.index({ rol: 1, activo: 1 })
+
 export default mongoose.model('Usuario', usuarioSchema)

@@ -442,6 +442,26 @@ const VISTAS = {
     },
   },
   "admin-roles": { usuario: "admin", preparar: abrirPestanaAdmin("Roles") },
+  // Tras 1.12 · Aviso en el formulario de un rol con «abrir cuenta» sin «tomar comandas» ni «transferir»
+  "admin-rol-aviso": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Roles")(p);
+    await p.getByRole("button", { name: /Nuevo Rol/ }).click();
+    const abrir = p.getByRole("checkbox", { name: "Abrir la cuenta de una mesa" });
+    await abrir.check();
+    await abrir.scrollIntoViewIfNeeded();
+  } },
+  "admin-rol-aviso-pie": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Roles")(p);
+    await p.getByRole("button", { name: /Nuevo Rol/ }).click();
+    await p.getByRole("checkbox", { name: "Abrir la cuenta de una mesa" }).check();
+    await p.getByRole("button", { name: "Crear Rol" }).scrollIntoViewIfNeeded();
+  } },
+  // La fila de la lista con el aviso: un rol de ejemplo creado por la API (solo en la BD de capturas)
+  "admin-roles-aviso": { usuario: "admin", preparar: async (p) => {
+    await p.context().request.post(`${API}/admin/roles`, { data: { nombre: "Recepción (ejemplo)", permisos: ["mesa:ver", "cuenta:abrir"] } });
+    await abrirPestanaAdmin("Roles")(p);
+    await p.getByText("Recepción (ejemplo)").scrollIntoViewIfNeeded();
+  } },
   "admin-metodos-pago": { usuario: "admin", preparar: abrirPestanaAdmin("Métodos de Pago") },
   "admin-usuarios": { usuario: "admin", preparar: abrirPestanaAdmin("Usuarios") },
   // Ajuste tras 1.5b · Una cuenta creada por el admin que aún no definió su contraseña: «Reenviar enlace»

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   Shield,
   Plus,
@@ -8,11 +8,18 @@ import {
   Users,
   Lock,
   X,
+  TriangleAlert,
 } from "lucide-react";
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
 import { useDialogo } from "../../../context/useDialogo";
 import { plural } from "../adminFormat";
+
+// Pendiente aprobado tras 1.12: abrir una cuenta exige que el responsable atienda mesas. Un rol con
+// «abrir cuenta» pero sin «tomar comandas» (abre a su nombre) ni «transferir» (abre a nombre de un
+// mesero) no puede abrir ninguna: el backend responde 400 MESERO_REQUERIDO o 403. Se avisa, sin bloquear.
+const abreSinPoder = (permisos = []) =>
+  permisos.includes("cuenta:abrir") && !permisos.includes("comanda:tomar") && !permisos.includes("cuenta:transferir");
 
 // Títulos de los grupos de permisos (las claves del backend no llevan tildes)
 const TITULO_MODULO = {
@@ -25,6 +32,7 @@ const TITULO_MODULO = {
   caja: "Caja",
   inventario: "Inventario",
   reportes: "Reportes",
+  salon: "Salón",
 };
 const tituloModulo = (modulo) => TITULO_MODULO[modulo] || modulo.charAt(0).toUpperCase() + modulo.slice(1);
 
@@ -206,6 +214,13 @@ export default function RolesSection() {
                           <span className={`admin-badge admin-roles__tipo ${rol.esSistema ? "admin-badge--warning" : "admin-badge--neutral"}`}>
                             {rol.esSistema ? "Sistema" : "Personalizado"}
                           </span>
+                          {/* En la columna del rol: la de permisos queda bajo el bloque fijo de acciones en pantallas medianas */}
+                          {abreSinPoder(rol.permisos) && (
+                            <span className="admin-roles__aviso-fila">
+                              <TriangleAlert size={14} aria-hidden="true" />
+                              Sin «tomar comandas» ni «transferir»: no podrá abrir cuentas
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -358,7 +373,8 @@ export default function RolesSection() {
                     </p>
                   ) : (
                     modulos.map((modulo) => (
-                      <fieldset key={modulo} className="admin-permisos__grupo">
+                      <Fragment key={modulo}>
+                      <fieldset className="admin-permisos__grupo">
                         <legend>{tituloModulo(modulo)}</legend>
                         {catalogo
                           .filter((p) => p.modulo === modulo)
@@ -379,6 +395,18 @@ export default function RolesSection() {
                             </label>
                           ))}
                       </fieldset>
+                      {/* Junto al grupo «Salón», donde se marca la casilla */}
+                      {modulo === "salon" && abreSinPoder(formData.permisos) && (
+                        <p className="admin-roles__aviso" role="status">
+                          <TriangleAlert size={18} aria-hidden="true" />
+                          <span>
+                            Este rol tiene «{etiquetaPermiso("cuenta:abrir")}», pero no podrá abrir ninguna cuenta: le falta
+                            «{etiquetaPermiso("comanda:tomar")}» o «{etiquetaPermiso("cuenta:transferir")}» (para abrirla a su
+                            nombre o a nombre de un mesero).
+                          </span>
+                        </p>
+                      )}
+                      </Fragment>
                     ))
                   )}
                 </div>

@@ -26,6 +26,7 @@ const CATALOGO = [
   { clave: "catalogo:gestionar", modulo: "catalogo", descripcion: "Gestionar productos" },
   { clave: "estado:editar", modulo: "configuracion", descripcion: "Editar estados" },
   { clave: "caja:abrir", modulo: "caja", descripcion: "Abrir turno de caja", reservado: true },
+  { clave: "mesa:ver", modulo: "salon", descripcion: "Ver el plano de mesas" },
 ];
 
 // Simula el backend: lo eliminado ya no vuelve en la lista
@@ -53,7 +54,7 @@ describe("Roles: formulario de permisos", () => {
 
   it("títulos de grupo con tildes", async () => {
     await abrirEdicion();
-    for (const titulo of ["Reseñas", "Catálogo", "Configuración", "Pedidos", "Caja"]) {
+    for (const titulo of ["Reseñas", "Catálogo", "Configuración", "Pedidos", "Caja", "Salón"]) {
       expect(screen.getByText(titulo, { selector: "legend" })).toBeInTheDocument();
     }
   });

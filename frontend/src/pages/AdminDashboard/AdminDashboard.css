@@ -2941,3 +2941,35 @@
   font-size: 0.82rem;
   line-height: 1.35;
 }
+
+/* Aviso de un rol que tiene «abrir cuenta» sin poder abrir ninguna (pendiente aprobado tras 1.12) */
+.admin-roles__aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0.7rem 0.85rem;
+  border-left: 4px solid #8a5a00;
+  border-radius: 10px;
+  background: #fdf3dc;
+  color: #5c3d00;
+  font-size: 0.9rem;
+}
+
+.admin-roles__aviso svg,
+.admin-roles__aviso-fila svg {
+  flex: none;
+  margin-top: 0.1rem;
+}
+
+.admin-roles__aviso-fila {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.3rem;
+  max-width: 16rem;
+  margin-top: 0.35rem;
+  white-space: normal;
+  color: #6b4500;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
