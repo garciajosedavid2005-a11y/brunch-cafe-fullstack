@@ -13,3 +13,27 @@ export const itemsDelPedido = (productos) =>
       ? { modificadores: modificadores.map((g) => ({ grupoId: g.grupoId, opcionIds: g.opciones.map((o) => o.id) })) }
       : {}),
   }));
+
+// 1.14 · Qué líneas del carrito marcar cuando el servidor rechaza el pedido: { [linea]: motivo }.
+// Los errores de una línea traen `details.lineas` (índices de `items`, en el orden del carrito) y
+// los de validación, `[{ campo: "items.N...", mensaje }]`. Los demás (hora, método de pago) no marcan.
+export const problemasPorLinea = (error, productos) => {
+  const problemas = {};
+  const marcar = (indice, motivo) => {
+    const linea = productos[indice]?.linea;
+    if (linea !== undefined && !problemas[linea]) problemas[linea] = motivo;
+  };
+  const { details } = error || {};
+  if (Array.isArray(details)) {
+    for (const { campo = "", mensaje } of details) {
+      const indice = /^items\.(\d+)(\.|$)/.exec(campo)?.[1];
+      if (indice !== undefined) marcar(Number(indice), mensaje);
+    }
+  } else if (Array.isArray(details?.lineas)) {
+    for (const indice of details.lineas) marcar(indice, error.message);
+  }
+  return problemas;
+};
+
+/** Termina la frase con punto si no lo trae (los mensajes de Zod no lo llevan). */
+export const conPunto = (texto = "") => (/[.!?…]$/.test(texto.trim()) ? texto.trim() : `${texto.trim()}.`);

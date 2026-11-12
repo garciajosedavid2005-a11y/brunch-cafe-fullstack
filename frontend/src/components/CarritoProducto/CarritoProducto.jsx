@@ -3,10 +3,12 @@ import { useCarrito } from '../../context/CarritoContext'
 import { useNavigate } from 'react-router-dom'
 import { formatearCOP } from '../../utils/moneda'
 import { deLineaCarrito, textoModificadores } from '../../utils/modificadores'
+import { conPunto } from '../../utils/pedido'
+import { TriangleAlert } from 'lucide-react'
 
 const CarritoProducto = () => {
 
-    const { productos, aumentarCantidad, disminuirCantidad, eliminarProducto } = useCarrito()
+    const { productos, aumentarCantidad, disminuirCantidad, eliminarProducto, problemas = {} } = useCarrito()
     const navigate = useNavigate()
 
     if (productos.length === 0) {
@@ -42,9 +44,11 @@ const CarritoProducto = () => {
                 const unitario = producto.precioUnitario ?? producto.precio
                 const subtotal = unitario * producto.cantidad
                 const opciones = textoModificadores(deLineaCarrito(producto.modificadores))
+                // 1.14 · Línea rechazada por el servidor al hacer el pedido (se desmarca al cambiarla)
+                const problema = problemas[producto.linea]
 
                 return (
-                    <div key={producto.linea ?? producto.id} className="carrito-producto__item">
+                    <div key={producto.linea ?? producto.id} className={`carrito-producto__item${problema ? ' is-problema' : ''}`}>
                         <div className="grid-x grid-padding-x align-middle">
 
                             {/* Imagen */}
@@ -64,6 +68,11 @@ const CarritoProducto = () => {
                                 {opciones && <p className="carrito-producto__opciones">{opciones}</p>}
                                 {producto.nota && <p className="carrito-producto__opciones">Nota: {producto.nota}</p>}
                                 <p className="carrito-producto__precio-unitario">{formatearCOP(unitario)}</p>
+                                {problema && (
+                                    <p className="carrito-producto__problema">
+                                        <TriangleAlert size={16} aria-hidden="true" /> {conPunto(problema)}
+                                    </p>
+                                )}
 
                                 {/* Contador */}
                                 <div className="carrito-producto__contador">
@@ -76,6 +85,7 @@ const CarritoProducto = () => {
                                     <button
                                         className="carrito-producto__btn"
                                         aria-label={`Sumar uno de ${producto.nombre}`}
+                                        disabled={Boolean(problema)}
                                         onClick={() => aumentarCantidad(producto.linea)}
                                     >+</button>
                                 </div>

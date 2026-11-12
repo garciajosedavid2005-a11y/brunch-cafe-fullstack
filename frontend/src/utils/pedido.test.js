@@ -1,5 +1,31 @@
 import { describe, it, expect } from "vitest";
-import { itemsDelPedido } from "./pedido";
+import { itemsDelPedido, problemasPorLinea } from "./pedido";
+
+// 1.14 · Qué líneas del carrito marcar cuando el servidor rechaza el pedido
+describe("problemasPorLinea", () => {
+  const LINEAS = [{ linea: "a|" }, { linea: "b|g1:o1|" }, { linea: "b|g1:o2|Sin sal" }];
+  const error = (code, message, details) => Object.assign(new Error(message), { code, details });
+
+  it("details.lineas → cada línea con el mensaje del error", () => {
+    expect(problemasPorLinea(error("OPCION_NO_DISPONIBLE", "«Pochados» está agotada.", { linea: 1, lineas: [1] }), LINEAS))
+      .toEqual({ "b|g1:o1|": "«Pochados» está agotada." });
+    expect(problemasPorLinea(error("PRODUCT_UNAVAILABLE", "Agotado: Pan.", { productos: [3], lineas: [0, 2] }), LINEAS))
+      .toEqual({ "a|": "Agotado: Pan.", "b|g1:o2|Sin sal": "Agotado: Pan." });
+  });
+
+  it("VALIDATION_ERROR → la línea de cada campo items.N con su propio mensaje", () => {
+    expect(problemasPorLinea(error("VALIDATION_ERROR", "x", [
+      { campo: "items.2.nota", mensaje: "La nota no puede superar 140 caracteres" },
+      { campo: "direccion", mensaje: "Ingresa una dirección válida." },
+    ]), LINEAS)).toEqual({ "b|g1:o2|Sin sal": "La nota no puede superar 140 caracteres" });
+  });
+
+  it("sin líneas (o índices fuera del carrito) → nada que marcar", () => {
+    expect(problemasPorLinea(error("HORA_NO_DISPONIBLE", "x", { horasDisponibles: [] }), LINEAS)).toEqual({});
+    expect(problemasPorLinea(error("X", "x", { lineas: [7] }), LINEAS)).toEqual({});
+    expect(problemasPorLinea(new Error("Sin conexión"), LINEAS)).toEqual({});
+  });
+});
 
 describe("itemsDelPedido", () => {
   it("envía cada producto por su ObjectId (productoRef) con su cantidad", () => {

@@ -17,6 +17,15 @@ const recargos = (modificadores) =>
 
 export const CarritoProvider = ({ children }) => {
     const [productos, setProductos] = useState([])
+    // 1.14 · Líneas que el servidor rechazó al hacer el pedido: { [linea]: motivo }. Como en la
+    // comanda del salón, una línea se desmarca al quitarla o al volver a confirmar el pedido
+    const [problemas, setProblemas] = useState({})
+    const desmarcar = (linea) => setProblemas((actuales) => {
+        if (!(linea in actuales)) return actuales
+        const resto = { ...actuales }
+        delete resto[linea]
+        return resto
+    })
 
     // Agregar producto al carrito (opciones: [{ grupoId, grupo, opciones: [{ id, nombre, precioExtra }] }])
     const agregarProducto = (producto, { cantidad = 1, modificadores = [], nota = '' } = {}) => {
@@ -52,12 +61,14 @@ export const CarritoProvider = ({ children }) => {
 
     // Eliminar una línea
     const eliminarProducto = (linea) => {
+        desmarcar(linea)
         setProductos((actuales) => actuales.filter((p) => p.linea !== linea))
     }
 
     // Limpiar carrito
     const limpiarCarrito = () => {
         setProductos([])
+        setProblemas({})
     }
 
     // Calcular total (enteros en COP; con los recargos de las opciones)
@@ -73,7 +84,9 @@ export const CarritoProvider = ({ children }) => {
             disminuirCantidad,
             eliminarProducto,
             limpiarCarrito,
-            calcularTotal
+            calcularTotal,
+            problemas,
+            marcarProblemas: setProblemas
         }}>
             {children}
         </CarritoContext.Provider>

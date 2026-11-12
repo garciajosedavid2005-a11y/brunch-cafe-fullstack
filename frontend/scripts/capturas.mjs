@@ -353,6 +353,31 @@ const VISTAS = {
       await direccion.scrollIntoViewIfNeeded();
     },
   },
+  // 1.14 · Rechazo real del servidor: con el carrito lleno, el admin agota el primer plato (BD de
+  // capturas) y el pedido vuelve con 409 PRODUCT_UNAVAILABLE y sus líneas, que el carrito marca
+  "carrito-problema": {
+    usuario: "cliente",
+    completa: false,
+    preparar: async (p) => {
+      await VISTAS.carrito.preparar(p);
+      const nombre = (await p.locator(".carrito-producto__nombre").first().textContent()).trim();
+      await disponibilidad(nombre, false);
+      try {
+        await p.getByPlaceholder("Ej: Calle 8 # 12-34").fill("Mz 5 Cs 3, Villa del Sol");
+        await p.getByPlaceholder("Barrio o conjunto...").fill("Centro");
+        const hora = p.locator("#carrito-hora");
+        await hora.locator("option[value]:not([value=''])").first().waitFor({ state: "attached" });
+        await hora.selectOption(await hora.locator("option[value]:not([value=''])").first().getAttribute("value"));
+        await p.getByRole("button", { name: "FINALIZAR COMPRA" }).click();
+        await p.getByRole("button", { name: "Confirmar Pedido" }).click();
+        await p.locator(".carrito-producto__item.is-problema").first().waitFor();
+        await p.getByRole("button", { name: "Editar Pedido" }).click(); // cierra el resumen; el aviso queda en el formulario
+        await p.locator(".carrito-producto__item.is-problema").first().scrollIntoViewIfNeeded();
+      } finally {
+        await disponibilidad(nombre, true);
+      }
+    },
+  },
   // Reservas: fecha de la próxima semana para ver todas las horas del día (0.8)
   reservas: {
     usuario: "cliente",

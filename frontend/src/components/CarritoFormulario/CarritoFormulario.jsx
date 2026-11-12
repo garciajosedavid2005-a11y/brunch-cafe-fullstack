@@ -9,7 +9,7 @@ import { useAuth } from '../../context/useAuth'
 import { apiRequest } from '../../services/api'
 import ResumenPedido from '../ResumenPedido/ResumenPedido'
 import { formatearCOP } from '../../utils/moneda'
-import { itemsDelPedido } from '../../utils/pedido'
+import { conPunto, itemsDelPedido, problemasPorLinea } from '../../utils/pedido'
 import { useHorarios } from '../../hooks/useHorarios'
 import { horasDomicilio, opcionesDeHora, textoAnticipacion, textoRango } from '../../utils/horarios'
 import { esTelefono, MENSAJE_TELEFONO } from '../../utils/telefono'
@@ -26,7 +26,7 @@ const formularioInicial = (user) => ({
 
 const CarritoFormulario = () => {
 
-    const { calcularTotal, limpiarCarrito, productos } = useCarrito()
+    const { calcularTotal, limpiarCarrito, productos, marcarProblemas } = useCarrito()
     const { avisar } = useDialogo()
     const { user } = useAuth()
     const navigate = useNavigate()
@@ -182,6 +182,7 @@ const CarritoFormulario = () => {
     const handleConfirmar = async () => {
         setGuardando(true)
         setErrorPedido('')
+        marcarProblemas({})
         try {
             const metodoPago = metodosPago.find((metodo) => metodo.id === metodoPagoId)
             const { order } = await apiRequest('/v1/cliente/pedidos', {
@@ -206,7 +207,12 @@ const CarritoFormulario = () => {
                 navigate('/login', { state: { from: '/domicilios' } })
                 return
             }
-            setErrorPedido(error.message)
+            // 1.14 · Si el rechazo es de una línea (opción o producto agotado, nota larga…), se marca en el carrito
+            const problemas = problemasPorLinea(error, productos)
+            marcarProblemas(problemas)
+            const marcadas = Object.keys(problemas).length
+            const pista = marcadas > 1 ? 'Revisa las líneas marcadas en el carrito.' : 'Revisa la línea marcada en el carrito.'
+            setErrorPedido(marcadas ? `${conPunto(error.message)} ${pista}` : error.message)
         } finally {
             setGuardando(false)
         }

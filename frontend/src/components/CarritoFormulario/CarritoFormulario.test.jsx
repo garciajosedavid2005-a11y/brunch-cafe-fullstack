@@ -8,7 +8,7 @@ vi.mock("../../context/useAuth", () => ({
   useAuth: () => ({ user: { id: "u1", nombre: "Ana", apellido: "Pérez", email: "ana@example.com", telefono: "300 123 4567" } }),
 }));
 vi.mock("../../context/CarritoContext", () => ({
-  useCarrito: () => ({ calcularTotal: () => 9000, limpiarCarrito: vi.fn(), productos: [{ id: 1, cantidad: 1 }] }),
+  useCarrito: () => ({ calcularTotal: () => 9000, limpiarCarrito: vi.fn(), marcarProblemas: vi.fn(), productos: [{ id: 1, cantidad: 1 }] }),
 }));
 
 import { apiRequest } from "../../services/api";

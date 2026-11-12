@@ -167,3 +167,30 @@
     font-size: 1.1rem;
     color: var(--color-cafe-medio);
 }
+
+/* 1.14 · Línea rechazada por el servidor al hacer el pedido (como .comanda-item.is-problema) */
+/* El borde no ocupa espacio: el contenido queda alineado con las demás líneas */
+.carrito-producto__item.is-problema {
+    box-shadow: inset 0 0 0 2px #a1261e;
+    border-radius: 10px;
+    background: #fbe7e6;
+}
+
+.carrito-producto__item.is-problema .carrito-producto__divisor {
+    display: none;
+}
+
+.carrito-producto__problema {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    margin: 0.5rem 0 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #7d1a14;
+}
+
+.carrito-producto__problema svg {
+    flex: none;
+    margin-top: 0.15rem;
+}
