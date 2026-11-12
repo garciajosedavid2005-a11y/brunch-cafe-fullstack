@@ -1,6 +1,6 @@
 # Plan de la Fase 2: cocina y barra (KDS)
 
-> **Estado:** borrador, sin código. Lo escribió Claude el 2026-11-12 tras cerrar la Fase 1 (1.1 a 1.13). Antes de empezar, Brayan tiene que responder las preguntas de la sección 5. Las respuestas quedarán como decisiones F2-1… en `docs/PROGRESO.md`.
+> **Estado:** aprobado por Brayan el 2026-11-12. Lo escribió Claude tras cerrar la Fase 1; las respuestas a las preguntas de la sección 5 son las decisiones F2-1 a F2-10 de `docs/PROGRESO.md`, y el diseño de la sección 2 quedó aprobado. Empieza tras 1.15.
 >
 > **Objetivo** (prompt maestro): que lo enviado desde la mesa llegue a cocina y barra y vuelva al mesero. El ciclo es **Comanda enviada → Cocina/Barra → Listo → Servido**, en tiempo real. Los roles nuevos que operan son **Cocina** y **Barista**. Este es el eslabón que la Fase 1 dejó preparado: estados del ítem, estación por ítem y polling.
 
@@ -18,7 +18,7 @@
 | Sesión en tablets | Personal: 12 h y «Cambiar de usuario» (F1-10). Sin PIN, sin sesión de dispositivo y sin cierre por inactividad (pendiente). | `identidad/duracionSesion.js` |
 | Despliegue | Un solo proceso Node con MongoDB en replica set. No hay Redis ni otra infraestructura. | `backend/README.md` |
 
-## 2. Decisiones de diseño (propuestas por Claude, a confirmar)
+## 2. Decisiones de diseño (aprobadas por Brayan el 2026-11-12)
 
 - **Módulo nuevo `src/modulos/cocina/`** con el mismo patrón que el salón (servicio, rutas y schema). La cola de cocina es una **lectura** de las rondas enviadas: no hay colección nueva. Los cambios de estado de cada ítem van en una transacción sobre su `Comanda` y su `Cuenta`, con `$inc version` y Evento, como en la Fase 1.
 - **Tiempo real con SSE (Server-Sent Events), no Socket.IO.**
@@ -28,17 +28,18 @@
   - El polling **se queda como respaldo**, con intervalo más largo si el canal está vivo: si SSE se cae, nada se pierde.
   - Los eventos se emiten **después** de confirmar la transacción y solo llevan ids y tipo. La pantalla vuelve a leer lo que necesita con su permiso, así un evento nunca filtra datos.
   - Con un solo proceso basta un bus en memoria. Si un día hay varios procesos, se cambia por Redis Pub/Sub sin tocar las pantallas; eso queda fuera de esta fase.
-- **Permisos nuevos** (asignables; el seed los da al crear el rol y una migración `migrate:2.1` los agrega a los roles existentes; la asignación inicial depende de las respuestas a las preguntas 2 y 5):
-  - `kds:ver` (ver la cola de su estación).
-  - `item:preparar` (enviado → en preparación → listo).
-  - `item:servir` (listo → servido; de quien diga la pregunta 2).
-  - `producto:agotar` y `producto:reactivar`, separados: la propuesta de la pregunta 5 deja que el mesero agote pero no reactive.
+- **Permisos nuevos** (asignables; el seed los da al crear el rol y una migración `migrate:2.1` los agrega a los roles existentes):
+  - `kds:ver` (ver la cola de su estación): cocina y barista.
+  - `item:preparar` (enviado → en preparación → listo): cocina y barista.
+  - `item:servir` (listo → servido): mesero (F2-2).
+  - `pedido:preparar` (domicilio, solo `confirmado → en_preparacion → listo`): cocina y barista (F2-3).
+  - `producto:agotar` (cocina, barista y mesero) y `producto:reactivar` (cocina y barista); el admin tiene los dos por `*` (F2-5).
   - Las transiciones del ítem dejan de ser `via: 'sistema'` y pasan a exigir esos permisos.
   - «Todo listo» por ronda y la barra que entrega al momento necesitan saltar `enviado → listo`. Propuesta: pasar por `en_preparacion` dentro de la misma transacción (se guardan los dos tiempos) en vez de añadir una transición nueva.
 - **Tiempos de preparación en el propio ítem:** `iniciadoEn`, `listoEn` y `servidoEn`, además del Evento de cada cambio (entidad `cuenta`, `datos.item`). Así el temporizador y los reportes de la Fase 5 no reconstruyen tiempos a partir de los eventos. Sin migración: los ítems anteriores se leen sin tiempos y `verificar:salon` lo tolera.
-- **Pantalla KDS en `/kds`**, con layout propio para tablet horizontal (1280×800) o TV (1920×1080):
+- **Pantalla KDS en `/kds`**, con layout propio para tablet horizontal (1280×800) o TV (1920×1080). Cada cocinero o barista entra con su cuenta (F2-6); sonido activado por defecto con un botón «Activar sonido» (F2-8):
   - Tarjetas por ronda y estación, ordenadas por antigüedad, con mesa, mesero, tiempo desde el envío, ítems con sus opciones y nota, y botones grandes.
-  - Los estados se comunican con texto e icono, nunca solo con color. El temporizador cambia de aspecto con umbrales (pregunta 4).
+  - Los estados se comunican con texto e icono, nunca solo con color. El temporizador cambia de aspecto con los umbrales de la estación (F2-4: Barra 5/10 min, Cocina 12/20 min, configurables).
 - **Aviso al mesero:**
   - Cuando un ítem queda listo, la mesa muestra «Listo para servir (n)» en el plano y en su cuenta.
   - Hay un aviso no intrusivo en `/staff`.
@@ -56,14 +57,15 @@ Cada ítem = 1 commit (o pocos) con tests primero, revisores y capturas, como en
 ### 2.2 Transiciones del ítem y tiempos (backend)
 - `POST /api/v1/staff/cocina/items/:itemId/estado` con `{ a, versionEsperada? }`.
   - En la transacción: escritura condicional sobre el estado esperado (`409` si otro ya lo movió), `iniciadoEn`, `listoEn` y `servidoEn`, y Evento.
-- Endpoint para pasar a «listo» todos los ítems de una ronda y estación de una vez (si la respuesta a la pregunta 1 es por ronda).
+- «Todo listo»: pasa a «listo» todos los ítems pendientes de una ronda y estación de una vez, pasando por `en_preparacion` en la misma transacción (F2-1).
+- «Deshacer» de «listo» (vuelve a `en_preparacion`) durante 10 s para quien lo marcó; después, solo el admin con motivo (F2-7).
 - Anular un ítem en preparación sigue siendo `item:anular` (D1), y la cocina lo ve tachado con su motivo.
 - Tests de concurrencia (dos tablets marcando lo mismo) y del verificador `verificar:salon` ampliado (tiempos coherentes con el estado).
 
 ### 2.3 Cola por estación (lectura)
 - `GET /api/v1/staff/cocina/cola?estacion=cocina`: rondas enviadas de cuentas abiertas o pedidas con ítems pendientes de esa estación, ordenadas por `enviadaEn`, con mesa, mesero, ítems, opciones, nota y tiempos.
 - Sin N+1: consultas en lote, como el plano. Índice para la consulta de la cola.
-- Domicilio en la cola según la respuesta a la pregunta 3.
+- Domicilio (F2-3): pedidos confirmados o en preparación como tarjeta con sus líneas de esa estación. El pedido pasa a `en_preparacion` cuando alguna estación empieza y a `listo` cuando todas las estaciones con líneas terminaron (se guarda qué estaciones terminaron), con `pedido:preparar`. Cómo se sabe la estación de cada línea (leerla del producto o copiarla al crear el pedido) es decisión técnica de 2.3.
 
 ### 2.4 Tiempo real (SSE)
 - `GET /api/v1/staff/eventos?canales=…`: autenticado y con permiso por canal (`kds:ver` para estación, `cuenta:ver` para cuenta, `mesa:ver` para plano; `mesero:<id>` solo si `id` es el usuario de la sesión, 403 si no). Límite de conexiones abiertas por usuario.
@@ -74,7 +76,8 @@ Cada ítem = 1 commit (o pocos) con tests primero, revisores y capturas, como en
 
 ### 2.5 Pantalla KDS (`/kds`)
 - Tarjetas por ronda, filtro de estación, temporizador con umbrales y botones de 44 px o más (mejor 56 px a la distancia de la cocina).
-- Ítem anulado tachado con su motivo y un aviso visible. «Deshacer» el último cambio durante unos segundos (pregunta 7).
+- Ítem anulado tachado con su motivo y un aviso visible. «Deshacer» de «listo» durante 10 s (F2-7).
+- Sonido al llegar una ronda, activado por defecto, con «Activar sonido» (F2-8). Sin cierre por inactividad en `/kds` (F2-6).
 - Capturas a 1280×800 y 1920×1080, con medición táctil.
 
 ### 2.6 Aviso al mesero y «servido»
@@ -83,16 +86,14 @@ Cada ítem = 1 commit (o pocos) con tests primero, revisores y capturas, como en
 
 ### 2.7 Agotar productos («86») desde la operación
 - La cocina o el salón marcan un producto o una opción como agotado (`producto:agotar`) y lo reactivan (`producto:reactivar`), con Evento y quién lo hizo.
-- Eso requiere ampliar `ENTIDADES_EVENTO` con `producto` y tipos nuevos (`producto_agotado`, `producto_reactivado`): propuesta a confirmar.
+- `ENTIDADES_EVENTO` gana `producto` con los tipos `producto_agotado` y `producto_reactivado` (aprobado en F2-5).
 - Efecto inmediato en la toma de comanda, el carrito y el catálogo (ya lo respetan desde 1.3, 1.5 y 1.12) y aviso en las rondas en borrador que lo tengan.
-- Reactivación según la pregunta 5.
+- Sin reactivación automática (F2-5).
 
-### 2.8 Sesión del dispositivo y PIN
-- Según la pregunta 6:
-  - **(a)** dispositivo KDS registrado por el admin: token de dispositivo ligado a una estación, de larga duración, revocable y sin datos personales; o
-  - **(b)** PIN de 4–6 dígitos por persona para cambiar de usuario rápido en tablets compartidas, con su límite de intentos.
-- Cierre por inactividad en tablets (pendiente de la Fase 1).
-- Revisar los límites por IP. El login ya cuenta por IP + correo, pero el registro y la recuperación van solo por IP (todas las tablets salen por la misma IP del local). El PIN necesitará su propio límite.
+### 2.8 Límites por IP y sesión en `/kds` (reducido por F2-6)
+- Sin dispositivo registrado ni PIN en esta fase (mejora futura en Pendientes).
+- Revisar los límites por IP del local: el login ya cuenta por IP + correo, pero el registro y la recuperación van solo por IP (todas las tablets salen por la misma IP).
+- `/kds` no se cierra por inactividad.
 
 ### 2.9 Cierre de la fase
 - README (endpoints de cocina y SSE), PROGRESO, capturas de tablet y TV, y resumen.
@@ -111,28 +112,28 @@ Cada ítem = 1 commit (o pocos) con tests primero, revisores y capturas, como en
 | Pantalla KDS siempre encendida con una sesión personal abierta | Sesión de dispositivo sin datos personales (2.8) o cierre por inactividad |
 | Tiempos de preparación inflados por olvidos | Temporizador visible, umbrales y, en la Fase 5, reportes con percentiles (no promedios) |
 
-## 5. Preguntas de negocio para Brayan (bloquean el inicio)
+## 5. Preguntas de negocio (respondidas el 2026-11-12: F2-1 a F2-10 en PROGRESO)
 
-| # | Pregunta | Opciones / propuesta de Claude |
+| # | Pregunta | Respuesta de Brayan |
 |---|---|---|
-| 1 | ¿La cocina marca cada ítem o la ronda completa de su estación? | Propuesta: por ítem, con un botón «Todo listo» por ronda |
-| 2 | ¿Quién marca «servido»? | Propuesta: el mesero desde `/staff` (`item:servir`). Alternativa: la cocina al despachar |
-| 3 | ¿El domicilio entra al KDS? | (a) No: sigue en «Pedidos» como hoy; (b) sí, como tarjeta del pedido completo que mueve el estado del pedido (confirmado → en preparación → listo), sin estado por línea, para lo que cocina y barista necesitarían `pedido:cambiar_estado` (hoy no lo tienen) o un permiso nuevo; (c) estado por línea (implica acercar el domicilio al motor de cuentas, que es de la Fase 6). Propuesta: (b) |
-| 4 | Umbrales del temporizador por estación (p. ej. Barra 5/10 min, Cocina 12/20 min) | Valores configurables por el admin en Admin › Salón › Estaciones |
-| 5 | «86»: ¿quién agota, quién reactiva y si se reactiva solo al día siguiente? | Propuesta: cocina, barista, mesero y admin agotan (`producto:agotar`); reactivan cocina, barista y admin (`producto:reactivar`); sin reactivación automática |
-| 6 | Pantalla KDS: ¿dispositivo fijo sin login personal o login de un cocinero? ¿PIN para el personal en tablets compartidas? ¿Cómo se sabe quién marcó cada ítem en un KDS de dispositivo? | F1-10 dejó el «PIN por dispositivo» para esta fase. Propuesta: dispositivo registrado por el admin (la sesión estable que pide el prompt maestro) y PIN de la persona al marcar, así el Evento lleva usuario y «Deshacer» sabe quién marcó. Alternativa: actor `dispositivo:<id>`, sin persona |
-| 7 | ¿Se puede deshacer «listo» si fue un error? ¿Con qué permiso y durante cuánto tiempo? | Propuesta: «Deshacer» durante 10 s para quien lo marcó; después, solo el admin, con motivo |
-| 8 | ¿Sonido al llegar una ronda o al quedar un ítem listo? | Propuesta: sí, configurable por pantalla y apagado por defecto en el salón |
-| 9 | ¿Se mantiene «cada ronda se envía completa, sin tiempos ni marchar» (F1-5)? | Propuesta: sí; la prioridad o «marchar» quedaría para después |
-| 10 | ¿Qué ve el cliente del domicilio? | Propuesta: nada nuevo en esta fase (su estado de pedido ya se ve en «Mis pedidos») |
+| 1 | ¿La cocina marca cada ítem o la ronda completa de su estación? | Por ítem, con «Todo listo» por ronda y estación, pasando por `en_preparacion` en la misma transacción |
+| 2 | ¿Quién marca «servido»? | El mesero desde `/staff` (`item:servir`) |
+| 3 | ¿El domicilio entra al KDS? | (b): tarjeta del pedido en cada estación solo con sus ítems; `en_preparacion` cuando alguna estación empieza y `listo` cuando todas terminaron (se guarda qué estaciones terminaron); permiso nuevo `pedido:preparar` (solo confirmado → en_preparacion → listo) para cocina y barista |
+| 4 | Umbrales del temporizador por estación (p. ej. Barra 5/10 min, Cocina 12/20 min) | Barra 5/10 min y Cocina 12/20 min por defecto, configurables por el admin en la pantalla de estaciones |
+| 5 | «86»: ¿quién agota, quién reactiva y si se reactiva solo al día siguiente? | Agotan cocina, barista, mesero y admin (`producto:agotar`); reactivan cocina, barista y admin (`producto:reactivar`); sin reactivación automática; `producto` en `ENTIDADES_EVENTO` (`producto_agotado`, `producto_reactivado`) |
+| 6 | Pantalla KDS: ¿dispositivo fijo sin login personal o login de un cocinero? ¿PIN para el personal en tablets compartidas? ¿Cómo se sabe quién marcó cada ítem en un KDS de dispositivo? | Sin dispositivo ni PIN en esta fase: cada persona con su cuenta (12 h y «Cambiar de usuario»); el Evento registra quién marcó. 2.8 se reduce a límites por IP y a no cerrar por inactividad en `/kds` |
+| 7 | ¿Se puede deshacer «listo» si fue un error? ¿Con qué permiso y durante cuánto tiempo? | «Deshacer» durante 10 s para quien lo marcó; después, solo el admin con motivo |
+| 8 | ¿Sonido al llegar una ronda o al quedar un ítem listo? | Activado por defecto en `/kds`, apagado en `/staff`, configurable por pantalla, con «Activar sonido» |
+| 9 | ¿Se mantiene «cada ronda se envía completa, sin tiempos ni marchar» (F1-5)? | Sí, se mantiene F1-5 (sin «marchar») |
+| 10 | ¿Qué ve el cliente del domicilio? | Nada nuevo en esta fase |
 
 ## 6. Pendientes de la Fase 1 que tocan esta fase
 
-- **PIN y cierre por inactividad** en tablets (F1-10, «Cierre por inactividad en tablets»).
+- **PIN y dispositivo**: mejora futura (F2-6); `/kds` no se cierra por inactividad.
 - **Límite de intentos del login** con todas las tablets detrás de la misma IP.
-- **Cambios de horario sin Evento** (1.11). Si la cocina mira horarios, conviene registrarlos.
-- **Carrito y opciones** (1.12): cuando el «86» llegue desde la cocina, el carrito debería marcar la línea afectada, no solo mostrar el mensaje.
-- **`Pedido.canal` sin rellenar** (1.9): solo importa si la respuesta a la pregunta 3 es (c).
+- ~~Cambios de horario sin Evento~~: hecho en 1.14.
+- ~~Carrito y opciones~~: desde 1.14 el carrito marca la línea rechazada, también cuando el «86» llegue desde la cocina.
+- **`Pedido.canal` sin rellenar** (1.9): no afecta (F2-3 es la opción b).
 
 ## 7. Fuera de alcance de la Fase 2
 

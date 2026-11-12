@@ -2,7 +2,7 @@
 
 ## Fase actual: 1 — Salón y comandas (cerrada el 2026-11-12, pendiente de la revisión final de Brayan)
 
-**Siguiente: Fase 2 (cocina y barra, KDS).** Plan en [PLAN_FASE_2.md](PLAN_FASE_2.md), escrito el 2026-11-12, sin código: espera las respuestas de Brayan a sus preguntas de negocio (sección 5).
+**Siguiente: 1.15 y luego la Fase 2 (cocina y barra, KDS).** Plan en [PLAN_FASE_2.md](PLAN_FASE_2.md), aprobado por Brayan el 2026-11-12 con las decisiones F2-1 a F2-10.
 
 Plan en [PLAN_FASE_1.md](PLAN_FASE_1.md), con las preguntas de negocio respondidas (F1-1 a F1-16; F1-17 en 1.4). Orden: 1.1 → 1.14 (1.8 pasa a la Fase 6; 1.11–1.14 pedidos tras las pruebas).
 
@@ -263,16 +263,27 @@ Plan en [PLAN_FASE_1.md](PLAN_FASE_1.md), con las preguntas de negocio respondid
 - 2026-11-12 · 1.12 · En el carrito solo abren el diálogo los platos con grupos de opciones (los demás se agregan directo y sin nota, como antes; en `/staff` siempre se abre, decisión de 1.7). La línea del carrito se identifica por producto, opciones y nota (la misma combinación con otra nota va aparte). El diálogo del carrito admite hasta 20 por línea (el máximo del pedido) y titula la nota «Nota para la cocina (opcional)» · Claude (a confirmar por Brayan)
 - 2026-11-12 · 1.13 · Se aprueban los pendientes del índice de usuarios por rol y del aviso en Roles; el aviso no bloquea el guardado · Brayan
 - 2026-11-12 · 1.13 · Un índice nuevo que no cambia datos no lleva migración: lo crea Mongoose al arrancar (autoIndex), como los de `cuentas`, `mesas` y `pedidos` · Claude (a confirmar por Brayan)
-- 2026-11-12 · 1.14 · Direcciones: además de lo pedido, se aceptan «Lote»/«Lt» como «Casa», un barrio, urbanización o conjunto antes de la manzana (o cualquier texto después) y nombres de avenida de hasta 4 palabras; el nombre no puede empezar por un tipo de vía y tras «Av» va punto o espacio · Claude (a confirmar por Brayan)
-- 2026-11-12 · 1.14 · Errores del pedido: producto inexistente pasa de 400 a `404 PRODUCTO_NO_ENCONTRADO` y el método de pago inactivo a `METODO_PAGO_NO_DISPONIBLE`, como las cuentas; todo error de una línea lleva `details.lineas` · Claude (a confirmar por Brayan)
+- 2026-11-12 · 1.14 · Direcciones: además de lo pedido, se aceptan «Lote»/«Lt» como «Casa», un barrio, urbanización o conjunto antes de la manzana (o cualquier texto después) y nombres de avenida de hasta 4 palabras; el nombre no puede empezar por un tipo de vía y tras «Av» va punto o espacio · Brayan (confirmado el 2026-11-12)
+- 2026-11-12 · 1.14 · Errores del pedido: producto inexistente pasa de 400 a `404 PRODUCTO_NO_ENCONTRADO` y el método de pago inactivo a `METODO_PAGO_NO_DISPONIBLE`, como las cuentas; todo error de una línea lleva `details.lineas` · Brayan (confirmado el 2026-11-12)
+- 2026-11-12 · F2-1 · La cocina marca por ítem, con un botón «Todo listo» por ronda y estación que pasa por `en_preparacion` en la misma transacción (sin transición nueva `enviado → listo`) · Brayan
+- 2026-11-12 · F2-2 · Marca «servido» el mesero desde `/staff` con `item:servir` · Brayan
+- 2026-11-12 · F2-3 · El domicilio entra al KDS, opción (b): tarjeta del pedido con sus ítems, mostrada en cada estación solo con los ítems de esa estación. El pedido pasa a `en_preparacion` cuando alguna estación empieza y a `listo` solo cuando todas las estaciones con ítems marcaron su parte (se guarda qué estaciones terminaron). Permiso nuevo y limitado `pedido:preparar` (solo `confirmado → en_preparacion → listo`) para cocina y barista; `en_camino` y `entregado` no son de la cocina · Brayan
+- 2026-11-12 · F2-4 · Umbrales del temporizador por estación: Barra 5/10 min y Cocina 12/20 min por defecto, configurables por el admin en la pantalla de estaciones · Brayan
+- 2026-11-12 · F2-5 · «86»: agotan cocina, barista, mesero y admin (`producto:agotar`); reactivan cocina, barista y admin (`producto:reactivar`); sin reactivación automática. Se agrega `producto` a `ENTIDADES_EVENTO` con los tipos `producto_agotado` y `producto_reactivado` · Brayan
+- 2026-11-12 · F2-6 · Sin dispositivo registrado ni PIN en esta fase: cada cocinero o barista entra con su cuenta (sesión de staff de 12 h y «Cambiar de usuario») y el Evento registra quién marcó. Dispositivo y PIN quedan como mejora futura. El ítem 2.8 se reduce a revisar los límites por IP del local (registro y recuperación) y a no cerrar por inactividad en `/kds` · Brayan
+- 2026-11-12 · F2-7 · «Deshacer» de «listo» durante 10 s para quien lo marcó; después, solo el admin con motivo · Brayan
+- 2026-11-12 · F2-8 · Sonido activado por defecto en `/kds` y apagado en `/staff`, configurable por pantalla, con un botón «Activar sonido» (el navegador exige una interacción antes de reproducir audio) · Brayan
+- 2026-11-12 · F2-9 · Se mantiene F1-5: rondas completas, sin «marchar» · Brayan
+- 2026-11-12 · F2-10 · El cliente del domicilio no ve nada nuevo en esta fase · Brayan
+- 2026-11-12 · Fase 2 · Se aprueba el diseño de PLAN_FASE_2 (módulo `cocina`, SSE con bus en memoria y polling de respaldo, eventos solo con ids, tiempos en el ítem). Tras 1.15 se avanza por los ítems en orden sin esperar aprobación, salvo migración real, borrados, decisión de negocio nueva, problema sin resolver en 2 intentos y las pausas visuales de 2.5 (KDS a 1280×800 y 1920×1080) y 2.6 (aviso al mesero y «Servir» a 1024×768 y 768×1024) · Brayan
 - 2026-11-06 · Preparación de la Fase 1: se usa el plugin Backend Design (skills de modelado, migraciones, idempotencia, autorización y seguridad; `/review-migration`; subagentes `schema-reviewer` y `security-reviewer`) y se crean los subagentes del proyecto `revisor-reglas`, `revisor-backend`, `revisor-visual` y `explorador` en `.claude/agents/`. CLAUDE.md y las decisiones de PROGRESO tienen prioridad sobre el plugin · Brayan
 - 2026-11-05 · T4: `codigo` con contador atómico (colección `counters`, `findOneAndUpdate` + `$inc`) mientras exista `codigo` · Brayan
 
 ## Pendientes / preguntas abiertas
 
 **Abiertos**
-- **Carrito y opciones (1.12):** desde 1.14 el carrito marca la línea rechazada, pero no ofrece cambiar sus opciones ahí mismo (hay que quitarla y agregarla de nuevo desde el menú); el carrito no se guarda entre recargas (como antes). Los informes de ventas de fases posteriores deben usar `precioUnitario ?? precioProducto` (si no, pierden los recargos).
-- **`eslint-disable` heredado en `context/CarritoContext.jsx` (revisor-reglas, 1.14):** existe desde el 2026-10-30 (antes del proceso) porque el archivo re-exporta `useCarrito` y el contexto. Quitarlo obliga a importar `useCarrito` desde `context/useCarrito` en 6 componentes y a cambiar los mocks de 5 tests.
+- **Carrito y opciones (1.12; tanda de pulido final, Brayan):** desde 1.14 el carrito marca la línea rechazada, pero no ofrece cambiar sus opciones ahí mismo (hay que quitarla y agregarla de nuevo desde el menú); el carrito no se guarda entre recargas (como antes). Los informes de ventas de fases posteriores deben usar `precioUnitario ?? precioProducto` (si no, pierden los recargos).
+- **`eslint-disable` heredado en `context/CarritoContext.jsx` (revisor-reglas, 1.14; tanda de pulido final, Brayan):** existe desde el 2026-10-30 (antes del proceso) porque el archivo re-exporta `useCarrito` y el contexto. Quitarlo obliga a importar `useCarrito` desde `context/useCarrito` en 6 componentes y a cambiar los mocks de 5 tests.
 - **Reseñas con `flatten()` (1.14):** `comentario.controller.js` sigue respondiendo la validación con `BAD_REQUEST` y `flatten()`; el pedido ya usa `VALIDATION_ERROR` con `[{ campo, mensaje }]`.
 - **Horario de domicilio en la BD local (1.11):** el 08:00–17:00 lo puso Brayan desde Admin › Horarios (confirmado en 1.14; el punto 6 de 1.14, revisar si las capturas o los tests escribían en la BD de trabajo, se descartó por eso). Desde 1.14 cada cambio deja un Evento (quién, cuándo, antes y después). Nota: el `updatedAt` de la configuración cambia en cada arranque del servidor (`sembrarHorarios` hace un upsert), así que «Última modificación» no indica el último cambio real; el Evento sí.
 - **Horarios: dos admins a la vez (revisor-backend, 1.14):** gana el último sin aviso (cada Evento sí guarda su «antes» correcto). Un 409 con el `actualizadoEn` leído cambiaría el contrato del PUT.
@@ -287,6 +298,7 @@ Plan en [PLAN_FASE_1.md](PLAN_FASE_1.md), con las preguntas de negocio respondid
 - **Verificador de salón:** `npm run verificar:salon` sigue siendo manual; puede ir a un cron o a un endpoint de admin.
 - **Idempotencia (de 1.5):** la clave se guarda después de la transacción, no dentro; si el proceso cae justo entre confirmar y guardar la respuesta, un reintento a los 5 min repite la operación (abrir y enviar se protegen solas con 409; agregar ítem podría duplicar uno). Moverla dentro de `conTransaccion` lo cerraría del todo.
 - **Confirmar (1.1b):** el cierre de sesión solo revoca el token del personal (incluido el admin); el del cliente sigue borrando solo la cookie y no cierra sus otros dispositivos.
+- **Dispositivo KDS registrado y PIN por persona (F2-6, mejora futura):** fuera de la Fase 2; cada cocinero o barista entra con su cuenta.
 - **Cierre por inactividad en tablets:** la cookie de 12 h es persistente (decidido en 1.1b); si una tablet queda sin «Cambiar de usuario», la sesión sigue abierta. Valorar con el PIN de la Fase 2.
 - **Endurecimiento de JWT (revisión de seguridad de 1.1):** fijar `algorithms: ['HS256']` en `jwt.verify` y exigir `JWT_SECRET` de ≥ 32 caracteres.
 - **Roles de personal con permisos de identidad** (`rol:gestionar`, `usuario:gestionar`) sin `*` (p. ej. un futuro gerente) reciben 12 h. ¿Deberían tener 2 h como el admin? Decidir cuando exista ese rol.
