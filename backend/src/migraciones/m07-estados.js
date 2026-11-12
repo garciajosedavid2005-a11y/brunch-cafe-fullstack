@@ -189,6 +189,8 @@ export const down = async (db, { dryRun = false } = {}) => {
     if (dryRun || !plan.puedeAplicar) return { ...plan, aplicado: false }
 
     const estadosCol = db.collection('estados')
+    // Explícito (1.15, Eventos inmutables): el --down borra solo los Eventos que creó esta migración,
+    // con el driver directo (no pasa por el modelo)
     await db.collection('eventos').deleteMany({ motivo: MOTIVO, actor: ACTOR })
     await estadosCol.deleteMany({ '_migracion07.insertado': true })
     const restaurar = await estadosCol.find({ '_migracion07.nombre': { $exists: true } }).toArray()

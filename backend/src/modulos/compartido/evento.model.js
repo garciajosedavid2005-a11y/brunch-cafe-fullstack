@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { AppError } from './errors.js'
 
 // Bitácora de pedidos, reservas, (1.4) mesas y cuentas, (1.5b) usuarios y (1.14) configuración
 // (solo se agregan registros).
@@ -65,5 +66,37 @@ const eventoSchema = new mongoose.Schema({
 })
 
 eventoSchema.index({ entidad: 1, entidadId: 1, createdAt: 1 })
+
+// 1.15 · Inmutables: la bitácora solo crece. Toda actualización, reemplazo o borrado por el modelo se
+// rechaza (consultas, documentos y bulkWrite). La única salida es explícita: una migración o un seed que
+// de verdad lo necesite pasa la opción `modificarEventos` con su motivo, p. ej.
+//   Evento.updateMany(filtro, cambio, { modificarEventos: 'migración 2.x: …' })
+//   Evento.deleteMany(filtro).setOptions({ modificarEventos: 'migración 0.7 --down' })
+// Esa salida existe solo para consultas del modelo y `bulkWrite`; las operaciones de documento
+// (`save` de uno existente, `doc.deleteOne`, `doc.updateOne`, `doc.replaceOne`, `bulkSave`) se rechazan siempre.
+// El driver directo (`Evento.collection`, `db.collection('eventos')`) y las agregaciones con `$out` o
+// `$merge` hacia `eventos` no pasan por aquí: solo en migraciones, con un comentario que diga por qué
+// (como el --down de 0.7). Los tests limpian así.
+export const MENSAJE_EVENTO_INMUTABLE = 'Los Eventos no se pueden modificar ni borrar (bitácora de solo inserción).'
+const eventoInmutable = () => new AppError(500, 'EVENTO_INMUTABLE', MENSAJE_EVENTO_INMUTABLE)
+const conMotivo = (opciones) => typeof opciones?.modificarEventos === 'string' && opciones.modificarEventos.trim() !== ''
+
+const OPERACIONES_QUE_CAMBIAN = ['updateOne', 'updateMany', 'findOneAndUpdate', 'replaceOne', 'findOneAndReplace',
+    'deleteOne', 'deleteMany', 'findOneAndDelete']
+eventoSchema.pre(OPERACIONES_QUE_CAMBIAN, { query: true, document: false }, function () {
+    if (!conMotivo(this.getOptions())) throw eventoInmutable()
+})
+// Documentos: guardar uno ya existente (cambios) o borrarlo
+eventoSchema.pre('save', function () {
+    if (!this.isNew) throw eventoInmutable()
+})
+eventoSchema.pre(['deleteOne', 'updateOne'], { document: true, query: false }, function () {
+    throw eventoInmutable()
+})
+// bulkWrite: solo inserciones (salvo con motivo explícito)
+eventoSchema.pre('bulkWrite', function (operaciones, opciones) {
+    const cambia = (operaciones || []).some((op) => !('insertOne' in op))
+    if (cambia && !conMotivo(opciones)) throw eventoInmutable()
+})
 
 export default mongoose.model('Evento', eventoSchema)

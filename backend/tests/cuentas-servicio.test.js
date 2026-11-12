@@ -160,7 +160,7 @@ describe('Abrir cuenta (F1-7)', () => {
             const [enZona, enMesa] = await Promise.all([Zona.findById(zona._id).lean(), Mesa.findById(mesa._id).lean()])
             expect(enZona.activa === false && enMesa.estado === 'ocupada').toBe(false)
             // Deja todo como al principio para el siguiente intento
-            await Promise.all([Cuenta.deleteMany({}), Evento.deleteMany({})])
+            await Promise.all([Cuenta.deleteMany({}), Evento.deleteMany({}).setOptions({ modificarEventos: 'test: reinicio entre intentos' })])
             await Mesa.updateOne({ _id: mesa._id }, { estado: 'libre', cuentaActual: null })
             await Zona.updateOne({ _id: zona._id }, { activa: true })
         }

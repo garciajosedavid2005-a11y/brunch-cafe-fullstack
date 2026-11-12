@@ -97,7 +97,9 @@ const sembrarSalonEnServicio = async () => {
         await Comanda.updateMany({ cuenta: cuentaId }, [{ $set: { enviadaEn: menos('enviadaEn') } }], { session, updatePipeline: true })
         await Evento.updateMany(
             { $or: [{ entidad: 'cuenta', entidadId: cuentaId }, { entidad: 'mesa', entidadId: mesaId }] },
-            [{ $set: { createdAt: menos('createdAt') } }], { session, updatePipeline: true },
+            [{ $set: { createdAt: menos('createdAt') } }],
+            // Solo la BD de capturas: los Eventos son inmutables (1.15) y esto es explícito
+            { session, updatePipeline: true, modificarEventos: 'capturas: salón de ejemplo «hace N minutos»' },
         )
     })
 
