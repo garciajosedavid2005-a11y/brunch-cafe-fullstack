@@ -35,9 +35,11 @@ const validar = (horarios) => {
 export default function HorariosSection() {
   const [horarios, setHorarios] = useState(null);
   const [actualizadoEn, setActualizadoEn] = useState(null);
+  // 1.15 · Versión leída: el guardado la envía y, si otro admin guardó antes, el backend responde 409
+  const [version, setVersion] = useState(0);
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState("");
-  const [aviso, setAviso] = useState({ texto: "", error: false });
+  const [aviso, setAviso] = useState({ texto: "", error: false, recargar: false });
   const [guardando, setGuardando] = useState(false);
   const [intento, setIntento] = useState(0);
 
@@ -48,6 +50,7 @@ export default function HorariosSection() {
         if (!activo) return;
         setHorarios(datos.horarios);
         setActualizadoEn(datos.actualizadoEn);
+        setVersion(datos.version ?? 0);
         setErrorCarga("");
       })
       .catch((error) => activo && setErrorCarga(error.message))
@@ -59,7 +62,12 @@ export default function HorariosSection() {
 
   const cambiar = (ruta, campo) => (event) => {
     setHorarios((actual) => conCambio(actual, ruta, campo, event.target.value));
-    setAviso({ texto: "", error: false });
+    setAviso({ texto: "", error: false, recargar: false });
+  };
+
+  const recargar = () => {
+    setAviso({ texto: "", error: false, recargar: false });
+    setIntento((n) => n + 1);
   };
 
   const guardar = async (event) => {
@@ -67,17 +75,18 @@ export default function HorariosSection() {
     const datos = conCambio(horarios, ["domicilio"], "anticipacionMinutos", Number(horarios.domicilio.anticipacionMinutos));
     const error = validar(datos);
     if (error) {
-      setAviso({ texto: error, error: true });
+      setAviso({ texto: error, error: true, recargar: false });
       return;
     }
     setGuardando(true);
     try {
-      const respuesta = await api.put("/v1/admin/horarios", datos);
+      const respuesta = await api.put("/v1/admin/horarios", { ...datos, versionEsperada: version });
       setHorarios(respuesta.horarios);
       setActualizadoEn(respuesta.actualizadoEn);
-      setAviso({ texto: "Horarios guardados. Los formularios de pedido y reserva ya usan los nuevos horarios.", error: false });
+      setVersion(respuesta.version);
+      setAviso({ texto: "Horarios guardados. Los formularios de pedido y reserva ya usan los nuevos horarios.", error: false, recargar: false });
     } catch (e) {
-      setAviso({ texto: e.message, error: true });
+      setAviso({ texto: e.message, error: true, recargar: e.code === "HORARIOS_MODIFICADOS" });
     } finally {
       setGuardando(false);
     }
@@ -146,6 +155,9 @@ export default function HorariosSection() {
             <div className={aviso.error ? "admin-alert-error" : "admin-alert-success"} role={aviso.error ? "alert" : "status"}>
               {!aviso.error && <CheckCircle size={18} aria-hidden="true" />}
               <span>{aviso.texto}</span>
+              {aviso.recargar && (
+                <button type="button" className="admin-button--secondary-sm admin-horarios__recargar" onClick={recargar}>Recargar</button>
+              )}
             </div>
           )}
 

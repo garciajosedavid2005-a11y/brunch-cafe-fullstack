@@ -2973,3 +2973,14 @@
   font-size: 0.8rem;
   font-weight: 600;
 }
+
+/* 1.15 · «Recargar» dentro del aviso de horarios cambiados por otro usuario */
+.admin-horarios__recargar {
+  margin-left: auto !important; /* .admin-button--secondary-sm fija margin: 0 !important */
+  flex: none;
+}
+
+/* Sin «Última modificación» (nunca hubo un cambio real), «Guardar horarios» sigue a la derecha */
+.admin-horarios__pie .admin-button--primary {
+  margin-left: auto !important;
+}

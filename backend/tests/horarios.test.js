@@ -67,17 +67,17 @@ describe('Configuración de horarios en BD', () => {
         const { sesion: admin } = await crearConSesion('admin')
         const nuevos = structuredClone(HORARIOS_POR_DEFECTO)
         nuevos.reservas.entreSemana.hasta = '15:00'
-        const res = await admin.put('/api/v1/admin/horarios').send(nuevos)
+        const res = await admin.put('/api/v1/admin/horarios').send({ ...nuevos, versionEsperada: 0 })
         expect(res.status).toBe(200)
         expect(res.body.horarios.reservas.entreSemana.hasta).toBe('15:00')
         expect((await admin.get('/api/v1/admin/horarios')).body.horarios.reservas.entreSemana.hasta).toBe('15:00')
 
         const minutos = structuredClone(HORARIOS_POR_DEFECTO)
         minutos.domicilio.desde = '08:30'
-        expect((await admin.put('/api/v1/admin/horarios').send(minutos)).status).toBe(400)
+        expect((await admin.put('/api/v1/admin/horarios').send({ ...minutos, versionEsperada: 1 })).status).toBe(400)
         const alReves = structuredClone(HORARIOS_POR_DEFECTO)
         alReves.reservas.finDeSemana = { desde: '17:00', hasta: '08:00' }
-        const malo = await admin.put('/api/v1/admin/horarios').send(alReves)
+        const malo = await admin.put('/api/v1/admin/horarios').send({ ...alReves, versionEsperada: 1 })
         expect(malo.status).toBe(400)
         expect(malo.body.error.code).toBe('VALIDATION_ERROR')
     })
@@ -88,7 +88,7 @@ describe('Configuración de horarios en BD', () => {
         expect((await cliente.post('/api/v1/cliente/reservas').send(datosReserva({ fecha: JUEVES, hora: '18:00' }))).status).toBe(201)
         const nuevos = structuredClone(HORARIOS_POR_DEFECTO)
         nuevos.reservas.entreSemana.hasta = '15:00'
-        await admin.put('/api/v1/admin/horarios').send(nuevos)
+        await admin.put('/api/v1/admin/horarios').send({ ...nuevos, versionEsperada: 0 }).expect(200)
         expect((await cliente.post('/api/v1/cliente/reservas').send(datosReserva({ fecha: JUEVES, hora: '18:00' }))).status).toBe(400)
     })
 })

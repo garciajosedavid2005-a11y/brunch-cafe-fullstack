@@ -29,4 +29,6 @@ export const horariosSchema = z.object({
         entreSemana: rango('Reservas de lunes a viernes'),
         finDeSemana: rango('Reservas de sábado y domingo'),
     }),
+    // 1.15 · La versión que leyó el admin (GET /admin/horarios): si otro guardó antes → 409
+    versionEsperada: z.number({ error: 'Falta la versión de los horarios; recarga la página.' }).int().min(0),
 })

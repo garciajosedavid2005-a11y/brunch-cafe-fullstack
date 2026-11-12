@@ -345,7 +345,7 @@ Cualquiera con el permiso opera cualquier cuenta (F1-17); `mesero` es el respons
 | GET | `/api/v1/admin/comentarios` | `resena:moderar` | Todas las reseñas |
 | PATCH | `/api/v1/admin/comentarios/:id/visibilidad` | `resena:moderar` | `{ visible }` |
 | DELETE | `/api/v1/admin/comentarios/:id` | `resena:moderar` | Borrar una reseña |
-| GET, PUT | `/api/v1/admin/horarios` | `horario:editar` | Ver y editar los horarios |
+| GET, PUT | `/api/v1/admin/horarios` | `horario:editar` | Ver y editar los horarios. 1.15: el GET devuelve `version` y `actualizadoEn` (último cambio real); el PUT exige `versionEsperada` y responde `409 HORARIOS_MODIFICADOS` si otro admin guardó antes. Cada cambio deja un Evento (`configuracion`, `horarios_cambiados`) |
 | GET, POST, PUT, DELETE | `/api/v1/admin/zonas[/:id]` | `salon:configurar` | Zonas del salón `{ nombre, orden, activa }` (nombre único sin mayúsculas ni tildes → `409 ZONA_DUPLICADA`; con mesas no se borra → `409 ZONA_CON_MESAS`; no se desactiva con mesas en uso → `409 ZONA_CON_MESAS_EN_USO`) |
 | GET, POST, PUT, DELETE | `/api/v1/admin/mesas[/:id]` (`?zona=`) | `salon:configurar` | Mesas `{ numero, nombre?, zona, capacidad, combinable, activa }`; el estado no se asigna aquí. Número único → `409 MESA_NUMERO_DUPLICADO`; zona inexistente o inactiva → `400 ZONA_NO_VALIDA`; una mesa que no está libre no se borra, no se desactiva ni cambia de zona → `409 MESA_EN_USO` |
 

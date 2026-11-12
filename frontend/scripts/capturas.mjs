@@ -406,6 +406,24 @@ const VISTAS = {
     },
   },
   "admin-horarios": { usuario: "admin", preparar: abrirPestanaAdmin("Horarios") },
+  // 1.15 · Otro admin guarda (por la API, BD de capturas) mientras la pantalla está abierta: 409 real
+  "admin-horarios-conflicto": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Horarios")(p);
+    const otro = await request.newContext();
+    try {
+      await otro.post(`${API}/auth/login`, { data: { correo: USUARIOS.admin, contraseña: CLAVE } });
+      const { horarios, version } = await (await otro.get(`${API}/admin/horarios`)).json();
+      const res = await otro.put(`${API}/admin/horarios`, {
+        data: { ...horarios, domicilio: { ...horarios.domicilio, anticipacionMinutos: horarios.domicilio.anticipacionMinutos + 30 }, versionEsperada: version },
+      });
+      if (!res.ok()) throw new Error(`El otro admin no pudo guardar: ${res.status()}`);
+    } finally {
+      await otro.dispose();
+    }
+    await p.getByLabel("Última hora de domicilio").selectOption("15:00");
+    await p.getByRole("button", { name: /guardar horarios/i }).click();
+    await p.getByRole("button", { name: "Recargar" }).scrollIntoViewIfNeeded();
+  } },
   "admin-salon": { usuario: "admin", preparar: abrirPestanaAdmin("Salón") }, // 1.2
   "admin-salon-mesa-form": { usuario: "admin", completa: false, preparar: async (p) => {
     await abrirPestanaAdmin("Salón")(p);

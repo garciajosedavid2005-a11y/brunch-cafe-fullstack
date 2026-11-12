@@ -29,6 +29,20 @@ const configuracionSchema = new mongoose.Schema({
         ref: 'Usuario',
         default: null,
     },
+    // 1.15 · Control de versión como las cuentas: cada cambio real la sube en 1 y el PUT exige la que
+    // leyó el admin (409 si otro guardó antes). Sin el campo (documentos anteriores) = 0, sin migración
+    version: {
+        type: Number,
+        default: 0,
+        min: 0,
+        validate: { validator: Number.isInteger, message: 'La versión debe ser un entero' },
+    },
+    // Cuándo cambiaron de verdad los horarios («Última modificación»). `updatedAt` no sirve: hasta
+    // 1.15 lo movía el seed de cada arranque. null = nunca se cambiaron (o se cambiaron antes de 1.15)
+    modificadoEn: {
+        type: Date,
+        default: null,
+    },
 }, {
     timestamps: true,
     collection: 'configuraciones',

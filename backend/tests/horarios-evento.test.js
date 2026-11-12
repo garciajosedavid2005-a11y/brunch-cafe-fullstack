@@ -13,7 +13,7 @@ describe('Evento al cambiar los horarios (1.14)', () => {
     it('guarda quién, cuándo, el valor anterior y el nuevo', async () => {
         const { usuario, sesion: admin } = await crearConSesion('admin')
         const t0 = new Date()
-        const res = await admin.put('/api/v1/admin/horarios').send(conDomicilioHasta('17:00'))
+        const res = await admin.put('/api/v1/admin/horarios').send({ ...conDomicilioHasta('17:00'), versionEsperada: 0 })
         expect(res.status, JSON.stringify(res.body)).toBe(200)
 
         const config = await Configuracion.findOne({ clave: 'horarios' }).lean()
@@ -31,8 +31,8 @@ describe('Evento al cambiar los horarios (1.14)', () => {
 
     it('el segundo cambio guarda como «antes» lo que dejó el primero', async () => {
         const { sesion: admin } = await crearConSesion('admin')
-        await admin.put('/api/v1/admin/horarios').send(conDomicilioHasta('17:00')).expect(200)
-        await admin.put('/api/v1/admin/horarios').send(conDomicilioHasta('16:00')).expect(200)
+        await admin.put('/api/v1/admin/horarios').send({ ...conDomicilioHasta('17:00'), versionEsperada: 0 }).expect(200)
+        await admin.put('/api/v1/admin/horarios').send({ ...conDomicilioHasta('16:00'), versionEsperada: 1 }).expect(200)
         const eventos = await Evento.find({ entidad: 'configuracion' }).sort({ createdAt: 1, _id: 1 }).lean()
         expect(eventos.map((e) => [e.datos.antes.domicilio.hasta, e.datos.despues.domicilio.hasta])).toEqual([['16:00', '17:00'], ['17:00', '16:00']])
     })
@@ -40,7 +40,7 @@ describe('Evento al cambiar los horarios (1.14)', () => {
     it('guardar sin cambios no deja Evento ni cambia quién ni cuándo (no escribe)', async () => {
         const { sesion: admin } = await crearConSesion('admin')
         const antes = await Configuracion.findOne({ clave: 'horarios' }).lean()
-        await admin.put('/api/v1/admin/horarios').send(HORARIOS_POR_DEFECTO).expect(200)
+        await admin.put('/api/v1/admin/horarios').send({ ...HORARIOS_POR_DEFECTO, versionEsperada: 0 }).expect(200)
         expect(await Evento.countDocuments({ entidad: 'configuracion' })).toBe(0)
         const despues = await Configuracion.findOne({ clave: 'horarios' }).lean()
         expect(despues.actualizadoPor ?? null).toBe(antes.actualizadoPor ?? null)
@@ -50,7 +50,7 @@ describe('Evento al cambiar los horarios (1.14)', () => {
     it('si el Evento falla, el cambio no queda (transacción)', async () => {
         const { sesion: admin } = await crearConSesion('admin')
         vi.spyOn(Evento, 'create').mockRejectedValueOnce(new Error('fallo simulado del Evento'))
-        expect((await admin.put('/api/v1/admin/horarios').send(conDomicilioHasta('17:00'))).status).toBe(500)
+        expect((await admin.put('/api/v1/admin/horarios').send({ ...conDomicilioHasta('17:00'), versionEsperada: 0 })).status).toBe(500)
         const config = await Configuracion.findOne({ clave: 'horarios' }).lean()
         expect(config.domicilio.hasta).toBe('16:00')
         expect(config.actualizadoPor ?? null).toBeNull()
@@ -60,8 +60,8 @@ describe('Evento al cambiar los horarios (1.14)', () => {
     it('un cambio rechazado (sin permiso o inválido) no deja Evento ni cambia nada', async () => {
         const { sesion: mesero } = await crearConSesion('mesero')
         const { sesion: admin } = await crearConSesion('admin')
-        expect((await mesero.put('/api/v1/admin/horarios').send(conDomicilioHasta('17:00'))).status).toBe(403)
-        expect((await admin.put('/api/v1/admin/horarios').send(conDomicilioHasta('25:00'))).status).toBe(400)
+        expect((await mesero.put('/api/v1/admin/horarios').send({ ...conDomicilioHasta('17:00'), versionEsperada: 0 })).status).toBe(403)
+        expect((await admin.put('/api/v1/admin/horarios').send({ ...conDomicilioHasta('25:00'), versionEsperada: 0 })).status).toBe(400)
         expect(await Evento.countDocuments({ entidad: 'configuracion' })).toBe(0)
         expect((await Configuracion.findOne({ clave: 'horarios' }).lean()).domicilio.hasta).toBe('16:00')
     })
