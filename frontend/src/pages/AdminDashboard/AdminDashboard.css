@@ -832,8 +832,8 @@
   align-items: center !important;
   justify-content: center !important;
   gap: 0.45rem !important;
-  min-height: 36px !important;
-  height: 36px !important;
+  min-height: 44px !important;
+  height: 44px !important;
   padding: 0 0.95rem !important;
   margin: 0 !important;
   background: #f7e7e2 !important;
@@ -882,9 +882,9 @@
   align-items: center !important;
   justify-content: center !important;
   gap: 0.5rem !important;
-  height: 42px !important;
-  min-height: 42px !important;
-  max-height: 42px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
   padding: 0 1.25rem !important;
   margin: 0 !important;
   background: var(--color-primario) !important;
@@ -1118,7 +1118,7 @@
 .admin-users__acciones {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.5rem; /* ≥ 8 px entre «Reenviar enlace» y «Desactivar» cuando se apilan */
 }
 
 .admin-users__fila {
@@ -1263,8 +1263,8 @@
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  height: 42px !important;
-  min-height: 42px !important;
+  height: 44px !important;
+  min-height: 44px !important;
   padding: 0 1.25rem !important;
   margin: 0 !important;
   background: #f7e7e2 !important;
@@ -1288,8 +1288,8 @@
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  height: 42px !important;
-  min-height: 42px !important;
+  height: 44px !important;
+  min-height: 44px !important;
   padding: 0 1.35rem !important;
   margin: 0 !important;
   background: #c62828 !important;
@@ -1820,8 +1820,8 @@
   align-items: center !important;
   justify-content: center !important;
   gap: 0.55rem !important;
-  height: 42px !important;
-  min-height: 42px !important;
+  height: 44px !important;
+  min-height: 44px !important;
   padding: 0 1.25rem !important;
   margin: 0 !important;
   background: #f7e7e2 !important;
@@ -2815,4 +2815,30 @@
 
 .admin-table--acciones-fijas tbody tr:hover td:last-child:not([colspan]) {
   background-color: #fdf6f2;
+}
+
+/* 1.5c · Objetivo táctil de 44 px para todos los botones con texto del admin (medían 27–43,6 px;
+   medido con Playwright: MEDIR_TACTIL=1 npm run capturas). min-height no cambia el ancho ni el
+   texto y, como <button> centra su contenido, el texto queda centrado. */
+.admin-sidebar__button,
+.admin-button--primary,
+.admin-button--secondary-sm,
+.admin-button--logout,
+.admin-button--link,
+.admin-filter-tab,
+.admin-states-tab,
+.admin-badge-star-btn,
+.admin-roles__mas,
+.admin-switch,
+.admin-button--modal-cancel,
+.admin-button--danger,
+.admin-badge--boton {
+  min-height: 44px;
+}
+
+/* Insignia que es un botón (activar/desactivar un método de pago): 44 px de objetivo, misma píldora */
+.admin-badge--boton {
+  display: inline-flex;
+  align-items: center;
+  padding-inline: 0.75rem;
 }

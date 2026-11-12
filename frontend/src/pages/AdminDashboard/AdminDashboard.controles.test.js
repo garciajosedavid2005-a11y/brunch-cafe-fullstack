@@ -91,3 +91,21 @@ describe("Columna de acciones fija (sticky) en las tablas del admin", () => {
     expect(css).toMatch(/\.admin-table--acciones-fijas tbody tr:nth-child\(even\) td:last-child[^{]*\{[^}]*background-color/);
   });
 });
+
+// 1.5c · Botones con texto del admin: ≥ 44 px de alto (medían 27–43,6 px; medido con Playwright,
+// `MEDIR_TACTIL=1 npm run capturas`). min-height gana a cualquier height menor de otras reglas.
+const BOTONES_TEXTO = [
+  ".admin-sidebar__button", ".admin-button--primary", ".admin-button--secondary-sm", ".admin-button--logout",
+  ".admin-button--link", ".admin-filter-tab", ".admin-states-tab", ".admin-badge-star-btn", ".admin-roles__mas", ".admin-switch",
+  ".admin-button--modal-cancel", ".admin-button--danger", ".admin-badge--boton",
+];
+
+describe("Botones con texto del admin (≥ 44 px de alto, 1.5c)", () => {
+  it.each(BOTONES_TEXTO)("%s: alguna regla fija min-height ≥ 44 px y ninguna lo baja", (clase) => {
+    const reglas = reglasDe(clase);
+    expect(reglas.length, `no hay reglas para ${clase}`).toBeGreaterThan(0);
+    const minimos = reglas.flatMap((c) => declaraciones(c, "min-height")).map(enPx).filter((px) => px !== null);
+    expect(Math.max(0, ...minimos), `${clase} sin min-height ≥ 44 px`).toBeGreaterThanOrEqual(44);
+    for (const px of minimos) expect(px, `${clase} { min-height: ${px}px }`).toBeGreaterThanOrEqual(44);
+  });
+});

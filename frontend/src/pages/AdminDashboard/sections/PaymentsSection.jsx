@@ -149,7 +149,7 @@ export default function PaymentsSection() {
                       <button
                         type="button"
                         onClick={() => handleToggleActivo(item)}
-                        className={`admin-badge ${
+                        className={`admin-badge admin-badge--boton ${
                           item.activo ? "admin-badge--success" : "admin-badge--danger"
                         }`}
                         style={{ cursor: "pointer", border: "none" }}

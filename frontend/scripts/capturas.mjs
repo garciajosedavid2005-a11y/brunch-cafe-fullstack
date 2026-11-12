@@ -32,6 +32,9 @@ const CLAVE = await leerClave();
 const ETIQUETA = process.argv[2] || "actual";
 const ANCHOS = (process.env.ANCHOS || "1280,1024,768").split(",").map(Number);
 const SOLO = process.env.SOLO ? process.env.SOLO.split(",") : null;
+// 1.5c · MEDIR_TACTIL=1: además de la captura, mide los botones visibles y lista los de < 44 px de alto
+const MEDIR_TACTIL = process.env.MEDIR_TACTIL === "1";
+const pequenos = [];
 const SALIDA = join(process.cwd(), "capturas", ETIQUETA);
 
 const SOLO_PUBLICAS = SOLO && SOLO.every((v) => ["inicio", "menu", "login", "registro", "nosotros", "nosotros-ubicacion", "pie", "comentarios"].includes(v));
@@ -340,6 +343,14 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
       // El último clic deja el puntero sobre el menú y su :hover sale en la foto: se aparta
       await page.mouse.move(ancho - 2, 898);
       await page.waitForTimeout(900); // fin de las transiciones
+      if (MEDIR_TACTIL) {
+        const medidas = await page.evaluate(() => [...document.querySelectorAll('button, [role="button"], input[type="submit"], input[type="button"]')]
+          .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden"; })
+          .map((el) => { const r = el.getBoundingClientRect(); return { alto: Math.round(r.height * 10) / 10, ancho: Math.round(r.width * 10) / 10, clase: el.className?.baseVal ?? el.className, texto: (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 30) }; })
+          .filter((m) => m.alto < 44));
+        for (const m of medidas) pequenos.push({ vista: nombre, tamano: ancho, ...m });
+        console.log(`  ${medidas.length ? `⚠ ${medidas.length} botón(es) < 44 px` : "✓ todos los botones ≥ 44 px"} (${nombre} ${ancho})`);
+      }
       const archivo = join(SALIDA, `${nombre}-${ancho}.png`);
       await page.screenshot({ path: archivo, fullPage: vista.completa !== false });
       console.log(`✓ ${archivo}${consola.length ? `  (errores de consola: ${consola.join(" | ").slice(0, 200)})` : ""}`);
@@ -353,4 +364,10 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
 }
 await navegador.close();
 detenerTodo();
+if (MEDIR_TACTIL) {
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(join(SALIDA, "medicion-tactil.json"), JSON.stringify(pequenos, null, 2));
+  console.log(`
+Medición táctil: ${pequenos.length} botón(es) < 44 px → ${join(SALIDA, "medicion-tactil.json")}`);
+}
 process.exitCode = fallidas ? 1 : 0;
