@@ -126,6 +126,29 @@ const BOTONES_TEXTO = [
   ".admin-button--modal-cancel", ".admin-button--danger", ".admin-badge--boton",
 ];
 
+// 1.6b · Campos de formulario del admin: ≥ 44 px de alto (medían 37,7–42,9 px; MEDIR_TACTIL=1 npm run
+// capturas, que desde 1.6b mide también input, select y textarea). La búsqueda ya mide 46 px (su contenedor).
+const CAMPOS = [
+  ".admin-form-input", ".admin-form-select", ".admin-form-textarea", ".estado-selector__select",
+  ".admin-select-status", ".admin-salon__filtro",
+];
+
+describe("Campos de formulario del admin (≥ 44 px de alto, 1.6b)", () => {
+  // Global: la regla del mínimo tiene la clase sola en su selector (no solo dentro de un modal o una sección)
+  const reglasGlobales = (clase) => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, selectores]) => selectores.split(",").map((s) => s.trim()).includes(clase))
+    .map(([, , cuerpo]) => cuerpo);
+
+  it.each(CAMPOS)("%s: una regla global fija min-height ≥ 44 px y ninguna max-height lo baja", (clase) => {
+    const reglas = reglasDe(clase);
+    expect(reglas.length, `no hay reglas para ${clase}`).toBeGreaterThan(0);
+    const minimos = reglasGlobales(clase).flatMap((c) => declaraciones(c, "min-height")).map(enPx).filter((px) => px !== null);
+    expect(Math.max(0, ...minimos)).toBeGreaterThanOrEqual(44);
+    const maximos = reglas.flatMap((c) => declaraciones(c, "max-height")).map(enPx).filter((px) => px !== null);
+    for (const max of maximos) expect(max).toBeGreaterThanOrEqual(44);
+  });
+});
+
 describe("Botones con texto del admin (≥ 44 px de alto, 1.5c)", () => {
   it.each(BOTONES_TEXTO)("%s: alguna regla fija min-height ≥ 44 px y ninguna lo baja", (clase) => {
     const reglas = reglasDe(clase);

@@ -423,7 +423,8 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
       await page.mouse.move(ancho - 2, alto - 2);
       await page.waitForTimeout(900); // fin de las transiciones
       if (MEDIR_TACTIL) {
-        const medidas = await page.evaluate(() => [...document.querySelectorAll('button, [role="button"], input[type="submit"], input[type="button"]')]
+        // 1.6b · También los campos de formulario (no las casillas, radios ni el selector de archivo)
+        const medidas = await page.evaluate(() => [...document.querySelectorAll('button, [role="button"], input[type="submit"], input[type="button"], input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="submit"]):not([type="button"]), select, textarea')]
           .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden"; })
           .map((el) => { const r = el.getBoundingClientRect(); return { alto: Math.round(r.height * 10) / 10, ancho: Math.round(r.width * 10) / 10, clase: el.className?.baseVal ?? el.className, texto: (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 30) }; })
           .filter((m) => m.alto < 44));

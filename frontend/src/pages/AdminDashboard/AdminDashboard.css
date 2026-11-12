@@ -2859,3 +2859,15 @@
   align-items: center;
   padding-inline: 0.75rem;
 }
+
+/* 1.6b · Campos de formulario del admin a 44 px de alto como mínimo (medían 37,7–42,9 px: Foundation
+   les da 2.4375rem; medido con MEDIR_TACTIL=1 npm run capturas, que mide también input, select y
+   textarea). min-height gana a cualquier height menor de otras reglas; la búsqueda ya mide 46 px. */
+.admin-form-input,
+.admin-form-select,
+.admin-form-textarea,
+.estado-selector__select,
+.admin-select-status,
+.admin-salon__filtro {
+  min-height: 44px !important;
+}
