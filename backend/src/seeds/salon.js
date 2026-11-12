@@ -12,13 +12,13 @@ const EJEMPLO = [
             { numero: 1, capacidad: 2, combinable: true },
             { numero: 2, capacidad: 2, combinable: true },
             { numero: 3, capacidad: 4, combinable: true },
-            { numero: 4, capacidad: 4, combinable: false },
+            { numero: 4, capacidad: 4, combinable: false }, // fija (p. ej. un sofá): ejemplo de mesa que no se une
         ],
     },
     {
         zona: { nombre: 'Terraza', orden: 2 },
         mesas: [
-            { numero: 5, capacidad: 2, combinable: false },
+            { numero: 5, capacidad: 2, combinable: true }, // revisión de 1.6: las de 2 puestos se juntan
             { numero: 6, capacidad: 4, combinable: true },
             { numero: 7, capacidad: 4, combinable: true },
         ],

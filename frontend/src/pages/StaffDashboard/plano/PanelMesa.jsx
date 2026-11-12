@@ -13,6 +13,15 @@ const MAX_COMENSALES = 50;
 
 const puede = (permisos, clave) => permisos.includes("*") || permisos.includes(clave);
 
+// Por qué no se puede unir una mesa (null = se puede), con las mismas reglas que el backend:
+// misma zona, combinable, libre y sin cuenta. «No combinable» va primero porque no depende del momento.
+const motivoNoUnible = (m, cuenta) => {
+  if (cuenta && m.cuenta?.id === cuenta.id) return "ya está en esta cuenta";
+  if (!m.combinable) return "no combinable";
+  if (m.estado !== "libre" || m.cuenta) return datosEstado(m.estado).etiqueta.toLowerCase();
+  return null;
+};
+
 export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar }) {
   const id = useId();
   const tituloRef = useRef(null);
@@ -104,7 +113,10 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar }) 
   // Destinos posibles: libres y, con mesas unidas, de la misma zona y combinables (como valida el backend)
   const libres = mesas.filter((m) => m.estado === "libre" && !m.cuenta && m.id !== mesa.id);
   const destinos = cuenta?.mesas.length > 1 ? libres.filter((m) => m.zona.id === mesa.zona.id && m.combinable) : libres;
-  const unibles = libres.filter((m) => m.zona.id === mesa.zona.id && m.combinable);
+  // Revisión de 1.6 · Unir: todas las mesas de la zona; las que no se pueden unir van deshabilitadas con su motivo
+  const deLaZona = mesas.filter((m) => m.zona.id === mesa.zona.id && m.id !== mesa.id);
+  const candidatas = deLaZona.map((m) => ({ ...m, motivo: motivoNoUnible(m, cuenta) }));
+  const hayUnibles = candidatas.some((m) => !m.motivo);
 
   return (
     <section className="panel-mesa" aria-labelledby={`${id}-titulo`} onKeyDown={(e) => e.key === "Escape" && onCerrar()}>
@@ -203,6 +215,9 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar }) 
             Unir mesas
           </button>
         )}
+        {abierta && !mesa.combinable && puede(permisos, "mesa:unir") && (
+          <p className="panel-mesa__nota panel-mesa__nota--recuadro">Esta mesa no es combinable (cámbialo en Admin › Salón)</p>
+        )}
         {abierta && cuenta.mesas.length > 1 && puede(permisos, "mesa:unir") && (
           <button type="button" className="plano__boton plano__boton--secundario" disabled={enviando} onClick={separar}>
             Separar esta mesa
@@ -233,18 +248,22 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar }) 
 
       {modo === "unir" && (
         <div className="panel-mesa__bloque">
-          <span className="panel-mesa__etiqueta">Mesas libres y combinables de {mesa.zona.nombre}</span>
-          {unibles.length === 0 ? <p className="panel-mesa__nota">No hay mesas libres combinables en esta zona.</p> : (
+          <span className="panel-mesa__etiqueta">Mesas de {mesa.zona.nombre}</span>
+          {candidatas.length === 0 ? <p className="panel-mesa__nota">No hay otras mesas en esta zona.</p> : (
             <>
               <div className="panel-mesa__opciones">
-                {unibles.map((m) => (
-                  <label key={m.id} className="panel-mesa__check">
-                    <input type="checkbox" checked={unir.includes(m.id)}
+                {candidatas.map((m) => (
+                  <label key={m.id} className={`panel-mesa__check${m.motivo ? " is-deshabilitada" : ""}`}>
+                    <input type="checkbox" checked={unir.includes(m.id)} disabled={Boolean(m.motivo) || enviando}
                       onChange={(e) => setUnir((lista) => (e.target.checked ? [...lista, m.id] : lista.filter((x) => x !== m.id)))} />
-                    Mesa {m.numero}
+                    <span>
+                      Mesa {m.numero}
+                      {m.motivo && <span className="panel-mesa__motivo"> ({m.motivo})</span>}
+                    </span>
                   </label>
                 ))}
               </div>
+              {!hayUnibles && <p className="panel-mesa__nota">Ahora no hay mesas libres y combinables en esta zona.</p>}
               <button type="button" className="plano__boton plano__boton--primario" disabled={enviando || unir.length === 0}
                 onClick={() => ejecutar("/mesas/unir", { principalId: mesa.id, mesaIds: unir, versionEsperada: cuenta.version })}>
                 {unir.length > 1 ? `Unir ${unir.length} mesas` : "Unir mesa"}

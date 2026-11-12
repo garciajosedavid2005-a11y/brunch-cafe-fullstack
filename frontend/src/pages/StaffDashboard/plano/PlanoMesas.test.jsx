@@ -178,6 +178,52 @@ describe("Plano de mesas", () => {
     expect(JSON.parse(llamadasA("/v1/staff/salon/mesas/m1/mover")[0][1].body)).toEqual({ mesaDestinoId: "m2", versionEsperada: 4 });
   });
 
+  // Revisión de 1.6 · Unir: se ven todas las mesas de la zona; las que no se pueden unir, deshabilitadas con su motivo
+  it("unir: lista todas las mesas de la zona y deshabilita las no elegibles con su motivo", async () => {
+    const terraza = { id: "z2", nombre: "Terraza" };
+    respuestas.plano = {
+      ...PLANO(),
+      mesas: [
+        ...PLANO().mesas,
+        mesa(5, "bloqueada"), // combinable pero bloqueada
+        mesa(6, "libre", { combinable: false }),
+        mesa(8, "ocupada", { cuenta: cuenta({ id: "c8", mesas: [{ id: "m8", numero: 8 }] }) }),
+        mesa(9, "libre", { zona: terraza }), // otra zona: no aparece
+      ],
+    };
+    pintar();
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 1\b/ }));
+    const panel = screen.getByRole("region", { name: "Mesa 1" });
+    fireEvent.click(within(panel).getByRole("button", { name: "Unir mesas" }));
+
+    const casilla = (n) => within(panel).getByRole("checkbox", { name: new RegExp(`^Mesa ${n}\\b`) });
+    expect(casilla(2)).toBeEnabled();
+    expect(casilla(3)).toBeDisabled();
+    expect(casilla(3)).toHaveAccessibleName(/cuenta pedida/);
+    expect(casilla(4)).toBeDisabled();
+    expect(casilla(4)).toHaveAccessibleName(/no combinable/);
+    expect(casilla(5)).toHaveAccessibleName(/bloqueada/);
+    expect(casilla(6)).toHaveAccessibleName(/no combinable/);
+    expect(casilla(8)).toBeDisabled();
+    expect(casilla(8)).toHaveAccessibleName(/ocupada/);
+    expect(within(panel).queryByRole("checkbox", { name: /^Mesa 1\b/ })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole("checkbox", { name: /^Mesa 9\b/ })).not.toBeInTheDocument();
+
+    fireEvent.click(casilla(2));
+    fireEvent.click(within(panel).getByRole("button", { name: "Unir mesa" }));
+    await waitFor(() => expect(llamadasA("/v1/staff/salon/mesas/unir")).toHaveLength(1));
+    expect(JSON.parse(llamadasA("/v1/staff/salon/mesas/unir")[0][1].body)).toEqual({ principalId: "m1", mesaIds: ["m2"], versionEsperada: 4 });
+  });
+
+  it("una mesa no combinable no ofrece «Unir mesas»: dice dónde cambiarlo", async () => {
+    respuestas.plano = { ...PLANO(), mesas: [mesa(1, "ocupada", { combinable: false, cuenta: cuenta() }), mesa(2, "libre")] };
+    pintar();
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 1\b/ }));
+    const panel = screen.getByRole("region", { name: "Mesa 1" });
+    expect(within(panel).queryByRole("button", { name: "Unir mesas" })).not.toBeInTheDocument();
+    expect(within(panel).getByText("Esta mesa no es combinable (cámbialo en Admin › Salón)")).toBeInTheDocument();
+  });
+
   it("un 409 muestra el mensaje del servidor y recarga el plano", async () => {
     pintar();
     fireEvent.click(await screen.findByRole("button", { name: /^Mesa 7\b/ }));

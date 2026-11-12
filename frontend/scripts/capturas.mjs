@@ -312,6 +312,56 @@ const VISTAS = {
     await p.goto(`${FRONT}/staff`);
     await p.getByRole("button", { name: /^Mesa 2,/ }).click();
   } },
+  // Revisión de 1.6 · «Unir mesas» desde la mesa 1 (todas las de la zona; las no elegibles con su motivo)
+  "staff-plano-unir": { usuario: "mesero", preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: /^Mesa 1,/ }).click();
+    await p.getByRole("button", { name: "Unir mesas" }).click();
+    await p.locator(".panel-mesa").evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  } },
+  // Tarjeta seleccionada con un estado largo (la etiqueta no debe cambiar de posición al seleccionarla)
+  "staff-plano-bloqueada": { usuario: "mesero", preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: /^Mesa 4,/ }).click();
+  } },
+  // Mesa ocupada no combinable: en vez de «Unir mesas», el texto de dónde cambiarlo. Desbloquea y abre la
+  // mesa 4 (la única no combinable del seed) por la API; va al final porque cambia el plano de las demás vistas
+  "staff-plano-no-combinable": { usuario: "mesero", preparar: async (p) => {
+    const plano = await (await p.context().request.get(`${API}/staff/salon/mesas`)).json();
+    const cuatro = plano.mesas.find((m) => m.numero === 4);
+    if (cuatro.estado === "bloqueada") {
+      await p.context().request.post(`${API}/staff/salon/mesas/${cuatro.id}/estado`, { data: { a: "libre", motivo: "Capturas" } });
+    }
+    if (!cuatro.cuenta) {
+      await p.context().request.post(`${API}/staff/salon/mesas/${cuatro.id}/abrir`, {
+        data: { comensales: 2 }, headers: { "Idempotency-Key": `capturas-mesa-4-${Date.now()}` },
+      });
+    }
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: /^Mesa 4,/ }).click();
+  } },
+  // Revisión de 1.6 · Pantalla del enlace «Crea tu contraseña» con la primera contraseña a la vista
+  "crear-contrasena": { preparar: async (p) => {
+    await p.goto(`${FRONT}/restablecer-contrasena?token=capturas&tipo=crear`);
+    await p.getByLabel("Nueva contraseña", { exact: true }).fill("Ejemplo-de-clave-1");
+    await p.getByLabel(/confirma la nueva contraseña/i).fill("Ejemplo-de-clave-1");
+    const mostrar = p.getByRole("button", { name: "Mostrar contraseña" });
+    if (await mostrar.count()) await mostrar.first().click();
+  } },
+  "admin-perfil": { usuario: "admin", preparar: abrirPestanaAdmin("Mi Perfil") },
+  // Revisión de 1.6 · Aviso tras crear un usuario sin servidor de correo (la API de capturas no tiene SMTP)
+  "admin-usuarios-aviso": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Usuarios")(p);
+    await p.getByRole("button", { name: "Crear usuario" }).click();
+    const formulario = p.getByRole("dialog", { name: "Crear usuario" });
+    await formulario.getByLabel(/^Nombre/).fill("Aviso");
+    await formulario.getByLabel(/^Apellido/).fill("Prueba");
+    await formulario.getByLabel(/^Correo/).fill(`aviso.${Date.now()}.dev@brunchcafe.test`); // la BD de capturas se recrea en cada ejecución
+    await formulario.getByLabel(/^Rol/).selectOption({ label: "Mesero" });
+    await formulario.getByRole("button", { name: "Crear usuario" }).click();
+    await p.getByRole("dialog", { name: "Crear la cuenta" }).getByRole("button", { name: "Crear cuenta" }).click();
+    await p.getByRole("dialog", { name: "Cuenta creada" }).waitFor();
+  } },
   // Login tras «Cambiar de usuario». Cierra la sesión del contexto: se vuelve a iniciar en cada ancho
   "staff-cambio-usuario": { usuario: "mesero", preparar: async (p) => {
     await p.context().request.post(`${API}/auth/login`, { data: { correo: USUARIOS.mesero, contraseña: CLAVE } });

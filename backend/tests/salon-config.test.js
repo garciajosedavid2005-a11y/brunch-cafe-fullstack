@@ -321,6 +321,21 @@ describe('Seed de ejemplo del salón (F1-1)', () => {
         expect(await Mesa.countDocuments()).toBe(mesas.length)
     })
 
+    // Revisión de 1.6 · Las mesas que tiene sentido unir vienen combinables: las de 2 puestos (se juntan para
+    // grupos) y, en cada zona, al menos dos para poder probar «Unir mesas»; queda una de 4 fija como ejemplo de lo contrario
+    it('marca combinables las mesas de 2 puestos y al menos dos por zona; deja una fija de ejemplo', async () => {
+        const { sembrarSalonEjemplo } = await import('../src/seeds/salon.js')
+        await sembrarSalonEjemplo()
+        const mesas = await Mesa.find().populate('zona').lean()
+        const deDos = mesas.filter((m) => m.capacidad === 2)
+        expect(deDos.length).toBeGreaterThan(0)
+        expect(deDos.every((m) => m.combinable)).toBe(true)
+        for (const zona of ['Interior', 'Terraza']) {
+            expect(mesas.filter((m) => m.zona.nombre === zona && m.combinable).length, zona).toBeGreaterThanOrEqual(2)
+        }
+        expect(mesas.filter((m) => !m.combinable).map((m) => m.numero)).toEqual([4])
+    })
+
     it('dos seeds a la vez: uno siembra y el otro informa que no hizo nada (sin error)', async () => {
         const { sembrarSalonEjemplo } = await import('../src/seeds/salon.js')
         const resultados = await Promise.all([sembrarSalonEjemplo(), sembrarSalonEjemplo()])

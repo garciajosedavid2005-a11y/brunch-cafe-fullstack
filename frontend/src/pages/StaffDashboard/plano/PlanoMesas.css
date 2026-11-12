@@ -65,8 +65,13 @@
   cursor: pointer;
 }
 
+/* Revisión de 1.6 · Deshabilitado sin opacidad: con 0.55 el texto blanco sobre bordó quedaba ~3,5:1.
+   Texto #6a5752 sobre #efe4e1 ≈ 5,4:1 y borde discontinuo: se lee y se nota que no está disponible. */
 .plano__boton:disabled {
-  opacity: 0.55;
+  border-color: #b9a29b;
+  border-style: dashed;
+  background: #efe4e1;
+  color: #6a5752;
   cursor: not-allowed;
 }
 
@@ -115,7 +120,10 @@
 }
 
 .plano__boton-icono:disabled {
-  opacity: 0.45;
+  border-style: dashed;
+  border-color: #b9a29b;
+  background: #efe4e1;
+  color: #6a5752;
   cursor: not-allowed;
 }
 
@@ -199,7 +207,8 @@
 
 .plano__mesas {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  /* 160 px: «Cuenta pedida» cabe con su icono también a 1024 px con el panel abierto (con 148 se encogía) */
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 0.75rem;
   margin: 0;
   padding: 0;
@@ -234,12 +243,12 @@
   box-shadow: 0 0 0 3px var(--color-primario);
 }
 
+/* Revisión de 1.6 · Número arriba y estado debajo, siempre: con flex-wrap la píldora saltaba de línea
+   solo cuando no cabía («Cuenta pedida», «Bloqueada») y cada tarjeta quedaba distinta. */
 .plano__mesa-cabecera {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.35rem;
+  display: grid;
+  justify-items: start;
+  gap: 0.4rem;
 }
 
 .plano__mesa-numero {
@@ -257,6 +266,10 @@
   font-size: 0.8rem;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.plano__estado svg {
+  flex: none; /* el icono nunca se encoge aunque la píldora no quepa */
 }
 
 .plano__mesa--libre .plano__estado { background: var(--libre-fondo); color: var(--libre-texto); }
@@ -301,7 +314,14 @@
   box-shadow: 0 12px 36px #2c070314;
 }
 
+/* Revisión de 1.6 · Fija al desplazar el panel: «Mesa N» y el botón de cerrar siempre a la vista */
 .panel-mesa__cabecera {
+  position: sticky;
+  top: -1rem; /* compensa el padding superior del panel */
+  z-index: 1;
+  margin: -1rem -1.1rem 0;
+  padding: 1rem 1.1rem 0.5rem;
+  background: #fffdfa;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -424,6 +444,28 @@
   width: 22px;
   height: 22px;
   margin: 0;
+}
+
+/* Mesa que no se puede unir: deshabilitada con su motivo en texto (#6a5752 sobre #f4efed ≈ 5,9:1) */
+.panel-mesa__check.is-deshabilitada {
+  border-style: dashed;
+  background: #f4efed;
+  color: #6a5752;
+  cursor: not-allowed;
+}
+
+.panel-mesa__motivo {
+  font-weight: 500;
+}
+
+/* Aviso informativo (no es un botón): borde a la izquierda, sin discontinuo, a todo el ancho */
+.panel-mesa__nota--recuadro {
+  grid-column: 1 / -1;
+  padding: 0.65rem 0.85rem;
+  border-left: 4px solid #b9a29b;
+  border-radius: 8px;
+  background: #f4efed;
+  color: #4a2a24;
 }
 
 @media (min-width: 1000px) {
