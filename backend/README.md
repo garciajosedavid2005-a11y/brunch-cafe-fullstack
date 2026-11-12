@@ -292,9 +292,9 @@ Cualquiera con el permiso opera cualquier cuenta (F1-17); `mesero` es el respons
 |---|---|---|---|
 | GET | `/api/v1/staff/salon/mesas?zona=` | `mesa:ver` | Plano: zonas activas y mesas activas (más las que tengan cuenta) con estado y, si hay cuenta, `codigo`, `estado`, `comensales`, `mesero { id, nombre }`, `abiertaEn`, `minutosOcupada`, `total`, `pendiente`, `mesas` unidas y `version`. `actualizadoEn` con la hora del servidor. Una mesa `bloqueada` sale en el plano; una inactiva (`activa: false`, configuración) no |
 | GET | `/api/v1/staff/salon/catalogo` | `comanda:tomar` | Productos (también los agotados, `disponible: false`) con precio, categoría, estación y grupos de modificadores activos |
-| GET | `/api/v1/staff/salon/meseros` | `cuenta:transferir` o `cuenta:abrir` | Usuarios activos cuyo rol puede tomar comandas (`id`, `nombre`) |
+| GET | `/api/v1/staff/salon/meseros` | `cuenta:transferir` o `cuenta:abrir` | Usuarios activos cuyo rol tiene `comanda:tomar` (sin administradores ni clientes), por nombre: `{ id, nombre, yo }`; `yo` marca al usuario conectado, que sale aunque la lista llegue al límite de 200 (1.7b) |
 | GET | `/api/v1/staff/salon/cuentas/:id` | `cuenta:ver` | Cuenta con rondas, ítems, totales, `mesero` e `historial` (tipo, de, a, motivo, por, en) |
-| POST | `/api/v1/staff/salon/mesas/:id/abrir` | `cuenta:abrir` | `{ comensales, notas?, meseroId? }` → 201. Otro mesero distinto de quien abre exige `cuenta:transferir`; quien no toma comandas debe indicarlo (`400 MESERO_REQUERIDO`). Mesa no libre → `409 MESA_NO_DISPONIBLE` |
+| POST | `/api/v1/staff/salon/mesas/:id/abrir` | `cuenta:abrir` | `{ comensales, notas?, meseroId? }` → 201. Otro mesero distinto de quien abre exige `cuenta:transferir`; quien no atiende mesas (rol sin `comanda:tomar`, también el admin con `*`) debe indicarlo (`400 MESERO_REQUERIDO`); un responsable que no atiende mesas (admin, cliente, inactivo) → `400 MESERO_NO_VALIDO` (1.7b). Mesa no libre → `409 MESA_NO_DISPONIBLE` |
 | POST | `/api/v1/staff/salon/cuentas/:id/items` | `comanda:tomar` | `{ productoId, cantidad, nota?, modificadores?, versionEsperada? }` → 201 `{ cuenta, item }`. Agotado → `409 PRODUCT_UNAVAILABLE` |
 | PATCH | `/api/v1/staff/salon/cuentas/:id/items/:itemId` | `comanda:tomar` | `{ cantidad?, nota? }` (solo en borrador) |
 | DELETE | `/api/v1/staff/salon/cuentas/:id/items/:itemId` | `comanda:tomar` | Quita un ítem del borrador (uno enviado → `409 ITEM_NO_EDITABLE`) |
@@ -302,7 +302,7 @@ Cualquiera con el permiso opera cualquier cuenta (F1-17); `mesero` es el respons
 | POST | `/api/v1/staff/salon/cuentas/:id/rondas/:n/enviar` | `comanda:enviar` | `{ versionEsperada }`. Ya enviada → `409 RONDA_YA_ENVIADA` |
 | POST | `/api/v1/staff/salon/cuentas/:id/solicitar` | `cuenta:solicitar` | Cuenta y mesas → `cuenta_pedida` (`409 RONDA_PENDIENTE` o `CUENTA_SIN_CONSUMO`) |
 | POST | `/api/v1/staff/salon/cuentas/:id/cancelar` | `cuenta:abrir` | `{ motivo, versionEsperada }`: solo abierta y sin ítems enviados (`409 CUENTA_CON_ITEMS_ENVIADOS`) |
-| POST | `/api/v1/staff/salon/cuentas/:id/transferir` | `cuenta:transferir` | `{ meseroId, motivo? }` (F1-8) |
+| POST | `/api/v1/staff/salon/cuentas/:id/transferir` | `cuenta:transferir` | `{ meseroId, motivo? }` (F1-8). A quien no atiende mesas → `400 MESERO_NO_VALIDO` (1.7b) |
 | POST | `/api/v1/staff/salon/cuentas/:id/cerrar-sin-cobro` | `cuenta:cerrar_sin_cobro` | `{ motivo, versionEsperada }` (F1-13) |
 | POST | `/api/v1/staff/salon/mesas/:id/mover` | `mesa:operar` | `{ mesaDestinoId }`: cuenta abierta a una mesa libre; la que deja pasa a por limpiar. Con mesas unidas, destino de la misma zona y combinable |
 | POST | `/api/v1/staff/salon/mesas/unir` | `mesa:unir` | `{ principalId, mesaIds[] }`: mesas libres, combinables y de la misma zona se suman a la cuenta abierta de la principal (F1-9) |

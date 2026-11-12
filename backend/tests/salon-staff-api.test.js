@@ -11,6 +11,7 @@ import Comanda from '../src/modulos/salon/comanda.model.js'
 import Producto from '../src/modulos/catalogo/producto.model.js'
 import Evento from '../src/modulos/compartido/evento.model.js'
 import { verificarConsistenciaSalon } from '../src/modulos/salon/consistencia.js'
+import { listarMeseros } from '../src/modulos/salon/salonStaff.service.js'
 
 // 1.5 · Endpoints de salón para el staff (/api/v1/staff/salon). F1-7, F1-8, F1-9, F1-13, F1-17, F1-18.
 const BASE = '/api/v1/staff/salon'
@@ -308,18 +309,31 @@ describe('Transferir (F1-8)', () => {
 })
 
 describe('Responsable de la cuenta: solo quien atiende mesas (1.7b)', () => {
-    it('la lista excluye administradores y clientes, marca al usuario conectado y va por nombre', async () => {
+    it('la lista excluye administradores y personal que no atiende mesas, marca al usuario conectado y va por nombre', async () => {
         const { usuario: adminUsuario } = await crearConSesion('admin')
-        const { usuario: cliente } = await crearConSesion('cliente')
+        const { usuario: cocinero } = await crearConSesion('cocina')
+        const { usuario: tercero } = await crearConSesion('mesero')
+        // Nombres desordenados y con tilde: «Íngrid» va entre «Ana» y «Zoe» (colación es, no por bytes)
+        await meseroUsuario.updateOne({ nombre: 'Zoe' })
+        await otroMeseroUsuario.updateOne({ nombre: 'Ana' })
+        await tercero.updateOne({ nombre: 'Íngrid' })
         const lista = esperar(await mesero.get(`${BASE}/meseros`), 200)
         const ids = lista.map((m) => m.id)
         expect(ids).not.toContain(String(adminUsuario._id))
-        expect(ids).not.toContain(String(cliente._id))
+        expect(ids).not.toContain(String(cocinero._id))
         expect(lista.filter((m) => m.yo)).toEqual([expect.objectContaining({ id: String(meseroUsuario._id) })])
-        const nombres = lista.map((m) => m.nombre)
-        expect(nombres).toEqual([...nombres].sort((a, b) => a.localeCompare(b, 'es')))
+        expect(lista.map((m) => m.nombre.split(' ')[0])).toEqual(['Ana', 'Íngrid', 'Zoe'])
         const deRecepcion = esperar(await recepcion.get(`${BASE}/meseros`), 200)
         expect(deRecepcion.some((m) => m.yo)).toBe(false)
+    })
+
+    it('con la lista recortada por el límite, el usuario conectado sigue apareciendo (si atiende mesas)', async () => {
+        const sesionMesero = { id: String(meseroUsuario._id), permisos: (await Rol.findOne({ nombre: 'mesero' }).lean()).permisos }
+        await meseroUsuario.updateOne({ nombre: 'Zoila' }) // por nombre quedaría después del límite
+        const lista = await listarMeseros(sesionMesero, { limite: 1 })
+        expect(lista.filter((m) => m.yo)).toEqual([expect.objectContaining({ id: String(meseroUsuario._id) })])
+        const sinYo = await listarMeseros({ id: idFalso(), permisos: ['cuenta:abrir', 'cuenta:transferir'] }, { limite: 1 })
+        expect(sinYo).toHaveLength(1)
     })
 
     it('abrir o transferir a un administrador → 400 MESERO_NO_VALIDO con un mensaje claro', async () => {
@@ -338,8 +352,25 @@ describe('Responsable de la cuenta: solo quien atiende mesas (1.7b)', () => {
         const res = await admin.post(`${BASE}/mesas/${m1._id}/abrir`).send({ comensales: 2 })
         expect(res.status).toBe(400)
         expect(res.body.error.code).toBe('MESERO_REQUERIDO')
+        expect(await estadoMesa(m1)).toBe('libre')
+        expect(await Cuenta.countDocuments()).toBe(0)
+        // Con su propio id como mesero: no atiende mesas → MESERO_NO_VALIDO (como al transferir)
+        const { sesion: otroAdmin, usuario: otroAdminUsuario } = await crearConSesion('admin')
+        const aSiMismo = await otroAdmin.post(`${BASE}/mesas/${m1._id}/abrir`).send({ comensales: 2, meseroId: String(otroAdminUsuario._id) })
+        expect(aSiMismo.status).toBe(400)
+        expect(aSiMismo.body.error.code).toBe('MESERO_NO_VALIDO')
         const cuenta = await abrir(m1, admin, { meseroId: String(meseroUsuario._id) })
         expect(cuenta.mesero).toBe(String(meseroUsuario._id))
+    })
+})
+
+describe('Responsable: el rol se lee al momento (1.7b)', () => {
+    it('si el rol del mesero pierde comanda:tomar, ya no se le puede transferir una cuenta', async () => {
+        const cuenta = await abrir()
+        await Rol.updateOne({ nombre: 'mesero' }, { $pull: { permisos: 'comanda:tomar' } })
+        const res = await recepcion.post(`${BASE}/cuentas/${cuenta.id}/transferir`).send({ meseroId: String(otroMeseroUsuario._id) })
+        expect(res.status).toBe(400)
+        expect(res.body.error.code).toBe('MESERO_NO_VALIDO')
     })
 })
 

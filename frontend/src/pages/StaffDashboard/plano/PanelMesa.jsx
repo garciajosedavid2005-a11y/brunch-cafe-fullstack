@@ -58,6 +58,8 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
   const meseroAbrir = meseroId || yoId;
   // Mientras llega la lista no se abre: el responsable por defecto depende de ella
   const cargandoMeseros = eligeMesero && !meseros && !error;
+  // Al transferir, cualquiera de la lista menos el mesero actual de la cuenta
+  const destinosTransferencia = (opcionesMesero || []).filter((m) => m.id !== cuenta?.mesero?.id);
 
   useEffect(() => { tituloRef.current?.focus(); }, []);
 
@@ -300,13 +302,18 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
         </div>
       )}
 
-      {modo === "transferir" && (
+      {modo === "transferir" && meseros && destinosTransferencia.length === 0 && (
+        <div className="panel-mesa__bloque">
+          <p className="panel-mesa__nota panel-mesa__nota--recuadro">No hay otros meseros disponibles para transferir la cuenta.</p>
+        </div>
+      )}
+      {modo === "transferir" && (!meseros || destinosTransferencia.length > 0) && (
         <div className="panel-mesa__bloque">
           <label className="panel-mesa__campo">
             <span>Nuevo mesero</span>
             <select value={meseroId} onChange={(e) => setMeseroId(e.target.value)} disabled={!meseros}>
               <option value="">{meseros ? "Elige un mesero" : "Cargando…"}</option>
-              {(opcionesMesero || []).filter((m) => m.id !== cuenta.mesero?.id).map((m) => <option key={m.id} value={m.id}>{m.etiqueta}</option>)}
+              {destinosTransferencia.map((m) => <option key={m.id} value={m.id}>{m.etiqueta}</option>)}
             </select>
           </label>
           <label className="panel-mesa__campo">

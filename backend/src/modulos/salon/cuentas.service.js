@@ -432,8 +432,10 @@ export const abrirCuenta = async (datos, sesion) => {
     const { mesaId, comensales, notas, meseroId } = validar(abrirCuentaSchema, datos)
     const otroMesero = Boolean(meseroId) && meseroId !== String(sesion.id)
     if (otroMesero) exigirPermiso(sesion, 'cuenta:transferir')
-    // El responsable atiende mesas: quien no (un rol sin comanda:tomar o el admin) indica el mesero
+    // El responsable atiende mesas: quien no (un rol sin comanda:tomar o el admin) indica el mesero;
+    // si se indica a sí mismo, el mismo 400 que al transferir a quien no atiende mesas (1.7b)
     if (!otroMesero && !atiendeMesas(permisosDe(sesion))) {
+        if (meseroId) throw error(400, 'MESERO_NO_VALIDO', 'Ese usuario no puede atender mesas: elige un mesero activo.')
         throw error(400, 'MESERO_REQUERIDO', 'Elige el mesero que atenderá la mesa.')
     }
     // Fuera de la transacción: un reintento no consume otro número (los huecos son aceptables)

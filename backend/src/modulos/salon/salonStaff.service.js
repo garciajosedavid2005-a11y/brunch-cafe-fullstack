@@ -9,7 +9,7 @@ import Producto from '../catalogo/producto.model.js'
 import Categoria from '../catalogo/categoria.model.js'
 import { AppError } from '../compartido/errors.js'
 import { ESTADOS_CUENTA_ABIERTA } from '../compartido/estadosSalon.js'
-import { tienePermiso } from '../identidad/permisos.js'
+import { atiendeMesas, tienePermiso } from '../identidad/permisos.js'
 import { extrasDeModificadores } from '../catalogo/producto.controller.js'
 import { urlPublica } from '../catalogo/imagenesProducto.js'
 import { obtenerCuenta } from './cuentas.service.js'
@@ -168,10 +168,17 @@ export const catalogoSalon = async (sesion) => {
 
 /** Usuarios activos que pueden ser responsables de una cuenta: su rol tiene comanda:tomar, sin
  * administradores (comodín) ni clientes (1.7b). «yo» marca al usuario conectado. */
-export const listarMeseros = async (sesion) => {
+export const listarMeseros = async (sesion, { limite = MAX_MESEROS } = {}) => {
     exigirAlguno(sesion, ['cuenta:transferir', 'cuenta:abrir'])
     const roles = await Rol.find({ permisos: 'comanda:tomar' }).select('_id').lean()
-    const usuarios = await Usuario.find({ rol: { $in: roles.map((r) => r._id) }, activo: { $ne: false } })
-        .sort({ nombre: 1, apellido: 1 }).limit(MAX_MESEROS).select('nombre apellido').lean()
+    const filtro = { rol: { $in: roles.map((r) => r._id) }, activo: { $ne: false } }
+    // Orden alfabético en español («Íngrid» entre «Ana» y «Zoe»), no por bytes
+    const usuarios = await Usuario.find(filtro).collation({ locale: 'es' })
+        .sort({ nombre: 1, apellido: 1 }).limit(limite).select('nombre apellido').lean()
+    // Si el límite deja fuera al usuario conectado y atiende mesas, va igualmente (es el valor por defecto)
+    if (atiendeMesas(sesion.permisos) && !usuarios.some((u) => String(u._id) === String(sesion.id))) {
+        const yo = await Usuario.findOne({ ...filtro, _id: sesion.id }).select('nombre apellido').lean()
+        if (yo) usuarios.push(yo)
+    }
     return usuarios.map((u) => ({ id: String(u._id), nombre: nombreCorto(u), yo: String(u._id) === String(sesion.id) }))
 }

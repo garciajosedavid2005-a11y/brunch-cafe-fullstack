@@ -159,6 +159,17 @@ describe("Plano de mesas", () => {
     expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual(["Elige un mesero", "Mesero P. (yo)", "Luis G."]);
   });
 
+  it("transferir sin otro mesero disponible lo dice en lugar de mostrar una lista vacía", async () => {
+    respuestas.meseros = [{ id: "u1", nombre: "Ana P.", yo: true }];
+    pintar();
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 1\b/ }));
+    const panel = screen.getByRole("region", { name: "Mesa 1" });
+    fireEvent.click(within(panel).getByRole("button", { name: "Transferir" }));
+    expect(await within(panel).findByText("No hay otros meseros disponibles para transferir la cuenta.")).toBeInTheDocument();
+    expect(within(panel).queryByRole("combobox", { name: "Nuevo mesero" })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: "Confirmar transferencia" })).not.toBeInTheDocument();
+  });
+
   it("quien no toma comandas debe elegir el mesero al abrir", async () => {
     respuestas.meseros = respuestas.meseros.filter((m) => !m.yo);
     pintar(SIN_COMANDAS);

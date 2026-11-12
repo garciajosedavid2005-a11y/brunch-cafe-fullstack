@@ -165,3 +165,12 @@ describe("Botones con texto del admin (≥ 44 px de alto, 1.5c)", () => {
     for (const px of minimos) expect(px, `${clase} { min-height: ${px}px }`).toBeGreaterThanOrEqual(44);
   });
 });
+
+// 1.7b · Con la cabecera en columna (≤ 960 px), sus acciones («Panel de sala», correo, «Salir») van
+// juntas a la izquierda y no repartidas a lo ancho con huecos irregulares
+describe("Cabecera del admin en pantallas estrechas (1.7b)", () => {
+  it("las acciones no usan space-between", () => {
+    const cuerpos = reglasDe(".admin-dashboard__top-actions");
+    expect(cuerpos.flatMap((c) => declaraciones(c, "justify-content")).map((v) => v.trim())).not.toContain("space-between");
+  });
+});
