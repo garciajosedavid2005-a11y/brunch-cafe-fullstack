@@ -1,4 +1,4 @@
-import { AppError, cuerpoError, notFound } from '../compartido/errors.js';
+import { AppError, detallesZod, notFound } from '../compartido/errors.js';
 import Pedido from '../pedidos/pedido.model.js';
 import DetallePedido from '../pedidos/detallePedido.model.js';
 import Reserva from '../salon/reserva.model.js';
@@ -9,24 +9,20 @@ import Producto from './producto.model.js';
 import mongoose from 'mongoose';
 import { referenciaProducto, resolverProductos } from './referenciaProducto.schema.js';
 
-const comentarioSchema = z.discriminatedUnion('tipo', [
-  z.object({
-    tipo: z.literal('general'),
-    calificacion: z.coerce.number().int().min(1).max(5),
-    comentario: z.string().trim().min(10).max(300),
-  }),
-  z.object({
-    tipo: z.literal('producto'),
-    ...referenciaProducto,
-    calificacion: z.coerce.number().int().min(1).max(5),
-    comentario: z.string().trim().min(10).max(300),
-  }),
-]);
+// 1.15 · Mensajes en español: el error de validación muestra el del primer campo
+const MENSAJE_CALIFICACION = 'La calificación debe ser un número entero de 1 a 5.';
+const calificacion = z.coerce.number({ error: MENSAJE_CALIFICACION }).int({ error: MENSAJE_CALIFICACION })
+  .min(1, { error: MENSAJE_CALIFICACION }).max(5, { error: MENSAJE_CALIFICACION });
+const comentario = z.string({ error: 'Escribe tu comentario.' }).trim()
+  .min(10, { error: 'El comentario debe tener al menos 10 caracteres.' })
+  .max(300, { error: 'El comentario no puede superar 300 caracteres.' });
 
-const edicionSchema = z.object({
-  calificacion: z.coerce.number().int().min(1).max(5),
-  comentario: z.string().trim().min(10).max(300),
-});
+const comentarioSchema = z.discriminatedUnion('tipo', [
+  z.object({ tipo: z.literal('general'), calificacion, comentario }),
+  z.object({ tipo: z.literal('producto'), ...referenciaProducto, calificacion, comentario }),
+], { error: 'Elige si la reseña es general o de un producto.' });
+
+const edicionSchema = z.object({ calificacion, comentario });
 
 // Decisión 14: ¿el usuario recibió algún pedido (con ese producto, si se indica)?
 const recibioPedido = async (usuarioId, productoId) => {
@@ -43,7 +39,7 @@ const completoReserva = async (usuarioId) => {
 };
 
 const resenaExistente = (id) => new AppError(409, 'RESENA_EXISTENTE',
-  'Ya dejaste una reseña de este producto. Puedes editarla desde "Mis comentarios".', { id: String(id) });
+  'Ya dejaste una reseña de este producto. Puedes editarla desde "Mis comentarios".', id ? { id: String(id) } : undefined);
 
 export const listarComentariosPublicos = async (req, res, next) => {
   try {
@@ -105,34 +101,25 @@ export const listarComentariosAdmin = async (req, res, next) => {
   }
 };
 
-export const cambiarVisibilidadComentario = async (req, res, next) => {
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(404).json(cuerpoError('NOT_FOUND', 'Comentario no encontrado.'));
-  }
-  try {
-    const comentario = await Comentario.findByIdAndUpdate(
-      req.params.id,
-      { visible: req.body.visible },
-      { returnDocument: 'after', runValidators: true }
-    );
-    if (!comentario) return res.status(404).json(cuerpoError('NOT_FOUND', 'Comentario no encontrado.'));
-    return res.json({ id: comentario._id, visible: comentario.visible });
-  } catch (error) {
-    return next(error);
-  }
+const COMENTARIO_NO_ENCONTRADO = 'Comentario no encontrado.';
+
+// 1.15 · Errores con el formato estándar por el manejador central (AppError), como el pedido y las cuentas
+export const cambiarVisibilidadComentario = async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) throw notFound(COMENTARIO_NO_ENCONTRADO);
+  const comentario = await Comentario.findByIdAndUpdate(
+    req.params.id,
+    { visible: req.validado.visible },
+    { returnDocument: 'after', runValidators: true }
+  );
+  if (!comentario) throw notFound(COMENTARIO_NO_ENCONTRADO);
+  return res.json({ id: comentario._id, visible: comentario.visible });
 };
 
-export const eliminarComentario = async (req, res, next) => {
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(404).json(cuerpoError('NOT_FOUND', 'Comentario no encontrado.'));
-  }
-  try {
-    const comentario = await Comentario.findByIdAndDelete(req.params.id);
-    if (!comentario) return res.status(404).json(cuerpoError('NOT_FOUND', 'Comentario no encontrado.'));
-    return res.json({ message: 'Comentario eliminado.' });
-  } catch (error) {
-    return next(error);
-  }
+export const eliminarComentario = async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) throw notFound(COMENTARIO_NO_ENCONTRADO);
+  const comentario = await Comentario.findByIdAndDelete(req.params.id);
+  if (!comentario) throw notFound(COMENTARIO_NO_ENCONTRADO);
+  return res.json({ message: 'Comentario eliminado.' });
 };
 
 export const listarMisComentarios = async (req, res, next) => {
@@ -151,7 +138,8 @@ export const crearComentario = async (req, res, next) => {
   const parsed = comentarioSchema.safeParse(req.body);
 
   if (!parsed.success) {
-    return res.status(400).json(cuerpoError('BAD_REQUEST', 'Revisa la calificación y el comentario.', parsed.error.flatten()));
+    const details = detallesZod(parsed.error);
+    throw new AppError(400, 'VALIDATION_ERROR', details[0]?.mensaje || 'Revisa la calificación y el comentario.', details);
   }
 
   try {
@@ -161,7 +149,7 @@ export const crearComentario = async (req, res, next) => {
     if (datos.tipo === 'producto') {
       const producto = (await resolverProductos(Producto, [parsed.data]))(parsed.data);
       if (!producto) {
-        return res.status(400).json(cuerpoError('BAD_REQUEST', 'El producto seleccionado no existe en el menú.'));
+        throw new AppError(404, 'PRODUCTO_NO_ENCONTRADO', 'El producto seleccionado no existe en el menú.');
       }
       datos.producto = producto._id;
       datos.productoId = producto.codigo;
@@ -194,14 +182,14 @@ export const crearComentario = async (req, res, next) => {
 // PATCH /api/v1/cliente/comentarios/:id { calificacion, comentario } (0.12): editar la propia.
 // No cambia el tipo, el producto ni la verificación; la moderación (visible) se conserva.
 export const editarMiComentario = async (req, res) => {
-  if (!mongoose.isValidObjectId(req.params.id)) throw notFound('Comentario no encontrado.');
+  if (!mongoose.isValidObjectId(req.params.id)) throw notFound(COMENTARIO_NO_ENCONTRADO);
   const datos = edicionSchema.parse(req.body);
   const comentario = await Comentario.findOneAndUpdate(
     { _id: req.params.id, usuario: req.usuario.id },
     { $set: datos },
     { returnDocument: 'after', runValidators: true },
   ).lean();
-  if (!comentario) throw notFound('Comentario no encontrado.');
+  if (!comentario) throw notFound(COMENTARIO_NO_ENCONTRADO);
   res.json({ review: comentario });
 };
 

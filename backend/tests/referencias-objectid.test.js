@@ -78,8 +78,10 @@ describe('Referencias por ObjectId (0.6)', () => {
         expect(await Comentario.countDocuments()).toBe(0)
     })
 
-    it('reseña de un producto inexistente → 400', async () => {
-        expect((await comentar({ productoRef: String(new mongoose.Types.ObjectId()) })).status).toBe(400)
+    it('reseña de un producto inexistente → 404 PRODUCTO_NO_ENCONTRADO (1.15, como el pedido)', async () => {
+        const res = await comentar({ productoRef: String(new mongoose.Types.ObjectId()) })
+        expect(res.status).toBe(404)
+        expect(res.body.error.code).toBe('PRODUCTO_NO_ENCONTRADO')
     })
 })
 
