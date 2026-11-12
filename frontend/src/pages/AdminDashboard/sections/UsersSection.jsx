@@ -11,17 +11,20 @@ const etiquetaRol = (rol) => rol?.etiqueta || rol?.nombre || "Sin rol";
 
 const NUEVO_USUARIO = { nombre: "", apellido: "", correo: "", telefono: "", rolId: "" };
 
+const SIN_SERVIDOR_CORREO = "No hay servidor de correo configurado: el enlace quedó en el registro (log) del backend.";
+
 // 1.5b · Mensaje tras crear según cómo sale el enlace (lo decide el backend con su configuración SMTP)
 const MENSAJE_ENTREGA = {
   correo: (correo) => `Enviamos a ${correo} el enlace «Crea tu contraseña». Vence en 24 horas y sirve una sola vez.`,
-  registro_desarrollo: () => "El enlace «Crea tu contraseña» quedó en el registro del servidor (desarrollo sin SMTP). Vence en 24 horas y sirve una sola vez.",
+  // Revisión de 1.6 · Texto acordado con Brayan (cómo configurar el correo: backend/README.md › Configurar el correo (SMTP))
+  registro_desarrollo: () => `${SIN_SERVIDOR_CORREO} Vence en 24 horas y sirve una sola vez.`,
   sin_smtp: () => "La cuenta se creó, pero el correo del sistema no está configurado: el enlace «Crea tu contraseña» no se envió. Cuando se configure, la persona puede pedir un enlace nuevo con «¿Olvidaste tu contraseña?».",
 };
 
 // Ajuste tras 1.5b · Aviso tras reenviar el enlace, según cómo salió
 const MENSAJE_REENVIO = {
   correo: (correo) => `Enviamos a ${correo} un enlace nuevo «Crea tu contraseña». Vence en 24 horas; el anterior ya no sirve.`,
-  registro_desarrollo: () => "El enlace nuevo quedó en el registro del servidor (desarrollo sin SMTP). Vence en 24 horas; el anterior ya no sirve.",
+  registro_desarrollo: () => `${SIN_SERVIDOR_CORREO} Vence en 24 horas; el anterior ya no sirve.`,
   sin_smtp: () => "Se generó un enlace nuevo, pero el correo del sistema no está configurado: no se envió. El anterior ya no sirve.",
 };
 

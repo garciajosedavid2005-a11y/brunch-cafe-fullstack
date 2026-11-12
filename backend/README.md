@@ -47,6 +47,32 @@ Para habilitar el enlace de recuperación configura `SMTP_HOST`, `SMTP_PORT`, `S
 
 **Confirmación de reservas (0.16):** al crear una reserva con correo (cliente o personal), el backend envía el resumen por el mismo SMTP, después de guardarla y sin bloquear la respuesta; si el envío falla, la reserva queda guardada y el error va al log (sin la dirección). Sin correo no se envía nada. En desarrollo sin SMTP, el contenido aparece en el log (`SMTP sin configurar: confirmación de reserva`). El frontend ya no usa EmailJS.
 
+### Configurar el correo (SMTP)
+
+Sin `SMTP_HOST`, `SMTP_USER` y `SMTP_PASSWORD` no sale ningún correo: en desarrollo, los enlaces («Crea tu contraseña», recuperación) quedan en el log del backend y Admin › Usuarios avisa «No hay servidor de correo configurado: el enlace quedó en el registro (log) del backend». Para enviarlos de verdad, agrega en `backend/.env` (nunca en el repositorio) uno de estos dos y **reinicia el backend**. Los valores de abajo son de ejemplo: usa los de tu cuenta.
+
+**Mailtrap (recomendado para desarrollo: los correos no llegan a nadie, se ven en su bandeja de pruebas).** Crea una cuenta gratuita en mailtrap.io, abre *Email Testing › Inboxes › tu bandeja › SMTP Settings* y copia el usuario y la contraseña que muestra:
+
+```env
+SMTP_HOST=sandbox.smtp.mailtrap.io
+SMTP_PORT=2525
+SMTP_USER=usuario-que-muestra-mailtrap
+SMTP_PASSWORD=contraseña-que-muestra-mailtrap
+SMTP_FROM=Brunch Café <no-responder@example.com>
+```
+
+**Gmail con contraseña de aplicación (envía correos reales).** Gmail no acepta la contraseña normal de la cuenta: activa la verificación en dos pasos en la cuenta de Google y crea una *contraseña de aplicación* en *Cuenta de Google › Seguridad › Contraseñas de aplicaciones* (16 letras; se escribe sin espacios). Usa una cuenta del negocio, no una personal:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=cuenta-del-negocio@gmail.com
+SMTP_PASSWORD=contraseña-de-aplicación-de-16-letras
+SMTP_FROM=Brunch Café <cuenta-del-negocio@gmail.com>
+```
+
+Con el puerto 465 la conexión es TLS directa; con cualquier otro (por defecto 587, `config.js`) se pasa a STARTTLS si el servidor lo ofrece, como hacen Mailtrap y Gmail (lo decide `compartido/correo.js`, que aún no lo exige: ver Pendientes en PROGRESO). Fuera de desarrollo, sin SMTP el enlace ni se envía ni se registra: Admin › Usuarios lo avisa y la persona puede pedir uno nuevo con «¿Olvidaste tu contraseña?». Para comprobarlo, crea un usuario en Admin › Usuarios: el aviso debe decir «Enviamos a … el enlace» y el correo debe aparecer en la bandeja de Mailtrap o llegar al destinatario (Gmail). Si el envío falla, el error queda en el log sin la dirección de correo.
+
 ## MongoDB Atlas en Windows
 
 Si el backend muestra `querySrv ECONNREFUSED`, Node.js no puede consultar por DNS el registro SRV de una URI `mongodb+srv://`. El error ocurre antes de la autenticación; cambiar la contraseña o la lista de acceso de IP de Atlas no resuelve este error específico.

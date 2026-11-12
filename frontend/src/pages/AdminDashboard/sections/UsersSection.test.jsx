@@ -154,6 +154,17 @@ describe("Usuarios (admin)", () => {
       expect(await screen.findByText("laura@example.com")).toBeInTheDocument();
     });
 
+    // Revisión de 1.6 · En desarrollo sin SMTP el aviso dice dónde quedó el enlace
+    it("sin servidor de correo: avisa que el enlace quedó en el log del backend", async () => {
+      api.post.mockResolvedValue({ ...usuario("laura"), correo: "laura@example.com", entrega: "registro_desarrollo" });
+      const dialogo = await abrirFormulario();
+      llenar(dialogo, { "Nombre *": "Laura", "Apellido *": "Gómez", "Correo *": "laura@example.com", "Rol *": "r-mesero" });
+      fireEvent.click(within(dialogo).getByRole("button", { name: "Crear usuario" }));
+      fireEvent.click(within(await screen.findByRole("dialog", { name: "Crear la cuenta" })).getByRole("button", { name: "Crear cuenta" }));
+      const aviso = await screen.findByRole("dialog", { name: "Cuenta creada" });
+      expect(aviso).toHaveTextContent("No hay servidor de correo configurado: el enlace quedó en el registro (log) del backend");
+    });
+
     it("cancelar la confirmación no crea nada", async () => {
       const dialogo = await abrirFormulario();
       llenar(dialogo, { "Nombre *": "Laura", "Apellido *": "Gómez", "Correo *": "laura@example.com", "Rol *": "r-mesero" });
@@ -212,6 +223,15 @@ describe("Usuarios (admin)", () => {
       expect(opciones.headers["Idempotency-Key"]).toMatch(/^[A-Za-z0-9_-]{8,100}$/);
       const aviso = await screen.findByRole("dialog", { name: "Enlace reenviado" });
       expect(aviso).toHaveTextContent(/24 horas/);
+    });
+
+    it("sin servidor de correo: el aviso del reenvío dice que el enlace quedó en el log del backend", async () => {
+      apiRequest.mockResolvedValue({ ...usuario("nueva", { accesoPendiente: true }), entrega: "registro_desarrollo" });
+      await montarConPendiente();
+      fireEvent.click(within(fila("nueva@example.com")).getByRole("button", { name: "Reenviar enlace" }));
+      fireEvent.click(within(await screen.findByRole("dialog", { name: "Reenviar enlace" })).getByRole("button", { name: "Reenviar" }));
+      const aviso = await screen.findByRole("dialog", { name: "Enlace reenviado" });
+      expect(aviso).toHaveTextContent("No hay servidor de correo configurado: el enlace quedó en el registro (log) del backend");
     });
 
     it("un 409 muestra el mensaje del servidor y recarga la lista", async () => {
