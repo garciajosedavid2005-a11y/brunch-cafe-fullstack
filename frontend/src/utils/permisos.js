@@ -17,6 +17,10 @@ export const esAdministrador = (user) => permisosDe(user).includes("*");
 // así un rol nuevo o sin permisos todavía no cae en el portal del cliente
 export const esPersonal = (user) => Boolean(user?.esPersonal) && !esAdministrador(user);
 
+// F1-19: el panel de sala (/staff) es del personal y también del administrador, que entra desde el
+// admin para anular ítems (item:anular). Su inicio sigue siendo /admin.
+export const puedeEntrarAStaff = (user) => esPersonal(user) || esAdministrador(user);
+
 export const rutaInicio = (user) => {
   if (esAdministrador(user)) return "/admin";
   if (esPersonal(user)) return "/staff";

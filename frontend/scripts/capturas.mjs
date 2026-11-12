@@ -389,14 +389,17 @@ const VISTAS = {
     await p.goto(`${FRONT}/staff`);
     await p.getByRole("button", { name: /^Mesa 1,/ }).click();
     await p.getByRole("button", { name: "Transferir" }).click();
-    await desplegarSelect(p);
+    // Con un solo mesero en la BD de capturas no hay lista: sale el aviso «No hay otros meseros…»
+    await p.locator(".panel-mesa select, .panel-mesa .panel-mesa__nota--recuadro").last().waitFor();
+    if (await p.locator(".panel-mesa select").count()) await desplegarSelect(p);
   } },
   // Tarjeta seleccionada con un estado largo (la etiqueta no debe cambiar de posición al seleccionarla)
   "staff-plano-bloqueada": { usuario: "mesero", preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);
     await p.getByRole("button", { name: /^Mesa 4,/ }).click();
   } },
-  // Mesa ocupada no combinable: en vez de «Unir mesas», el texto de dónde cambiarlo. Desbloquea y abre la
+  // Mesa ocupada no combinable: en vez de «Unir mesas», el aviso «Esta mesa no es combinable» (1.7b: dónde
+  // cambiarlo solo lo ve quien tiene salon:configurar). Desbloquea y abre la
   // mesa 4 (la única no combinable del seed) por la API; va al final porque cambia el plano de las demás vistas
   "staff-plano-no-combinable": { usuario: "mesero", preparar: async (p) => {
     const plano = await (await p.context().request.get(`${API}/staff/salon/mesas`)).json();
@@ -480,6 +483,19 @@ const VISTAS = {
     await verCuentaEnVertical(p);
     await p.getByRole("button", { name: "Cancelar cuenta" }).click();
     await p.getByRole("dialog", { name: "Cancelar la cuenta" }).waitFor();
+  } },
+  // F1-19 · El administrador entra al panel de sala desde el admin y anula con motivo desde la comanda
+  "admin-panel-sala": { usuario: "admin", completa: false, preparar: (p) => p.goto(`${FRONT}/admin`) },
+  "staff-admin-plano": { usuario: "admin", preparar: async (p) => {
+    await p.goto(`${FRONT}/admin`);
+    await p.getByRole("link", { name: "Panel de sala" }).click();
+    await p.getByRole("button", { name: /^Mesa 1,/ }).waitFor();
+  } },
+  "staff-admin-anular": { usuario: "admin", preparar: async (p) => {
+    await abrirCuentaDeMesa(p, 1);
+    await verCuentaEnVertical(p);
+    await p.getByRole("button", { name: /^Anular / }).first().click();
+    await p.getByRole("dialog", { name: /^Anular / }).waitFor();
   } },
   // Login tras «Cambiar de usuario». Cierra la sesión del contexto: se vuelve a iniciar en cada ancho
   "staff-cambio-usuario": { usuario: "mesero", preparar: async (p) => {

@@ -19,7 +19,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./context/useAuth";
 import { CarritoProvider } from "./context/CarritoContext";
 import { DialogoProvider } from "./context/DialogoContext";
-import { esAdministrador, esPersonal, rutaInicio, tienePermiso } from "./utils/permisos";
+import { esAdministrador, esPersonal, puedeEntrarAStaff, rutaInicio, tienePermiso } from "./utils/permisos";
 
 import "./styles/index.css";
 import "./styles/variables.css";
@@ -45,7 +45,7 @@ function StaffRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <main className="customer-dashboard-loading">Verificando permisos...</main>;
   if (!user) return <Navigate to="/login" replace />;
-  if (!esPersonal(user)) return <Navigate to={rutaInicio(user)} replace />;
+  if (!puedeEntrarAStaff(user)) return <Navigate to={rutaInicio(user)} replace />;
   return children;
 }
 
@@ -108,7 +108,7 @@ function AppRoutes() {
   const { user } = useAuth();
   const location = useLocation();
   const sinPie = esAdministrador(user) || esPersonal(user);
-  const enTablet = esPersonal(user) && esRutaStaff(location.pathname);
+  const enTablet = puedeEntrarAStaff(user) && esRutaStaff(location.pathname); // F1-19: también el admin
 
   return (
     <>

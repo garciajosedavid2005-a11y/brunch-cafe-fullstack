@@ -107,6 +107,30 @@ describe("Panel de mesero", () => {
     expect(state.apiRequest).not.toHaveBeenCalled();
   });
 
+  // F1-19 · El administrador entra al panel de sala para anular desde la toma de comanda
+  it("el administrador ve el plano, reservas y pedidos, vuelve al admin con «Panel de administración» y no crea reservas aquí", async () => {
+    state.user = { nombre: "Admin", role: "admin", roleLabel: "Administrador", permisos: ["*"] };
+    const respuestaBase = state.apiRequest.getMockImplementation();
+    state.apiRequest.mockImplementation((path) => (path === "/v1/staff/salon/mesas"
+      ? Promise.resolve({ actualizadoEn: new Date().toISOString(), zonas: [], mesas: [] })
+      : respuestaBase(path)));
+
+    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+
+    const navigation = screen.getByRole("navigation", { name: /secciones del panel de personal/i });
+    expect(within(navigation).getByRole("button", { name: "Mesas" })).toHaveAttribute("aria-current", "page");
+    expect(within(navigation).getByRole("button", { name: "Reservas" })).toBeInTheDocument();
+    expect(within(navigation).getByRole("button", { name: "Pedidos" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Panel de administración" })).toHaveAttribute("href", "/admin");
+    expect(screen.queryByRole("button", { name: "Nueva reserva" })).not.toBeInTheDocument();
+    await waitFor(() => expect(state.apiRequest).toHaveBeenCalledWith("/v1/staff/salon/mesas"));
+  });
+
+  it("el personal no ve el enlace al panel de administración", () => {
+    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    expect(screen.queryByRole("link", { name: "Panel de administración" })).not.toBeInTheDocument();
+  });
+
   it("en la agenda indica quién registró la reserva (0.15e)", async () => {
     const original = state.apiRequest.getMockImplementation();
     state.apiRequest.mockImplementation((path) => path === "/v1/staff/reservas"

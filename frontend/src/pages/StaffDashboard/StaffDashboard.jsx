@@ -1,11 +1,12 @@
 import { createElement, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   CalendarCheck2,
   CalendarDays,
   Clock3,
   LayoutGrid,
   ListOrdered,
+  ShieldHalf,
   Plus,
   ShieldCheck,
   UserRound,
@@ -16,6 +17,7 @@ import { useAuth } from "../../context/useAuth";
 import { apiRequest } from "../../services/api";
 import { fechaLocal, formatearFechaCalendario, formatearHoraTexto, horaLocal, hoyLocal } from "../../utils/fechas";
 import { formatearCOP } from "../../utils/moneda";
+import { esAdministrador, tienePermiso } from "../../utils/permisos";
 import { claseEstado } from "../AdminDashboard/components/estadoUtils";
 import ProfileSection from "../CustomerDashboard/sections/ProfileSection";
 import SecuritySection from "../CustomerDashboard/sections/SecuritySection";
@@ -26,18 +28,19 @@ import "../CustomerDashboard/CustomerDashboard.css";
 // Mismo color por tipo de estado que en el admin (0.15f): pendiente, en curso, listo, cancelado…
 const claseDeEstado = (codigo) => `staff-dashboard__status staff-dashboard__status--${claseEstado(codigo).replace("admin-badge--", "")}`;
 
-const permisosDe = (user) => user?.permisos || [];
-
 const AVISO_CAMBIO_DE_USUARIO = "La sesión anterior se cerró. Ingresa con tu usuario.";
 
 export default function StaffDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const permisos = permisosDe(user);
-  const puedeVerReservas = permisos.includes("reserva:ver");
-  const puedeCrearReservas = permisos.includes("reserva:crear");
-  const puedeVerPedidos = permisos.includes("pedido:ver");
-  const puedeVerMesas = permisos.includes("mesa:ver") || permisos.includes("*");
+  const permisos = user?.permisos || [];
+  // F1-19 · El administrador también entra (con «*»). Las reservas las crea desde el admin:
+  // /reservas lo devuelve allí, así que aquí no se le ofrece «Nueva reserva»
+  const admin = esAdministrador(user);
+  const puedeVerReservas = tienePermiso(user, "reserva:ver");
+  const puedeCrearReservas = tienePermiso(user, "reserva:crear") && !admin;
+  const puedeVerPedidos = tienePermiso(user, "pedido:ver");
+  const puedeVerMesas = tienePermiso(user, "mesa:ver");
   // Con mesa:ver, el panel abre primero el plano de mesas (decisión 1.6 del 2026-11-07)
   const [seccion, setSeccion] = useState(() => (puedeVerMesas ? "mesas" : "resumen"));
   const [estadoReservas, setEstadoReservas] = useState(() => ({
@@ -170,6 +173,12 @@ export default function StaffDashboard() {
           <strong className="staff-tablet__rol">{user?.roleLabel || "Personal"}</strong>
         </div>
         <div className="staff-tablet__acciones">
+          {admin && (
+            <Link className="staff-tablet__boton" to="/admin">
+              <ShieldHalf size={18} aria-hidden="true" />
+              Panel de administración
+            </Link>
+          )}
           {puedeCrearReservas && (
             <button className="staff-tablet__boton" type="button" onClick={() => navigate("/reservas")}>
               <Plus size={18} aria-hidden="true" />

@@ -139,7 +139,7 @@ Cada ítem = 1 commit (o pocos) con tests, como en la Fase 0. Orden propuesto: 1
 | 3 | Estaciones | Cocina y Barra; por categoría (bebidas → barra, el resto → cocina), con cambio por producto | 1.3 |
 | 4 | Modificadores | Grupos con recargo opcional (COP entero ≥ 0), obligatorio u opcional, mín./máx. Seed editable: Leche, Tamaño, Término del huevo (obligatorio en platos con huevo), Extras; «sin ingrediente» como nota | 1.3 |
 | 5 | Rondas | Cada ronda completa; sin «tiempos» ni «marchar». Nota libre por ítem | 1.7 |
-| 6 | Anular ítems enviados | Solo `item:anular` (admin por ahora; supervisor más adelante), motivo obligatorio; no se cobra; queda en `Evento` para mermas (Fase 5). Antes de enviar, el mesero quita libremente | 1.1, 1.4, 1.5 |
+| 6 | Anular ítems enviados | Solo `item:anular` (admin por ahora, desde `/staff` con el enlace «Panel de sala» del admin, F1-19; supervisor más adelante), motivo obligatorio; no se cobra; queda en `Evento` para mermas (Fase 5). Antes de enviar, el mesero quita libremente | 1.1, 1.4, 1.5 |
 | 7 | Comensales y cuentas por mesa | Comensales obligatorios (≥ 1). Una sola cuenta por mesa; división en la Fase 3 | 1.4 |
 | 8 | Transferir cuenta | Mesero y admin (`cuenta:transferir`; 1.5b: antes anfitrión y admin), motivo opcional | 1.1, 1.5, 1.5b |
 | 9 | Unir mesas | Comparten una sola cuenta. Se separan solo si la cuenta no tiene ítems enviados; si los tiene, división en la Fase 3 | 1.5 (`/mesas/:id/separar`) |

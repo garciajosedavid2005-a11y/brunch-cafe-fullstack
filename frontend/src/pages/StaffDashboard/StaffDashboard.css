@@ -413,6 +413,11 @@
   cursor: pointer;
 }
 
+/* F1-19 · «Panel de administración» es un enlace con el mismo aspecto */
+a.staff-tablet__boton {
+  text-decoration: none;
+}
+
 .staff-tablet__boton:hover {
   background: #f7e7e2;
 }

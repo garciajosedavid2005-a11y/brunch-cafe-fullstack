@@ -16,9 +16,10 @@ import {
   Clock,
   LayoutGrid,
   ListPlus,
+  Utensils,
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import OverviewSection from "./sections/OverviewSection";
 import OrdersSection from "./sections/OrdersSection";
 import ReservationsSection from "./sections/ReservationsSection";
@@ -120,6 +121,11 @@ export default function AdminDashboard() {
           </p>
         </div>
         <div className="admin-dashboard__top-actions">
+          {/* F1-19 · El panel de sala (/staff): plano, toma de comanda y anulación con item:anular */}
+          <Link className="admin-dashboard__sala" to="/staff">
+            <Utensils size={16} aria-hidden="true" />
+            <span>Panel de sala</span>
+          </Link>
           <div className="admin-dashboard__user-pill">
             <span className="admin-dashboard__user-dot"></span>
             <span>{user?.email}</span>

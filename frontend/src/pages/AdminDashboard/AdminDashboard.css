@@ -95,6 +95,37 @@
 }
 
 /* BOTÓN SALIR: CON COLOR SÓLIDO Y LETRA BLANCA */
+/* F1-19 · Enlace al panel de sala (/staff): secundario, con borde, al lado de «Salir» */
+.admin-dashboard__sala {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.65rem 1.15rem;
+  border: 1.5px solid #dec7be;
+  border-radius: 10px;
+  background: var(--color-blanco);
+  color: var(--color-primario) !important;
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* Sin flex: none, el svg { max-width: 100% } global lo encoge a 0 */
+.admin-dashboard__sala svg {
+  flex: none;
+}
+
+.admin-dashboard__sala:hover {
+  background: #f7e7e2;
+}
+
+.admin-dashboard__sala:focus-visible {
+  outline: 3px solid var(--color-primario);
+  outline-offset: 2px;
+}
+
 .admin-button--logout {
   display: inline-flex;
   align-items: center;
@@ -1893,7 +1924,9 @@
   
   .admin-dashboard__top-actions {
     width: 100%;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.75rem;
   }
 }
 

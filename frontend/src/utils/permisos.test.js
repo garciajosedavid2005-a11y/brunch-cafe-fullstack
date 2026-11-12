@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { tienePermiso, esAdministrador, esPersonal, rutaInicio } from "./permisos";
+import { tienePermiso, esAdministrador, esPersonal, rutaInicio, puedeEntrarAStaff } from "./permisos";
 
 const usuario = (permisos, extra = {}) => ({ permisos, esPersonal: true, ...extra });
 
@@ -18,5 +18,13 @@ describe("permisos del usuario (0.15d)", () => {
     expect(rutaInicio(usuario([], { esPersonal: false, role: "mesero" }))).toBe("/cuenta");
     expect(esAdministrador(usuario(["*"]))).toBe(true);
     expect(esPersonal(usuario(["*"]))).toBe(false);
+  });
+
+  it("F1-19: /staff es del personal y también del administrador (su inicio sigue siendo /admin); el cliente no entra", () => {
+    expect(puedeEntrarAStaff(usuario(["comanda:tomar"]))).toBe(true);
+    expect(puedeEntrarAStaff(usuario(["*"]))).toBe(true);
+    expect(rutaInicio(usuario(["*"]))).toBe("/admin");
+    expect(puedeEntrarAStaff(usuario([], { esPersonal: false }))).toBe(false);
+    expect(puedeEntrarAStaff(null)).toBe(false);
   });
 });

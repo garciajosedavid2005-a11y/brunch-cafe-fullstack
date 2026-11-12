@@ -49,6 +49,18 @@ describe("Rutas de staff", () => {
     expect(screen.getByRole("button", { name: "Cambiar de usuario" })).toBeInTheDocument();
   });
 
+  // F1-19 · El administrador entra a /staff (para anular) con el mismo layout de tablet
+  it("el administrador entra a /staff con el layout de tablet y el plano; su inicio sigue siendo /admin", async () => {
+    responder(usuario("admin", "Administrador", { permisos: ["*"], esPersonal: false }));
+    abrir("/staff");
+    expect(await screen.findByRole("heading", { name: "Plano de mesas" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/staff");
+    expect(screen.queryByRole("button", { name: "Abrir menú de navegación" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Panel Admin" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Panel de administración" })).toHaveAttribute("href", "/admin");
+  });
+
   it("con mesa:ver, /staff abre primero el plano de mesas (1.6)", async () => {
     responder(usuario("mesero", "Mesero", { permisos: ["mesa:ver"] }));
     abrir("/staff");
@@ -75,9 +87,10 @@ describe("Rutas de staff", () => {
     await waitFor(() => expect(window.location.pathname).toBe("/cuenta"));
   });
 
+  // F1-19: /staff ya no lo devuelve al admin (entra para anular); su inicio sigue siendo /admin
   it("el panel de administración se abre por el permiso *, no por el nombre del rol", async () => {
     responder(usuario("gerencia", "Gerencia", { permisos: ["*"] }));
-    abrir("/staff");
+    abrir("/login");
     await waitFor(() => expect(window.location.pathname).toBe("/admin"));
   });
 
