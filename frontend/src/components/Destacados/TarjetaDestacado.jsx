@@ -4,7 +4,7 @@
  * El administrador NO edita este archivo.
  */
 
-import { useCarrito } from '../../context/CarritoContext';
+import { useAgregarAlCarrito } from "../AgregarAlCarrito/useAgregarAlCarrito";
 import { formatearCOP } from "../../utils/moneda";
 
 /* ════════════════════════════════
@@ -31,7 +31,6 @@ const TarjetaDestacado = ({
   producto,
 }) => {
   const {
-    id,
     nombre,
     descripcion,
     precio,
@@ -39,11 +38,8 @@ const TarjetaDestacado = ({
     imagen,
   } = producto;
 
-  const { agregarProducto } = useCarrito();
-
-  const handleAgregar = () => {
-    agregarProducto({ id, nombre, descripcion, precio, imagen });
-  };
+  // 1.12 · Con opciones abre el diálogo; sin ellas agrega directo
+  const { agregar: handleAgregar, dialogo } = useAgregarAlCarrito(producto);
 
   return (
     <article className="tarjeta-destacado">
@@ -121,6 +117,7 @@ const TarjetaDestacado = ({
 
       </div>
 
+      {dialogo}
     </article>
   );
 };

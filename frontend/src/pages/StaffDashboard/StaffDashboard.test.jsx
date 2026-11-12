@@ -57,6 +57,12 @@ describe("Panel de mesero", () => {
           estadoCodigo: "pendiente",
           total: 25000,
           transiciones: [],
+          items: [
+            { nombre: "Huevos al gusto", cantidad: 1, precio: 18000, subtotal: 18000, nota: "Sin sal",
+              modificadores: [{ grupo: "Término del huevo", opcion: "Fritos", precioExtra: 0 }] },
+            { nombre: "Huevos al gusto", cantidad: 1, precio: 15000, subtotal: 15000, nota: "",
+              modificadores: [{ grupo: "Término del huevo", opcion: "Revueltos", precioExtra: 0 }] },
+          ],
         }]);
       }
       if (path === "/v1/cliente/perfil") {
@@ -89,6 +95,9 @@ describe("Panel de mesero", () => {
     fireEvent.click(within(navigation).getByRole("button", { name: "Pedidos" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: /pedidos/i })).toBeInTheDocument());
     expect(await screen.findByText("Carlos Gómez")).toBeInTheDocument();
+    // 1.12 · Cada plato con sus opciones y su nota (dos líneas del mismo plato, sin claves repetidas)
+    expect(screen.getByText("1 × Huevos al gusto — Término del huevo: Fritos · Nota: Sin sal")).toBeInTheDocument();
+    expect(screen.getByText("1 × Huevos al gusto — Término del huevo: Revueltos")).toBeInTheDocument();
 
     fireEvent.click(within(navigation).getByRole("button", { name: "Mi perfil" }));
     expect(await screen.findByRole("heading", { name: "Mi perfil" })).toBeInTheDocument();

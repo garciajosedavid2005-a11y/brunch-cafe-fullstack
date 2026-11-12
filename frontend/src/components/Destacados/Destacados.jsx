@@ -38,7 +38,7 @@ const Destacados = () => {
 
   useEffect(() => {
     let active = true;
-    apiRequest("/v1/catalogo")
+    apiRequest("/v1/catalogo?incluir=modificadores") // 1.12: grupos de opciones de cada plato
       .then(({ productos }) => {
         if (active) setMenu(productos);
       })

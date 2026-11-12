@@ -4,11 +4,15 @@ import { formatearCOP } from "../../../utils/moneda";
 import { nuevaClave } from "../plano/estadosMesa";
 import ModalComanda from "./ModalComanda";
 import { MAX_CANTIDAD, MAX_NOTA, reglaGrupo } from "./estadosComanda";
+import "./TomaComanda.css";
 
 // 1.7 · Agregar un producto a la ronda: cantidad, modificadores (F1-4: obligatorios, mínimo y máximo,
 // recargo a la vista) y nota libre (F1-5, máx. 140). El backend valida lo mismo y fija el precio.
 // Un grupo obligatorio de una sola opción va en radios; el resto, en casillas (se pueden desmarcar).
-export default function DialogoProducto({ producto, onAgregar, onCerrar }) {
+// 1.12 · El carrito del pedido a domicilio usa este mismo diálogo (máximo 20 y su propio texto).
+export default function DialogoProducto({
+  producto, onAgregar, onCerrar, maxCantidad = MAX_CANTIDAD, textoAgregar = "Agregar", etiquetaNota = "Nota para cocina o barra (opcional)",
+}) {
   const id = useId();
   const grupos = producto.modificadores || [];
   const [cantidad, setCantidad] = useState(1);
@@ -61,7 +65,7 @@ export default function DialogoProducto({ producto, onAgregar, onCerrar }) {
       <div className="modal-comanda__acciones">
         <button type="button" className="comanda__boton comanda__boton--secundario" onClick={onCerrar}>Cancelar</button>
         <button type="button" className="comanda__boton comanda__boton--primario" disabled={enviando} onClick={agregar}>
-          Agregar · {formatearCOP(total)}
+          {textoAgregar} · {formatearCOP(total)}
         </button>
       </div>
     </>
@@ -108,15 +112,15 @@ export default function DialogoProducto({ producto, onAgregar, onCerrar }) {
             <Minus size={22} aria-hidden="true" />
           </button>
           <output aria-live="polite">{cantidad}</output>
-          <button type="button" className="comanda__boton-icono" aria-label="Sumar uno" disabled={cantidad >= MAX_CANTIDAD}
-            onClick={() => setCantidad((n) => Math.min(MAX_CANTIDAD, n + 1))}>
+          <button type="button" className="comanda__boton-icono" aria-label="Sumar uno" disabled={cantidad >= maxCantidad}
+            onClick={() => setCantidad((n) => Math.min(maxCantidad, n + 1))}>
             <Plus size={22} aria-hidden="true" />
           </button>
         </div>
       </div>
 
       <label className="comanda__campo">
-        <span className="comanda__etiqueta">Nota para cocina o barra (opcional)</span>
+        <span className="comanda__etiqueta">{etiquetaNota}</span>
         <textarea rows={2} maxLength={MAX_NOTA} value={nota} placeholder="Ej.: sin cebolla, término medio"
           aria-describedby={`${id}-contador`} onChange={(e) => setNota(e.target.value)} />
         <small id={`${id}-contador`} className="comanda__nota">{nota.length}/{MAX_NOTA}</small>

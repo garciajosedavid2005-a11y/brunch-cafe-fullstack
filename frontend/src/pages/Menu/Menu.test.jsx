@@ -21,14 +21,15 @@ const PRODUCTOS = [
 // Primera llamada: menú; segunda: calificaciones
 const responder = (menu) => {
   apiRequest.mockImplementation((ruta) =>
-    ruta === "/v1/catalogo" ? menu() : Promise.resolve({ productRatings: [] })
+    ruta.startsWith("/v1/catalogo") ? menu() : Promise.resolve({ productRatings: [] })
   );
 };
 
 const renderMenu = () => render(<MemoryRouter><Menu /></MemoryRouter>);
 
 describe("Menú", () => {
-  beforeEach(() => apiRequest.mockReset());
+  // Con llaves: devolver el mock haría que Vitest lo llamara como limpieza (sin argumentos)
+  beforeEach(() => { apiRequest.mockReset(); });
 
   it("muestra productos y categorías", async () => {
     responder(() => Promise.resolve({ productos: PRODUCTOS, categorias: ["Bebidas", "Postres"] }));
@@ -71,7 +72,7 @@ describe("Menú", () => {
 
   it("ids por ObjectId: el ancla del menú usa el código y las calificaciones se cruzan por productoRef", async () => {
     apiRequest.mockImplementation((ruta) =>
-      ruta === "/v1/catalogo"
+      ruta.startsWith("/v1/catalogo")
         ? Promise.resolve({ productos: PRODUCTOS, categorias: [] })
         : Promise.resolve({ productRatings: [{ productoRef: "b".repeat(24), productoId: 2, average: 3, count: 4 }] })
     );

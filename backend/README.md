@@ -276,7 +276,7 @@ Desde 0.12 la API es solo `/api/v1`. Las rutas sin versión responden `404 NOT_F
 |---|---|---|
 | GET, PATCH | `/api/v1/cliente/perfil` | Ver y editar el perfil (`nombre`, `apellido`, `correo`, `telefono` opcional) |
 | PUT | `/api/v1/cliente/perfil/contrasena` | Cambiar la contraseña (`actual`, `nueva`); cierra las demás sesiones |
-| GET, POST | `/api/v1/cliente/pedidos` | Historial y crear un pedido a domicilio (teléfono obligatorio, hora en punto de hoy con 1 h de anticipación, `Idempotency-Key` opcional) |
+| GET, POST | `/api/v1/cliente/pedidos` | Historial y crear un pedido a domicilio (teléfono obligatorio, hora en punto de hoy con 1 h de anticipación, dirección con la validación flexible de 1.11, `Idempotency-Key` opcional). 1.12: cada ítem admite `modificadores: [{ grupoId, opcionIds }]` y `nota` (≤ 140), validados con el mismo validador que las cuentas del salón: `400 MODIFICADOR_REQUERIDO`, `MODIFICADORES_FUERA_DE_RANGO`, `GRUPO_NO_VALIDO`, `OPCION_NO_VALIDA` y `409 OPCION_NO_DISPONIBLE`, con `details.linea` (índice del ítem) y `details.producto`. Precio y total los calcula el servidor (base + recargos). En las respuestas, cada ítem trae además `options: [{ group, option, extraPrice }]` y `note`, y `unitPrice` incluye los recargos (las líneas anteriores: `[]`, `''` y el precio base) |
 | GET | `/api/v1/cliente/pedidos/:id` | Detalle de un pedido propio |
 | PATCH | `/api/v1/cliente/pedidos/:id/cancelar` | Cancelar un pedido propio en `pendiente` (`motivo` opcional) |
 | GET | `/api/v1/cliente/metodos-pago` | Métodos de pago activos |
@@ -291,7 +291,7 @@ Desde 0.12 la API es solo `/api/v1`. Las rutas sin versión responden `404 NOT_F
 | Método | Ruta | Permiso | Acción |
 |---|---|---|---|
 | GET | `/api/v1/staff/pedidos` | `pedido:ver` | Listar, más recientes primero. Filtros opcionales: `estado=pendiente,confirmado` (códigos), `fecha=AAAA-MM-DD` (día de Bogotá), `limite=1..200`. Cabecera `X-Total-Count` con el total sin límite. Cada pedido trae las `transiciones` que el usuario puede hacer |
-| GET | `/api/v1/staff/pedidos/:id` | `pedido:ver` | Detalle con líneas e `historial` (de, a, motivo, actor, usuario, fecha) |
+| GET | `/api/v1/staff/pedidos/:id` | `pedido:ver` | Detalle con líneas e `historial` (de, a, motivo, actor, usuario, fecha). 1.12: cada línea trae `precio` (unitario con recargos), `precioBase`, `subtotal`, `modificadores: [{ grupo, opcion, precioExtra }]` y `nota`; también en el listado |
 | PATCH | `/api/v1/staff/pedidos/:id/estado` | el de la transición | `{ codigo, motivo? }`: avanzar (`pedido:cambiar_estado`) o cancelar (`pedido:cancelar` + motivo). Salto inválido o estado final → 409 |
 | PATCH | `/api/v1/staff/pedidos/:id/cancelar` | `pedido:cancelar` | `{ motivo }` (3–300 caracteres). Solo desde `pendiente` o `confirmado`; deja el Evento en la misma transacción |
 | GET | `/api/v1/staff/reservas` | `reserva:ver` | Listar reservas con sus transiciones |

@@ -57,7 +57,7 @@ export const sembrarUsuariosDev = async (password) => {
     })
     await DetallePedido.insertMany(lineas.map(({ p, cantidad, subtotal }) => ({
         pedido: pedido._id, producto: p._id, productoId: p.codigo, nombreProducto: p.nombre,
-        precioProducto: p.precio, cantidad, subtotal,
+        precioProducto: p.precio, precioUnitario: p.precio, cantidad, subtotal,
     })))
     await registrarEvento({ entidad: 'pedido', entidadId: pedido._id, a: 'pendiente', actor: 'sistema', motivo: 'seed:dev' })
     return { usuarios: USUARIOS_DEV.length, pedido: 'creado' }

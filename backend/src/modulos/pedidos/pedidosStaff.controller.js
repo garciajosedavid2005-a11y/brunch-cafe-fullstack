@@ -39,11 +39,15 @@ const formato = (pedido, detalles, { permisos, estados }) => {
         total: pedido.total,
         metodoPago: pedido.metodoPago?.nombre || '',
         notas: pedido.indicaciones || '',
+        // 1.12 · precio = unitario con recargos; las líneas anteriores no tienen opciones ni nota
         items: detalles.map((detalle) => ({
             nombre: detalle.nombreProducto,
             cantidad: detalle.cantidad,
-            precio: detalle.precioProducto,
+            precio: detalle.precioUnitario ?? detalle.precioProducto,
+            precioBase: detalle.precioProducto,
             subtotal: detalle.subtotal,
+            modificadores: (detalle.modificadores || []).map((m) => ({ grupo: m.grupoNombre, opcion: m.opcionNombre, precioExtra: m.precioExtra })),
+            nota: detalle.nota || '',
         })),
     }
 }

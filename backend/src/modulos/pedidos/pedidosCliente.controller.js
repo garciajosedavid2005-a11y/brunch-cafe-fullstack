@@ -4,13 +4,15 @@ import mongoose from 'mongoose';
 import { z } from 'zod';
 import Pedido from './pedido.model.js';
 import DetallePedido from './detallePedido.model.js';
+import { gruposActivosDeVarios, MAX_NOTA_ITEM, modificadoresEntradaSchema, validarModificadores } from '../catalogo/modificadores.validacion.js';
+import { calcularItem } from '../salon/totales.js';
 import MetodoPago from './metodoPago.model.js';
 import Producto from '../catalogo/producto.model.js';
 import { STATUS_CLIENTE } from '../compartido/estados.js';
 import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../compartido/estados.service.js';
 import { cuerpoError } from '../compartido/errors.js';
 import { referenciaProducto, resolverProductos } from '../catalogo/referenciaProducto.schema.js';
-import { telefono } from '../compartido/comunes.schema.js';
+import { telefono, textoOpcional } from '../compartido/comunes.schema.js';
 import { esDireccionValida, MENSAJE_DIRECCION, normalizarDireccion } from '../compartido/direccion.js';
 import { horasDomicilio, hora12, textoAnticipacion, textoRango } from '../configuracion/horarios.reglas.js';
 import { obtenerHorarios } from '../configuracion/horarios.service.js';
@@ -20,6 +22,9 @@ const orderSchema = z.object({
   items: z.array(z.object({
     ...referenciaProducto,
     cantidad: z.coerce.number().int().min(1).max(20),
+    // 1.12 · Opciones del plato y nota por línea (como en la comanda del salón)
+    modificadores: modificadoresEntradaSchema,
+    nota: textoOpcional('La nota', MAX_NOTA_ITEM).default(''),
   })).min(1).max(50),
   nombre: z.string().trim().min(3).max(50),
   // Obligatorio para el domicilio (el formulario lo prellena con el del perfil)
@@ -63,11 +68,14 @@ const serializeOrder = (order, details) => ({
     entregaEn: order.entregaEn || null,
     indicaciones: order.indicaciones || '',
   },
+  // 1.12 · Las líneas anteriores no tienen opciones, nota ni precioUnitario: se ven como antes
   items: details.map((detail) => ({
     productId: detail.productoId,
     name: detail.nombreProducto,
     quantity: detail.cantidad,
-    unitPrice: detail.precioProducto,
+    unitPrice: detail.precioUnitario ?? detail.precioProducto,
+    options: (detail.modificadores || []).map((m) => ({ group: m.grupoNombre, option: m.opcionNombre, extraPrice: m.precioExtra })),
+    note: detail.nota || '',
   })),
 });
 
@@ -125,19 +133,7 @@ export const crearPedido = async (req, res, next) => {
 
   const productoDe = await resolverProductos(Producto, parsed.data.items);
   const products = parsed.data.items.map(productoDe).filter(Boolean);
-  const lines = parsed.data.items.map((item) => {
-    const product = productoDe(item);
-    if (!product) return null;
-    return {
-      productId: product.codigo,
-      productRef: product._id,
-      name: product.nombre,
-      unitPrice: product.precio,
-      quantity: item.cantidad,
-      subtotal: product.precio * item.cantidad,
-    };
-  });
-  if (lines.some((line) => !line)) {
+  if (parsed.data.items.some((item) => !productoDe(item))) {
     return res.status(400).json(cuerpoError('BAD_REQUEST', 'Uno o más productos ya no están disponibles en el menú.'));
   }
   // Agotados: existen pero no se pueden pedir (el carrito pudo llenarse antes de que se agotaran)
@@ -149,6 +145,38 @@ export const crearPedido = async (req, res, next) => {
       `${agotados.length === 1 ? 'Este producto está agotado' : 'Estos productos están agotados'}: ${nombres}. ${agotados.length === 1 ? 'Quítalo' : 'Quítalos'} del carrito para continuar.`,
       { productos: agotados.map((product) => product.codigo) },
     ));
+  }
+
+  // 1.12 · Opciones validadas con el MISMO validador que las cuentas (obligatorio, mín./máx., opción
+  // disponible, grupo activo y del producto). Precio y subtotal salen del catálogo, nunca del cliente.
+  let lines;
+  try {
+    const gruposDe = await gruposActivosDeVarios(products);
+    lines = parsed.data.items.map((item, linea) => {
+      const product = productoDe(item);
+      let modificadores;
+      try {
+        modificadores = validarModificadores(gruposDe(product), item.modificadores);
+      } catch (error) {
+        // Qué línea del carrito corregir (el mismo plato puede ir en varias)
+        if (error.details && typeof error.details === 'object') Object.assign(error.details, { linea, producto: product.nombre });
+        throw error;
+      }
+      const { precioUnitario, subtotal } = calcularItem({ precioBase: product.precio, modificadores, cantidad: item.cantidad });
+      return {
+        productId: product.codigo,
+        productRef: product._id,
+        name: product.nombre,
+        basePrice: product.precio,
+        unitPrice: precioUnitario,
+        quantity: item.cantidad,
+        subtotal,
+        modificadores,
+        nota: item.nota,
+      };
+    });
+  } catch (error) {
+    return next(error);
   }
 
   try {
@@ -178,7 +206,10 @@ export const crearPedido = async (req, res, next) => {
         producto: line.productRef,
         productoId: line.productId,
         nombreProducto: line.name,
-        precioProducto: line.unitPrice,
+        precioProducto: line.basePrice,
+        precioUnitario: line.unitPrice,
+        modificadores: line.modificadores,
+        nota: line.nota,
         cantidad: line.quantity,
         subtotal: line.subtotal,
       })), { session });

@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useCarrito } from '../../context/CarritoContext'
 import { FaShoppingCart, FaMapMarkerAlt, FaClock, FaUser, FaHome, FaStickyNote, FaPhone } from 'react-icons/fa'
 import { formatearCOP } from '../../utils/moneda'
+import { deLineaCarrito, textoModificadores } from '../../utils/modificadores'
 import { formatearHoraTexto } from '../../utils/fechas'
 
 const ResumenPedido = ({ formData, metodoPago, onEditar, onConfirmar, guardando = false, error = '' }) => {
@@ -31,9 +32,10 @@ const ResumenPedido = ({ formData, metodoPago, onEditar, onConfirmar, guardando 
                 <div className="resumen-pedido__seccion">
                     <h3 className="resumen-pedido__seccion-titulo">Productos</h3>
                     {productos.map(producto => {
-                        const subtotal = producto.precio * producto.cantidad
+                        const subtotal = (producto.precioUnitario ?? producto.precio) * producto.cantidad
+                        const opciones = textoModificadores(deLineaCarrito(producto.modificadores))
                         return (
-                            <div key={producto.id} className="resumen-pedido__producto">
+                            <div key={producto.linea ?? producto.id} className="resumen-pedido__producto">
                                 <img
                                     src={producto.imagen}
                                     alt={producto.nombre}
@@ -41,6 +43,8 @@ const ResumenPedido = ({ formData, metodoPago, onEditar, onConfirmar, guardando 
                                 />
                                 <div className="resumen-pedido__producto-info">
                                     <span className="resumen-pedido__producto-nombre">{producto.nombre}</span>
+                                    {opciones && <span className="resumen-pedido__producto-cantidad">{opciones}</span>}
+                                    {producto.nota && <span className="resumen-pedido__producto-cantidad">Nota: {producto.nota}</span>}
                                     <span className="resumen-pedido__producto-cantidad">Cantidad: {producto.cantidad}</span>
                                     <span className="resumen-pedido__producto-subtotal">
                                         {formatearCOP(subtotal)}

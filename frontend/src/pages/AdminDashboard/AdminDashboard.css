@@ -2926,3 +2926,18 @@
 .admin-table--acciones-fijas:has(.admin-col-estado) td:last-child:not([colspan]) {
   box-shadow: inset 1px 0 0 #e6d3cc;
 }
+
+/* 1.12 · Opciones del plato y nota en el detalle del pedido: la celda parte líneas para que
+   Cant., Precio y Subtotal sigan a la vista */
+.admin-table--modal td.admin-pedido__articulo {
+  white-space: normal;
+  min-width: 11rem;
+}
+
+.admin-pedido__opciones {
+  display: block;
+  margin-top: 0.2rem;
+  color: #5b4540;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}

@@ -2,6 +2,7 @@ import "./CarritoProducto.css"
 import { useCarrito } from '../../context/CarritoContext'
 import { useNavigate } from 'react-router-dom'
 import { formatearCOP } from '../../utils/moneda'
+import { deLineaCarrito, textoModificadores } from '../../utils/modificadores'
 
 const CarritoProducto = () => {
 
@@ -37,10 +38,13 @@ const CarritoProducto = () => {
 
             {/* Lista de productos */}
             {productos.map(producto => {
-                const subtotal = producto.precio * producto.cantidad
+                // 1.12 · Precio con los recargos de las opciones; cada combinación es su propia línea
+                const unitario = producto.precioUnitario ?? producto.precio
+                const subtotal = unitario * producto.cantidad
+                const opciones = textoModificadores(deLineaCarrito(producto.modificadores))
 
                 return (
-                    <div key={producto.id} className="carrito-producto__item">
+                    <div key={producto.linea ?? producto.id} className="carrito-producto__item">
                         <div className="grid-x grid-padding-x align-middle">
 
                             {/* Imagen */}
@@ -57,18 +61,22 @@ const CarritoProducto = () => {
                                 <h3 className="carrito-producto__nombre">{producto.nombre}</h3>
                                 <div className="carrito-producto__linea"></div>
                                 <p className="carrito-producto__descripcion">{producto.descripcion}</p>
-                                <p className="carrito-producto__precio-unitario">{formatearCOP(producto.precio)}</p>
+                                {opciones && <p className="carrito-producto__opciones">{opciones}</p>}
+                                {producto.nota && <p className="carrito-producto__opciones">Nota: {producto.nota}</p>}
+                                <p className="carrito-producto__precio-unitario">{formatearCOP(unitario)}</p>
 
                                 {/* Contador */}
                                 <div className="carrito-producto__contador">
                                     <button
                                         className="carrito-producto__btn"
-                                        onClick={() => disminuirCantidad(producto.id)}
+                                        aria-label={`Quitar uno de ${producto.nombre}`}
+                                        onClick={() => disminuirCantidad(producto.linea)}
                                     >−</button>
                                     <span className="carrito-producto__cantidad">{producto.cantidad}</span>
                                     <button
                                         className="carrito-producto__btn"
-                                        onClick={() => aumentarCantidad(producto.id)}
+                                        aria-label={`Sumar uno de ${producto.nombre}`}
+                                        onClick={() => aumentarCantidad(producto.linea)}
                                     >+</button>
                                 </div>
 
@@ -79,7 +87,7 @@ const CarritoProducto = () => {
                                 {/* Eliminar */}
                                 <button
                                     className="carrito-producto__eliminar"
-                                    onClick={() => eliminarProducto(producto.id)}
+                                    onClick={() => eliminarProducto(producto.linea)}
                                 >
                                     Eliminar
                                 </button>

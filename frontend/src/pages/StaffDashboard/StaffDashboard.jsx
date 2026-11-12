@@ -19,6 +19,7 @@ import { apiRequest } from "../../services/api";
 import { fechaLocal, formatearFechaCalendario, formatearHoraTexto, horaLocal, hoyLocal } from "../../utils/fechas";
 import { formatearCOP } from "../../utils/moneda";
 import { esAdministrador, tienePermiso } from "../../utils/permisos";
+import { textoModificadores } from "../../utils/modificadores";
 import { claseEstado } from "../AdminDashboard/components/estadoUtils";
 import ProfileSection from "../CustomerDashboard/sections/ProfileSection";
 import SecuritySection from "../CustomerDashboard/sections/SecuritySection";
@@ -403,8 +404,13 @@ export default function StaffDashboard() {
                       </div>
                       <p>{formatearFechaCalendario(pedido.fecha, "long")} · {formatearCOP(pedido.total)}</p>
                       <div className="staff-dashboard__reservation-meta">
-                        {pedido.items?.map((item) => (
-                          <span key={`${pedido.id}-${item.nombre}`}>{item.cantidad} × {item.nombre}</span>
+                        {/* 1.12 · Con sus opciones y su nota (el mismo plato puede ir en varias líneas) */}
+                        {pedido.items?.map((item, i) => (
+                          <span key={`${pedido.id}-${i}`}>
+                            {item.cantidad} × {item.nombre}
+                            {item.modificadores?.length > 0 ? ` — ${textoModificadores(item.modificadores)}` : ""}
+                            {item.nota ? ` · Nota: ${item.nota}` : ""}
+                          </span>
                         ))}
                       </div>
                       {pedido.transiciones?.length > 0 && (

@@ -4,6 +4,7 @@ import SectionHeading from "../SectionHeading";
 import { useDialogo } from "../../../context/useDialogo";
 import { formatearCOP } from "../../../utils/moneda";
 import { formatearFecha } from "../../../utils/fechas";
+import { deOpcionesCliente, textoModificadores } from "../../../utils/modificadores";
 
 const orderStatus = {
   pending: "Pendiente",
@@ -78,14 +79,22 @@ export default function OrdersSection() {
                 {order.statusLabel || orderStatus[order.status] || order.status}
               </span>
             </div>
-            <div className="dashboard-order-items">
-              {(order.items || []).map((item, index) => (
-                <div key={`${item.name}-${index}`}>
-                  <span>{item.quantity} × {item.name}</span>
-                  <span>{money(item.quantity * item.unitPrice)}</span>
-                </div>
-              ))}
-            </div>
+            {/* 1.12 · Cada plato con sus opciones y su nota; los pedidos anteriores no traen ninguna */}
+            <ul className="dashboard-order-items">
+              {(order.items || []).map((item, index) => {
+                const opciones = textoModificadores(deOpcionesCliente(item.options));
+                return (
+                  <li key={`${item.name}-${index}`}>
+                    <div>
+                      <span>{item.quantity} × {item.name}</span>
+                      {opciones && <small className="dashboard-order-items__detalle">{opciones}</small>}
+                      {item.note && <small className="dashboard-order-items__detalle">Nota: {item.note}</small>}
+                    </div>
+                    <span>{money(item.quantity * item.unitPrice)}</span>
+                  </li>
+                );
+              })}
+            </ul>
             {order.delivery && (
               <div className="dashboard-order-delivery">
                 <h4>Datos de entrega</h4>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { textoModificadores } from "../../../utils/modificadores";
 import { Search, Eye, X, Filter, ShoppingBag, MapPin, Phone, CreditCard, Clock } from "lucide-react";
 import useAdminResource from "../hooks/useAdminResource";
 import AdminStatus from "../components/AdminStatus";
@@ -224,7 +225,12 @@ export default function OrdersSection() {
                   <tbody>
                     {pedidoSeleccionado.items.map((item, idx) => (
                       <tr key={idx}>
-                        <td>{item.nombre}</td>
+                        <td className="admin-pedido__articulo">
+                          {item.nombre}
+                          {/* 1.12 · Opciones del plato y nota de la línea */}
+                          {item.modificadores?.length > 0 && <small className="admin-pedido__opciones">{textoModificadores(item.modificadores)}</small>}
+                          {item.nota && <small className="admin-pedido__opciones">Nota: {item.nota}</small>}
+                        </td>
                         <td>{item.cantidad}</td>
                         <td>{formatCurrency(item.precio)}</td>
                         <td><strong>{formatCurrency(item.subtotal)}</strong></td>

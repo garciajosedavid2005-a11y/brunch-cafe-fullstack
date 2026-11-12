@@ -8,6 +8,7 @@ import Categoria from '../catalogo/categoria.model.js'
 import Estacion from '../catalogo/estacion.model.js'
 import Usuario from '../identidad/usuario.model.js'
 import GrupoModificadores from '../catalogo/grupoModificadores.model.js'
+import { gruposActivosDe, validarModificadores } from '../catalogo/modificadores.validacion.js'
 import { estacionEfectiva } from '../catalogo/estaciones.js'
 import { AppError } from '../compartido/errors.js'
 import { conTransaccion } from '../compartido/transacciones.js'
@@ -249,57 +250,9 @@ const estacionesDe = async (productos, session) => {
     return new Map([...efectivas].map(([productoId, estacion]) => [productoId, estacion ? estacionPorId.get(String(estacion)) || null : null]))
 }
 
-/** Grupos ACTIVOS del producto, en el orden en que el producto los ofrece. */
-const gruposActivosDe = async (producto, session) => {
-    const ids = producto.gruposModificadores || []
-    if (!ids.length) return []
-    const grupos = await GrupoModificadores.find({ _id: { $in: ids }, activo: true }).session(session).lean()
-    const porId = new Map(grupos.map((g) => [String(g._id), g]))
-    return ids.map((id) => porId.get(String(id))).filter(Boolean)
-}
-
-/**
- * Valida la elección contra los grupos activos del producto y devuelve el snapshot de los
- * modificadores (orden: el de los grupos en el producto y el de las opciones en el grupo).
- */
-const validarModificadores = (grupos, pedidos) => {
-    const elegidasPorGrupo = new Map()
-    for (const { grupoId, opcionIds } of pedidos) {
-        if (elegidasPorGrupo.has(grupoId)) throw error(400, 'GRUPO_NO_VALIDO', 'Un grupo de modificadores viene repetido.', { grupoId })
-        if (!grupos.some((g) => String(g._id) === grupoId)) {
-            throw error(400, 'GRUPO_NO_VALIDO', 'Ese grupo de modificadores no se ofrece para este producto.', { grupoId })
-        }
-        if (new Set(opcionIds).size !== opcionIds.length) throw error(400, 'OPCION_NO_VALIDA', 'Hay una opción repetida.', { grupoId })
-        elegidasPorGrupo.set(grupoId, opcionIds)
-    }
-
-    const snapshot = []
-    for (const grupo of grupos) {
-        const grupoId = String(grupo._id)
-        const elegidas = elegidasPorGrupo.get(grupoId) || []
-        if (elegidas.length === 0 && grupo.min >= 1) {
-            throw error(400, 'MODIFICADOR_REQUERIDO', `Elige una opción de «${grupo.nombre}».`, { grupoId, grupo: grupo.nombre })
-        }
-        if (elegidas.length < grupo.min || elegidas.length > grupo.max) {
-            const rango = grupo.min === grupo.max ? `${grupo.min}` : `entre ${grupo.min} y ${grupo.max}`
-            throw error(400, 'MODIFICADORES_FUERA_DE_RANGO', `En «${grupo.nombre}» elige ${rango} opciones.`,
-                { grupoId, grupo: grupo.nombre, min: grupo.min, max: grupo.max, elegidas: elegidas.length })
-        }
-        const opciones = elegidas.map((opcionId) => {
-            const opcion = grupo.opciones.find((o) => String(o._id) === opcionId)
-            if (!opcion) throw error(400, 'OPCION_NO_VALIDA', `Esa opción no pertenece a «${grupo.nombre}».`, { grupoId, opcionId })
-            if (opcion.disponible === false) {
-                throw error(409, 'OPCION_NO_DISPONIBLE', `«${opcion.nombre}» (${grupo.nombre}) está agotada.`, { grupoId, opcionId })
-            }
-            return opcion
-        })
-        opciones.sort((x, y) => grupo.opciones.indexOf(x) - grupo.opciones.indexOf(y))
-        for (const opcion of opciones) {
-            snapshot.push({ grupo: grupo._id, grupoNombre: grupo.nombre, opcion: opcion._id, opcionNombre: opcion.nombre, precioExtra: opcion.precioExtra ?? 0 })
-        }
-    }
-    return snapshot
-}
+// 1.12 · gruposActivosDe y validarModificadores viven en catalogo/modificadores.validacion.js (los
+// comparten las cuentas y el pedido a domicilio); se reexporta el validador para quien lo use desde aquí.
+export { validarModificadores }
 
 /** Ítem nuevo con la copia del catálogo de este momento (F1-14). */
 const armarItem = async ({ productoId, cantidad, nota, modificadores }, sesion, session) => {

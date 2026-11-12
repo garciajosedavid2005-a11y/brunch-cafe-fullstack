@@ -1,5 +1,3 @@
-import { formatearCOP } from "../../../utils/moneda";
-
 // 1.7 · Textos de la toma de comanda. Los códigos son los del backend (compartido/estadosSalon.js).
 export const BASE = "/v1/staff/salon";
 
@@ -45,15 +43,8 @@ export const CUENTA_EDITABLE = ["abierta", "cuenta_pedida"];
 export const MAX_CANTIDAD = 50;
 export const MAX_NOTA = 140;
 
-/** «Tamaño: Grande (+ $ 3.000) · Extras: Tocineta, Aguacate» a partir de los modificadores de un ítem. */
-export const textoModificadores = (modificadores = []) => {
-  const grupos = new Map();
-  for (const m of modificadores) {
-    const opcion = m.precioExtra > 0 ? `${m.opcion} (+ ${formatearCOP(m.precioExtra)})` : m.opcion;
-    grupos.set(m.grupo, [...(grupos.get(m.grupo) || []), opcion]);
-  }
-  return [...grupos].map(([grupo, opciones]) => `${grupo}: ${opciones.join(", ")}`).join(" · ");
-};
+// 1.12 · El texto de las opciones es común con el carrito y los pedidos (utils/modificadores.js)
+export { textoModificadores } from "../../../utils/modificadores";
 
 /** Regla de un grupo en palabras: «obligatorio, elige 1», «opcional, hasta 2»… */
 export const reglaGrupo = (g) => {

@@ -294,22 +294,32 @@
   display: grid;
   gap: 0.5rem;
   margin: 1rem 0;
+  padding: 0;
+  list-style: none;
   color: #38241f;
   font-size: 0.9rem;
 }
 
-.dashboard-order-items > div,
+.dashboard-order-items > li,
 .dashboard-card__total {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
 }
 
-.dashboard-order-items > div > span:first-child {
+.dashboard-order-items > li > div > span:first-child {
   color: #38241f;
 }
 
-.dashboard-order-items > div > span:last-child {
+/* 1.12 · Opciones y nota de cada plato, bajo su nombre */
+.dashboard-order-items__detalle {
+  display: block;
+  margin-top: 0.15rem;
+  color: #5b4540;
+  font-size: 0.82rem;
+}
+
+.dashboard-order-items > li > span:last-child {
   color: #4a2119;
   font-weight: 600;
 }

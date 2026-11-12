@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { DialogoProvider } from "../../../context/DialogoContext";
 
 vi.mock("../../../services/api", () => ({
@@ -34,5 +34,24 @@ describe("Pedidos (admin): tabla compacta", () => {
     expect(within(celdas[0]).getByText("Ana Pérez")).toBeInTheDocument();
     expect(within(celdas[2]).getByText("Contra Entrega")).toBeInTheDocument();
     expect(within(celdas[4]).getByRole("button", { name: /ver detalle/i })).toBeInTheDocument();
+  });
+});
+
+// 1.12 · El detalle del pedido muestra las opciones de cada plato y su nota (y nada extra si no tiene)
+describe("Pedidos (admin): opciones de cada plato", () => {
+  it("el detalle muestra las opciones con su recargo y la nota de la línea", async () => {
+    const conOpciones = { ...PEDIDO, items: [
+      { nombre: "Huevos al gusto", cantidad: 2, precio: 18000, precioBase: 15000, subtotal: 36000, nota: "Sin sal",
+        modificadores: [{ grupo: "Término del huevo", opcion: "Fritos", precioExtra: 0 }, { grupo: "Extras", opcion: "Tocineta", precioExtra: 3000 }] },
+      { nombre: "Jugo de naranja", cantidad: 1, precio: 7000, subtotal: 7000, modificadores: [], nota: "" },
+    ] };
+    api.get.mockImplementation((ruta) => Promise.resolve(ruta.startsWith("/v1/admin/estados") ? [] : [conOpciones]));
+    render(<DialogoProvider><OrdersSection /></DialogoProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: /ver detalle/i }));
+    const fila = screen.getByText("Huevos al gusto").closest("tr");
+    expect(fila).toHaveTextContent("Término del huevo: Fritos · Extras: Tocineta (+ $ 3.000)");
+    expect(fila).toHaveTextContent("Nota: Sin sal");
+    expect(fila).toHaveTextContent("$ 18.000");
+    expect(screen.getByText("Jugo de naranja").closest("tr")).not.toHaveTextContent("Nota:");
   });
 });

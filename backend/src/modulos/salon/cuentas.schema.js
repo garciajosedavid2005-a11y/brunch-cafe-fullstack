@@ -5,8 +5,7 @@ import { AppError, detallesZod } from '../compartido/errors.js'
 import { MOTIVOS_ANULACION } from '../compartido/estadosSalon.js'
 import { MAX_COMENSALES, MAX_MESAS_POR_CUENTA } from './cuenta.model.js'
 import { MAX_CANTIDAD } from './comanda.model.js'
-import { MAX_SELECCION } from '../catalogo/grupoModificadores.model.js'
-import { MAX_GRUPOS_POR_PRODUCTO } from '../catalogo/producto.model.js'
+import { modificadoresEntradaSchema, MAX_NOTA_ITEM } from '../catalogo/modificadores.validacion.js'
 
 // 1.4 · Entradas del servicio de cuentas (los endpoints de 1.5 las reutilizan). Solo se aceptan los
 // campos declarados (strict): precios, estados o el mesero nunca llegan del cliente.
@@ -46,17 +45,14 @@ export const unirSchema = z.strictObject({
 export const agregarItemSchema = z.strictObject({
     productoId: id('El producto'),
     cantidad: enteroEntre('La cantidad', 1, MAX_CANTIDAD),
-    nota: textoOpcional('La nota', 140),
-    modificadores: z.array(z.strictObject({
-        grupoId: id('El grupo de modificadores'),
-        opcionIds: z.array(id('La opción')).max(MAX_SELECCION),
-    })).max(MAX_GRUPOS_POR_PRODUCTO).default([]),
+    nota: textoOpcional('La nota', MAX_NOTA_ITEM),
+    modificadores: modificadoresEntradaSchema, // 1.12: el mismo que el pedido a domicilio
     versionEsperada: version(false),
 })
 
 export const modificarItemSchema = z.strictObject({
     cantidad: enteroEntre('La cantidad', 1, MAX_CANTIDAD).optional(),
-    nota: textoOpcional('La nota', 140),
+    nota: textoOpcional('La nota', MAX_NOTA_ITEM),
     versionEsperada: version(false),
 }).refine((d) => d.cantidad !== undefined || d.nota !== undefined, { error: 'Indica la cantidad o la nota' })
 

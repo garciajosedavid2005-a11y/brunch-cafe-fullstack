@@ -115,6 +115,60 @@ const desplegarSelect = async (p) => {
   await select.evaluate((s) => { s.size = s.options.length; s.style.height = "auto"; s.style.backgroundImage = "none"; });
 };
 
+// 1.12 · Pedido a domicilio con opciones (una vez por ejecución), creado por la API como el cliente:
+// el plato con un grupo obligatorio, con la primera opción de cada grupo obligatorio y una nota
+let pedidoConOpcionesHecho = false;
+const productoConOpciones = async (contexto) => {
+  const catalogo = await (await contexto.get(`${API}/catalogo?incluir=modificadores`)).json();
+  const producto = catalogo.productos.find((pr) => pr.modificadores?.some((g) => g.obligatorio));
+  if (!producto) throw new Error("No hay en la BD de capturas un plato con un grupo de opciones obligatorio");
+  return producto;
+};
+const pedidoConOpciones = async () => {
+  if (pedidoConOpcionesHecho) return;
+  const cliente = await request.newContext();
+  try {
+    await cliente.post(`${API}/auth/login`, { data: { correo: USUARIOS.cliente, contraseña: CLAVE } });
+    const producto = await productoConOpciones(cliente);
+    const modificadores = producto.modificadores.filter((g) => g.obligatorio)
+      .map((g) => ({ grupoId: g.id, opcionIds: [g.opciones.find((o) => o.disponible).id] }));
+    const extras = producto.modificadores.find((g) => !g.obligatorio && g.opciones.some((o) => o.precioExtra > 0));
+    if (extras) modificadores.push({ grupoId: extras.id, opcionIds: [extras.opciones.find((o) => o.precioExtra > 0).id] });
+    const metodos = await (await cliente.get(`${API}/cliente/metodos-pago`)).json();
+    const hora = `${String(Math.min(16, Math.max(9, new Date().getUTCHours() - 5 + 2))).padStart(2, "0")}:00`;
+    const res = await cliente.post(`${API}/cliente/pedidos`, {
+      headers: { "Idempotency-Key": `capturas-opciones-${Date.now()}` },
+      data: {
+        items: [{ productoRef: producto.id, cantidad: 2, modificadores, nota: "Sin sal, por favor" }],
+        nombre: "Cliente Prueba", telefono: "3000000000", direccion: "Cra 36B Oriente #30-06", hora, barrio: "Centro",
+        metodoPagoId: metodos[0].id,
+      },
+    });
+    if (!res.ok()) console.log(`  (no se creó el pedido con opciones: ${res.status()} ${(await res.text()).slice(0, 160)})`);
+    pedidoConOpcionesHecho = res.ok();
+  } finally {
+    await cliente.dispose();
+  }
+};
+// Abre el diálogo de opciones del plato desde el menú (si el frontend lo tiene) y elige la opción `n`
+const agregarPlatoConOpciones = async (p, { n = 0, nota = "" } = {}) => {
+  const producto = await productoConOpciones(p.context().request);
+  const tarjeta = p.locator(`#producto-${producto.codigo}`);
+  await tarjeta.scrollIntoViewIfNeeded();
+  await tarjeta.getByRole("button", { name: "Agregar al carrito" }).click({ force: true });
+  const dialogo = p.getByRole("dialog");
+  if (!(await dialogo.isVisible().catch(() => false))) return false;
+  for (const grupo of producto.modificadores.filter((g) => g.obligatorio)) {
+    const disponibles = grupo.opciones.filter((o) => o.disponible);
+    await dialogo.getByRole("radio", { name: disponibles[Math.min(n, disponibles.length - 1)].nombre }).check();
+  }
+  // Un extra con recargo en la primera línea, para ver el total del pie y del carrito con el recargo
+  const extras = producto.modificadores.find((g) => !g.obligatorio && g.opciones.some((o) => o.precioExtra > 0 && o.disponible));
+  if (extras && n === 0) await dialogo.getByRole("checkbox", { name: new RegExp(`^${extras.opciones.find((o) => o.precioExtra > 0 && o.disponible).nombre}`) }).check();
+  if (nota) await dialogo.getByRole("textbox").fill(nota);
+  return true;
+};
+
 // 1.7 · Ayudas de la toma de comanda. `disponibilidad` usa una sesión de admin aparte (BD de capturas)
 let sesionAdmin = null;
 const disponibilidad = async (nombre, disponible) => {
@@ -235,6 +289,55 @@ const VISTAS = {
       await p.waitForLoadState("networkidle");
     },
   },
+  // 1.12 · Opciones del plato en el pedido a domicilio: diálogo desde el menú, carrito con el mismo plato
+  // en dos líneas (opciones distintas) y el pedido con opciones en Mis pedidos, el admin y /staff
+  "menu-opciones": {
+    usuario: "cliente",
+    completa: false,
+    preparar: async (p) => {
+      await p.goto(`${FRONT}/menu`);
+      await p.waitForLoadState("networkidle");
+      await agregarPlatoConOpciones(p, { nota: "Sin sal" });
+    },
+  },
+  "carrito-opciones": {
+    usuario: "cliente",
+    preparar: async (p) => {
+      await p.goto(`${FRONT}/menu`);
+      await p.waitForLoadState("networkidle");
+      for (const [n, nota] of [[0, "Sin sal"], [1, ""]]) {
+        if (await agregarPlatoConOpciones(p, { n, nota })) {
+          await p.getByRole("dialog").getByRole("button", { name: /^Agregar/ }).click();
+        }
+      }
+      const enlace = p.locator(".menu__item-carrito a");
+      if (!(await enlace.isVisible())) await p.locator(".navbar__hamburger").click();
+      await enlace.click();
+      await p.waitForLoadState("networkidle");
+    },
+  },
+  "cuenta-cliente-pedidos-opciones": { usuario: "cliente", preparar: async (p) => {
+    await pedidoConOpciones();
+    await p.goto(`${FRONT}/cuenta`);
+    await p.getByRole("button", { name: /mis pedidos/i }).click();
+    await p.waitForLoadState("networkidle");
+  } },
+  "admin-pedido-opciones": {
+    usuario: "admin",
+    completa: false,
+    preparar: async (p) => {
+      await pedidoConOpciones();
+      await abrirPestanaAdmin("Pedidos")(p);
+      await p.getByRole("button", { name: /ver detalle/i }).first().click();
+      await p.waitForTimeout(400);
+    },
+  },
+  "staff-pedidos-opciones": { usuario: "mesero", preparar: async (p) => {
+    await pedidoConOpciones();
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("navigation", { name: /secciones del panel/i }).getByRole("button", { name: "Pedidos" }).click();
+    await p.waitForLoadState("networkidle");
+  } },
   // 1.11 · Dirección: «Cra 36b Oriente #30-06» se acepta y una sin número muestra el ejemplo
   "carrito-direccion": {
     usuario: "cliente",

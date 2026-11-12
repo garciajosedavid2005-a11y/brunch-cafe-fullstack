@@ -32,7 +32,7 @@ const Menu = () => {
 
   useEffect(() => {
     let active = true;
-    apiRequest("/v1/catalogo")
+    apiRequest("/v1/catalogo?incluir=modificadores") // 1.12: grupos de opciones de cada plato
       .then(({ productos, categorias: categoriasMenu }) => {
         if (!active) return;
         setMenu(productos);
@@ -158,6 +158,7 @@ const Menu = () => {
               descripcion={producto.descripcion}
               precio={producto.precio}
               imagen={apiAssetUrl(producto.imagen)}
+              modificadores={producto.modificadores}
               rating={productRatings[producto.id]?.average ?? 5}
               ratingCount={productRatings[producto.id]?.count ?? 0}
               delay={index % 5 + 1}

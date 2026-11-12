@@ -1,13 +1,10 @@
 import "./TarjetaMenu.css";
-import { useCarrito } from '../../context/CarritoContext'
+import { useAgregarAlCarrito } from "../AgregarAlCarrito/useAgregarAlCarrito";
 import { formatearCOP } from "../../utils/moneda";
 
-const TarjetaMenu = ({ id, codigo, nombre, descripcion, precio, imagen, rating = 5, ratingCount = 0, delay }) => {
-  const { agregarProducto } = useCarrito();
-
-  const handleAgregar = () => {
-    agregarProducto({ id, nombre, descripcion, precio, imagen });
-  };
+const TarjetaMenu = ({ id, codigo, nombre, descripcion, precio, imagen, modificadores = [], rating = 5, ratingCount = 0, delay }) => {
+  // 1.12 · Con opciones abre el diálogo; sin ellas agrega directo
+  const { agregar: handleAgregar, dialogo } = useAgregarAlCarrito({ id, nombre, descripcion, precio, imagen, modificadores });
 
   return (
     <article id={`producto-${codigo}`} className={`tarjeta-menu ${delay ? `delay-${delay}` : ""}`} data-id={id}>
@@ -62,6 +59,7 @@ const TarjetaMenu = ({ id, codigo, nombre, descripcion, precio, imagen, rating =
 
         <span className="tarjeta-menu__precio">{formatearCOP(precio)}</span>
       </div>
+      {dialogo}
     </article>
   );
 };
