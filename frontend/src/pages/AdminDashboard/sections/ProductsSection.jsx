@@ -283,7 +283,7 @@ export default function ProductsSection() {
                           <span className="admin-products__etiquetas">
                             <span className="admin-badge admin-badge--neutral">{prod.categoria}</span>
                             {prod.estacionEfectiva && (
-                              <span className="admin-badge admin-badge--info" title={prod.estacionId ? "Estación propia del producto" : "Estación de la categoría"}>
+                              <span className="admin-badge admin-badge--marca" title={prod.estacionId ? "Estación propia del producto" : "Estación de la categoría"}>
                                 {prod.estacionEfectiva.nombre}
                               </span>
                             )}

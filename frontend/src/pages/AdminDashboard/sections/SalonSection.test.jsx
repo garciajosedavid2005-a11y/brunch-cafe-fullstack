@@ -44,7 +44,7 @@ describe("Admin › Salón", () => {
     const fila3 = within(mesas).getByText("Mesa 3").closest("tr");
     expect(fila3).toHaveTextContent("Ventana");
     expect(fila3).toHaveTextContent("4 personas");
-    expect(within(fila3).getByText("Ocupada")).toHaveClass("admin-badge--warning");
+    expect(within(fila3).getByText("Ocupada")).toHaveClass("admin-badge--bordo"); // 2.0b: bordó, como en el plano (1.6)
     const fila1 = within(mesas).getByText("Mesa 1").closest("tr");
     expect(fila1).toHaveTextContent("Combinable");
     expect(within(fila1).getByText("Libre")).toHaveClass("admin-badge--success");

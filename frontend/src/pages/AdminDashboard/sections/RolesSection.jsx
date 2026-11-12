@@ -238,7 +238,7 @@ export default function RolesSection() {
                       <div className="admin-roles__permisos" id={`permisos-${rol.id}`}>
                         {rol.permisos && rol.permisos.length > 0 ? (
                           (desplegados.has(rol.id) ? rol.permisos : rol.permisos.slice(0, PERMISOS_VISIBLES)).map((p) => (
-                            <span key={p} className="admin-badge admin-badge--info admin-roles__permiso">
+                            <span key={p} className="admin-badge admin-badge--marca admin-roles__permiso">
                               {etiquetaPermiso(p)}
                             </span>
                           ))

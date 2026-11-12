@@ -8,10 +8,11 @@ import { useDialogo } from "../../../context/useDialogo";
 // El estado de una mesa no se edita aquí: lo cambian las operaciones del salón (1.5).
 const ESTADOS_MESA = {
   libre: { texto: "Libre", clase: "admin-badge--success" },
-  ocupada: { texto: "Ocupada", clase: "admin-badge--warning" },
-  cuenta_pedida: { texto: "Cuenta pedida", clase: "admin-badge--info" },
-  por_limpiar: { texto: "Por limpiar", clase: "admin-badge--neutral" },
-  bloqueada: { texto: "Bloqueada", clase: "admin-badge--danger" },
+  // 2.0b · Mismos colores que el plano de /staff (1.6)
+  ocupada: { texto: "Ocupada", clase: "admin-badge--bordo" },
+  cuenta_pedida: { texto: "Cuenta pedida", clase: "admin-badge--warning" },
+  por_limpiar: { texto: "Por limpiar", clase: "admin-badge--info" },
+  bloqueada: { texto: "Bloqueada", clase: "admin-badge--neutral" },
 };
 
 const ZONA_VACIA = { nombre: "", orden: 0, activa: true };
@@ -238,7 +239,7 @@ export default function SalonSection() {
                       <strong className="admin-table__client-name">Mesa {mesa.numero}</strong>
                       {mesa.nombre && <span className="admin-salon__detalle">{mesa.nombre}</span>}
                       <span className="admin-salon__marcas">
-                        {mesa.combinable && <span className="admin-badge admin-badge--info">Combinable</span>}
+                        {mesa.combinable && <span className="admin-badge admin-badge--marca">Combinable</span>}
                         {mesa.ejemplo && <span className="admin-badge admin-badge--neutral">Ejemplo</span>}
                       </span>
                     </td>

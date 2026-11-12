@@ -682,6 +682,22 @@
   border: 1.5px solid #bbdefb;
 }
 
+/* 2.0b · Etiquetas que no son estados (estación, permisos, «Combinable»…): café de la marca, para no
+   confundirlas con un estado (ni con «Ocupada» en bordó ni con «Bloqueada»). admin-badge--info (azul)
+   queda solo para los estados. #5a3412 sobre #f3e6d8: ~9:1 */
+.admin-badge--marca {
+  background: #f3e6d8;
+  color: #5a3412;
+  border: 1.5px solid #e2cbb3;
+}
+
+/* 2.0b · Mesa ocupada en bordó, como en el plano de /staff (1.6). Primario sobre #fbe7e6: ~8:1 */
+.admin-badge--bordo {
+  background: #fbe7e6;
+  color: var(--color-primario);
+  border: 1.5px solid #f1c4c0;
+}
+
 .admin-badge--success {
   background: #e8f5e9;
   color: #2e7d32;

@@ -308,6 +308,80 @@ const medirContrasteNavbar = async (page) => {
   return medidas;
 };
 
+// 2.0b · Colores azules fuera de la paleta de Brunch Café en /staff y el admin (texto, fondo, borde e
+// iconos SVG), en reposo y con el puntero o el foco en cada enlace y botón visible. Los colores de
+// estado vienen de los datos (estilo en línea) y se cuentan aparte.
+const buscarAzules = (raiz, estadoInteraccion) => {
+  const rgba = (texto) => {
+    const m = String(texto).match(/rgba?\(([^)]+)\)/);
+    if (!m) return null;
+    const [r, g, b, a = 1] = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+    return { r, g, b, a };
+  };
+  const esAzul = (c) => {
+    if (!c || c.a < 0.2) return false;
+    const [r, g, b] = [c.r / 255, c.g / 255, c.b / 255];
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
+    if (d < 0.08) return false; // gris
+    const s = d / (1 - Math.abs(2 * l - 1));
+    let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h = (h * 60 + 360) % 360;
+    return h >= 185 && h <= 260 && s >= 0.3 && l > 0.12 && l < 0.88;
+  };
+  const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden"; };
+  const hallazgos = [];
+  for (const el of [raiz, ...raiz.querySelectorAll("*")]) {
+    if (!visible(el)) continue;
+    const estilo = getComputedStyle(el);
+    const propiedades = ["color", "backgroundColor", "borderTopColor", "borderBottomColor", "outlineColor", ...(el instanceof SVGElement ? ["stroke", "fill"] : [])];
+    for (const propiedad of propiedades) {
+      if (propiedad.startsWith("border") && parseFloat(estilo[propiedad.replace("Color", "Width")]) === 0) continue;
+      if (propiedad === "outlineColor" && (estilo.outlineStyle === "none" || parseFloat(estilo.outlineWidth) === 0)) continue;
+      if (propiedad === "color" && !el.textContent.trim() && !el.querySelector("svg")) continue;
+      const valor = estilo[propiedad];
+      if (!esAzul(rgba(valor))) continue;
+      // Color de estado acordado: viene de los datos en un estilo en línea (el propio elemento o un ancestro cercano)
+      // o es uno de los estados acordados con color propio en el CSS (por limpiar, ítem enviado,
+      // insignias de estado del admin y de /staff), los mismos que admite src/test/paletaStaffAdmin.test.js
+      // Solo el color en línea del propio elemento o de su padre (p. ej. un punto de color dentro de la insignia)
+      const colorEnLinea = (nodo) => Boolean(nodo?.matches?.("[style*='color']"));
+      const deEstado = colorEnLinea(el) || colorEnLinea(el.parentElement)
+        || Boolean(el.closest("[class*='por_limpiar'], .comanda-item__estado, .admin-badge--info, .staff-dashboard__status--info"));
+      hallazgos.push({
+        estado: estadoInteraccion, deEstado, propiedad, valor,
+        elemento: `${el.tagName.toLowerCase()}${el.className && typeof el.className === "string" ? `.${el.className.trim().split(/\s+/).join(".")}` : ""}`,
+        texto: (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 40),
+      });
+    }
+  }
+  return hallazgos;
+};
+const medirPaleta = async (page) => {
+  const hallazgos = await page.evaluate((fn) => new Function(`return (${fn})`)()(document.body, "reposo"), buscarAzules.toString());
+  const interactivos = page.locator("a:visible, button:visible");
+  const cuantos = await interactivos.count();
+  const total = Math.min(cuantos, 60);
+  if (cuantos > 60) console.log(`  · paleta: ${cuantos} enlaces y botones; se midieron con el puntero y el foco los primeros 60`);
+  for (let i = 0; i < total; i += 1) {
+    const el = interactivos.nth(i);
+    for (const accion of ["hover", "foco"]) {
+      try {
+        if (accion === "hover") await el.hover({ timeout: 1000 });
+        else await el.focus({ timeout: 1000 });
+      } catch {
+        continue;
+      }
+      await page.waitForTimeout(80);
+      hallazgos.push(...await el.evaluate((nodo, [fn, estado]) => new Function(`return (${fn})`)()(nodo, estado), [buscarAzules.toString(), accion]));
+    }
+  }
+  await page.mouse.move(1, 1);
+  await page.evaluate(() => document.activeElement?.blur());
+  const unicos = new Map(hallazgos.map((h) => [`${h.estado}|${h.elemento}|${h.propiedad}|${h.valor}|${h.texto}`, h]));
+  return [...unicos.values()];
+};
+const azules = [];
+
 // nombre → { usuario, preparar(page), completa }
 const VISTAS = {
   inicio: { preparar: (p) => p.goto(`${FRONT}/`) },
@@ -793,6 +867,15 @@ const VISTAS = {
     await p.getByRole("link", { name: "Panel de sala" }).click();
     await p.getByRole("button", { name: /^Mesa 1,/ }).waitFor();
   } },
+  // 2.0b · «Panel de administración» con el foco y el puntero (Foundation lo pintaba azul)
+  "staff-admin-panel-foco": { usuario: "admin", completa: false, preparar: async (p) => {
+    await VISTAS["staff-admin-plano"].preparar(p);
+  }, antesDeCaptura: async (p) => {
+    const enlace = p.getByRole("link", { name: "Panel de administración" });
+    await enlace.focus();
+    await enlace.hover();
+    await p.waitForTimeout(300);
+  } },
   "staff-admin-anular": { usuario: "admin", preparar: async (p) => {
     await abrirCuentaDeMesa(p, 1);
     await verCuentaEnVertical(p);
@@ -861,6 +944,13 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
         console.log(`  ${bajos.length ? `⚠ navbar: ${bajos.length} elemento(s) bajo el contraste mínimo (${bajos.map((m) => `«${m.texto}» ${m.estado} ${m.ratio}:1`).slice(0, 4).join(", ")})` : "✓ navbar con contraste suficiente"}${sobreFoto ? ` · ${sobreFoto} sobre foto (no medible)` : ""} (${nombre} ${etiqueta}, ${momento})`);
       };
       await medirNavbar("arriba");
+      // 2.0b · Paleta en /staff y el admin (vistas del personal y del admin)
+      if (["mesero", "admin"].includes(vista.usuario) && /\/(staff|admin)/.test(page.url())) {
+        const hallados = await medirPaleta(page);
+        const fuera = hallados.filter((h) => !h.deEstado);
+        for (const h of hallados) azules.push({ vista: nombre, tamano: etiqueta, ...h });
+        console.log(`  ${fuera.length ? `⚠ ${fuera.length} color(es) azul(es) fuera de la paleta (${fuera.slice(0, 3).map((h) => `${h.elemento} «${h.texto}» ${h.estado}`).join(", ")})` : "✓ sin azules fuera de la paleta"}${hallados.length - fuera.length ? ` · ${hallados.length - fuera.length} de estado` : ""} (${nombre} ${etiqueta})`);
+      }
       if (completa && await page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight + 600)) {
         await page.evaluate(() => window.scrollTo(0, 900));
         await page.waitForTimeout(200);
@@ -912,6 +1002,8 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
         for (const t of unicas) solapes.push({ vista: nombre, tamano: etiqueta, ...t });
         console.log(`  ${unicas.length ? `⚠ tapa: ${unicas.map((t) => `${t.columna} (${t.tapado} px)`).join(", ")}` : "✓ la columna fija no tapa ninguna"} (${nombre} ${etiqueta})`);
       }
+      // 2.0b · Estado que la foto debe mostrar (p. ej. foco o puntero) tras las mediciones
+      if (vista.antesDeCaptura) await vista.antesDeCaptura(page);
       const archivo = join(SALIDA, `${nombre}-${etiqueta}.png`);
       await page.screenshot({ path: archivo, fullPage: completa });
       console.log(`✓ ${archivo}${consola.length ? `  (errores de consola: ${consola.join(" | ").slice(0, 200)})` : ""}`);
@@ -931,6 +1023,14 @@ if (MEDIR_TACTIL) {
   await writeFile(join(SALIDA, "medicion-tactil.json"), JSON.stringify(pequenos, null, 2));
   console.log(`
 Medición táctil: ${pequenos.length} control(es) < 44 px → ${join(SALIDA, "medicion-tactil.json")}`);
+}
+if (azules.length || SOLO?.some((v) => /^(staff|admin)/.test(v))) {
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(join(SALIDA, "medicion-paleta.json"), JSON.stringify(azules, null, 2));
+  const fuera = azules.filter((h) => !h.deEstado);
+  console.log(`
+Paleta (/staff y admin): ${fuera.length} azul(es) fuera de la paleta, ${azules.length - fuera.length} de estado → ${join(SALIDA, "medicion-paleta.json")}`);
+  if (fuera.length) process.exitCode = 1;
 }
 if (contrastesNavbar.length) {
   const { writeFile } = await import("node:fs/promises");

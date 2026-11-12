@@ -148,7 +148,7 @@ export default function StatesSection() {
                       {item.esFinal ? (
                         <span className="admin-badge admin-badge--neutral">Estado Final</span>
                       ) : (
-                        <span className="admin-badge admin-badge--info">En Proceso</span>
+                        <span className="admin-badge admin-badge--marca">En Proceso</span>
                       )}
                     </td>
                     <td>

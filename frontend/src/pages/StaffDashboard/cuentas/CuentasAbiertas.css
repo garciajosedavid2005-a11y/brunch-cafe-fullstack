@@ -51,8 +51,9 @@
   box-shadow: 0 4px 14px #2c070308;
 }
 
+/* 2.0b · Domicilio en tonos café de la marca (antes azul, fuera de la paleta); salón sigue en bordó */
 .cuentas__tarjeta--domicilio {
-  border-left-color: #1f5f8b;
+  border-left-color: #7a4a1e;
 }
 
 .cuentas__cabecera {
@@ -83,8 +84,8 @@
 }
 
 .cuentas__canal--domicilio {
-  background: #e3eef6;
-  color: #174a6d;
+  background: #f3e6d8;
+  color: #5a3412;
 }
 
 /* El código no se parte por el guion; si no cabe junto al canal, baja entero */

@@ -418,6 +418,14 @@ a.staff-tablet__boton {
   text-decoration: none;
 }
 
+/* 2.0b · «Panel de administración» es un enlace: Foundation lo pintaba azul con el puntero y el foco
+   (a:hover, a:focus). Mismo bordó que «Cambiar de usuario» */
+a.staff-tablet__boton:hover,
+a.staff-tablet__boton:focus,
+a.staff-tablet__boton:visited {
+  color: var(--color-primario);
+}
+
 .staff-tablet__boton:hover {
   background: #f7e7e2;
 }

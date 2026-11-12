@@ -240,7 +240,7 @@ export default function ReviewsSection() {
                       <div className="admin-comentarios__etiquetas">
                       {item.tipo === "Producto" ? (
                         <div>
-                          <span className="admin-badge admin-badge--info">Producto</span>
+                          <span className="admin-badge admin-badge--marca">Producto</span>
                           <div style={{ fontSize: "0.82rem", color: "#2C0703", fontWeight: 700, marginTop: "0.2rem" }}>
                             {item.producto}
                           </div>
