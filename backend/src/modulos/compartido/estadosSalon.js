@@ -51,10 +51,13 @@ export const MAQUINA_ITEM = crearMaquina({
     finales: ['servido', 'anulado'],
     transiciones: [
         { de: 'borrador', a: 'enviado', permiso: 'comanda:enviar' },
-        // Pasos de cocina y barra: los opera el KDS en la Fase 2 (con su permiso)
-        { de: 'enviado', a: 'en_preparacion', via: 'sistema' },
-        { de: 'en_preparacion', a: 'listo', via: 'sistema' },
-        { de: 'listo', a: 'servido', via: 'sistema' },
+        // 2.2 · Pasos de cocina y barra (item:preparar) y servir del mesero (item:servir, F2-2).
+        // listo → en_preparacion es el «Deshacer» (F2-7): el servicio de cocina exige además que lo pida
+        // quien lo marcó en los 10 s siguientes o, después, el admin con motivo
+        { de: 'enviado', a: 'en_preparacion', permiso: 'item:preparar' },
+        { de: 'en_preparacion', a: 'listo', permiso: 'item:preparar' },
+        { de: 'listo', a: 'en_preparacion', permiso: 'item:preparar' },
+        { de: 'listo', a: 'servido', permiso: 'item:servir' },
         // Servido no se anula: será cortesía o descuento en la Fase 3 (D1). En borrador se quita.
         { de: ESTADOS_ITEM_ANULABLE, a: 'anulado', permiso: 'item:anular', requiereMotivo: true },
     ],

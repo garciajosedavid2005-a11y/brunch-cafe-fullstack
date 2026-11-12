@@ -58,6 +58,9 @@ const cuentaSchema = new mongoose.Schema({
     notas: { type: String, trim: true, maxlength: 300, default: '' },
     // Se incrementa con cada cambio: serializa operaciones concurrentes y permite el 409 CUENTA_MODIFICADA
     version: { type: Number, required: true, default: 0, min: 0, validate: entero('La versión') },
+    // 2.2 · Lo que marcan cocina y barra (y el servir): contador aparte para no invalidar la
+    // versionEsperada de la tablet del mesero. Sin el campo (cuentas anteriores) = 0
+    versionCocina: { type: Number, default: 0, min: 0, validate: entero('La versión de cocina') },
 }, { timestamps: true, collection: 'cuentas' })
 
 /** Invariantes entre campos de una cuenta: [{ campo, mensaje }]. Los usa el esquema y el verificador. */

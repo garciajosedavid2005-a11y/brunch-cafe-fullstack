@@ -125,10 +125,16 @@ describe('Máquina del ítem (F1-6, D1)', () => {
             .toEqual({ status: 409, code: 'TRANSICION_INVALIDA' })
     })
 
-    it('los pasos de cocina quedan definidos para el KDS (Fase 2) y no los pide el staff todavía', () => {
-        expect(MAQUINA_ITEM.validar('enviado', 'en_preparacion', { via: 'sistema' }).transicion.a).toBe('en_preparacion')
-        expect(codigoDe(() => MAQUINA_ITEM.validar('enviado', 'en_preparacion', { permisos: ['*'] })))
-            .toEqual({ status: 409, code: 'TRANSICION_INVALIDA' })
+    // 2.2 · Los pasos de cocina y servir ya no son del sistema: los pide el staff con su permiso
+    it('cocina y barra con item:preparar; servir con item:servir; ya no por la vía del sistema', () => {
+        expect(codigoDe(() => MAQUINA_ITEM.validar('enviado', 'en_preparacion', { via: 'sistema' }))).toEqual({ status: 409, code: 'TRANSICION_INVALIDA' })
+        expect(codigoDe(() => MAQUINA_ITEM.validar('enviado', 'en_preparacion', { permisos: ['comanda:tomar'] }))).toEqual({ status: 403, code: 'FORBIDDEN' })
+        expect(MAQUINA_ITEM.validar('enviado', 'en_preparacion', { permisos: ['item:preparar'] }).transicion.a).toBe('en_preparacion')
+        expect(MAQUINA_ITEM.validar('en_preparacion', 'listo', { permisos: ['item:preparar'] }).transicion.a).toBe('listo')
+        expect(MAQUINA_ITEM.validar('listo', 'en_preparacion', { permisos: ['item:preparar'] }).transicion.a).toBe('en_preparacion')
+        expect(codigoDe(() => MAQUINA_ITEM.validar('listo', 'servido', { permisos: ['item:preparar'] }))).toEqual({ status: 403, code: 'FORBIDDEN' })
+        expect(MAQUINA_ITEM.validar('listo', 'servido', { permisos: ['item:servir'] }).transicion.a).toBe('servido')
+        expect(codigoDe(() => MAQUINA_ITEM.validar('enviado', 'listo', { permisos: ['*'] }))).toEqual({ status: 409, code: 'TRANSICION_INVALIDA' })
     })
 })
 

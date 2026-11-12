@@ -488,14 +488,16 @@ describe('Anular un ítem enviado (F1-6, D1)', () => {
     it('desde en preparación o listo sí; servido o en borrador no', async () => {
         const enviada = await cuentaConEnvio()
         const itemId = enviada.rondas[0].items[0].id
-        await Comanda.updateOne({ 'items._id': itemId }, { $set: { 'items.$.estado': 'listo' } })
+        // 2.2 · Con los tiempos que exige el estado (como lo dejaría la cocina)
+        const t = new Date(), quien = new ObjectId()
+        await Comanda.updateOne({ 'items._id': itemId }, { $set: { 'items.$.estado': 'listo', 'items.$.iniciadoEn': t, 'items.$.iniciadoPor': quien, 'items.$.listoEn': t, 'items.$.listoPor': quien } })
         expect((await anularItem(enviada.id, itemId, { motivo: 'producto_defectuoso' }, admin)).rondas[0].items[0].estado).toBe('anulado')
         // en_preparacion, en otra cuenta
         const otra = await abrir(mesero, { mesaId: String(mesa2._id) })
         await agregarLatte(otra)
         const otraEnviada = await enviar(otra.id)
         const otroItem = otraEnviada.rondas[0].items[0].id
-        await Comanda.updateOne({ 'items._id': otroItem }, { $set: { 'items.$.estado': 'en_preparacion' } })
+        await Comanda.updateOne({ 'items._id': otroItem }, { $set: { 'items.$.estado': 'en_preparacion', 'items.$.iniciadoEn': t, 'items.$.iniciadoPor': quien } })
         expect((await anularItem(otra.id, otroItem, { motivo: 'cliente_cambio' }, admin)).rondas[0].items[0].estado).toBe('anulado')
 
         const { item } = await agregarLatte(enviada)

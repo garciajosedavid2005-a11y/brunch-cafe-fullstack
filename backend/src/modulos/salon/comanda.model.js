@@ -52,7 +52,49 @@ const itemSchema = new mongoose.Schema({
     anulacion: { type: anulacionSchema, default: null },
     agregadoPor: ref('Usuario'),
     agregadoEn: { type: Date, required: true },
+    // 2.2 · Tiempos de preparación en el propio ítem (los reportes de la Fase 5 no reconstruyen nada
+    // a partir de los Eventos). Sin migración: los ítems anteriores no los tienen y no pasaron de «enviado»
+    iniciadoEn: { type: Date, default: null },
+    iniciadoPor: { ...ref('Usuario', false), default: null },
+    listoEn: { type: Date, default: null },
+    listoPor: { ...ref('Usuario', false), default: null },
+    servidoEn: { type: Date, default: null },
+    servidoPor: { ...ref('Usuario', false), default: null },
 })
+
+// Qué tiempos lleva cada estado (anulado conserva los que tuviera)
+const TIEMPOS_POR_ESTADO = {
+    borrador: [],
+    enviado: [],
+    en_preparacion: ['iniciado'],
+    listo: ['iniciado', 'listo'],
+    servido: ['iniciado', 'listo', 'servido'],
+}
+const problemasDeTiempos = (item) => {
+    const problemas = []
+    const momentos = ['iniciado', 'listo', 'servido']
+    for (const m of momentos) {
+        if (Boolean(item[`${m}En`]) !== Boolean(item[`${m}Por`])) problemas.push(`El ítem ${item._id} tiene ${m}En y ${m}Por incoherentes`)
+    }
+    const esperados = TIEMPOS_POR_ESTADO[item.estado]
+    if (esperados) {
+        for (const m of momentos) {
+            if (esperados.includes(m) !== Boolean(item[`${m}En`])) {
+                problemas.push(`El ítem ${item._id} está «${item.estado}» y ${esperados.includes(m) ? 'le falta' : 'no debería tener'} ${m}En`)
+            }
+        }
+    }
+    // Anulado conserva los que tuviera, pero sin huecos (p. ej. servidoEn sin iniciadoEn)
+    if (item.estado === 'anulado') {
+        const presentes = momentos.map((m) => Boolean(item[`${m}En`]))
+        if (presentes.some((p, i) => p && presentes.slice(0, i).some((antes) => !antes))) {
+            problemas.push(`El ítem ${item._id} anulado tiene los tiempos con huecos`)
+        }
+    }
+    const fechas = momentos.map((m) => item[`${m}En`]).filter(Boolean).map((f) => new Date(f).getTime())
+    if (fechas.some((f, i) => i > 0 && f < fechas[i - 1])) problemas.push(`El ítem ${item._id} tiene los tiempos fuera de orden`)
+    return problemas
+}
 
 const comandaSchema = new mongoose.Schema({
     cuenta: ref('Cuenta'),
@@ -83,6 +125,7 @@ export const problemasDeComanda = (comanda) => {
             problemas.push(`El ítem ${item._id} no cuadra: precio ${item.precioUnitario}/${esperado.precioUnitario}, subtotal ${item.subtotal}/${esperado.subtotal}`)
         }
         if ((item.estado === 'anulado') !== Boolean(item.anulacion)) problemas.push(`El ítem ${item._id} tiene la anulación incoherente con su estado`)
+        problemas.push(...problemasDeTiempos(item))
         if ((comanda.estado === 'borrador') !== (item.estado === 'borrador')) {
             problemas.push(`El ítem ${item._id} está «${item.estado}» en una ronda «${comanda.estado}»`)
         }
@@ -105,6 +148,8 @@ comandaSchema.pre('validate', function () {
 })
 
 comandaSchema.index({ cuenta: 1, numeroRonda: 1 }, { unique: true })
+// 2.2 · La cocina y el servir buscan la ronda por el _id del ítem
+comandaSchema.index({ 'items._id': 1 })
 // Una sola ronda en borrador por cuenta
 comandaSchema.index({ cuenta: 1 }, { unique: true, partialFilterExpression: { estado: 'borrador' }, name: 'un_borrador_por_cuenta' })
 

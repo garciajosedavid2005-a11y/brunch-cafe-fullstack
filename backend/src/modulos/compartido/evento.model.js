@@ -16,6 +16,8 @@ export const TIPOS_EVENTO = [
     'cuenta_transferida', 'mesa_movida', 'mesas_unidas', 'mesa_separada',
     'usuario_creado', 'enlace_reenviado',
     'horarios_cambiados',
+    // 2.2 · Cocina, barra y servir: de/a con el estado del ítem y datos.item (entidad 'cuenta')
+    'item_estado_cambiado',
 ]
 const eventoSchema = new mongoose.Schema({
     entidad: {
@@ -40,7 +42,8 @@ const eventoSchema = new mongoose.Schema({
     },
     a: {
         type: String,
-        required: function () { return this.tipo === 'cambio_estado' }
+        // 2.2 · También en los cambios de estado de un ítem en cocina y al servir
+        required: function () { return ['cambio_estado', 'item_estado_cambiado'].includes(this.tipo) }
     },
     motivo: {
         type: String,
