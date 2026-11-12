@@ -13,6 +13,10 @@ import { atiendeMesas, tienePermiso } from '../identidad/permisos.js'
 import { extrasDeModificadores } from '../catalogo/producto.controller.js'
 import { urlPublica } from '../catalogo/imagenesProducto.js'
 import { obtenerCuenta } from './cuentas.service.js'
+import Pedido from '../pedidos/pedido.model.js'
+import { pedidoComoCuenta } from '../pedidos/pedidoComoCuenta.js'
+import { esEstadoFinal } from '../compartido/estados.js'
+import { estadosDelTipo } from '../compartido/estados.service.js'
 
 // 1.5 · Lecturas del salón para el staff (/api/v1/staff/salon). Cada lectura hace un número fijo de
 // consultas en lote (sin N+1): el plano son 4 (zonas, mesas, cuentas y meseros) sea cual sea el
@@ -181,4 +185,64 @@ export const listarMeseros = async (sesion, { limite = MAX_MESEROS } = {}) => {
         if (yo) usuarios.push(yo)
     }
     return usuarios.map((u) => ({ id: String(u._id), nombre: nombreCorto(u), yo: String(u._id) === String(sesion.id) }))
+}
+
+// ── 1.9 · «Cuentas abiertas»: salón + domicilio, solo lectura ────────────────────────────────
+export const MAX_CUENTAS_ABIERTAS = 200
+const NOMBRE_ESTADO_CUENTA = { abierta: 'Abierta', cuenta_pedida: 'Cuenta pedida' }
+
+// Con más del límite se conservan las MÁS NUEVAS (orden descendente + límite) y se avisa con «truncado»:
+// una cuenta o un pedido viejo olvidado no debe esconder lo que está pasando ahora
+const cuentasDeSalon = async (ahora, limite) => {
+    const cuentas = await Cuenta.find({ estado: { $in: ESTADOS_CUENTA_ABIERTA } }).sort({ abiertaEn: -1 })
+        .limit(limite).select('codigo estado mesero abiertaEn total pendiente comensales mesas.numero').lean()
+    const meseros = await personasPorId(cuentas.map((c) => c.mesero))
+    return cuentas.map((c) => {
+        const numeros = c.mesas.map((m) => m.numero)
+        return {
+            id: String(c._id),
+            canal: 'salon',
+            codigo: c.codigo,
+            estado: { codigo: c.estado, nombre: NOMBRE_ESTADO_CUENTA[c.estado] || c.estado },
+            referencia: `${numeros.length > 1 ? 'Mesas' : 'Mesa'} ${numeros.join(', ')}`,
+            cliente: '',
+            responsable: persona(meseros, c.mesero),
+            comensales: c.comensales,
+            total: c.total,
+            pendiente: c.pendiente,
+            desde: c.abiertaEn.toISOString(),
+            minutos: Math.max(0, Math.floor((ahora - c.abiertaEn) / 60_000)),
+        }
+    })
+}
+
+const domiciliosEnCurso = async (ahora, limite) => {
+    const estados = await estadosDelTipo('pedido')
+    const enCurso = [...estados.values()].filter((e) => !esEstadoFinal('pedido', e.codigo)).map((e) => e._id)
+    // canal: los anteriores a 1.9 no lo tienen (null); cuando la Fase 6 añada otros canales no se cuelan aquí
+    const pedidos = await Pedido.find({ estado: { $in: enCurso }, canal: { $in: ['domicilio', null] } })
+        .sort({ createdAt: -1 }).limit(limite)
+        .select('canal estado total nombreEntrega barrio horaEntrega entregaEn createdAt').populate('estado', 'codigo nombre').lean()
+    return pedidos.map((p) => pedidoComoCuenta(p, ahora))
+}
+
+/**
+ * Cuentas abiertas del local (F1-11): las de salón (abierta o cuenta pedida) con cuenta:ver y los
+ * domicilios sin terminar con pedido:ver; cada parte solo con su permiso. De la más antigua a la más
+ * nueva. Sin datos de contacto. `truncado`: alguna parte llegó al límite.
+ */
+export const listarCuentasAbiertas = async (sesion, { ahora = new Date(), limite = MAX_CUENTAS_ABIERTAS } = {}) => {
+    const salon = tienePermiso(sesion?.permisos || [], 'cuenta:ver')
+    const domicilio = tienePermiso(sesion?.permisos || [], 'pedido:ver')
+    exigirAlguno(sesion, ['cuenta:ver', 'pedido:ver'])
+    const [deSalon, aDomicilio] = await Promise.all([
+        salon ? cuentasDeSalon(ahora, limite) : [],
+        domicilio ? domiciliosEnCurso(ahora, limite) : [],
+    ])
+    return {
+        actualizadoEn: ahora.toISOString(),
+        canales: { salon, domicilio },
+        truncado: deSalon.length === limite || aDomicilio.length === limite,
+        cuentas: [...deSalon, ...aDomicilio].sort((a, b) => a.desde.localeCompare(b.desde)),
+    }
 }

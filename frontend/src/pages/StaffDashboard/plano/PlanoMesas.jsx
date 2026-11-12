@@ -1,8 +1,9 @@
 import { createElement, useEffect, useMemo, useState } from "react";
-import { RefreshCw, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { formatearCOP } from "../../../utils/moneda";
 import { ESTADOS_MESA, datosEstado, formatearMinutos } from "./estadosMesa";
-import { usePlano, useSegundosDesde } from "./usePlano";
+import { usePlano } from "./usePlano";
+import Actualizado from "../compartido/Actualizado";
 import PanelMesa from "./PanelMesa";
 import TomaComanda from "../comanda/TomaComanda";
 import "./PlanoMesas.css";
@@ -11,23 +12,6 @@ import "./PlanoMesas.css";
 // texto e icono, leyenda, panel de acciones según permisos y refresco por polling.
 // `bloqueada` es un estado operativo y temporal (sale en el plano); una mesa inactiva es
 // configuración del admin y no sale.
-
-function Actualizado({ desde, error, onActualizar }) {
-  const segundos = useSegundosDesde(desde);
-  return (
-    <div className="plano__actualizado">
-      <span aria-live="polite">
-        {error
-          ? `No se pudo actualizar${segundos === null ? "" : ` (último dato hace ${segundos} s)`}. Se reintenta solo.`
-          : segundos === null ? "Cargando…" : `Actualizado hace ${segundos} s`}
-      </span>
-      <button type="button" className="plano__boton plano__boton--secundario" onClick={onActualizar}>
-        <RefreshCw size={18} aria-hidden="true" />
-        Actualizar
-      </button>
-    </div>
-  );
-}
 
 const resumenAccesible = (mesa) => {
   const partes = [`Mesa ${mesa.numero}`, datosEstado(mesa.estado).etiqueta];

@@ -283,6 +283,7 @@ Desde 0.12 la API es solo `/api/v1`. Las rutas sin versión responden `404 NOT_F
 | PATCH | `/api/v1/staff/pedidos/:id/cancelar` | `pedido:cancelar` | `{ motivo }` (3–300 caracteres). Solo desde `pendiente` o `confirmado`; deja el Evento en la misma transacción |
 | GET | `/api/v1/staff/reservas` | `reserva:ver` | Listar reservas con sus transiciones |
 | PATCH | `/api/v1/staff/reservas/:id/estado` | `reserva:cambiar_estado` | `{ codigo, motivo? }` (cancelar exige motivo) |
+| GET | `/api/v1/staff/cuentas-abiertas` | `cuenta:ver` o `pedido:ver` | 1.9 (F1-11), solo lectura: `{ actualizadoEn, canales: { salon, domicilio }, truncado, cuentas[] }`. Cuentas de salón abiertas o pedidas (con `cuenta:ver`) y domicilios sin terminar (con `pedido:ver`), de la más antigua a la más nueva; cada fila con `canal`, `codigo`, `estado { codigo, nombre }`, `referencia` (mesas o barrio), `responsable` o `cliente`, `total`, `pendiente`, `desde` y `minutos`, sin datos de contacto. Máximo 200 por canal (las más nuevas, con `truncado: true`) |
 
 #### Salón (`/api/v1/staff/salon`, 1.5)
 

@@ -1,0 +1,156 @@
+/* 1.9 · «Cuentas abiertas»: tarjetas de solo lectura, con el canal en texto e icono (no solo color) */
+.cuentas {
+  display: grid;
+  gap: 1rem;
+}
+
+.cuentas__ayuda,
+.cuentas__vacio {
+  margin: 0;
+  color: #5b4540;
+  font-size: 0.95rem;
+}
+
+.cuentas__vacio {
+  padding: 1.5rem;
+  border: 1px dashed #d8c3bc;
+  border-radius: 14px;
+  background: #fffdfa;
+  text-align: center;
+}
+
+.cuentas__aviso {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-left: 4px solid #8a5a00;
+  border-radius: 10px;
+  background: #fdf3dc;
+  color: #5c3d00;
+}
+
+.cuentas__lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.85rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Columna flexible: el pie (total y tiempo) queda abajo aunque las tarjetas de la fila midan distinto */
+.cuentas__tarjeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #e6d3cd;
+  border-left: 5px solid var(--color-primario);
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px #2c070308;
+}
+
+.cuentas__tarjeta--domicilio {
+  border-left-color: #1f5f8b;
+}
+
+.cuentas__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-self: stretch;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.cuentas__canal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: #f7e7e2;
+  color: #7a0a20;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* Sin flex: none, el svg { max-width: 100% } global los encoge */
+.cuentas__canal svg,
+.cuentas__tiempo svg {
+  flex: none;
+}
+
+.cuentas__canal--domicilio {
+  background: #e3eef6;
+  color: #174a6d;
+}
+
+/* El código no se parte por el guion; si no cabe junto al canal, baja entero */
+.cuentas__codigo {
+  white-space: nowrap;
+  color: #5b4540;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Misma letra del panel (no la serif de los títulos), como el número de mesa del plano */
+.cuentas__referencia {
+  margin: 0;
+  font-family: inherit;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-oscuro);
+  font-variant-numeric: lining-nums;
+}
+
+.cuentas__estado {
+  margin: 0;
+  padding: 0.15rem 0.55rem;
+  border: 1px solid #d8c3bc;
+  border-radius: 999px;
+  color: #4a2a24;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.cuentas__estado--cuenta_pedida {
+  border-color: #c98a00;
+  background: #fdf3dc;
+  color: #5c3d00;
+}
+
+.cuentas__detalle,
+.cuentas__pendiente {
+  margin: 0;
+  color: #5b4540;
+  font-size: 0.92rem;
+}
+
+.cuentas__detalle span {
+  white-space: nowrap;
+}
+
+.cuentas__pie {
+  align-self: stretch;
+  margin-top: auto;
+  padding-top: 0.2rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cuentas__total {
+  font-size: 1.1rem;
+  color: var(--color-oscuro);
+}
+
+.cuentas__tiempo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #5b4540;
+  font-size: 0.88rem;
+}

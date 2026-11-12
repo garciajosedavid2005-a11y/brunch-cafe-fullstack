@@ -6,6 +6,7 @@ import {
   Clock3,
   LayoutGrid,
   ListOrdered,
+  ReceiptText,
   ShieldHalf,
   Plus,
   ShieldCheck,
@@ -22,6 +23,7 @@ import { claseEstado } from "../AdminDashboard/components/estadoUtils";
 import ProfileSection from "../CustomerDashboard/sections/ProfileSection";
 import SecuritySection from "../CustomerDashboard/sections/SecuritySection";
 import PlanoMesas from "./plano/PlanoMesas";
+import CuentasAbiertas from "./cuentas/CuentasAbiertas";
 import "./StaffDashboard.css";
 import "../CustomerDashboard/CustomerDashboard.css";
 
@@ -41,6 +43,8 @@ export default function StaffDashboard() {
   const puedeCrearReservas = tienePermiso(user, "reserva:crear") && !admin;
   const puedeVerPedidos = tienePermiso(user, "pedido:ver");
   const puedeVerMesas = tienePermiso(user, "mesa:ver");
+  // 1.9 · «Cuentas abiertas» (salón con cuenta:ver, domicilio con pedido:ver)
+  const puedeVerCuentas = tienePermiso(user, "cuenta:ver") || puedeVerPedidos;
   // Con mesa:ver, el panel abre primero el plano de mesas (decisión 1.6 del 2026-11-07)
   const [seccion, setSeccion] = useState(() => (puedeVerMesas ? "mesas" : "resumen"));
   const [estadoReservas, setEstadoReservas] = useState(() => ({
@@ -119,6 +123,7 @@ export default function StaffDashboard() {
 
   const navigation = [
     ...(puedeVerMesas ? [{ id: "mesas", label: "Mesas", icon: LayoutGrid }] : []),
+    ...(puedeVerCuentas ? [{ id: "cuentas", label: "Cuentas", icon: ReceiptText }] : []),
     { id: "resumen", label: "Resumen", icon: CalendarCheck2 },
     ...(puedeVerReservas || puedeCrearReservas
       ? [{ id: "reservas", label: "Reservas", icon: CalendarDays }]
@@ -211,8 +216,9 @@ export default function StaffDashboard() {
 
       <div className="staff-tablet__contenido">
         {seccion === "mesas" && <PlanoMesas permisos={permisos} />}
+        {seccion === "cuentas" && <CuentasAbiertas />}
 
-        {seccion !== "mesas" && (
+        {!["mesas", "cuentas"].includes(seccion) && (
         <section className="customer-dashboard__content" aria-live="polite">
           {seccion === "resumen" && (
             <div>

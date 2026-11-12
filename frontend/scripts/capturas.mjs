@@ -484,6 +484,17 @@ const VISTAS = {
     await p.getByRole("button", { name: "Cancelar cuenta" }).click();
     await p.getByRole("dialog", { name: "Cancelar la cuenta" }).waitFor();
   } },
+  // 1.9 · «Cuentas abiertas»: salón + domicilio (solo lectura), todas y filtradas por domicilio
+  "staff-cuentas": { usuario: "mesero", preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("navigation", { name: /secciones del panel/i }).getByRole("button", { name: "Cuentas" }).click();
+    await p.getByRole("list", { name: "Cuentas abiertas" }).waitFor();
+  } },
+  "staff-cuentas-domicilio": { usuario: "mesero", preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("navigation", { name: /secciones del panel/i }).getByRole("button", { name: "Cuentas" }).click();
+    await p.getByRole("group", { name: "Canal" }).getByRole("button", { name: /^Domicilio/ }).click();
+  } },
   // F1-19 · El administrador entra al panel de sala desde el admin y anula con motivo desde la comanda
   "admin-panel-sala": { usuario: "admin", completa: false, preparar: (p) => p.goto(`${FRONT}/admin`) },
   "staff-admin-plano": { usuario: "admin", preparar: async (p) => {

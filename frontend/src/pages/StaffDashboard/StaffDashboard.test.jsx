@@ -126,6 +126,27 @@ describe("Panel de mesero", () => {
     await waitFor(() => expect(state.apiRequest).toHaveBeenCalledWith("/v1/staff/salon/mesas"));
   });
 
+  // 1.9 · «Cuentas abiertas» (salón + domicilio) con cuenta:ver o pedido:ver
+  it("la pestaña «Cuentas» aparece con pedido:ver o cuenta:ver y muestra la vista unificada", async () => {
+    const respuestaBase = state.apiRequest.getMockImplementation();
+    state.apiRequest.mockImplementation((path) => (path === "/v1/staff/cuentas-abiertas"
+      ? Promise.resolve({ actualizadoEn: new Date().toISOString(), canales: { salon: false, domicilio: true }, truncado: false, cuentas: [] })
+      : respuestaBase(path)));
+    const { container } = render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    const navigation = screen.getByRole("navigation", { name: /secciones del panel de personal/i });
+    fireEvent.click(within(navigation).getByRole("button", { name: "Cuentas" }));
+    expect(await screen.findByRole("heading", { name: "Cuentas abiertas" })).toBeInTheDocument();
+    expect(await screen.findByText("No hay cuentas abiertas.")).toBeInTheDocument();
+    // Como el plano, ocupa todo el ancho: sin la caja de contenido de las otras secciones (quedaba vacía)
+    expect(container.querySelector(".customer-dashboard__content")).toBeNull();
+  });
+
+  it("sin cuenta:ver ni pedido:ver no hay pestaña «Cuentas»", () => {
+    state.user.permisos = ["reserva:ver"];
+    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    expect(screen.queryByRole("button", { name: "Cuentas" })).not.toBeInTheDocument();
+  });
+
   it("el personal no ve el enlace al panel de administración", () => {
     render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
     expect(screen.queryByRole("link", { name: "Panel de administración" })).not.toBeInTheDocument();

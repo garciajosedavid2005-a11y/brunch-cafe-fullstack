@@ -7,6 +7,7 @@ import { listarReservas, cambiarEstadoReserva, crearReserva } from '../../modulo
 import { reservaStaffSchema } from '../../modulos/salon/reservas.schema.js'
 import pedidoRoutes from '../../modulos/pedidos/pedidosStaff.routes.js'
 import salonRoutes from '../../modulos/salon/salonStaff.routes.js'
+import cuentasAbiertasRoutes from '../../modulos/salon/cuentasAbiertas.routes.js'
 
 // /api/v1/staff: operación del salón y la cocina, por permiso (no por rol)
 const router = Router()
@@ -22,5 +23,8 @@ router.use('/pedidos', pedidoRoutes)
 
 // Salón (1.5): plano de mesas, cuentas y comandas, por permiso
 router.use('/salon', salonRoutes)
+
+// 1.9 · «Cuentas abiertas» (F1-11): salón (cuenta:ver) y domicilio (pedido:ver), solo lectura
+router.use('/cuentas-abiertas', cuentasAbiertasRoutes)
 
 export default router

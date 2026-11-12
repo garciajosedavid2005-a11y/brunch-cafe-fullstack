@@ -6,6 +6,7 @@ import Estado from '../compartido/estado.model.js'
 import { filtrosPedidosSchema } from './pedido.schema.js'
 import { instanteLocal } from '../compartido/fechas.js'
 import { notFound } from '../compartido/errors.js'
+import { codigoPedido } from './pedidoComoCuenta.js'
 import { esEstadoFinal } from '../compartido/estados.js'
 import { cambiarEstado, codigoDestino, estadosDelTipo, opcionesDeCambio } from '../compartido/estados.service.js'
 
@@ -19,7 +20,7 @@ const formato = (pedido, detalles, { permisos, estados }) => {
     const codigo = pedido.estado?.codigo || ''
     return {
         id: pedido._id,
-        codigo: `PED-${pedido._id.toString().slice(-6).toUpperCase()}`,
+        codigo: codigoPedido(pedido._id),
         cliente: pedido.nombreEntrega || [pedido.usuario?.nombre, pedido.usuario?.apellido].filter(Boolean).join(' ') || 'Cliente',
         correo: pedido.usuario?.correo || '',
         // El del pedido; los anteriores a 0.8 no lo tienen y se muestra el del perfil
