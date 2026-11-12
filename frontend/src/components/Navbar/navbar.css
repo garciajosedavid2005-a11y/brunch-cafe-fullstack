@@ -232,12 +232,17 @@
    BOTÓN HAMBURGUESA
 ========================= */
 
+/* 1.6b · Área táctil de 44×44 px (medía 24×18). Las barras siguen juntas en el centro (gap de 6 px:
+   8 px de centro a centro, lo que mueve la «X»); el margen negativo deja las barras donde estaban. */
 .navbar__hamburger {
   display: none;
   flex-direction: column;
-  justify-content: space-between;
-  width: 24px;
-  height: 18px;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  width: 44px;
+  height: 44px;
+  margin-left: -10px;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -245,8 +250,15 @@
   z-index: 105;
 }
 
+.navbar__hamburger:focus-visible {
+  outline: 2px solid var(--color-primario);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
 .navbar__hamburger span {
-  width: 100%;
+  flex: none;
+  width: 24px;
   height: 2px;
   background-color: var(--color-oscuro);
   border-radius: 2px;

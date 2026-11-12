@@ -113,6 +113,12 @@ const VISTAS = {
   menu: { preparar: (p) => p.goto(`${FRONT}/menu`) },
   // 1.5b · Login y registro (botón «Continuar con Google»), sin sesión
   login: { preparar: (p) => p.goto(`${FRONT}/login`) },
+  // 1.6b · Navbar público con el menú de la hamburguesa abierto (a ≤ 768 px)
+  "navbar-menu": { completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/menu`);
+    const hamburguesa = p.locator(".navbar__hamburger");
+    if (await hamburguesa.isVisible()) await hamburguesa.click();
+  } },
   registro: { preparar: (p) => p.goto(`${FRONT}/registro`) },
   nosotros: { preparar: (p) => p.goto(`${FRONT}/nosotros`) },
   // Tarjeta de ubicación de Nosotros y pie de página (horarios)
