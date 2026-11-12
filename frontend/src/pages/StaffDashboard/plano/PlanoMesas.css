@@ -501,4 +501,9 @@
   .panel-mesa__acciones {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   }
+
+  /* 1.7 · «Ver cuenta / Tomar comanda» a todo el ancho: no se parte y las demás caben en una fila */
+  .panel-mesa__acciones > .plano__boton--primario:first-child {
+    grid-column: 1 / -1;
+  }
 }

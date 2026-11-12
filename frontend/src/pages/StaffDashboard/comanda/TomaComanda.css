@@ -1,0 +1,629 @@
+/* 1.7 · Toma de comanda (tablet: 1024×768 horizontal y 768×1024 vertical). Objetivos táctiles ≥ 44 px
+   (botones de 48). Mismos colores que el plano; deshabilitados sin opacidad (texto #6a5752 sobre #efe4e1
+   ≈ 5,4:1, borde discontinuo). En horizontal, menú y cuenta lado a lado; en vertical, una vista a la vez. */
+.comanda {
+  display: grid;
+  gap: 0.85rem;
+  color: var(--color-oscuro);
+}
+
+.comanda__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+}
+
+.comanda__titulos {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.comanda__titulo {
+  margin: 0;
+  font-family: var(--fuente-titulos);
+  font-size: 1.75rem;
+  line-height: 1.1;
+  font-variant-numeric: lining-nums;
+}
+
+.comanda__sub {
+  margin: 0.15rem 0 0;
+  font-size: 0.9rem;
+  color: #594742;
+}
+
+.comanda__sub-parte { white-space: nowrap; } /* «Mesero P.» no se parte */
+
+.comanda__estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: #fbe9ec;
+  color: #890620;
+}
+
+.comanda__estado--cuenta_pedida {
+  background: #fff0d4;
+  color: #7a4100;
+}
+
+/* Botones */
+.comanda__boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 48px;
+  padding: 0.6rem 1.1rem;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.comanda__boton--primario { background: var(--color-primario); color: #ffffff; }
+.comanda__boton--primario:hover:not(:disabled) { background: #6f0519; }
+.comanda__boton--secundario { border-color: #d8c3bc; background: #ffffff; color: var(--color-primario); }
+.comanda__boton--secundario:hover:not(:disabled) { background: #f7e7e2; }
+.comanda__boton--peligro { background: #a1261e; color: #ffffff; }
+.comanda__boton--peligro-texto { color: #a1261e; }
+.comanda__boton--ancho { width: 100%; }
+
+.comanda__boton-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid #d8c3bc;
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--color-primario);
+  cursor: pointer;
+}
+
+.comanda__boton-icono--peligro { color: #a1261e; }
+
+.comanda__boton:disabled,
+.comanda__boton-icono:disabled {
+  border-color: #b9a29b;
+  border-style: dashed;
+  background: #efe4e1;
+  color: #6a5752;
+  cursor: not-allowed;
+}
+
+.comanda__boton:focus-visible,
+.comanda__boton-icono:focus-visible,
+.comanda-categoria:focus-visible,
+.comanda-producto:focus-visible,
+.comanda__vistas button:focus-visible {
+  outline: 3px solid var(--color-primario);
+  outline-offset: 2px;
+}
+
+/* Avisos y textos */
+.comanda__aviso {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-left: 4px solid #a1261e;
+  border-radius: 10px;
+  background: #fbe7e6;
+  color: #7d1a14;
+}
+
+.comanda__nota-estado {
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+  border-left: 4px solid #7a4100;
+  border-radius: 8px;
+  background: #fff0d4;
+  color: #5c3100;
+  font-weight: 600;
+}
+
+.comanda__vacio,
+.comanda__nota {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #594742;
+}
+
+.comanda__error {
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: #fbe7e6;
+  color: #7d1a14;
+  font-weight: 600;
+}
+
+.comanda__etiqueta {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #4a2a24;
+}
+
+/* Vista en vertical: Menú / Cuenta */
+.comanda__vistas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.comanda__vistas button {
+  min-height: 48px;
+  border: 1px solid #d8c3bc;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #4a2a24;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.comanda__vistas button[aria-pressed="true"] {
+  border-color: var(--color-primario);
+  background: var(--color-primario);
+  color: #ffffff;
+}
+
+.comanda__cuerpo {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+}
+
+/* Menú */
+.comanda__menu {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.comanda-categorias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.comanda-categoria {
+  min-height: 52px;
+  padding: 0.5rem 1.1rem;
+  border: 1px solid #d8c3bc;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #4a2a24;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.comanda-categoria[aria-pressed="true"] {
+  border-color: var(--color-primario);
+  background: var(--color-primario);
+  color: #ffffff;
+}
+
+.comanda-productos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.comanda-producto {
+  display: grid;
+  align-content: start;
+  gap: 0.3rem;
+  width: 100%;
+  min-height: 96px;
+  padding: 0.75rem 0.8rem;
+  border: 2px solid #eadbd5;
+  border-radius: 14px;
+  background: #ffffff;
+  color: var(--color-oscuro);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 4px 14px #2c07030d;
+}
+
+.comanda-producto:hover:not(:disabled) { border-color: var(--color-primario); }
+
+.comanda-producto__nombre {
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.comanda-producto__precio {
+  font-weight: 700;
+  color: var(--color-primario);
+}
+
+.comanda-producto__opciones {
+  font-size: 0.8rem;
+  color: #594742;
+}
+
+/* Agotado: deshabilitado con texto, sin opacidad */
+.comanda-producto.is-agotado {
+  border-style: dashed;
+  border-color: #b9a29b;
+  background: #efe4e1;
+  color: #6a5752;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.comanda-producto.is-agotado .comanda-producto__precio { color: #6a5752; }
+
+.comanda-producto__agotado {
+  justify-self: start;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #4a3a36;
+}
+
+/* Cuenta: bloques */
+.comanda__cuenta {
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.comanda-bloque {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #eadbd5;
+  border-radius: 16px;
+  background: #fffdfa;
+}
+
+.comanda-bloque__titulo,
+.comanda-ronda__titulo {
+  font-family: var(--fuente-cuerpo), sans-serif; /* la de títulos dibuja el 1 como «ı» */
+}
+
+.comanda-bloque__titulo {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.comanda-bloque__total {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.comanda-items {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Nombre, opciones y nota a todo el ancho; debajo, cantidad, monto y quitar (en la columna de la cuenta,
+   ~340 px, compartir fila partía los nombres a mitad de palabra) */
+.comanda-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "texto texto texto texto" "contador . monto quitar";
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid #f0e1db;
+}
+
+.comanda-item__texto { grid-area: texto; }
+.comanda-item > .comanda__contador { grid-area: contador; }
+.comanda-item > .comanda-item__monto { grid-area: monto; }
+.comanda-item > .comanda__boton-icono { grid-area: quitar; }
+
+.comanda-item:last-child { border-bottom: none; }
+
+.comanda-item--enviado {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "texto monto" "estado anular";
+}
+
+.comanda-item--enviado > .comanda-item__estado { grid-area: estado; justify-self: start; }
+.comanda-item--enviado > .comanda__boton { grid-area: anular; }
+
+.comanda-item__texto {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.comanda-item__texto strong { overflow-wrap: break-word; }
+
+.comanda-item__cantidad { color: #594742; }
+
+.comanda-item__detalle {
+  font-size: 0.85rem;
+  color: #594742;
+  overflow-wrap: anywhere;
+}
+
+.comanda-item__monto {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.comanda-item.is-problema {
+  padding-inline: 0.5rem;
+  border: 2px solid #a1261e;
+  border-radius: 10px;
+  background: #fbe7e6;
+}
+
+.comanda-item__problema {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #7d1a14;
+}
+
+.comanda-item__estado {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: #e5eef8;
+  color: #24466e;
+  white-space: nowrap;
+}
+
+.comanda-item__estado--listo { background: #e6f4ea; color: #1d5b2e; }
+.comanda-item__estado--en_preparacion { background: #fff0d4; color: #7a4100; }
+.comanda-item__estado--anulado { background: #ececec; color: #424242; white-space: normal; }
+
+.comanda-item.is-anulado .comanda-item__texto strong { text-decoration: line-through; color: #594742; }
+
+.comanda-ronda {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.comanda-ronda__titulo {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #594742;
+}
+
+.comanda__contador {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.comanda__contador output {
+  min-width: 2ch;
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Resumen */
+.comanda-resumen__fila {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.comanda-resumen__fila--total {
+  font-size: 1.25rem;
+}
+
+.comanda-resumen__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.comanda-resumen__acciones .comanda__boton { flex: 1 1 180px; }
+
+/* La acción destructiva, apartada de «Solicitar cuenta» */
+.comanda-resumen__acciones .comanda__boton--peligro-texto { margin-left: auto; flex-grow: 0; }
+.comanda-resumen__acciones { gap: 0.75rem 1.5rem; }
+
+/* Diálogo del producto y de anular */
+.modal-comanda__fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: #2c070380;
+  backdrop-filter: blur(3px);
+}
+
+.modal-comanda {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(560px, 100%);
+  max-height: calc(100vh - 2rem);
+  border-radius: 18px;
+  background: #fffdfa;
+  box-shadow: 0 20px 50px #2c070340;
+  outline: none;
+}
+
+.modal-comanda__cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem 0.6rem;
+}
+
+.modal-comanda__titulo {
+  margin: 0;
+  font-variant-numeric: lining-nums;
+  font-family: var(--fuente-titulos);
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+
+.modal-comanda__subtitulo {
+  margin: 0.2rem 0 0;
+  color: #594742;
+}
+
+.modal-comanda__cuerpo {
+  display: grid;
+  gap: 0.9rem;
+  padding: 0.3rem 1.1rem 0.8rem;
+  overflow-y: auto;
+}
+
+.modal-comanda__pie {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.8rem 1.1rem 1rem;
+  border-top: 1px solid #eadbd5;
+}
+
+.modal-comanda__acciones {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.comanda-grupo {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.comanda-grupo legend {
+  margin-bottom: 0.45rem;
+  font-weight: 800;
+}
+
+.comanda-grupo__regla {
+  font-weight: 500;
+  color: #594742;
+}
+
+.comanda-grupo__opciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.comanda-grupo__opciones--lista {
+  display: grid;
+}
+
+.comanda-opcion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  margin: 0;
+  padding: 0 0.9rem;
+  border: 1px solid #d8c3bc;
+  border-radius: 12px;
+  background: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.comanda-opcion input {
+  accent-color: var(--color-primario);
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+
+.comanda-opcion:has(input:focus-visible) {
+  outline: 3px solid var(--color-primario);
+  outline-offset: 2px;
+}
+
+.comanda-opcion.is-marcada {
+  border-color: var(--color-primario);
+  box-shadow: inset 0 0 0 1px var(--color-primario);
+}
+
+.comanda-opcion.is-deshabilitada {
+  border-style: dashed;
+  background: #f4efed;
+  color: #6a5752;
+  cursor: not-allowed;
+}
+
+.comanda-opcion__recargo {
+  font-weight: 700;
+  color: var(--color-primario);
+}
+
+.comanda-opcion.is-deshabilitada .comanda-opcion__recargo { color: #6a5752; }
+
+.comanda-dialogo__fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.comanda__campo {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.comanda__campo textarea {
+  min-height: 72px;
+  margin: 0;
+  border-radius: 10px;
+  font-size: 1rem;
+}
+
+/* Horizontal (≥ 1000 px): menú y cuenta lado a lado, sin el selector de vista */
+@media (min-width: 1000px) {
+  .comanda__vistas { display: none; }
+
+  .comanda__cuerpo {
+    grid-template-columns: minmax(0, 1.25fr) minmax(340px, 1fr);
+  }
+
+  .comanda__cuerpo--solo-cuenta {
+    grid-template-columns: minmax(0, 720px);
+  }
+
+  /* Sin columna con scroll propio (doble scroll en táctil): la cuenta se desplaza con la página */
+}
+
+/* Vertical (< 1000 px): una vista a la vez */
+@media (max-width: 999px) {
+  .is-oculta-vertical { display: none; }
+}

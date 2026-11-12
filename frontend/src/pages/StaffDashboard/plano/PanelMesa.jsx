@@ -3,6 +3,7 @@ import { Minus, Plus, X } from "lucide-react";
 import { apiRequest } from "../../../services/api";
 import { useDialogo } from "../../../context/useDialogo";
 import { formatearCOP } from "../../../utils/moneda";
+import { incluyePermiso } from "../../../utils/permisos";
 import { datosEstado, formatearMinutos, nuevaClave } from "./estadosMesa";
 
 // 1.6 · Acciones de una mesa según su estado y los permisos (el backend vuelve a comprobarlos):
@@ -11,7 +12,7 @@ import { datosEstado, formatearMinutos, nuevaClave } from "./estadosMesa";
 const BASE = "/v1/staff/salon";
 const MAX_COMENSALES = 50;
 
-const puede = (permisos, clave) => permisos.includes("*") || permisos.includes(clave);
+const puede = incluyePermiso;
 
 // Por qué no se puede unir una mesa (null = se puede), con las mismas reglas que el backend:
 // misma zona, combinable, libre y sin cuenta. «No combinable» va primero porque no depende del momento.
@@ -22,7 +23,7 @@ const motivoNoUnible = (m, cuenta) => {
   return null;
 };
 
-export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar }) {
+export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, onVerCuenta }) {
   const id = useId();
   const tituloRef = useRef(null);
   const { confirmar } = useDialogo();
@@ -185,6 +186,12 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar }) 
       )}
 
       <div className="panel-mesa__acciones">
+        {/* 1.7 · La cuenta de la mesa: rondas, comanda, solicitar y cancelar */}
+        {cuenta && puede(permisos, "cuenta:ver") && (
+          <button type="button" className="plano__boton plano__boton--primario" onClick={() => onVerCuenta(cuenta.id)}>
+            {tomaComandas ? "Ver cuenta / Tomar comanda" : "Ver cuenta"}
+          </button>
+        )}
         {mesa.estado === "libre" && !cuenta && puede(permisos, "mesa:bloquear") && (
           <button type="button" className="plano__boton plano__boton--secundario" disabled={enviando}
             onClick={() => cambiarEstado("bloqueada", { titulo: "Bloquear mesa", mensaje: `La mesa ${mesa.numero} no se podrá ocupar hasta desbloquearla.`, conMotivo: true })}>

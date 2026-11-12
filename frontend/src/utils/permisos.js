@@ -7,6 +7,9 @@ export const tienePermiso = (user, clave) => {
   return permisos.includes("*") || permisos.includes(clave);
 };
 
+// 1.7 · Lo mismo sobre una lista de permisos (plano y comanda reciben la lista, no el usuario)
+export const incluyePermiso = (permisos = [], clave) => permisos.includes("*") || permisos.includes(clave);
+
 // Panel de administración: el permiso comodín "*"
 export const esAdministrador = (user) => permisosDe(user).includes("*");
 

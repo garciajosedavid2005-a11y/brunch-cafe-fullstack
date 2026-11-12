@@ -32,6 +32,7 @@
 
 .dialogo__titulo {
   margin: 0 0 0.6rem;
+  font-variant-numeric: lining-nums; /* 1.7: la fuente de títulos dibuja el 1 como «ı» */
   font-size: 1.2rem;
   line-height: 1.3;
   font-weight: 700;
@@ -99,7 +100,7 @@
 }
 
 .dialogo__boton {
-  min-height: 42px;
+  min-height: 44px; /* 1.7: objetivo táctil (antes 42) */
   margin: 0;
   padding: 0.55rem 1.2rem;
   border: 1.5px solid transparent;

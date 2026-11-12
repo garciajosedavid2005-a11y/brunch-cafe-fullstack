@@ -6,7 +6,7 @@
 // La contraseña de los usuarios *.dev es DEV_USUARIOS_PASSWORD (entorno o backend/.env; no se muestra).
 //   CAPTURAS_API_PORT (4100) · CAPTURAS_FRONT_PORT (5174) · ANCHOS (1280,1024,768) · SOLO (vistas)
 //   ZONA_NAVEGADOR (por defecto America/Bogota): zona del navegador simulado
-import { chromium } from "playwright";
+import { chromium, request } from "playwright";
 import { mkdir, readFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { join, resolve } from "node:path";
@@ -105,6 +105,48 @@ const abrirPestanaAdmin = (nombre) => async (page) => {
   await page.goto(`${FRONT}/admin`);
   await page.getByRole("button", { name: nombre, exact: true }).first().click();
   await page.waitForLoadState("networkidle");
+};
+
+// 1.7 · Ayudas de la toma de comanda. `disponibilidad` usa una sesión de admin aparte (BD de capturas)
+let sesionAdmin = null;
+const disponibilidad = async (nombre, disponible) => {
+  if (!sesionAdmin) {
+    sesionAdmin = await request.newContext();
+    await sesionAdmin.post(`${API}/auth/login`, { data: { correo: USUARIOS.admin, contraseña: CLAVE } });
+  }
+  const productos = await (await sesionAdmin.get(`${API}/admin/productos`)).json();
+  const producto = productos.find((pr) => pr.nombre === nombre);
+  if (!producto) throw new Error(`No está el producto «${nombre}» en la BD de capturas`);
+  const res = await sesionAdmin.put(`${API}/admin/productos/${producto.id ?? producto._id}`, { data: { disponible } });
+  if (!res.ok()) throw new Error(`No se pudo cambiar la disponibilidad de «${nombre}»: ${res.status()}`);
+};
+const abrirCuentaDeMesa = async (p, numero) => {
+  await p.goto(`${FRONT}/staff`);
+  await p.getByRole("button", { name: new RegExp(`^Mesa ${numero},`) }).click();
+  await p.getByRole("button", { name: /^Ver cuenta/ }).click();
+  await p.getByRole("heading", { name: new RegExp(`^Mesa ${numero}`), level: 2 }).waitFor();
+};
+// En vertical (< 1000 px) la cuenta va en su propia vista
+const verCuentaEnVertical = async (p) => {
+  const boton = p.getByRole("group", { name: "Ver" }).getByRole("button", { name: /^Cuenta/ });
+  if (await boton.isVisible()) await boton.click();
+};
+// Ronda en curso en la mesa 1 (una sola vez por ejecución): un latte grande con nota y un agua del menú
+const agregarRondaDeEjemplo = async (p) => {
+  await abrirCuentaDeMesa(p, 1);
+  if (await p.getByRole("button", { name: /^Enviar ronda/, includeHidden: true }).count()) return;
+  await p.getByRole("group", { name: "Categorías" }).getByRole("button", { name: "Bebidas" }).click();
+  await p.getByRole("button", { name: /^Latte frío artesanal/ }).click();
+  const latte = p.getByRole("dialog", { name: "Latte frío artesanal" });
+  await latte.getByRole("checkbox", { name: /Grande/ }).check();
+  await latte.getByRole("button", { name: "Sumar uno" }).click();
+  await latte.getByRole("textbox", { name: /Nota/ }).fill("Uno sin azúcar");
+  await latte.getByRole("button", { name: /^Agregar/ }).click();
+  await latte.waitFor({ state: "detached" });
+  await p.getByRole("button", { name: /^Limonada de hierbabuena/ }).click();
+  const limonada = p.getByRole("dialog", { name: "Limonada de hierbabuena" });
+  await limonada.getByRole("button", { name: /^Agregar/ }).click();
+  await limonada.waitFor({ state: "detached" });
 };
 
 // nombre → { usuario, preparar(page), completa }
@@ -371,6 +413,53 @@ const VISTAS = {
     await p.getByRole("dialog", { name: "Crear la cuenta" }).getByRole("button", { name: "Crear cuenta" }).click();
     await p.getByRole("dialog", { name: "Cuenta creada" }).waitFor();
   } },
+  // 1.7 · Toma de comanda (mesero): cuenta de la mesa 1 con el menú (un producto agotado), diálogo de
+  // modificadores, ronda en curso, confirmación de envío, cuenta pedida e ítem rechazado al enviar.
+  "staff-comanda": { usuario: "mesero", preparar: async (p) => {
+    await disponibilidad("Té helado de jazmín", false);
+    await abrirCuentaDeMesa(p, 1);
+    await p.getByRole("group", { name: "Categorías" }).getByRole("button", { name: "Bebidas" }).click();
+  } },
+  "staff-comanda-producto": { usuario: "mesero", preparar: async (p) => {
+    await abrirCuentaDeMesa(p, 1);
+    await p.getByRole("group", { name: "Categorías" }).getByRole("button", { name: "Desayunos" }).click();
+    await p.getByRole("button", { name: /^Desayuno clásico gourmet/ }).click();
+    const dialogo = p.getByRole("dialog", { name: "Desayuno clásico gourmet" });
+    await dialogo.getByRole("radio", { name: /Yema media/ }).check();
+    await dialogo.getByRole("checkbox").first().check();
+    await dialogo.getByRole("textbox", { name: /Nota/ }).fill("Tostadas sin mantequilla");
+  } },
+  "staff-comanda-ronda": { usuario: "mesero", preparar: async (p) => {
+    await agregarRondaDeEjemplo(p);
+    await verCuentaEnVertical(p);
+  } },
+  "staff-comanda-enviar": { usuario: "mesero", preparar: async (p) => {
+    await agregarRondaDeEjemplo(p);
+    await verCuentaEnVertical(p);
+    await p.getByRole("button", { name: /^Enviar ronda/ }).click();
+    await p.getByRole("dialog", { name: /^Enviar la ronda/ }).waitFor();
+  } },
+  "staff-comanda-pedida": { usuario: "mesero", preparar: async (p) => {
+    await abrirCuentaDeMesa(p, 3);
+    await verCuentaEnVertical(p);
+  } },
+  // El latte se agota con la ronda sin enviar: el envío se rechaza entero y el ítem queda marcado (D3)
+  "staff-comanda-no-disponible": { usuario: "mesero", preparar: async (p) => {
+    await agregarRondaDeEjemplo(p);
+    await disponibilidad("Latte frío artesanal", false);
+    await verCuentaEnVertical(p);
+    await p.getByRole("button", { name: /^Enviar ronda/ }).click();
+    await p.getByRole("dialog", { name: /^Enviar la ronda/ }).getByRole("button", { name: "Enviar" }).click();
+    await p.getByRole("alertdialog", { name: /No se envió la ronda/ }).getByRole("button", { name: "Entendido" }).click();
+    await disponibilidad("Latte frío artesanal", true);
+  } },
+  // Cancelar una cuenta sin rondas enviadas (mesa 6): motivo obligatorio (D4)
+  "staff-comanda-cancelar": { usuario: "mesero", preparar: async (p) => {
+    await abrirCuentaDeMesa(p, 6);
+    await verCuentaEnVertical(p);
+    await p.getByRole("button", { name: "Cancelar cuenta" }).click();
+    await p.getByRole("dialog", { name: "Cancelar la cuenta" }).waitFor();
+  } },
   // Login tras «Cambiar de usuario». Cierra la sesión del contexto: se vuelve a iniciar en cada ancho
   "staff-cambio-usuario": { usuario: "mesero", preparar: async (p) => {
     await p.context().request.post(`${API}/auth/login`, { data: { correo: USUARIOS.mesero, contraseña: CLAVE } });
@@ -475,6 +564,7 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
     }
   }
 }
+await sesionAdmin?.dispose();
 await navegador.close();
 detenerTodo();
 if (MEDIR_TACTIL) {

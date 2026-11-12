@@ -224,6 +224,58 @@ describe("Plano de mesas", () => {
     expect(within(panel).getByText("Esta mesa no es combinable (cámbialo en Admin › Salón)")).toBeInTheDocument();
   });
 
+  // 1.7 · Desde el panel de una mesa con cuenta se abre la toma de comanda y se vuelve al plano
+  it("«Ver cuenta / Tomar comanda» abre la cuenta de la mesa; «Volver al plano» regresa y recarga", async () => {
+    const respuestaBase = estado.apiRequest.getMockImplementation();
+    estado.apiRequest.mockImplementation((ruta, opciones = {}) => {
+      if (ruta === "/v1/staff/salon/cuentas/c1") {
+        return Promise.resolve({ ...cuenta(), rondas: [], subtotal: 0, ultimaRonda: 0, mesas: [{ id: "m1", numero: 1, zona: { id: "z1", nombre: "Interior" } }] });
+      }
+      if (ruta === "/v1/staff/salon/catalogo") return Promise.resolve({ categorias: [], productos: [] });
+      return respuestaBase(ruta, opciones);
+    });
+    pintar();
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 1\b/ }));
+    fireEvent.click(within(screen.getByRole("region", { name: "Mesa 1" })).getByRole("button", { name: "Ver cuenta / Tomar comanda" }));
+    expect(await screen.findByRole("heading", { name: "Mesa 1", level: 2 })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Plano de mesas" })).not.toBeInTheDocument();
+    const antes = llamadasA("/v1/staff/salon/mesas").length;
+    fireEvent.click(screen.getByRole("button", { name: "Volver al plano" }));
+    expect(await screen.findByRole("heading", { name: "Plano de mesas" })).toBeInTheDocument();
+    await waitFor(() => expect(llamadasA("/v1/staff/salon/mesas").length).toBeGreaterThan(antes));
+  });
+
+  it("mientras se ve la cuenta el plano no se refresca; al volver se recarga enseguida", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const respuestaBase = estado.apiRequest.getMockImplementation();
+    estado.apiRequest.mockImplementation((ruta, opciones = {}) => {
+      if (ruta === "/v1/staff/salon/cuentas/c1") return Promise.resolve({ ...cuenta(), rondas: [], subtotal: 0, mesas: [{ id: "m1", numero: 1, zona: { id: "z1", nombre: "Interior" } }] });
+      if (ruta === "/v1/staff/salon/catalogo") return Promise.resolve({ categorias: [], productos: [] });
+      return respuestaBase(ruta, opciones);
+    });
+    pintar();
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 1,/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Ver cuenta / Tomar comanda" }));
+    await screen.findByRole("button", { name: "Volver al plano" });
+    const antes = llamadasA("/v1/staff/salon/mesas").length;
+    await act(async () => { await vi.advanceTimersByTimeAsync(25_000); });
+    expect(llamadasA("/v1/staff/salon/mesas").length).toBe(antes);
+    fireEvent.click(screen.getByRole("button", { name: "Volver al plano" }));
+    await waitFor(() => expect(llamadasA("/v1/staff/salon/mesas").length).toBe(antes + 1));
+  });
+
+  it("el botón depende de cuenta:ver y dice «Ver cuenta» a quien no toma comandas; no sale en una mesa sin cuenta", async () => {
+    const { unmount } = pintar(["mesa:ver", "cuenta:ver"]);
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 1\b/ }));
+    expect(screen.getByRole("button", { name: "Ver cuenta" })).toBeInTheDocument();
+    fireEvent.click(tarjeta(2));
+    expect(screen.queryByRole("button", { name: /^Ver cuenta/ })).not.toBeInTheDocument();
+    unmount();
+    pintar(["mesa:ver", "mesa:operar"]);
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 1\b/ }));
+    expect(screen.queryByRole("button", { name: /^Ver cuenta/ })).not.toBeInTheDocument();
+  });
+
   it("un 409 muestra el mensaje del servidor y recarga el plano", async () => {
     pintar();
     fireEvent.click(await screen.findByRole("button", { name: /^Mesa 7\b/ }));

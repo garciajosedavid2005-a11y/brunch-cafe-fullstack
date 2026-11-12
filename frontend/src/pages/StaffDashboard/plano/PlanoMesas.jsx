@@ -4,6 +4,7 @@ import { formatearCOP } from "../../../utils/moneda";
 import { ESTADOS_MESA, datosEstado, formatearMinutos } from "./estadosMesa";
 import { usePlano, useSegundosDesde } from "./usePlano";
 import PanelMesa from "./PanelMesa";
+import TomaComanda from "../comanda/TomaComanda";
 import "./PlanoMesas.css";
 
 // 1.6 · Plano de mesas para tablet (PLAN_FASE_1 §1.6). Pestañas por zona, tarjetas con el estado en
@@ -87,7 +88,8 @@ function TarjetaMesa({ mesa, seleccionada, onElegir }) {
 }
 
 export default function PlanoMesas({ permisos = [] }) {
-  const { plano, error, actualizadoEn, cargando, recargar } = usePlano();
+  const [cuentaVista, setCuentaVista] = useState(null); // 1.7 · cuenta abierta en la toma de comanda
+  const { plano, error, actualizadoEn, cargando, recargar } = usePlano({ activo: !cuentaVista });
   const [zona, setZona] = useState("todas");
   const [elegida, setElegida] = useState(null);
 
@@ -105,6 +107,10 @@ export default function PlanoMesas({ permisos = [] }) {
     for (const m of visibles) c[m.estado] = (c[m.estado] || 0) + 1;
     return c;
   }, [visibles]);
+
+  if (cuentaVista) {
+    return <TomaComanda cuentaId={cuentaVista} permisos={permisos} onVolver={() => setCuentaVista(null)} />;
+  }
 
   return (
     <div className={`plano${mesaElegida ? " plano--con-panel" : ""}`}>
@@ -154,6 +160,7 @@ export default function PlanoMesas({ permisos = [] }) {
           permisos={permisos}
           onHecho={recargar}
           onCerrar={() => setElegida(null)}
+          onVerCuenta={setCuentaVista}
         />
       )}
     </div>
