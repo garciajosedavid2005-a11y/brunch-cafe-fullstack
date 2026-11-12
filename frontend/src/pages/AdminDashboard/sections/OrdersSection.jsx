@@ -95,7 +95,7 @@ export default function OrdersSection() {
                 <th>Pedido</th>
                 <th>Entrega</th>
                 <th>Total</th>
-                <th>Estado</th>
+                <th className="admin-col-estado">Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -125,7 +125,7 @@ export default function OrdersSection() {
                         <small className="admin-pedidos__pago">{pedido.metodoPago}</small>
                       </div>
                     </td>
-                    <td>
+                    <td className="admin-col-estado">
                       {/* SELECTOR DE ESTADO: solo los cambios permitidos */}
                       <EstadoSelector item={pedido} onCambiar={(codigo, motivo) => handleCambiarEstado(pedido.id, codigo, motivo)} />
                     </td>

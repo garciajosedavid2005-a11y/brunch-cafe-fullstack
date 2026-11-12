@@ -100,7 +100,7 @@ export default function ReservationsSection() {
                 <th>Reserva</th>
                 <th>Contacto</th>
                 <th>Fecha y hora</th>
-                <th>Estado</th>
+                <th className="admin-col-estado">Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -132,7 +132,7 @@ export default function ReservationsSection() {
                         </span>
                       </div>
                     </td>
-                    <td>
+                    <td className="admin-col-estado">
                       <EstadoSelector item={reserva} onCambiar={(codigo, motivo) => handleCambiarEstado(reserva.id, codigo, motivo)} />
                     </td>
                     <td>

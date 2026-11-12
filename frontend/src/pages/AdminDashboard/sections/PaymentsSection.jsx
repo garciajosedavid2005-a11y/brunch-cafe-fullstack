@@ -121,7 +121,7 @@ export default function PaymentsSection() {
                 <th>Método de Pago</th>
                 <th>Descripción</th>
                 <th>Pedidos Históricos</th>
-                <th>Estado</th>
+                <th className="admin-col-estado">Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -145,7 +145,7 @@ export default function PaymentsSection() {
                         {item.pedidosAsociados} pedidos
                       </span>
                     </td>
-                    <td>
+                    <td className="admin-col-estado">
                       <button
                         type="button"
                         onClick={() => handleToggleActivo(item)}

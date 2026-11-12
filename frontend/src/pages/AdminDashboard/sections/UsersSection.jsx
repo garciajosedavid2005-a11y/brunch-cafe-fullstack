@@ -255,7 +255,7 @@ export default function UsersSection() {
               <tr>
                 <th>Usuario</th>
                 <th>Rol</th>
-                <th>Estado</th>
+                <th className="admin-col-estado">Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -290,7 +290,7 @@ export default function UsersSection() {
                           </select>
                         )}
                       </td>
-                      <td>
+                      <td className="admin-col-estado">
                         <span className={`admin-badge ${usuario.activo ? "admin-badge--success" : "admin-badge--danger"}`}>
                           {usuario.activo ? "Activo" : "Inactivo"}
                         </span>

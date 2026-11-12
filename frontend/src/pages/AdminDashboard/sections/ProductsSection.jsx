@@ -250,7 +250,7 @@ export default function ProductsSection() {
               <tr>
                 <th>Plato / Producto</th>
                 <th>Precio</th>
-                <th>Disponible</th>
+                <th className="admin-col-estado">Disponible</th>
                 <th>Destacado</th>
                 <th>Acciones</th>
               </tr>
@@ -300,7 +300,7 @@ export default function ProductsSection() {
                     <td>
                       <span className="admin-table__amount">{formatCurrency(prod.precio)}</span>
                     </td>
-                    <td>
+                    <td className="admin-col-estado">
                       <button
                         type="button"
                         role="switch"

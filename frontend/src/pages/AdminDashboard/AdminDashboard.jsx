@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -33,6 +33,7 @@ import UsersSection from "./sections/UsersSection";
 import HorariosSection from "./sections/HorariosSection";
 import SalonSection from "./sections/SalonSection";
 import ProfileSection from "./sections/ProfileSection";
+import useAnchoAccionesFijas from "./hooks/useAnchoAccionesFijas";
 import "./AdminDashboard.css";
 
 const sections = [
@@ -56,6 +57,9 @@ export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
+  // 1.6b · Ancho de «Acciones» en cada tabla para fijar la columna de estado a su izquierda
+  const contenidoRef = useRef(null);
+  useAnchoAccionesFijas(contenidoRef);
 
   const handleLogout = async () => {
     try {
@@ -158,7 +162,7 @@ export default function AdminDashboard() {
         </aside>
 
         {/* ÁREA DE CONTENIDO */}
-        <section className="admin-dashboard__content" aria-live="polite">
+        <section ref={contenidoRef} className="admin-dashboard__content" aria-live="polite">
           {renderContent()}
         </section>
       </div>

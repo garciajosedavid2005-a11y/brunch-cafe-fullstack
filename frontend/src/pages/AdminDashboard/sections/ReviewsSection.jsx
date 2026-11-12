@@ -212,7 +212,7 @@ export default function ReviewsSection() {
               <tr>
                 <th>Cliente</th>
                 <th>Reseña</th>
-                <th>Estado</th>
+                <th className="admin-col-estado">Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -263,7 +263,7 @@ export default function ReviewsSection() {
                         "{item.comentario}"
                       </div>
                     </td>
-                    <td>
+                    <td className="admin-col-estado">
                       {item.visible ? (
                         <span className="admin-badge admin-badge--success">Publicado</span>
                       ) : (

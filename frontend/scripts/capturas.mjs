@@ -39,6 +39,9 @@ const SOLO = process.env.SOLO ? process.env.SOLO.split(",") : null;
 // 1.5c · MEDIR_TACTIL=1: además de la captura, mide los botones visibles y lista los de < 44 px de alto
 const MEDIR_TACTIL = process.env.MEDIR_TACTIL === "1";
 const pequenos = [];
+// 1.6b · MEDIR_SOLAPES=1: en las tablas con acciones fijas, lista las columnas que quedan debajo de ellas
+const MEDIR_SOLAPES = process.env.MEDIR_SOLAPES === "1";
+const solapes = [];
 const SALIDA = join(process.cwd(), "capturas", ETIQUETA);
 
 const SOLO_PUBLICAS = SOLO && SOLO.every((v) => ["inicio", "menu", "login", "registro", "nosotros", "nosotros-ubicacion", "pie", "comentarios"].includes(v));
@@ -421,6 +424,39 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
         for (const m of medidas) pequenos.push({ vista: nombre, tamano: etiqueta, ...m });
         console.log(`  ${medidas.length ? `⚠ ${medidas.length} botón(es) < 44 px` : "✓ todos los botones ≥ 44 px"} (${nombre} ${etiqueta})`);
       }
+      if (MEDIR_SOLAPES) {
+        // 1.6b · Columnas que la columna fija de acciones tapa sin desplazar la tabla (por fila, en px)
+        const tapadas = await page.evaluate(() => [...document.querySelectorAll(".admin-table--acciones-fijas")].flatMap((tabla) => {
+          const cabeceras = [...tabla.querySelectorAll("thead th")].map((th) => th.textContent.trim());
+          return [...tabla.querySelectorAll("tbody tr")].slice(0, 6).flatMap((fila) => {
+            const celdas = [...fila.children];
+            const fija = celdas.at(-1);
+            if (!fija || fija.hasAttribute("colspan")) return [];
+            // Las columnas fijas (Acciones y, desde 1.6b, la de estado) forman un bloque a la derecha:
+            // se mide qué columnas no fijas quedan debajo del bloque y si alguna fija queda bajo otra
+            const fijas = celdas.filter((c) => getComputedStyle(c).position === "sticky");
+            const solape = (a, b) => {
+              const [ra, rb] = [a.getBoundingClientRect(), b.getBoundingClientRect()];
+              return Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);
+            };
+            const bajoBloque = celdas
+              .map((celda, i) => ({ celda, columna: cabeceras[i] || `#${i + 1}` }))
+              .filter(({ celda }) => !fijas.includes(celda))
+              .map(({ celda, columna }) => ({ columna, tapado: Math.round(Math.max(...fijas.map((f) => solape(celda, f)))) }));
+            const entreFijas = fijas.slice(0, -1).map((celda) => ({
+              columna: `${cabeceras[celdas.indexOf(celda)]} (bajo Acciones)`,
+              tapado: Math.round(celda.getBoundingClientRect().right - fija.getBoundingClientRect().left),
+            }));
+            return [...bajoBloque, ...entreFijas].filter((c) => c.tapado > 1);
+          });
+        }));
+        const anchos = await page.evaluate(() => [...document.querySelectorAll(".admin-table--acciones-fijas thead th:last-child")]
+          .map((th) => Math.round(th.getBoundingClientRect().width)));
+        console.log(`  ancho de «Acciones»: ${anchos.join(", ")} px (${nombre} ${etiqueta})`);
+        const unicas = [...new Map(tapadas.map((t) => [t.columna, t])).values()];
+        for (const t of unicas) solapes.push({ vista: nombre, tamano: etiqueta, ...t });
+        console.log(`  ${unicas.length ? `⚠ tapa: ${unicas.map((t) => `${t.columna} (${t.tapado} px)`).join(", ")}` : "✓ la columna fija no tapa ninguna"} (${nombre} ${etiqueta})`);
+      }
       const archivo = join(SALIDA, `${nombre}-${etiqueta}.png`);
       await page.screenshot({ path: archivo, fullPage: completa });
       console.log(`✓ ${archivo}${consola.length ? `  (errores de consola: ${consola.join(" | ").slice(0, 200)})` : ""}`);
@@ -439,5 +475,11 @@ if (MEDIR_TACTIL) {
   await writeFile(join(SALIDA, "medicion-tactil.json"), JSON.stringify(pequenos, null, 2));
   console.log(`
 Medición táctil: ${pequenos.length} botón(es) < 44 px → ${join(SALIDA, "medicion-tactil.json")}`);
+}
+if (MEDIR_SOLAPES) {
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(join(SALIDA, "medicion-solapes.json"), JSON.stringify(solapes, null, 2));
+  console.log(`
+Medición de solapes: ${solapes.length} columna(s) tapada(s) → ${join(SALIDA, "medicion-solapes.json")}`);
 }
 process.exitCode = fallidas ? 1 : 0;

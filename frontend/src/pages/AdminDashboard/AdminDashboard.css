@@ -2806,16 +2806,32 @@
   overflow-wrap: anywhere;
 }
 
-.admin-table--acciones-fijas tbody td:last-child:not([colspan]) {
+.admin-table--acciones-fijas tbody td:last-child:not([colspan]),
+.admin-table--acciones-fijas tbody td.admin-col-estado {
   background-color: #fefefe;
 }
 
-.admin-table--acciones-fijas tbody tr:nth-child(even) td:last-child:not([colspan]) {
+.admin-table--acciones-fijas tbody tr:nth-child(even) td:last-child:not([colspan]),
+.admin-table--acciones-fijas tbody tr:nth-child(even) td.admin-col-estado {
   background-color: #f1f1f1;
 }
 
-.admin-table--acciones-fijas tbody tr:hover td:last-child:not([colspan]) {
+.admin-table--acciones-fijas tbody tr:hover td:last-child:not([colspan]),
+.admin-table--acciones-fijas tbody tr:hover td.admin-col-estado {
   background-color: #fdf6f2;
+}
+
+/* 1.6b · La columna de estado también queda fija, justo a la izquierda de «Acciones»: así la columna
+   fija nunca la tapa (a 1024 y 768 px tapaba Estado en Pedidos, Reservas, Métodos de pago, Usuarios y
+   Disponible en Productos; MEDIR_SOLAPES=1 npm run capturas). --ancho-acciones lo mide
+   hooks/useAnchoAccionesFijas. La sombra pasa a esta columna; Acciones conserva la línea fina. */
+.admin-table--acciones-fijas th.admin-col-estado,
+.admin-table--acciones-fijas td.admin-col-estado {
+  position: sticky;
+  right: calc(var(--ancho-acciones, 0px) - 1px);
+  z-index: 1;
+  white-space: nowrap;
+  box-shadow: inset 1px 0 0 #e6d3cc, -8px 0 8px -8px rgba(60, 20, 20, 0.18);
 }
 
 /* 1.5c · Objetivo táctil de 44 px para todos los botones con texto del admin (medían 27–43,6 px;

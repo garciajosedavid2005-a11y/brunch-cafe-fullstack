@@ -90,6 +90,32 @@ describe("Columna de acciones fija (sticky) en las tablas del admin", () => {
     expect(fija[1]).toMatch(/td:last-child:not\(\[colspan\]\)/);
     expect(css).toMatch(/\.admin-table--acciones-fijas tbody tr:nth-child\(even\) td:last-child[^{]*\{[^}]*background-color/);
   });
+
+  // 1.6b · La columna fija tapaba la de estado a 1024 y 768 px (medido: MEDIR_SOLAPES=1 npm run capturas).
+  // La columna de estado (Estado; en Productos, Disponible) también queda fija, justo a la izquierda de Acciones.
+  it("toda columna de estado de una tabla con acciones fijas se marca con admin-col-estado (cabecera y celdas)", () => {
+    let tablasConEstado = 0;
+    for (const archivo of archivos) {
+      const fuente = readFileSync(join(SECCIONES, archivo), "utf8");
+      if (!fuente.includes("admin-table--acciones-fijas")) continue;
+      expect(fuente, `${archivo}: cabecera de estado sin marcar`).not.toMatch(/<th>(Estado|Disponible)<\/th>/);
+      const cabeceras = (fuente.match(/<th className="admin-col-estado">(Estado|Disponible)<\/th>/g) || []).length;
+      tablasConEstado += cabeceras;
+      if (cabeceras) {
+        const celdas = (fuente.match(/<td className="admin-col-estado"/g) || []).length;
+        expect(celdas, `${archivo}: celdas de estado sin marcar`).toBeGreaterThanOrEqual(cabeceras);
+      }
+    }
+    expect(tablasConEstado).toBeGreaterThanOrEqual(9);
+  });
+
+  it("el CSS fija la columna de estado a la izquierda de Acciones (--ancho-acciones), con fondo opaco", () => {
+    const regla = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([sel, , cuerpo]) =>
+      sel.includes(".admin-col-estado") && /position\s*:\s*sticky/.test(cuerpo));
+    expect(regla, "falta la regla sticky de .admin-col-estado").toBeTruthy();
+    expect(regla[2]).toMatch(/right\s*:\s*calc\(var\(--ancho-acciones/);
+    expect(css).toMatch(/\.admin-table--acciones-fijas tbody tr:nth-child\(even\) td\.admin-col-estado[^{]*\{[^}]*background-color/);
+  });
 });
 
 // 1.5c · Botones con texto del admin: ≥ 44 px de alto (medían 27–43,6 px; medido con Playwright,

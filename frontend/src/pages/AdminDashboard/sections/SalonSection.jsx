@@ -143,7 +143,7 @@ export default function SalonSection() {
               <tr>
                 <th>Zona</th>
                 <th>Mesas</th>
-                <th>Estado</th>
+                <th className="admin-col-estado">Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -156,7 +156,7 @@ export default function SalonSection() {
                     <span className="admin-salon__detalle">Orden {zona.orden}</span>
                   </td>
                   <td>{zona.mesas}</td>
-                  <td>
+                  <td className="admin-col-estado">
                     <span className={`admin-badge ${zona.activa ? "admin-badge--success" : "admin-badge--neutral"}`}>
                       {zona.activa ? "Activa" : "Inactiva"}
                     </span>
@@ -225,7 +225,7 @@ export default function SalonSection() {
               <tr>
                 <th>Mesa</th>
                 <th>Zona</th>
-                <th>Estado</th>
+                <th className="admin-col-estado">Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -246,7 +246,7 @@ export default function SalonSection() {
                       {mesa.zona.nombre}
                       <span className="admin-salon__detalle">{mesa.capacidad === 1 ? "1 persona" : `${mesa.capacidad} personas`}</span>
                     </td>
-                    <td>
+                    <td className="admin-col-estado">
                       <span className={`admin-badge ${estado.clase}`}>{estado.texto}</span>
                       {!mesa.activa && <span className="admin-salon__detalle">Inactiva</span>}
                     </td>

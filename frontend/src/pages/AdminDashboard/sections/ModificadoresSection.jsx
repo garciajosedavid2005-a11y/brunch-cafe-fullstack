@@ -194,7 +194,7 @@ export default function ModificadoresSection() {
               <tr>
                 <th>Grupo</th>
                 <th>Opciones</th>
-                <th>Estado</th>
+                <th className="admin-col-estado">Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -217,7 +217,7 @@ export default function ModificadoresSection() {
                       ))}
                     </ul>
                   </td>
-                  <td>
+                  <td className="admin-col-estado">
                     <span className={`admin-badge ${g.activo ? "admin-badge--success" : "admin-badge--neutral"}`}>
                       {g.activo ? "Activo" : "Inactivo"}
                     </span>
