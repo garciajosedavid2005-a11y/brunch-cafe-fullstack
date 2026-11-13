@@ -10,6 +10,7 @@ import { logger } from '../compartido/logger.js'
 import { verificarToken } from './jwt.js'
 import { obtenerSesion, invalidarSesionUsuario } from './sesiones.js'
 import { AppError } from '../compartido/errors.js'
+import { publicarRevocacion } from '../tiempoReal/bus.js'
 import { solicitarRecuperacion as solicitar, restablecerContrasena as restablecer } from './recuperacion.service.js'
 
 // Comparación sin distinguir mayúsculas: las cuentas antiguas pueden tener
@@ -110,6 +111,8 @@ const revocarSesionDePersonal = async (token) => {
         { $inc: { tokenVersion: 1 } },
     )
     invalidarSesionUsuario(payload.id)
+    // Sus pantallas en vivo (SSE) se cierran al momento, sin esperar al latido de 25 s
+    publicarRevocacion(payload.id)
 }
 
 export const logout = async (req, res) => {

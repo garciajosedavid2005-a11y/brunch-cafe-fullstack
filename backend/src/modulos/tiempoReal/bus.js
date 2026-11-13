@@ -37,5 +37,36 @@ export const suscribir = (canales, alRecibir) => {
     return () => suscriptores.delete(suscriptor)
 }
 
+// Aviso interno de sesión revocada (logout o «Cambiar de usuario»): no es un canal que se pueda pedir por
+// /staff/eventos; cada flujo abierto de ese usuario vuelve a comprobar su sesión al momento, sin esperar
+// al latido. Con varios procesos viajaría por el mismo bus compartido que los avisos
+const revocaciones = new Map() // usuarioId → Set de funciones
+
+/** Avisa a los flujos abiertos de ese usuario de que su sesión cambió. Nunca lanza. */
+export const publicarRevocacion = (usuarioId) => {
+    for (const alRevocar of [...(revocaciones.get(String(usuarioId)) || [])]) {
+        try {
+            alRevocar()
+        } catch {
+            // Un flujo roto no corta el aviso a los demás
+        }
+    }
+}
+
+/** Escucha las revocaciones de ese usuario; devuelve la función para darse de baja. */
+export const alRevocarSesion = (usuarioId, alRevocar) => {
+    const id = String(usuarioId)
+    if (!revocaciones.has(id)) revocaciones.set(id, new Set())
+    revocaciones.get(id).add(alRevocar)
+    return () => {
+        const funciones = revocaciones.get(id)
+        funciones?.delete(alRevocar)
+        if (funciones?.size === 0) revocaciones.delete(id)
+    }
+}
+
 /** Solo para tests y diagnóstico. */
 export const totalSuscriptores = () => suscriptores.size
+
+/** Solo para tests y diagnóstico: flujos que escuchan revocaciones. */
+export const totalRevocaciones = () => [...revocaciones.values()].reduce((n, funciones) => n + funciones.size, 0)

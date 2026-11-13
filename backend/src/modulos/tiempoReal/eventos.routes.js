@@ -10,12 +10,15 @@ import { tienePermiso } from '../identidad/permisos.js'
 import { obtenerSesion } from '../identidad/sesiones.js'
 import { duracionSesionMs } from '../identidad/duracionSesion.js'
 import { FORMATO_CODIGO } from '../catalogo/estacion.model.js'
-import { suscribir } from './bus.js'
+import { suscribir, alRevocarSesion } from './bus.js'
 
 export const LATIDO_MS = 25_000
 let latidoMs = LATIDO_MS
 /** Solo para tests: acorta el latido (y con él la comprobación de la sesión). */
 export const configurarLatido = (ms = LATIDO_MS) => { latidoMs = ms }
+// Solo para tests: se ejecuta tras leer la sesión y antes de decidir (para provocar la carrera con un logout)
+let trasLeerSesion = null
+export const configurarComprobacion = (fn = null) => { trasLeerSesion = fn }
 export const MAX_CONEXIONES_POR_USUARIO = 5
 export const MAX_CANALES = 10
 // El código de estación sigue el formato del modelo (si cambia allí, cambia aquí)
@@ -54,6 +57,7 @@ export const MAX_BUFFER_BYTES = 1024 * 1024
  */
 const flujoVigente = async (id, { tv, iat }, canales) => {
     const sesion = await obtenerSesion(id)
+    if (trasLeerSesion) await trasLeerSesion()
     if (!sesion?.activo || sesion.tokenVersion !== tv || Date.now() >= iat * 1000 + duracionSesionMs(sesion)) return false
     try {
         validarCanales(canales.join(','), sesion)
@@ -86,11 +90,13 @@ router.get('/eventos', async (req, res) => {
     let cerrado = false
     let latido = null
     let baja = () => {}
+    let bajaRevocacion = () => {}
     const cerrar = () => {
         if (cerrado) return
         cerrado = true
         clearInterval(latido)
         baja()
+        bajaRevocacion()
         const restantes = (conexiones.get(sesion.id) || 1) - 1
         if (restantes > 0) conexiones.set(sesion.id, restantes)
         else conexiones.delete(sesion.id)
@@ -119,14 +125,20 @@ router.get('/eventos', async (req, res) => {
     }
 
     enviar('conectado', { canales })
+    if (cerrado) return // la escritura falló: no se registra nada que luego nadie liberaría
     // Los avisos van como mensaje sin nombre (el tipo dentro de los datos): el navegador los recibe todos
     // con onmessage. Solo «conectado» y «sesion_cerrada» llevan nombre propio
     baja = suscribir(canales, (aviso) => escribir(`data: ${JSON.stringify(aviso)}\n\n`))
 
     let comprobando = false // si la BD tarda más que el latido, no se solapan comprobaciones
-    latido = setInterval(async () => {
-        if (res.destroyed || res.writableEnded) return cerrar()
-        if (comprobando) return undefined
+    let pendiente = false // llegó una revocación durante una comprobación: se repite al terminar
+    /** Comprueba la sesión y los permisos de ahora; si ya no valen, avisa y cierra el flujo. */
+    const comprobarSesion = async () => {
+        if (cerrado) return false
+        if (comprobando) {
+            pendiente = true
+            return false
+        }
         comprobando = true
         let vigente
         try {
@@ -136,14 +148,35 @@ router.get('/eventos', async (req, res) => {
         } finally {
             comprobando = false
         }
-        if (cerrado) return undefined
+        if (cerrado) return false
         if (!vigente) {
             enviar('sesion_cerrada', { motivo: 'La sesión ya no es válida.' })
             cerrar()
             res.end()
-            return undefined
+            return false
         }
-        escribir(': latido\n\n')
+        if (pendiente) {
+            // La lectura pudo ser anterior a la revocación: se vuelve a comprobar
+            pendiente = false
+            return comprobarSesion()
+        }
+        return true
+    }
+    // Nunca deja una promesa rechazada sin atender (tumbaría el proceso): ante un fallo, se corta el flujo
+    const comprobarSinFallar = () => comprobarSesion().catch(() => {
+        cerrar()
+        res.destroy()
+        return false
+    })
+    // Logout o «Cambiar de usuario» (2.4b): se comprueba al momento, sin esperar al latido
+    bajaRevocacion = alRevocarSesion(sesion.id, () => { comprobarSinFallar() })
+    // Un logout publicado entre la autenticación y este registro no llegó: se comprueba una vez ahora
+    comprobarSinFallar()
+
+    latido = setInterval(async () => {
+        if (res.destroyed || res.writableEnded) return cerrar()
+        if (comprobando) return undefined
+        if (await comprobarSinFallar()) escribir(': latido\n\n')
         return undefined
     }, latidoMs)
 })

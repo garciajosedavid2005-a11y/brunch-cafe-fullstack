@@ -17,8 +17,8 @@ import Rol from '../src/modulos/identidad/rol.model.js'
 import { PERMISOS_SALON, PERMISOS_COCINA } from '../src/modulos/identidad/permisos.js'
 import { abrirCuenta, agregarItem, enviarRonda } from '../src/modulos/salon/cuentas.service.js'
 import { cambiarEstadoItem, todoListo, marcarPedidoEstacion } from '../src/modulos/cocina/cocina.service.js'
-import { publicar, suscribir, totalSuscriptores } from '../src/modulos/tiempoReal/bus.js'
-import { validarCanales, configurarLatido, MAX_CONEXIONES_POR_USUARIO } from '../src/modulos/tiempoReal/eventos.routes.js'
+import { publicar, suscribir, totalSuscriptores, alRevocarSesion, totalRevocaciones } from '../src/modulos/tiempoReal/bus.js'
+import { validarCanales, configurarLatido, configurarComprobacion, MAX_CONEXIONES_POR_USUARIO } from '../src/modulos/tiempoReal/eventos.routes.js'
 import { limpiarCacheSesiones } from '../src/modulos/identidad/sesiones.js'
 
 const { ObjectId } = mongoose.Types
@@ -195,6 +195,7 @@ describe('Flujo SSE por HTTP (2.4)', () => {
     })
     afterEach(async () => {
         configurarLatido()
+        configurarComprobacion()
         servidor.closeAllConnections?.()
         await new Promise((ok) => servidor.close(ok))
     })
@@ -307,6 +308,81 @@ describe('Flujo SSE por HTTP (2.4)', () => {
         // y el hueco queda libre: con la sesión nueva se puede volver a abrir
         const { cookie: nueva } = await cookieDe('cocina')
         expect((await abrir('estacion:cocina', nueva)).estado).toBe(200)
+    })
+
+    it('al cerrar sesión o «Cambiar de usuario», sus flujos se cierran al momento, sin esperar al latido; los de otro usuario siguen', async () => {
+        // Latido normal (25 s): si el cierre dependiera de él, el test no recibiría «sesion_cerrada» a tiempo
+        const { usuario, cookie } = await cookieDe('cocina')
+        const { usuario: otro, cookie: otraCookie } = await cookieDe('cocina')
+        const revocacionesAntes = totalRevocaciones()
+        const flujo = await abrir('estacion:cocina', cookie)
+        const segundo = await abrir('estacion:barra', cookie) // otra pantalla del mismo usuario
+        const ajeno = await abrir('estacion:cocina', otraCookie)
+        await Promise.all([flujo, segundo, ajeno].map((f) => f.esperar('event: conectado')))
+        const antes = totalSuscriptores()
+        const avisosAlOtro = []
+        const bajaEspia = alRevocarSesion(otro._id, () => avisosAlOtro.push(1))
+        const avisosAlPropio = []
+        const bajaPropio = alRevocarSesion(usuario._id, () => avisosAlPropio.push(1))
+
+        const res = await api().post('/api/v1/auth/logout').set('Cookie', cookie)
+        expect(res.status).toBe(200)
+
+        await flujo.esperar('event: sesion_cerrada', 1500)
+        await segundo.esperar('event: sesion_cerrada', 1500)
+        await Promise.all([flujo.fin, segundo.fin])
+        expect(totalSuscriptores()).toBe(antes - 2)
+        // La revocación solo llega a ese usuario: al otro cocinero no se le avisa y sigue en vivo
+        expect(avisosAlPropio).toHaveLength(1)
+        expect(avisosAlOtro).toHaveLength(0)
+        publicar(['estacion:cocina'], { tipo: 'item_estado', ids: {} })
+        await ajeno.esperar('"tipo":"item_estado"')
+        bajaEspia()
+        bajaPropio()
+        ajeno.cerrar()
+        await new Promise((ok) => setTimeout(ok, 100))
+        expect(totalRevocaciones()).toBe(revocacionesAntes) // ningún flujo cerrado deja su escucha colgada
+    })
+
+    it('una revocación que llega mientras se comprueba la sesión no se pierde (revisor-backend)', async () => {
+        configurarLatido(1000)
+        const { cookie } = await cookieDe('cocina')
+        // El primer latido lee la sesión de antes y se queda retenido; el logout llega mientras tanto
+        let soltar
+        const retenida = new Promise((ok) => { soltar = ok })
+        let avisarRetenida
+        const enCurso = new Promise((ok) => { avisarRetenida = ok })
+        let primera = true
+        configurarComprobacion(async () => {
+            if (!primera) return
+            primera = false
+            avisarRetenida()
+            await retenida
+        })
+        const flujo = await abrir('estacion:cocina', cookie)
+        await flujo.esperar('event: conectado')
+        await enCurso
+        await api().post('/api/v1/auth/logout').set('Cookie', cookie)
+        soltar()
+        // Sin repetir la comprobación, el flujo seguiría abierto hasta el siguiente latido (1 s después)
+        await flujo.esperar('event: sesion_cerrada', 500)
+    })
+
+    it('un logout que no revoca nada (sin cookie, o un cliente) no avisa a nadie', async () => {
+        const { usuario, cookie } = await cookieDe('cocina')
+        const { usuario: cliente, cookie: cookieCliente } = await cookieDe('cliente')
+        const avisos = []
+        const bajas = [usuario, cliente].map((u) => alRevocarSesion(u._id, () => avisos.push(String(u._id))))
+        const flujo = await abrir('estacion:cocina', cookie)
+        await flujo.esperar('event: conectado')
+        await api().post('/api/v1/auth/logout')
+        await api().post('/api/v1/auth/logout').set('Cookie', cookieCliente)
+        expect(avisos).toEqual([])
+        publicar(['estacion:cocina'], { tipo: 'item_estado', ids: {} })
+        const texto = await flujo.esperar('"tipo":"item_estado"')
+        expect(texto).not.toContain('sesion_cerrada')
+        for (const baja of bajas) baja()
+        flujo.cerrar()
     })
 
     it('si el rol pierde el permiso del canal con el flujo abierto, se cierra en el siguiente latido (security-reviewer)', async () => {
