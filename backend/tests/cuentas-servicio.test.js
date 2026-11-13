@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import mongoose from 'mongoose'
 import { categoriaDePrueba } from './helpers/datos.js'
 import Zona from '../src/modulos/salon/zona.model.js'
@@ -720,6 +720,25 @@ describe('Verificador de consistencia del salón', () => {
         await Cuenta.updateOne({ _id: cuenta.id }, { $set: { cerradaEn: null } })
         const { problemas } = await verificarConsistenciaSalon({ desde: new Date(0) })
         expect(problemas).toContainEqual(expect.objectContaining({ codigo: 'CUENTA_INVALIDA', id: cuenta.id }))
+        // El invariante sale del hook de validate() y de problemasDeCuenta: se informa una sola vez
+        const partes = problemas.find((p) => p.codigo === 'CUENTA_INVALIDA' && p.id === cuenta.id).detalle.split('; ')
+        expect(partes.filter((m) => m === 'Una cuenta cerrada registra cuándo se cerró')).toHaveLength(1)
+        expect(new Set(partes).size).toBe(partes.length)
+    })
+
+    it('valida con validate() de Mongoose, sin el validateSync obsoleto, y sigue viendo los errores del esquema', async () => {
+        const cuenta = await abrir()
+        // Error de campo (enum), no de invariante: lo da la validación del esquema
+        await Cuenta.collection.updateOne({ _id: new ObjectId(cuenta.id) }, { $set: { estado: 'inventado' } })
+        const avisos = vi.spyOn(process, 'emitWarning')
+        try {
+            const { problemas } = await verificarConsistenciaSalon({ desde: new Date(0) })
+            const problema = problemas.find((p) => p.codigo === 'CUENTA_INVALIDA' && p.id === cuenta.id)
+            expect(problema?.detalle).toMatch(/inventado/)
+            expect(avisos.mock.calls.filter(([mensaje]) => String(mensaje).includes('validateSync'))).toEqual([])
+        } finally {
+            avisos.mockRestore()
+        }
     })
 
     it('detecta mesas y cuentas que no se apuntan entre sí y ítems con el subtotal alterado', async () => {

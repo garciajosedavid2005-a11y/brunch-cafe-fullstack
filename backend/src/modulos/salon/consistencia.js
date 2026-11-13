@@ -7,8 +7,20 @@ import { totalesCuenta } from './totales.js'
 // 1.4 · Verificador de consistencia del salón (solo lectura; `npm run verificar:salon`). Busca lo que
 // el servicio nunca debería dejar: montos que no cuadran con los ítems, mesas y cuentas que no se
 // apuntan entre sí y rondas que rompen sus invariantes. Revisa todas las cuentas abiertas y las
-// cerradas desde `desde` (por defecto, las últimas 48 h); ambas ramas usan índice. Solo devuelve ids y montos.
+// cerradas desde `desde` (por defecto, las últimas 48 h); ambas ramas usan índice. Devuelve ids, montos
+// y los mensajes de validación (que pueden citar el valor guardado: es una herramienta del admin).
 const HORAS_POR_DEFECTO = 48
+
+// Mensajes de la validación del esquema de un documento; un error que no sea de validación se propaga
+const erroresDeValidacion = async (doc) => {
+    try {
+        await doc.validate()
+        return []
+    } catch (error) {
+        if (error?.name !== 'ValidationError') throw error
+        return Object.values(error.errors).map((e) => e.message)
+    }
+}
 
 export const verificarConsistenciaSalon = async ({ desde = new Date(Date.now() - HORAS_POR_DEFECTO * 3600_000) } = {}) => {
     const problemas = []
@@ -50,9 +62,12 @@ export const verificarConsistenciaSalon = async ({ desde = new Date(Date.now() -
         if ((enviadas.length ? Math.max(...enviadas) : 0) !== cuenta.ultimaRonda) {
             anotar('RONDAS_INCONSISTENTES', 'cuenta', cuenta._id, `ultimaRonda ${cuenta.ultimaRonda}, enviadas [${enviadas.join(', ')}]`)
         }
-        // validateSync no ejecuta pre('validate'): los invariantes entre campos se comprueban aparte
+        // validate() (validateSync está obsoleto desde Mongoose 9 y desaparece en el 10) también ejecuta
+        // pre('validate'); los invariantes se comprueban además aparte y los mensajes repetidos se unen.
+        // Si un campo rompe a la vez un invariante y su regla del esquema, el hook lo invalida antes y
+        // solo se informa el invariante (la cuenta sale igual como CUENTA_INVALIDA)
         const mensajes = [
-            ...Object.values(Cuenta.hydrate(cuenta).validateSync()?.errors || {}).map((e) => e.message),
+            ...(await erroresDeValidacion(Cuenta.hydrate(cuenta))),
             ...problemasDeCuenta(cuenta).map((p) => p.mensaje),
         ]
         if (mensajes.length) anotar('CUENTA_INVALIDA', 'cuenta', cuenta._id, [...new Set(mensajes)].join('; '))
