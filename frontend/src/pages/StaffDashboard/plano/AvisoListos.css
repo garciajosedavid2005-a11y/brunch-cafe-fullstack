@@ -1,0 +1,50 @@
+/* 2.6 · Franja «Listo para servir» de /staff: el verde de «listo» de la cuenta (texto e icono, no solo
+   color) y botones de 44 px por mesa */
+.aviso-listos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin: 0; /* el hueco lo pone el layout de /staff */
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #b7dcc2;
+  border-left: 6px solid #1d5b2e;
+  border-radius: 10px;
+  background: #e6f4ea;
+  color: #1d5b2e;
+}
+
+.aviso-listos__titulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+}
+
+.aviso-listos__mesas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aviso-listos__mesa {
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  background: #1d5b2e;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.aviso-listos__mesa:hover { background: #164623; }
+
+.aviso-listos__mesa:focus-visible {
+  outline: 3px solid #890620;
+  outline-offset: 2px;
+}

@@ -22,6 +22,7 @@ vi.mock("../../services/api", () => ({
 }));
 
 import StaffDashboard from "./StaffDashboard";
+import { DialogoProvider } from "../../context/DialogoContext";
 
 describe("Panel de mesero", () => {
   beforeEach(() => {
@@ -227,5 +228,42 @@ describe("Panel de mesero", () => {
     render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
     fireEvent.click(screen.getByRole("button", { name: "Cambiar de usuario" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo conectar con el servidor");
+  });
+  it("2.6 · el aviso «Listo para servir» abre la cuenta de la mesa desde cualquier pestaña; el sonido empieza apagado", async () => {
+    globalThis.AudioContext = class { state = "suspended"; resume() { return Promise.resolve(); } close() {} };
+    localStorage.removeItem("staff.sonido");
+    state.user = { id: "u1", nombre: "Ana", role: "mesero", roleLabel: "Mesero", permisos: ["mesa:ver", "cuenta:ver", "item:servir"] };
+    const cuenta = { id: "c1", codigo: "C-000001", estado: "abierta", comensales: 2, mesero: { id: "u1", nombre: "Ana P." },
+      abiertaEn: "2026-11-10T12:00:00Z", minutosOcupada: 5, total: 9000, pendiente: 0, mesas: [{ id: "m1", numero: 1 }], version: 1, listosParaServir: 1 };
+    state.apiRequest.mockImplementation((path) => {
+      if (path === "/v1/staff/salon/mesas") {
+        return Promise.resolve({ actualizadoEn: "2026-11-10T12:05:00Z", zonas: [{ id: "z1", nombre: "Interior", orden: 1 }],
+          mesas: [{ id: "m1", numero: 1, nombre: "", zona: { id: "z1", nombre: "Interior" }, capacidad: 4, estado: "ocupada", combinable: true, posicion: null, cuenta }] });
+      }
+      if (path === "/v1/staff/salon/cuentas/c1") {
+        return Promise.resolve({ ...cuenta, mesero: { id: "u1", nombre: "Ana P." }, subtotal: 9000, ultimaRonda: 1, historial: [],
+          mesas: [{ id: "m1", numero: 1, nombre: "", zona: { id: "z1", nombre: "Interior" } }],
+          rondas: [{ id: "r1", numeroRonda: 1, estado: "enviada", enviadaEn: "2026-11-10T12:01:00Z", subtotal: 9000, items: [
+            { id: "i1", productoId: "p1", nombre: "Latte", precioBase: 9000, modificadores: [], cantidad: 1, nota: "", precioUnitario: 9000,
+              subtotal: 9000, estado: "listo", anulacion: null, iniciadoEn: "2026-11-10T12:02:00Z", listoEn: "2026-11-10T12:04:00Z", servidoEn: null },
+          ] }] });
+      }
+      return Promise.reject(new Error(`Ruta inesperada: ${path}`));
+    });
+    try {
+      render(<MemoryRouter><DialogoProvider><StaffDashboard /></DialogoProvider></MemoryRouter>);
+      expect(screen.getByRole("button", { name: "Sonido" })).toHaveAttribute("aria-pressed", "false");
+      const navigation = screen.getByRole("navigation", { name: /secciones del panel de personal/i });
+      fireEvent.click(within(navigation).getByRole("button", { name: "Cuentas" }));
+      const aviso = await screen.findByRole("status", { name: "Listo para servir" });
+      fireEvent.click(within(aviso).getByRole("button", { name: "Mesa 1 (1)" }));
+      expect(await screen.findByRole("heading", { name: "Mesa 1" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Servir 1 × Latte" })).toBeInTheDocument();
+      // Volver a «Mesas» desde la navegación muestra el plano, no la cuenta
+      fireEvent.click(within(navigation).getByRole("button", { name: "Mesas" }));
+      expect(await screen.findByRole("heading", { name: "Plano de mesas" })).toBeInTheDocument();
+    } finally {
+      delete globalThis.AudioContext;
+    }
   });
 });

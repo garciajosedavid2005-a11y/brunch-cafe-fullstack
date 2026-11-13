@@ -326,9 +326,11 @@
 
 /* ── 1.6 · Layout de tablet de /staff (1024×768 horizontal, 768×1024 vertical) ──
    Sin navbar ni pie del sitio; cabecera compacta, pestañas de ≥ 48 px y contenido a todo el ancho. */
+/* 2.6 · Columna (antes rejilla «auto auto 1fr»): solo el contenido crece; un aviso o un error entre las
+   pestañas y el contenido mide lo que su texto */
 .staff-tablet {
-  display: grid;
-  grid-template-rows: auto auto 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 0.9rem;
   min-height: 100vh;
   padding: 0.75rem 1rem 1.5rem;
@@ -484,6 +486,7 @@ a.staff-tablet__boton:visited {
 }
 
 .staff-tablet__contenido {
+  flex: 1;
   min-width: 0;
 }
 
@@ -510,5 +513,32 @@ a.staff-tablet__boton:visited {
     min-height: 56px;
     padding: 0.4rem 0.3rem;
     font-size: 0.85rem;
+  }
+}
+
+/* 2.6 · Interruptor del sonido de avisos: activado con fondo lleno (no solo el icono) */
+.staff-tablet__boton--sonido[aria-pressed="true"] {
+  background: var(--color-primario);
+  border-color: var(--color-primario);
+  color: #ffffff;
+}
+
+/* Por debajo de 1100 px, solo el icono (el texto sigue como nombre accesible): la cabecera de 1024 cabe
+   en una fila, como antes de 2.6 */
+@media (max-width: 1100px) {
+  .staff-tablet__boton--sonido {
+    position: relative;
+    width: 48px; /* cuadrado: el alto mínimo de estos botones es 48 px */
+    padding-inline: 0;
+    justify-content: center;
+  }
+
+  .staff-tablet__boton--sonido .staff-tablet__boton-texto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }

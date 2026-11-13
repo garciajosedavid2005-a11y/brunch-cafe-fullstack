@@ -3,12 +3,12 @@ export const BASE = "/v1/staff/salon";
 
 export { incluyePermiso as puede } from "../../../utils/permisos";
 
-// Estados del ítem (1.4): el KDS de la Fase 2 moverá en_preparacion → listo → servido
+// Estados del ítem (1.4): la cocina y la barra los mueven desde /kds (2.5) y el mesero sirve (2.6)
 export const ESTADOS_ITEM = {
   borrador: "Sin enviar",
   enviado: "Enviado",
   en_preparacion: "En preparación",
-  listo: "Listo",
+  listo: "Listo para servir", // 2.6
   servido: "Servido",
   anulado: "Anulado",
 };

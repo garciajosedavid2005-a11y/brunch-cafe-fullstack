@@ -269,6 +269,39 @@ const prepararCocina = async () => {
   if (pendiente) await leer(admin.patch(`${API}/staff/pedidos/${pendiente.id}/estado`, { data: { codigo: "confirmado" } }), "confirmar pedido");
   await Promise.all([admin, mesero, cocina].map((c) => c.dispose()));
 };
+// 2.6 · «Listo para servir» (una sola vez, tras preparar el KDS): en la ronda de la mesa 5 (del mesero de
+// prueba) la cocina termina lo que estaba en preparación y el admin hace «Todo listo» en Barra
+let listosPreparados = false;
+const prepararListos = async () => {
+  await prepararCocina();
+  if (listosPreparados) return;
+  listosPreparados = true;
+  const sesion = async (usuario) => {
+    const ctx = await request.newContext();
+    const res = await ctx.post(`${API}/auth/login`, { data: { correo: USUARIOS[usuario], contraseña: CLAVE } });
+    if (!res.ok()) throw new Error(`Login de prueba falló para ${usuario}: ${res.status()}`);
+    return ctx;
+  };
+  const leer = async (promesa, que) => {
+    const res = await promesa;
+    if (!res.ok()) throw new Error(`Listos (${que}): ${res.status()} ${(await res.text()).slice(0, 200)}`);
+    return res.json();
+  };
+  const [admin, mesero, cocina] = await Promise.all([sesion("admin"), sesion("mesero"), sesion("cocina")]);
+  const { mesas } = await leer(mesero.get(`${API}/staff/salon/mesas`), "plano");
+  const cuentaId = mesas.find((m) => m.numero === 5)?.cuenta?.id;
+  if (!cuentaId) throw new Error("Listos: la mesa 5 no tiene cuenta (¿se preparó el KDS?)");
+  const cuenta = await leer(mesero.get(`${API}/staff/salon/cuentas/${cuentaId}`), "cuenta");
+  const ronda = cuenta.rondas.find((r) => r.estado === "enviada");
+  for (const item of ronda.items.filter((i) => i.estado === "en_preparacion" && i.estacion.codigo === "cocina")) {
+    await leer(cocina.post(`${API}/staff/items/${item.id}/estado`, { data: { a: "listo", de: "en_preparacion" } }), "listo");
+  }
+  if (ronda.items.some((i) => i.estacion.codigo === "barra" && ["enviado", "en_preparacion"].includes(i.estado))) {
+    await leer(admin.post(`${API}/staff/cocina/rondas/${ronda.id}/todo-listo`, { data: { estacion: "barra" } }), "todo listo barra");
+  }
+  await Promise.all([admin, mesero, cocina].map((c) => c.dispose()));
+};
+
 const abrirKds = async (p, estacion) => {
   await prepararCocina();
   await p.goto(`${FRONT}/kds`);
@@ -996,6 +1029,30 @@ const VISTAS = {
     }
     await listo.first().click();
     await p.getByRole("button", { name: /^Deshacer: / }).first().waitFor();
+  } },
+  // 2.6 · Aviso al mesero y «Servir»: plano con el aviso y la insignia, la cuenta con «Servir» y el
+  // «Deshacer» del admin con motivo obligatorio (después de las del KDS: usan su ronda de la mesa 5)
+  "staff-listos-plano": { usuario: "mesero", completa: false, preparar: async (p) => {
+    await prepararListos();
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("status", { name: "Listo para servir" }).waitFor();
+  } },
+  "staff-listos-cuenta": { usuario: "mesero", completa: false, preparar: async (p) => {
+    await prepararListos();
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("status", { name: "Listo para servir" }).getByRole("button", { name: /^Mesa 5/ }).click();
+    await p.getByRole("heading", { name: /^Mesa 5/, level: 2 }).waitFor();
+    await verCuentaEnVertical(p);
+  }, alFinal: async (p) => {
+    // En vertical se baja a las rondas; en horizontal se ven la cabecera y el aviso
+    if (p.viewportSize().width < 1000) await p.getByRole("region", { name: "Rondas enviadas" }).evaluate((r) => r.scrollIntoView({ block: "start" }));
+  } },
+  "staff-listos-deshacer": { usuario: "admin", completa: false, preparar: async (p) => {
+    await prepararListos();
+    await abrirCuentaDeMesa(p, 5);
+    await verCuentaEnVertical(p);
+    await p.getByRole("button", { name: /^Deshacer «listo» de / }).first().click();
+    await p.getByRole("dialog", { name: "Deshacer «listo»" }).waitFor();
   } },
 };
 

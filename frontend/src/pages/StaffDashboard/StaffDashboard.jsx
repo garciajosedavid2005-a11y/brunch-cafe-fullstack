@@ -14,6 +14,8 @@ import {
   UserRound,
   UserRoundCog,
   Users,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 import { apiRequest } from "../../services/api";
@@ -25,6 +27,8 @@ import { claseEstado } from "../AdminDashboard/components/estadoUtils";
 import ProfileSection from "../CustomerDashboard/sections/ProfileSection";
 import SecuritySection from "../CustomerDashboard/sections/SecuritySection";
 import PlanoMesas from "./plano/PlanoMesas";
+import AvisoListos from "./plano/AvisoListos";
+import { useSonidoKds } from "../Kds/useSonidoKds";
 import CuentasAbiertas from "./cuentas/CuentasAbiertas";
 import Logo from "../../components/Logo/Logo";
 import "./StaffDashboard.css";
@@ -51,6 +55,22 @@ export default function StaffDashboard() {
   const puedeVerCuentas = tienePermiso(user, "cuenta:ver") || puedeVerPedidos;
   // Con mesa:ver, el panel abre primero el plano de mesas (decisión 1.6 del 2026-11-07)
   const [seccion, setSeccion] = useState(() => (puedeVerMesas ? "mesas" : "resumen"));
+  // 2.6 · Aviso «Listo para servir» a quien sirve mesas (el de sus cuentas), con sonido apagado por
+  // defecto en esta pantalla (F2-8). Tocar una mesa del aviso abre su cuenta en «Mesas»
+  const avisaListos = puedeVerMesas && tienePermiso(user, "item:servir") && Boolean(user?.id);
+  const [cuentaVista, setCuentaVista] = useState(null);
+  const sonido = useSonidoKds({ clave: "staff.sonido", porDefecto: false });
+  // Con el sonido ya activado en esta tablet, el primer toque en la pantalla desbloquea el audio
+  const { activado: sonidoActivado, bloqueado: sonidoBloqueado, activar: activarSonido } = sonido;
+  useEffect(() => {
+    if (!avisaListos || !sonidoActivado || !sonidoBloqueado) return undefined;
+    document.addEventListener("pointerdown", activarSonido, { once: true });
+    return () => document.removeEventListener("pointerdown", activarSonido);
+  }, [avisaListos, sonidoActivado, sonidoBloqueado, activarSonido]);
+  const abrirCuentaLista = (cuentaId) => {
+    setSeccion("mesas");
+    setCuentaVista(cuentaId);
+  };
   const [estadoReservas, setEstadoReservas] = useState(() => ({
     permiso: puedeVerReservas,
     datos: [],
@@ -201,6 +221,13 @@ export default function StaffDashboard() {
               Nueva reserva
             </button>
           )}
+          {avisaListos && sonido.disponible && (
+            <button className="staff-tablet__boton staff-tablet__boton--sonido" type="button" aria-pressed={sonido.activado}
+              title="Sonido de los avisos «Listo para servir» en esta pantalla" onClick={sonido.alternar}>
+              {sonido.activado ? <Volume2 size={18} aria-hidden="true" /> : <VolumeX size={18} aria-hidden="true" />}
+              <span className="staff-tablet__boton-texto">Sonido</span>
+            </button>
+          )}
           <button className="staff-tablet__boton staff-tablet__boton--cambiar" type="button" onClick={cambiarDeUsuario}>
             <UserRoundCog size={18} aria-hidden="true" />
             Cambiar de usuario
@@ -215,7 +242,10 @@ export default function StaffDashboard() {
             type="button"
             className={seccion === id ? "is-active" : ""}
             aria-current={seccion === id ? "page" : undefined}
-            onClick={() => setSeccion(id)}
+            onClick={() => {
+              setSeccion(id);
+              setCuentaVista(null); // como antes de 2.6: volver a «Mesas» muestra el plano
+            }}
           >
             {createElement(icon, { size: 20, "aria-hidden": true })}
             <span>{label}</span>
@@ -224,9 +254,10 @@ export default function StaffDashboard() {
       </nav>
 
       {errorPanel && <p className="dashboard-notice is-error staff-tablet__aviso" role="alert">{errorPanel}</p>}
+      {avisaListos && <AvisoListos usuarioId={user.id} onAbrirCuenta={abrirCuentaLista} onNuevos={sonido.sonar} />}
 
       <div className="staff-tablet__contenido">
-        {seccion === "mesas" && <PlanoMesas permisos={permisos} />}
+        {seccion === "mesas" && <PlanoMesas permisos={permisos} cuentaVista={cuentaVista} onCuentaVista={setCuentaVista} />}
         {seccion === "cuentas" && <CuentasAbiertas permisos={permisos} />}
 
         {!["mesas", "cuentas"].includes(seccion) && (

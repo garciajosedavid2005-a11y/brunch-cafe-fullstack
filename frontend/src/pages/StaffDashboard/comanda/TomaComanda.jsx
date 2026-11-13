@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Minus, Plus, ReceiptText, RefreshCw, Send, Trash2, TriangleAlert, UtensilsCrossed } from "lucide-react";
+import { ArrowLeft, BellRing, HandPlatter, Minus, Plus, ReceiptText, RefreshCw, Send, Trash2, TriangleAlert, Undo2, UtensilsCrossed } from "lucide-react";
 import { apiRequest } from "../../../services/api";
 import { useDialogo } from "../../../context/useDialogo";
 import { formatearCOP } from "../../../utils/moneda";
@@ -18,6 +18,9 @@ import "./TomaComanda.css";
 // nota, ronda en curso (borrador) que se envía completa (F1-5) con confirmación, Idempotency-Key y la
 // versión de la cuenta; rondas enviadas en solo lectura con anulación (item:anular, D1); solicitar y
 // cancelar la cuenta (D4). Sin impuestos ni propina hasta la Fase 3. El backend vuelve a validarlo todo.
+// 2.6 · «Listo para servir (n)» en la cabecera, «Servir» en cada ítem listo (item:servir, F2-2) y, para
+// el admin, «Deshacer listo» con motivo obligatorio (F2-7: pasados los 10 s solo él; la cocina deshace
+// lo suyo desde /kds). Mismo endpoint que la cocina, con el estado que se ve en pantalla (`de`).
 
 const nombreMesas = (cuenta) => `Mesa ${cuenta.mesas.map((m) => m.numero).join(" + ")}`;
 const cantidadItems = (ronda) => ronda.items.reduce((suma, i) => suma + i.cantidad, 0);
@@ -79,6 +82,7 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
   const [ocupado, setOcupado] = useState(false);
   const [vista, setVista] = useState("menu"); // en vertical: «Menú» o «Cuenta»
   const claveEnvio = useRef(nuevaClave());
+  const clavesItem = useRef({}); // 2.6 · Idempotency-Key por ítem y destino (se reutiliza solo sin respuesta)
 
   const cargarCatalogo = useCallback(() => apiRequest(`${BASE}/catalogo`)
     .then((datos) => { setCatalogo(datos); setErrorCatalogo(""); })
@@ -107,6 +111,9 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
   const huboEnviados = enviadas.some((r) => r.items.length > 0);
   const enRonda = borrador ? cantidadItems(borrador) : 0;
   const conProblema = Boolean(borrador?.items.some((i) => problemas[i.id]));
+  const listos = enviadas.reduce((suma, r) => suma + r.items.filter((i) => i.estado === "listo").length, 0);
+  const sirve = editable && puede(permisos, "item:servir");
+  const deshaceListo = editable && permisos.includes("*"); // F2-7: pasados los 10 s, solo el admin
 
   // ── Acciones ──────────────────────────────────────────────────────────────────────────
   const mostrarError = (e, titulo) => {
@@ -185,6 +192,46 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
     return fallo;
   };
 
+  // 2.6 · Cambio de estado del ítem (servir o deshacer listo) con el estado que se ve en pantalla
+  const cambiarItem = async (item, a, motivo) => {
+    const llave = `${item.id}:${a}`;
+    clavesItem.current[llave] ??= nuevaClave();
+    setOcupado(true);
+    try {
+      await apiRequest(`/v1/staff/items/${item.id}/estado`, {
+        method: "POST",
+        body: JSON.stringify({ a, de: item.estado, ...(motivo ? { motivo } : {}) }),
+        headers: { "Idempotency-Key": clavesItem.current[llave] },
+      });
+      delete clavesItem.current[llave];
+      return null;
+    } catch (e) {
+      if (e.status) delete clavesItem.current[llave];
+      return e;
+    } finally {
+      setOcupado(false);
+      recargar();
+    }
+  };
+
+  const servir = async (item) => {
+    const fallo = await cambiarItem(item, "servido");
+    if (fallo) mostrarError(fallo, "No se pudo servir");
+  };
+
+  const deshacerListo = async (item) => {
+    const { confirmado, motivo } = await confirmar({
+      titulo: "Deshacer «listo»",
+      mensaje: `${item.cantidad} × ${item.nombre} vuelve a «En preparación» en cocina y barra. Queda registrado con tu motivo.`,
+      confirmarTexto: "Volver a preparación",
+      cancelarTexto: "Cancelar",
+      motivo: { etiqueta: "Motivo", requerido: true },
+    });
+    if (!confirmado) return;
+    const fallo = await cambiarItem(item, "en_preparacion", motivo);
+    if (fallo) mostrarError(fallo, "No se pudo deshacer");
+  };
+
   const solicitar = async () => {
     const { confirmado } = await confirmar({
       titulo: "Solicitar la cuenta",
@@ -232,6 +279,12 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
           {cuenta.estado === "cuenta_pedida" ? <ReceiptText size={16} aria-hidden="true" /> : <UtensilsCrossed size={16} aria-hidden="true" />}
           {ESTADOS_CUENTA[cuenta.estado] || cuenta.estado}
         </span>
+        {listos > 0 && (
+          <span className="comanda__listos">
+            <BellRing size={16} aria-hidden="true" />
+            {`Listo para servir (${listos})`}
+          </span>
+        )}
         <button type="button" className="comanda__boton-icono" aria-label="Actualizar la cuenta" onClick={recargar}>
           <RefreshCw size={20} aria-hidden="true" />
         </button>
@@ -324,6 +377,13 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
                 <ul className="comanda-items">
                   {ronda.items.map((item) => {
                     const anulado = item.estado === "anulado";
+                    const conAccionesListo = item.estado === "listo" && (sirve || deshaceListo);
+                    const anular = editable && !anulado && ANULABLES.includes(item.estado) && puede(permisos, "item:anular") ? (
+                      <button type="button" className="comanda__boton comanda__boton--secundario comanda__boton--peligro-texto comanda-item__anular"
+                        aria-label={`Anular ${item.nombre}`} disabled={ocupado} onClick={() => setAnulando(item)}>
+                        Anular
+                      </button>
+                    ) : null;
                     const motivo = anulado && item.anulacion
                       ? [MOTIVOS_ANULACION[item.anulacion.motivo] || item.anulacion.motivo, item.anulacion.detalle].filter(Boolean).join(": ")
                       : "";
@@ -338,12 +398,25 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
                           {ESTADOS_ITEM[item.estado] || item.estado}{motivo ? ` · ${motivo}` : ""}
                         </span>
                         <span className="comanda-item__monto">{anulado ? <s>{formatearCOP(item.subtotal)}</s> : formatearCOP(item.subtotal)}</span>
-                        {editable && !anulado && ANULABLES.includes(item.estado) && puede(permisos, "item:anular") && (
-                          <button type="button" className="comanda__boton comanda__boton--secundario comanda__boton--peligro-texto"
-                            aria-label={`Anular ${item.nombre}`} disabled={ocupado} onClick={() => setAnulando(item)}>
-                            Anular
-                          </button>
+                        {conAccionesListo && (
+                          // «Anular» va al final del grupo y separado: lejos de «Servir» (revisor-visual)
+                          <span className="comanda-item__acciones-listo">
+                            {sirve && (
+                              <button type="button" className="comanda__boton comanda__boton--primario"
+                                aria-label={`Servir ${item.cantidad} × ${item.nombre}`} disabled={ocupado} onClick={() => servir(item)}>
+                                <HandPlatter size={18} aria-hidden="true" /> Servir
+                              </button>
+                            )}
+                            {deshaceListo && (
+                              <button type="button" className="comanda__boton comanda__boton--secundario"
+                                aria-label={`Deshacer «listo» de ${item.cantidad} × ${item.nombre}`} disabled={ocupado} onClick={() => deshacerListo(item)}>
+                                <Undo2 size={18} aria-hidden="true" /> Deshacer
+                              </button>
+                            )}
+                            {anular}
+                          </span>
                         )}
+                        {!conAccionesListo && anular}
                       </li>
                     );
                   })}

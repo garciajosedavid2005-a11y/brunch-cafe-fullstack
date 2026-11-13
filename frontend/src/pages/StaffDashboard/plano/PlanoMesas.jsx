@@ -1,5 +1,5 @@
 import { createElement, useEffect, useMemo, useState } from "react";
-import { Users } from "lucide-react";
+import { BellRing, Users } from "lucide-react";
 import { formatearCOP } from "../../../utils/moneda";
 import { ESTADOS_MESA, datosEstado, formatearMinutos } from "./estadosMesa";
 import { usePlano } from "./usePlano";
@@ -21,6 +21,7 @@ const resumenAccesible = (mesa) => {
     partes.push(`${c.comensales} ${c.comensales === 1 ? "comensal" : "comensales"}`);
     if (c.mesero?.nombre) partes.push(c.mesero.nombre);
     partes.push(formatearMinutos(c.minutosOcupada));
+    if (c.listosParaServir > 0) partes.push(`listo para servir: ${c.listosParaServir}`); // 2.6
     if (c.mesas.length > 1) partes.push(`unida con ${c.mesas.filter((m) => m.id !== mesa.id).map((m) => m.numero).join(", ")}`);
   } else {
     partes.push(`${mesa.capacidad} puestos`);
@@ -50,6 +51,13 @@ function TarjetaMesa({ mesa, seleccionada, onElegir }) {
           </span>
         </span>
         {mesa.nombre && <span className="plano__mesa-nombre">{mesa.nombre}</span>}
+        {c?.listosParaServir > 0 && (
+          // 2.6 · Lo que la cocina o la barra dejaron listo (texto e icono, no solo color)
+          <span className="plano__listos">
+            <BellRing size={15} aria-hidden="true" />
+            <span>Listo para <span className="plano__listos-fin">servir ({c.listosParaServir})</span></span>
+          </span>
+        )}
         {c ? (
           <>
             <span className="plano__mesa-dato">
@@ -71,8 +79,13 @@ function TarjetaMesa({ mesa, seleccionada, onElegir }) {
   );
 }
 
-export default function PlanoMesas({ permisos = [] }) {
-  const [cuentaVista, setCuentaVista] = useState(null); // 1.7 · cuenta abierta en la toma de comanda
+export default function PlanoMesas({ permisos = [], cuentaVista: cuentaExterna, onCuentaVista }) {
+  // 1.7 · Cuenta abierta en la toma de comanda. 2.6 · /staff puede controlarla (el aviso «Listo para
+  // servir» abre la cuenta desde cualquier pestaña); sin esas props, el plano la lleva solo
+  const [cuentaInterna, setCuentaInterna] = useState(null);
+  const controlada = onCuentaVista !== undefined;
+  const cuentaVista = controlada ? cuentaExterna : cuentaInterna;
+  const setCuentaVista = controlada ? onCuentaVista : setCuentaInterna;
   const { plano, error, actualizadoEn, cargando, recargar, enVivo } = usePlano({ activo: !cuentaVista });
   const [zona, setZona] = useState("todas");
   const [elegida, setElegida] = useState(null);

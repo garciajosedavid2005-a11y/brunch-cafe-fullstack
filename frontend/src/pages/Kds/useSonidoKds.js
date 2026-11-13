@@ -4,27 +4,32 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // el dispositivo). El navegador no deja reproducir audio hasta que alguien toca la página: mientras tanto
 // `bloqueado` es true y la pantalla ofrece «Activar sonido». El aviso es un doble tono generado con Web
 // Audio (sin archivos de audio).
+// 2.6 · Lo usa también /staff para el aviso «Listo para servir», con su propia clave y apagado por defecto
+// (F2-8): `clave` es dónde se recuerda en el dispositivo y `porDefecto`, el valor si nunca se tocó.
 export const CLAVE_SONIDO = "kds.sonido";
 
-const leer = () => {
+const leer = (clave) => {
   try {
-    return localStorage.getItem(CLAVE_SONIDO);
+    return localStorage.getItem(clave);
   } catch {
     return null;
   }
 };
-const guardar = (valor) => {
+const guardar = (clave, valor) => {
   try {
-    localStorage.setItem(CLAVE_SONIDO, valor);
+    localStorage.setItem(clave, valor);
   } catch {
     // Sin almacenamiento (modo privado): se recuerda solo mientras la pantalla siga abierta
   }
 };
 
-export function useSonidoKds() {
+export function useSonidoKds({ clave = CLAVE_SONIDO, porDefecto = true } = {}) {
   const Contexto = globalThis.AudioContext || globalThis.webkitAudioContext;
   const disponible = typeof Contexto === "function";
-  const [activado, setActivado] = useState(() => leer() !== "no");
+  const [activado, setActivado] = useState(() => {
+    const guardado = leer(clave);
+    return guardado === null ? porDefecto : guardado !== "no";
+  });
   const [bloqueado, setBloqueado] = useState(disponible);
   const contexto = useRef(null);
 
@@ -49,11 +54,11 @@ export function useSonidoKds() {
 
   const alternar = useCallback(() => {
     setActivado((antes) => {
-      guardar(antes ? "no" : "si");
+      guardar(clave, antes ? "no" : "si");
       return !antes;
     });
     activar(); // el toque sirve también para desbloquear el audio
-  }, [activar]);
+  }, [activar, clave]);
 
   const sonar = useCallback(() => {
     const ctx = contexto.current;

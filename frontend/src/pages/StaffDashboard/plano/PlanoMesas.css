@@ -538,3 +538,19 @@
     grid-column: 1 / -1;
   }
 }
+
+/* 2.6 · «Listo para servir (n)»: verde oscuro con texto claro (contraste alto sobre cualquier estado) */
+.plano__listos {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 8px; /* en tarjetas estrechas el texto ocupa dos líneas */
+  background: #1d5b2e;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.plano__listos-fin { white-space: nowrap; } /* el número nunca queda solo en otra línea */

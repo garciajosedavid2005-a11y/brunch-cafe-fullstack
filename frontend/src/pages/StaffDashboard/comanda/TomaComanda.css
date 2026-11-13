@@ -52,6 +52,19 @@
   color: #7a4100;
 }
 
+/* 2.6 · «Listo para servir (n)» junto al estado de la cuenta (el verde de «listo», con texto e icono) */
+.comanda__listos {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: #1d5b2e;
+  color: #fff;
+}
+
 /* Botones */
 .comanda__boton {
   display: inline-flex;
@@ -350,6 +363,16 @@
 
 .comanda-item--enviado > .comanda-item__estado { grid-area: estado; justify-self: start; }
 .comanda-item--enviado > .comanda__boton { grid-area: anular; }
+/* 2.6 · «Servir» y «Deshacer» de un ítem listo: fila propia bajo el estado */
+.comanda-item--enviado > .comanda-item__acciones-listo {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* «Anular» dentro del grupo: al final y separado de «Servir»/«Deshacer» */
+.comanda-item__acciones-listo > .comanda-item__anular { margin-left: auto; }
 
 .comanda-item__texto {
   display: grid;
