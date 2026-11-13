@@ -58,6 +58,7 @@ const USUARIOS = {
   admin: "admin.dev@brunchcafe.test",
   cliente: "cliente.dev@brunchcafe.test",
   mesero: "mesero.dev@brunchcafe.test",
+  cocina: "cocina.dev@brunchcafe.test", // 2.5 · KDS
 };
 
 // ── Entorno aislado: API sobre la BD de capturas + Vite apuntando a ella ──
@@ -213,6 +214,66 @@ const agregarRondaDeEjemplo = async (p) => {
   const limonada = p.getByRole("dialog", { name: "Limonada de hierbabuena" });
   await limonada.getByRole("button", { name: /^Agregar/ }).click();
   await limonada.waitFor({ state: "detached" });
+};
+
+// 2.5 · Cola del KDS (una sola vez por ejecución; las vistas del KDS van al final porque cambian el
+// salón): umbrales de Cocina en 30/60 min (así las rondas sembradas de 35 y 80 min salen en «Atención» y
+// «Retrasada» y la nueva «A tiempo»), una ronda nueva en la mesa 5 con cocina y barra (con nota), un ítem
+// en preparación, otro anulado y el domicilio del cliente de prueba confirmado.
+let cocinaPreparada = false;
+const prepararCocina = async () => {
+  if (cocinaPreparada) return;
+  cocinaPreparada = true;
+  const sesion = async (usuario) => {
+    const ctx = await request.newContext();
+    const res = await ctx.post(`${API}/auth/login`, { data: { correo: USUARIOS[usuario], contraseña: CLAVE } });
+    if (!res.ok()) throw new Error(`Login de prueba falló para ${usuario}: ${res.status()}`);
+    return ctx;
+  };
+  const leer = async (promesa, que) => {
+    const res = await promesa;
+    if (!res.ok()) throw new Error(`KDS (${que}): ${res.status()} ${(await res.text()).slice(0, 200)}`);
+    return res.json();
+  };
+  const [admin, mesero, cocina] = await Promise.all([sesion("admin"), sesion("mesero"), sesion("cocina")]);
+  const estaciones = await leer(admin.get(`${API}/admin/estaciones`), "estaciones");
+  const estCocina = estaciones.find((e) => e.codigo === "cocina");
+  await leer(admin.put(`${API}/admin/estaciones/${estCocina.id ?? estCocina._id}`, { data: { umbralAvisoMin: 30, umbralAlertaMin: 60 } }), "umbrales");
+
+  const { productos } = await leer(mesero.get(`${API}/staff/salon/catalogo`), "catálogo");
+  // Opciones obligatorias: la primera disponible de cada grupo con mínimo (así sale en la tarjeta)
+  const elegirOpciones = (pr) => (pr.modificadores || []).filter((g) => g.obligatorio || g.min > 0).map((g) => ({
+    grupoId: g.id, opcionIds: g.opciones.filter((o) => o.disponible !== false).slice(0, Math.max(1, g.min || 0)).map((o) => o.id),
+  }));
+  const disponibles = productos.filter((pr) => pr.disponible);
+  const deCocina = disponibles.filter((pr) => pr.estacion?.codigo === "cocina" && !pr.modificadores?.length).slice(0, 2);
+  const deBarra = disponibles.find((pr) => pr.estacion?.codigo === "barra");
+  if (deCocina.length < 2 || !deBarra) throw new Error(`KDS: faltan productos de cocina sin modificadores (${deCocina.length}) o de barra`);
+  const { mesas } = await leer(mesero.get(`${API}/staff/salon/mesas`), "plano");
+  const mesa5 = mesas.find((m) => m.numero === 5);
+  let cuenta = await leer(mesero.post(`${API}/staff/salon/mesas/${mesa5.id}/abrir`, { data: { comensales: 2 } }), "abrir mesa 5");
+  const lineas = [
+    { productoId: deCocina[0].id, cantidad: 2, nota: "Uno sin cebolla" },
+    { productoId: deCocina[1].id, cantidad: 1 },
+    { productoId: deBarra.id, cantidad: 2, modificadores: elegirOpciones(deBarra) },
+  ];
+  for (const linea of lineas) ({ cuenta } = await leer(mesero.post(`${API}/staff/salon/cuentas/${cuenta.id}/items`, { data: linea }), "agregar ítem"));
+  cuenta = await leer(mesero.post(`${API}/staff/salon/cuentas/${cuenta.id}/rondas/1/enviar`, { data: { numeroRonda: 1, versionEsperada: cuenta.version } }), "enviar ronda");
+  const items = cuenta.rondas.find((r) => r.numeroRonda === 1).items;
+  const itemDe = (productoId) => items.find((i) => (i.productoId ?? i.producto) === productoId) ?? items[lineas.findIndex((l) => l.productoId === productoId)];
+  await leer(cocina.post(`${API}/staff/items/${itemDe(deCocina[0].id).id}/estado`, { data: { a: "en_preparacion", de: "enviado" } }), "empezar ítem");
+  await leer(admin.post(`${API}/staff/salon/cuentas/${cuenta.id}/items/${itemDe(deCocina[1].id).id}/anular`, { data: { motivo: "cliente_cambio" } }), "anular ítem");
+
+  const pedidos = await leer(admin.get(`${API}/staff/pedidos?limite=20`), "pedidos");
+  const pendiente = pedidos.find((pd) => pd.estadoCodigo === "pendiente");
+  if (pendiente) await leer(admin.patch(`${API}/staff/pedidos/${pendiente.id}/estado`, { data: { codigo: "confirmado" } }), "confirmar pedido");
+  await Promise.all([admin, mesero, cocina].map((c) => c.dispose()));
+};
+const abrirKds = async (p, estacion) => {
+  await prepararCocina();
+  await p.goto(`${FRONT}/kds`);
+  await p.getByRole("group", { name: "Estación" }).getByRole("button", { name: estacion }).click();
+  await p.getByRole("region", { name: `Cola de ${estacion}` }).waitFor();
 };
 
 // 2.0b · Contraste de un elemento del navbar contra el fondo compuesto que tiene detrás (en el navegador)
@@ -911,6 +972,21 @@ const VISTAS = {
     await p.getByRole("button", { name: "Cambiar de usuario" }).click();
     await p.waitForURL("**/login");
   } },
+  // 2.5 · KDS (cocina.dev). Al final: preparan datos que cambian el salón de las vistas anteriores
+  "kds-cocina": { usuario: "cocina", completa: false, preparar: (p) => abrirKds(p, "Cocina") },
+  "kds-barra": { usuario: "cocina", completa: false, preparar: (p) => abrirKds(p, "Barra") },
+  // «Listo» recién marcado: la tarjeta ofrece «Deshacer» con la cuenta atrás (F2-7)
+  "kds-deshacer": { usuario: "cocina", completa: false, preparar: async (p) => {
+    await abrirKds(p, "Cocina");
+    // Un ítem (no el domicilio); en el segundo tamaño ya no queda ninguno en preparación: se empieza uno
+    const listo = p.getByRole("button", { name: /^Listo: \d+ × / });
+    if (!(await listo.count())) {
+      await p.getByRole("button", { name: /^Empezar: \d+ × / }).first().click();
+      await listo.first().waitFor();
+    }
+    await listo.first().click();
+    await p.getByRole("button", { name: /^Deshacer: / }).first().waitFor();
+  } },
 };
 
 // Sin --hide-scrollbars (Playwright lo pone por defecto): así se ven las barras de desplazamiento
@@ -967,7 +1043,7 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
       };
       await medirNavbar("arriba");
       // 2.0b · Paleta en /staff y el admin (vistas del personal y del admin)
-      if (["mesero", "admin"].includes(vista.usuario) && /\/(staff|admin)/.test(page.url())) {
+      if (["mesero", "admin", "cocina"].includes(vista.usuario) && /\/(staff|admin|kds)/.test(page.url())) {
         // 2.0c · Medir pasa el puntero y el foco por los botones y desplaza la página: se vuelve a donde
         // estaba (si no, la foto sale desplazada y sin el navbar)
         const posicion = await page.evaluate(() => [window.scrollX, window.scrollY]);
@@ -1052,7 +1128,7 @@ if (MEDIR_TACTIL) {
   console.log(`
 Medición táctil: ${pequenos.length} control(es) < 44 px → ${join(SALIDA, "medicion-tactil.json")}`);
 }
-if (azules.length || SOLO?.some((v) => /^(staff|admin)/.test(v))) {
+if (azules.length || SOLO?.some((v) => /^(staff|admin|kds)/.test(v))) {
   const { writeFile } = await import("node:fs/promises");
   await writeFile(join(SALIDA, "medicion-paleta.json"), JSON.stringify(azules, null, 2));
   const fuera = azules.filter((h) => !h.deEstado);

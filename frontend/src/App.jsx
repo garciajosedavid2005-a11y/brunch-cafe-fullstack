@@ -16,12 +16,13 @@ import Registro from "./pages/Registro/Registro";
 import CustomerDashboard from "./pages/CustomerDashboard/CustomerDashboard";
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
 import StaffDashboard from "./pages/StaffDashboard/StaffDashboard";
+import Kds from "./pages/Kds/Kds";
 import RecuperarContrasena from "./pages/RecuperarContrasena/RecuperarContrasena";
 import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./context/useAuth";
 import { CarritoProvider } from "./context/CarritoContext";
 import { DialogoProvider } from "./context/DialogoContext";
-import { esAdministrador, esPersonal, puedeEntrarAStaff, rutaInicio, tienePermiso } from "./utils/permisos";
+import { esAdministrador, esPersonal, puedeEntrarAKds, puedeEntrarAStaff, rutaInicio, tienePermiso } from "./utils/permisos";
 
 import "./styles/index.css";
 import "./styles/variables.css";
@@ -48,6 +49,15 @@ function StaffRoute({ children }) {
   if (loading) return <main className="customer-dashboard-loading">Verificando permisos...</main>;
   if (!user) return <Navigate to="/login" replace />;
   if (!puedeEntrarAStaff(user)) return <Navigate to={rutaInicio(user)} replace />;
+  return children;
+}
+
+// 2.5 · Pantalla de cocina: personal con kds:ver (y el administrador)
+function KdsRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <main className="customer-dashboard-loading">Verificando permisos...</main>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!puedeEntrarAKds(user)) return <Navigate to={rutaInicio(user)} replace />;
   return children;
 }
 
@@ -102,8 +112,8 @@ function ReservationsRoute() {
   );
 }
 
-// 1.6 · /staff tiene su propio layout de tablet: sin la navegación ni el pie del sitio público
-const RUTAS_STAFF = ["/staff", "/dashboard/staff"];
+// 1.6 · /staff (y /kds, 2.5) tienen su propio layout de tablet: sin la navegación ni el pie del sitio público
+const RUTAS_STAFF = ["/staff", "/dashboard/staff", "/kds"];
 const esRutaStaff = (ruta) => RUTAS_STAFF.some((r) => ruta === r || ruta.startsWith(`${r}/`));
 
 function AppRoutes() {
@@ -134,6 +144,7 @@ function AppRoutes() {
           <Route path="/dashboard/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/staff" element={<StaffRoute><StaffDashboard /></StaffRoute>} />
           <Route path="/dashboard/staff" element={<StaffRoute><StaffDashboard /></StaffRoute>} />
+          <Route path="/kds" element={<KdsRoute><Kds /></KdsRoute>} />
           {/* Rutas anteriores del panel (rama developers) */}
           <Route path="/mesero" element={<Navigate to="/staff" replace />} />
           <Route path="/dashboard/mesero" element={<Navigate to="/staff" replace />} />

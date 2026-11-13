@@ -20,6 +20,10 @@ const responder = (user) => apiRequest.mockImplementation((ruta = "") => {
   if (ruta === "/v1/auth/me") return Promise.resolve({ user });
   if (ruta === "/v1/cliente/perfil") return Promise.resolve({ perfil: { nombre: user.nombre, apellido: user.apellido, correo: user.email, telefono: user.telefono } });
   if (ruta === "/v1/staff/reservas" || ruta.startsWith("/v1/staff/pedidos")) return Promise.resolve([]);
+  if (ruta === "/v1/staff/cocina/estaciones") return Promise.resolve([{ codigo: "cocina", nombre: "Cocina", umbralAvisoMin: 12, umbralAlertaMin: 20 }]);
+  if (ruta.startsWith("/v1/staff/cocina/cola")) {
+    return Promise.resolve({ estacion: { codigo: "cocina", nombre: "Cocina", umbralAvisoMin: 12, umbralAlertaMin: 20 }, actualizadoEn: new Date().toISOString(), truncado: false, salon: [], domicilio: [] });
+  }
   return Promise.resolve({});
 });
 
@@ -100,5 +104,28 @@ describe("Rutas de staff", () => {
     expect(await screen.findByText(/hola, luis/i)).toBeInTheDocument();
     expect(screen.queryByText(/panel de personal/i)).not.toBeInTheDocument();
     expect(document.querySelector(".customer-dashboard__rol")).toBeNull();
+  });
+
+  // 2.5 · KDS: cocina y barista (kds:ver sin mesa:ver) empiezan en /kds, con el layout propio (sin navbar ni pie)
+  it("cocina (kds:ver sin mesa:ver) entra al KDS al abrir su inicio y no ve la navegación del sitio", async () => {
+    responder(usuario("cocina", "Cocina", { permisos: ["kds:ver", "item:preparar", "pedido:preparar"] }));
+    abrir("/login");
+    expect(await screen.findByText(/No hay nada pendiente en Cocina/)).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/kds");
+    expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Abrir menú de navegación" })).not.toBeInTheDocument();
+  });
+
+  it("sin kds:ver, /kds lleva al inicio del usuario; un cliente nunca entra", async () => {
+    responder(usuario("mesero", "Mesero", { permisos: ["mesa:ver", "pedido:ver"] }));
+    abrir("/kds");
+    await waitFor(() => expect(window.location.pathname).toBe("/staff"));
+  });
+
+  it("con kds:ver, /staff ofrece el enlace a la pantalla de cocina (también a quien tiene además mesa:ver)", async () => {
+    responder(usuario("mesero", "Mesero", { permisos: ["kds:ver", "pedido:ver"] }));
+    abrir("/staff");
+    const enlace = await screen.findByRole("link", { name: /Pantalla de cocina/ });
+    expect(enlace).toHaveAttribute("href", "/kds");
   });
 });

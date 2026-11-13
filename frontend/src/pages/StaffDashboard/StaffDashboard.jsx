@@ -2,6 +2,7 @@ import { createElement, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   CalendarCheck2,
+  ChefHat,
   CalendarDays,
   Clock3,
   LayoutGrid,
@@ -45,6 +46,7 @@ export default function StaffDashboard() {
   const puedeCrearReservas = tienePermiso(user, "reserva:crear") && !admin;
   const puedeVerPedidos = tienePermiso(user, "pedido:ver");
   const puedeVerMesas = tienePermiso(user, "mesa:ver");
+  const puedeVerKds = tienePermiso(user, "kds:ver"); // 2.5 · enlace a la pantalla de cocina
   // 1.9 · «Cuentas abiertas» (salón con cuenta:ver, domicilio con pedido:ver)
   const puedeVerCuentas = tienePermiso(user, "cuenta:ver") || puedeVerPedidos;
   // Con mesa:ver, el panel abre primero el plano de mesas (decisión 1.6 del 2026-11-07)
@@ -185,6 +187,12 @@ export default function StaffDashboard() {
             <Link className="staff-tablet__boton" to="/admin">
               <ShieldHalf size={18} aria-hidden="true" />
               Panel de administración
+            </Link>
+          )}
+          {puedeVerKds && (
+            <Link className="staff-tablet__boton" to="/kds">
+              <ChefHat size={18} aria-hidden="true" />
+              Pantalla de cocina
             </Link>
           )}
           {puedeCrearReservas && (

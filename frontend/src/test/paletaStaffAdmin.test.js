@@ -11,7 +11,7 @@ const cssDe = (dir) => readdirSync(dir).flatMap((n) => {
   const p = join(dir, n);
   return statSync(p).isDirectory() ? cssDe(p) : n.endsWith(".css") ? [p] : [];
 });
-const ARCHIVOS = [...cssDe(join(SRC, "pages/StaffDashboard")), ...cssDe(join(SRC, "pages/AdminDashboard"))];
+const ARCHIVOS = [...cssDe(join(SRC, "pages/StaffDashboard")), ...cssDe(join(SRC, "pages/AdminDashboard")), ...cssDe(join(SRC, "pages/Kds"))];
 
 const aRgb = (hex) => {
   const h = hex.replace("#", "");

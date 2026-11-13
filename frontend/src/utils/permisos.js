@@ -21,8 +21,13 @@ export const esPersonal = (user) => Boolean(user?.esPersonal) && !esAdministrado
 // admin para anular ítems (item:anular). Su inicio sigue siendo /admin.
 export const puedeEntrarAStaff = (user) => esPersonal(user) || esAdministrador(user);
 
+// 2.5 · Pantalla de cocina (/kds): personal con kds:ver y también el administrador
+export const puedeEntrarAKds = (user) => puedeEntrarAStaff(user) && tienePermiso(user, "kds:ver");
+
 export const rutaInicio = (user) => {
   if (esAdministrador(user)) return "/admin";
+  // 2.5 · Cocina y barista (kds:ver sin mesa:ver) empiezan en el KDS; con los dos, /staff enlaza al KDS
+  if (esPersonal(user) && tienePermiso(user, "kds:ver") && !tienePermiso(user, "mesa:ver")) return "/kds";
   if (esPersonal(user)) return "/staff";
   return "/cuenta";
 };

@@ -1,0 +1,422 @@
+/* 2.5 · KDS (/kds): tablet horizontal 1280×800 y TV 1920×1080. Letra grande para leer a distancia,
+   botones de 56 px (≥ 44 px), estados y temporizador con texto e icono (no solo color) y la paleta de
+   la marca (sin azules). Mismos colores de estado que la comanda: en preparación ámbar, listo verde. */
+.kds {
+  display: grid;
+  align-content: start;
+  gap: 0.85rem;
+  min-height: 100vh;
+  padding: 0.75rem 1rem 1.5rem;
+  background: var(--color-fondo);
+  color: var(--color-oscuro);
+  font-size: 1.05rem;
+}
+
+/* ── Cabecera ─────────────────────────────────────────────────────────────── */
+.kds__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.25rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 16px;
+  background: #fffdfa;
+  box-shadow: 0 6px 20px #2c07030f;
+}
+
+.kds__marca {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  line-height: 1.1;
+}
+
+.kds__logo { --logo-tam: 1.375rem; }
+
+.kds__area {
+  padding-left: 0.6rem;
+  border-left: 1px solid #d9c5bf;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6a5752;
+}
+
+.kds__estaciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-right: auto;
+}
+
+.kds__estacion,
+.kds__boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 56px;
+  padding: 0.55rem 1.1rem;
+  border: 1px solid #d8c3bc;
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--color-primario);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.kds__estacion {
+  min-width: 7rem;
+  font-size: 1.1rem;
+}
+
+/* La estación elegida: relleno bordó y subrayado (no solo color) */
+.kds__estacion[aria-pressed="true"] {
+  border-color: var(--color-primario);
+  background: var(--color-primario);
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
+
+.kds__boton[aria-pressed="false"] {
+  color: #6a5752;
+  border-style: dashed;
+}
+
+.kds__boton--destacado {
+  border-color: var(--color-primario);
+  background: #fbe9ec;
+}
+
+a.kds__boton:hover,
+a.kds__boton:focus,
+a.kds__boton:visited {
+  color: var(--color-primario);
+}
+
+.kds__boton:hover,
+.kds__estacion:hover:not([aria-pressed="true"]) {
+  background: #f7e7e2;
+}
+
+.kds__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.kds__estacion:focus-visible,
+.kds__boton:focus-visible,
+.kds-boton:focus-visible {
+  outline: 3px solid var(--color-primario);
+  outline-offset: 2px;
+}
+
+.kds__barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.kds__quien {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1.25rem;
+}
+
+.kds__estacion-activa {
+  margin: 0;
+  font-size: 1.35rem;
+  color: var(--color-oscuro);
+}
+
+.kds__hola {
+  margin: 0;
+  font-weight: 600;
+  color: #594742;
+}
+
+.kds__error,
+.kds__aviso,
+.kds__vacio {
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.kds__error {
+  border-left: 6px solid var(--color-primario);
+  color: var(--color-primario);
+  font-weight: 700;
+}
+
+.kds__aviso {
+  border-left: 6px solid #b06a00;
+  background: #fff0d4;
+  color: #5c3100;
+  font-weight: 600;
+}
+
+.kds__vacio {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  font-size: 1.3rem;
+  color: #594742;
+}
+
+/* ── Tarjetas ─────────────────────────────────────────────────────────────── */
+.kds__tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+  align-items: start;
+  gap: 0.9rem;
+}
+
+.kds-tarjeta {
+  display: grid;
+  min-width: 0; /* un título largo no ensancha la columna */
+  gap: 0.7rem;
+  padding: 0.9rem 1rem 1rem;
+  border: 2px solid #e2cfc9;
+  border-top-width: 8px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 6px 20px #2c07030f;
+}
+
+.kds-tarjeta--aviso { border-color: #d99a3d; }
+.kds-tarjeta--alerta { border-color: var(--color-primario); border-width: 4px; border-top-width: 10px; }
+
+.kds-tarjeta__cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.kds-tarjeta__cabecera > div { min-width: 0; }
+
+.kds-tarjeta__titulo svg { flex-shrink: 0; }
+
+.kds-tarjeta__titulo {
+  display: flex;
+  flex-wrap: wrap; /* «Domicilio» y el código bajan de línea antes que desbordar */
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-family: var(--fuente-cuerpo);
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--color-oscuro);
+}
+
+.kds-tarjeta__sub {
+  margin: 0.2rem 0 0;
+  font-size: 1rem;
+  color: #594742;
+}
+
+.kds-tiempo {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  column-gap: 0.35rem;
+  margin: 0;
+  padding: 0.35rem 0.7rem;
+  border-radius: 12px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* El icono no se encoge aunque el título de la tarjeta sea largo */
+.kds-tiempo svg {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+}
+
+.kds-tiempo {
+  flex-shrink: 0;
+}
+
+.kds-tarjeta__codigo { white-space: nowrap; } /* «PED-8B1AF7» no se parte en el guion */
+
+.kds-tiempo__min {
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.kds-tiempo__texto {
+  grid-column: 1 / -1;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.kds-tiempo--normal { background: #f3ebe8; color: #3d2a26; }
+.kds-tiempo--aviso { background: #fff0d4; color: #5c3100; }
+.kds-tiempo--alerta { background: var(--color-primario); color: #ffffff; }
+
+.kds-tarjeta__aviso {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  background: #fbe9ec;
+  color: var(--color-primario);
+  font-weight: 800;
+}
+
+.kds-tarjeta__items {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kds-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  padding: 0.55rem 0;
+  border-top: 1px solid #efe3df;
+}
+
+.kds-item:first-child { border-top: 0; }
+
+.kds-item__texto {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1 1 100%; /* acciones siempre debajo: misma alineación en todas las filas */
+}
+
+.kds-item__nombre {
+  font-size: 1.25rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.kds-item__opciones { font-size: 1rem; color: #3d2a26; }
+
+.kds-item__nota {
+  justify-self: start;
+  padding: 0.1rem 0.45rem;
+  border-radius: 6px;
+  background: #fff0d4;
+  color: #5c3100;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.kds-item__anulacion {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-primario);
+}
+
+/* Anulado: tachado y atenuado sin opacidad (el contraste se mantiene) */
+.kds-item--anulado .kds-item__nombre,
+.kds-item--anulado .kds-item__opciones,
+.kds-item--anulado .kds-item__nota {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  color: #6a5752;
+  background: none;
+}
+
+.kds-item__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start; /* la píldora, siempre a la izquierda, con o sin botón */
+  gap: 0.45rem;
+}
+
+.kds-estado {
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  background: #f3ebe8;
+  color: #3d2a26;
+}
+
+.kds-estado--en_preparacion { background: #fff0d4; color: #7a4100; }
+.kds-estado--listo { background: #e6f4ea; color: #1d5b2e; }
+
+/* Botones de acción: 56 px de alto para la distancia de la cocina */
+.kds-boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 56px;
+  min-width: 56px;
+  padding: 0.5rem 1.1rem;
+  border: 2px solid var(--color-primario);
+  border-radius: 12px;
+  background: var(--color-primario);
+  color: #ffffff;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.kds-boton--secundario {
+  background: #ffffff;
+  color: var(--color-primario);
+}
+
+.kds-boton--todo {
+  width: 100%;
+  border-color: #1d5b2e;
+  background: #1d5b2e;
+}
+
+.kds-boton:hover:not(:disabled) { filter: brightness(1.08); }
+.kds-boton--secundario:hover:not(:disabled) { background: #f7e7e2; filter: none; }
+
+/* Deshabilitado sin opacidad: borde discontinuo y colores con contraste */
+.kds-boton:disabled {
+  border-style: dashed;
+  border-color: #b9a39c;
+  background: #efe4e1;
+  color: #6a5752;
+  cursor: wait;
+}
+
+.kds-boton__extra { font-weight: 600; }
+
+.kds-tarjeta__pie {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.kds-tarjeta__pie .kds-boton--todo { flex: 1; width: auto; }
+
+/* TV (1920×1080): un poco más grande todo */
+@media (min-width: 1600px) {
+  .kds { font-size: 1.15rem; }
+  .kds__tarjetas { grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); }
+  .kds-tarjeta__titulo { font-size: 1.8rem; }
+  .kds-item__nombre { font-size: 1.4rem; }
+}
