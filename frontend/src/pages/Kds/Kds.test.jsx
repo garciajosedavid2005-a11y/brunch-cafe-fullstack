@@ -277,6 +277,46 @@ describe("KDS: sonido (F2-8)", () => {
   });
 });
 
+describe("KDS: estaciones del rol (2.5b)", () => {
+  const conEstaciones = (lista) => estado.apiRequest.mockImplementation((ruta) => {
+    if (ruta === "/v1/staff/cocina/estaciones") return Promise.resolve(lista);
+    const m = ruta.match(/^\/v1\/staff\/cocina\/cola\?estacion=(\w+)$/);
+    if (m) return colaDe(m[1]);
+    return Promise.reject(new Error(`Ruta inesperada ${ruta}`));
+  });
+
+  it("con una sola estación entra directo a ella, sin los botones de cambio", async () => {
+    conEstaciones([ESTACIONES[1]]);
+    pintar();
+    await screen.findByText(/No hay nada pendiente en Cocina/);
+    expect(screen.queryByRole("group", { name: "Estación" })).not.toBeInTheDocument();
+    expect(screen.getByText("Estación:", { exact: false }).closest("p")).toHaveTextContent("Estación: Cocina");
+  });
+
+  it("una estación guardada en el dispositivo que ya no es del rol se ignora", async () => {
+    localStorage.setItem(CLAVE_ESTACION, "barra");
+    conEstaciones([ESTACIONES[1]]);
+    pintar();
+    await screen.findByText(/No hay nada pendiente en Cocina/);
+    expect(llamadasCola("barra")).toBe(0);
+  });
+
+  it("sin estaciones asignadas lo dice y no pide ninguna cola", async () => {
+    conEstaciones([]);
+    pintar();
+    expect(await screen.findByText(/Tu rol no tiene estaciones asignadas/)).toBeInTheDocument();
+    expect(estado.apiRequest.mock.calls.some(([r]) => r.startsWith("/v1/staff/cocina/cola"))).toBe(false);
+  });
+
+  it("el usuario y su rol van en el encabezado («Hola, Nombre · Rol»), no junto a la estación", async () => {
+    pintar();
+    await screen.findByText(/No hay nada pendiente en Barra/);
+    const encabezado = screen.getByRole("banner");
+    expect(within(encabezado).getByText("Hola, Carla · Cocina")).toBeInTheDocument();
+    expect(screen.getByText("Estación:", { exact: false }).closest("p")).toHaveTextContent(/^Estación: Barra$/);
+  });
+});
+
 describe("KDS: sesión", () => {
   it("«Cambiar de usuario» cierra la sesión", async () => {
     pintar();

@@ -272,7 +272,9 @@ const prepararCocina = async () => {
 const abrirKds = async (p, estacion) => {
   await prepararCocina();
   await p.goto(`${FRONT}/kds`);
-  await p.getByRole("group", { name: "Estación" }).getByRole("button", { name: estacion }).click();
+  // 2.5b · Con una sola estación (cocina.dev) no hay botones de cambio: entra directo
+  const grupo = p.getByRole("group", { name: "Estación" });
+  if (await grupo.count()) await grupo.getByRole("button", { name: estacion, exact: true }).click();
   await p.getByRole("region", { name: `Cola de ${estacion}` }).waitFor();
 };
 
@@ -974,7 +976,15 @@ const VISTAS = {
   } },
   // 2.5 · KDS (cocina.dev). Al final: preparan datos que cambian el salón de las vistas anteriores
   "kds-cocina": { usuario: "cocina", completa: false, preparar: (p) => abrirKds(p, "Cocina") },
-  "kds-barra": { usuario: "cocina", completa: false, preparar: (p) => abrirKds(p, "Barra") },
+  // 2.5b · cocina.dev solo tiene Cocina: la barra la mira el admin (ve todas, con los botones de cambio)
+  "kds-barra": { usuario: "admin", completa: false, preparar: (p) => abrirKds(p, "Barra") },
+  // 2.5b · Admin › Roles: estaciones del KDS del rol Cocina
+  "admin-roles-estaciones": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Roles")(p);
+    const fila = p.getByRole("row").filter({ has: p.getByText("Cocina", { exact: true }) }).first();
+    await fila.getByRole("button", { name: /editar/i }).click();
+    await p.getByRole("group", { name: "Estaciones del KDS" }).waitFor();
+  }, alFinal: (p) => p.getByRole("group", { name: "Cocina y barra" }).evaluate((g) => g.scrollIntoView({ block: "start" })) },
   // «Listo» recién marcado: la tarjeta ofrece «Deshacer» con la cuenta atrás (F2-7)
   "kds-deshacer": { usuario: "cocina", completa: false, preparar: async (p) => {
     await abrirKds(p, "Cocina");
@@ -1109,6 +1119,11 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
       // 2.0b · Estado que la foto debe mostrar (p. ej. foco o puntero) tras las mediciones
       if (vista.antesDeCaptura) await vista.antesDeCaptura(page);
       const archivo = join(SALIDA, `${nombre}-${etiqueta}.png`);
+      // 2.5b · Lo que la vista quiere a la vista en la foto, después de las mediciones (que mueven el foco)
+      if (vista.alFinal) {
+        await vista.alFinal(page);
+        await page.waitForTimeout(300);
+      }
       await page.screenshot({ path: archivo, fullPage: completa });
       console.log(`✓ ${archivo}${consola.length ? `  (errores de consola: ${consola.join(" | ").slice(0, 200)})` : ""}`);
     } catch (error) {

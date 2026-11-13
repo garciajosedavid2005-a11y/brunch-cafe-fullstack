@@ -2978,6 +2978,18 @@
   margin-top: 0.1rem;
 }
 
+/* 2.5b · Estaciones del KDS del rol, en el listado */
+.admin-roles__estaciones {
+  display: block;
+  max-width: 16rem; /* se parte en líneas: no ensancha la columna del rol (revisor-visual) */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  margin-top: 0.35rem;
+  color: #594742;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .admin-roles__aviso-fila {
   display: flex;
   align-items: flex-start;

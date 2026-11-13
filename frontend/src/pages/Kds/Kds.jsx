@@ -122,7 +122,8 @@ export default function Kds() {
           <Logo lugar={false} className="kds__logo" />
           <span className="kds__area">Cocina y barra</span>
         </div>
-        {estaciones && estaciones.length > 0 && (
+        {/* 2.5b · Solo las estaciones del rol; con una sola, entra directo sin botones de cambio */}
+        {estaciones && estaciones.length > 1 && (
           <div className="kds__estaciones" role="group" aria-label="Estación">
             {estaciones.map((e) => (
               <button key={e.codigo} type="button" className="kds__estacion" aria-pressed={e.codigo === codigo}
@@ -133,6 +134,8 @@ export default function Kds() {
           </div>
         )}
         <div className="kds__acciones">
+          {/* 2.5b · Quién está en la pantalla, como en /staff, junto a «Cambiar de usuario» */}
+          <p className="kds__hola">Hola, {user?.nombre}{user?.roleLabel ? ` · ${user.roleLabel}` : ""}</p>
           {sonido.disponible && sonido.activado && sonido.bloqueado && (
             <button type="button" className="kds__boton kds__boton--destacado" onClick={sonido.activar}>
               <Volume2 size={20} aria-hidden="true" /> Activar sonido
@@ -154,17 +157,16 @@ export default function Kds() {
       </header>
 
       <div className="kds__barra">
-        <div className="kds__quien">
-          {estacion && <p className="kds__estacion-activa">Estación: <strong>{estacion.nombre}</strong></p>}
-          <p className="kds__hola">{user?.nombre}{user?.roleLabel ? ` (${user.roleLabel})` : ""}</p>
-        </div>
+        {estacion && <p className="kds__estacion-activa">Estación: <strong>{estacion.nombre}</strong></p>}
         {codigo && <Actualizado desde={actualizadoEn} error={error} onActualizar={recargar} enVivo={enVivo} />}
       </div>
 
       {errorPanel && <p className="kds__error" role="alert">{errorPanel}</p>}
       {errorEstaciones && <p className="kds__error" role="alert">{errorEstaciones}</p>}
       {errorAccion && <p className="kds__error" role="alert">{errorAccion}</p>}
-      {estaciones && estaciones.length === 0 && <p className="kds__vacio">No hay estaciones activas. El administrador las crea en Admin › Salón.</p>}
+      {estaciones && estaciones.length === 0 && (
+        <p className="kds__vacio">Tu rol no tiene estaciones asignadas. Pide al administrador que te asigne una en Admin › Roles.</p>
+      )}
       {datos?.truncado && (
         <p className="kds__aviso">Hay más rondas de las que caben en pantalla: termina las más antiguas para ver el resto.</p>
       )}

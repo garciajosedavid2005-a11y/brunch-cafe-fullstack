@@ -43,6 +43,13 @@
   color: #6a5752;
 }
 
+/* 2.5b · Con botones de estación (admin o roles con varias) a 1280 px no cabe todo en una fila: la
+   etiqueta del área cede su sitio al saludo (la estación ya se dice debajo, en «Estación: …») */
+@media (max-width: 1440px) {
+  .kds__cabecera:has(.kds__estaciones) .kds__area { display: none; }
+  .kds__cabecera .kds__estacion { min-width: 6rem; }
+}
+
 .kds__estaciones {
   display: flex;
   flex-wrap: wrap;
@@ -107,9 +114,16 @@ a.kds__boton:visited {
 
 .kds__acciones {
   display: flex;
-  flex-wrap: wrap;
+  flex: 1 1 0; /* base 0: en la fila del logo se encoge (el saludo se recorta) en vez de bajar de línea */
+  flex-wrap: nowrap; /* en una fila: el saludo se recorta antes que partir la cabecera (revisor-visual, 2.5b) */
+  align-items: center;
+  justify-content: flex-end;
   gap: 0.5rem;
+  min-width: 0;
+  margin-left: auto; /* a la derecha también sin los botones de estación (una sola, 2.5b) */
 }
+
+.kds__acciones > .kds__boton { flex-shrink: 0; }
 
 .kds__estacion:focus-visible,
 .kds__boton:focus-visible,
@@ -126,23 +140,21 @@ a.kds__boton:visited {
   gap: 0.5rem 1rem;
 }
 
-.kds__quien {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 1.25rem;
-}
-
 .kds__estacion-activa {
   margin: 0;
   font-size: 1.35rem;
   color: var(--color-oscuro);
 }
 
+/* 2.5b · «Hola, Nombre · Rol» en el encabezado, como en /staff; si no cabe, se recorta con «…» */
 .kds__hola {
-  margin: 0;
+  min-width: 0;
+  margin: 0 0.4rem 0 0;
+  overflow: hidden;
   font-weight: 600;
-  color: #594742;
+  color: var(--color-oscuro);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .kds__error,

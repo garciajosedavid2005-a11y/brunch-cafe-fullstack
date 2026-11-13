@@ -45,6 +45,9 @@ export default function RolesSection() {
     useAdminResource("/v1/admin/roles");
   // Catálogo de permisos (los "reservados" son de fases futuras y aún no se asignan)
   const { items: catalogo } = useAdminResource("/v1/admin/permisos");
+  // 2.5b · Estaciones del KDS que se pueden asignar al rol
+  const { items: estacionesCatalogo } = useAdminResource("/v1/admin/estaciones");
+  const nombreEstacion = (codigo) => estacionesCatalogo.find((e) => e.codigo === codigo)?.nombre || codigo;
   const [busqueda, setBusqueda] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [rolEnEdicion, setRolEnEdicion] = useState(null);
@@ -63,6 +66,7 @@ export default function RolesSection() {
     nombre: "",
     descripcion: "",
     permisos: [],
+    estaciones: [],
   });
 
   const etiquetaPermiso = (clave) =>
@@ -78,12 +82,21 @@ export default function RolesSection() {
         : [...actual.permisos, clave],
     }));
 
+  const alternarEstacion = (codigo) =>
+    setFormData((actual) => ({
+      ...actual,
+      estaciones: actual.estaciones.includes(codigo)
+        ? actual.estaciones.filter((c) => c !== codigo)
+        : [...actual.estaciones, codigo],
+    }));
+
   const abrirModalCrear = () => {
     setRolEnEdicion(null);
     setFormData({
       nombre: "",
       descripcion: "",
       permisos: [],
+      estaciones: [],
     });
     setModalAbierto(true);
   };
@@ -97,6 +110,7 @@ export default function RolesSection() {
       nombre: item.nombre,
       descripcion: item.descripcion,
       permisos: (item.permisos || []).filter((p) => asignables.has(p)),
+      estaciones: item.estaciones || [],
     });
     setModalAbierto(true);
   };
@@ -109,7 +123,7 @@ export default function RolesSection() {
     const datos = {
       nombre: formData.nombre,
       descripcion: formData.descripcion,
-      ...(permisosEditables ? { permisos: formData.permisos } : {}),
+      ...(permisosEditables ? { permisos: formData.permisos, estaciones: formData.estaciones } : {}),
     };
     const guardado = rolEnEdicion
       ? await actualizar(rolEnEdicion.id, datos)
@@ -215,6 +229,12 @@ export default function RolesSection() {
                           <span className={`admin-badge admin-roles__tipo ${rol.esSistema ? "admin-badge--warning" : "admin-badge--neutral"}`}>
                             {rol.esSistema ? "Sistema" : "Personalizado"}
                           </span>
+                          {/* 2.5b · Estaciones del KDS del rol */}
+                          {rol.estaciones?.length > 0 && (
+                            <span className="admin-roles__estaciones">
+                              Estaciones: {rol.estaciones.map(nombreEstacion).join(", ")}
+                            </span>
+                          )}
                           {/* En la columna del rol: la de permisos queda bajo el bloque fijo de acciones en pantallas medianas */}
                           {abreSinPoder(rol.permisos) && (
                             <span className="admin-roles__aviso-fila">
@@ -396,6 +416,26 @@ export default function RolesSection() {
                             </label>
                           ))}
                       </fieldset>
+                      {/* 2.5b · Con «Ver la pantalla de cocina»: qué estaciones ve y opera este rol */}
+                      {modulo === "cocina" && formData.permisos.includes("kds:ver") && (
+                        <fieldset className="admin-permisos__grupo">
+                          <legend>Estaciones del KDS</legend>
+                          <p className="admin-roles__nota">
+                            Solo verá y operará estas estaciones en la pantalla de cocina (sin ninguna, no verá el KDS).
+                          </p>
+                          {estacionesCatalogo.map((estacion) => (
+                            <label key={estacion.codigo} className="admin-checkbox-label admin-permiso">
+                              <input
+                                type="checkbox"
+                                checked={formData.estaciones.includes(estacion.codigo)}
+                                onChange={() => alternarEstacion(estacion.codigo)}
+                              />
+                              <span className="admin-permiso__texto">{estacion.nombre}</span>
+                              {estacion.activa === false && <span className="admin-permiso__proximamente">Inactiva</span>}
+                            </label>
+                          ))}
+                        </fieldset>
+                      )}
                       {/* Junto al grupo «Salón», donde se marca la casilla */}
                       {modulo === "salon" && abreSinPoder(formData.permisos) && (
                         <p className="admin-roles__aviso" role="status">
