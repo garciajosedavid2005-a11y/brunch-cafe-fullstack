@@ -9,7 +9,7 @@ import Usuario from '../identidad/usuario.model.js'
 import Pedido from '../pedidos/pedido.model.js'
 import DetallePedido from '../pedidos/detallePedido.model.js'
 import Producto from '../catalogo/producto.model.js'
-import Estacion, { umbralesDe } from '../catalogo/estacion.model.js'
+import Estacion, { umbralesDe, COLACION_NOMBRE } from '../catalogo/estacion.model.js'
 import { AppError } from '../compartido/errors.js'
 import { ESTADOS_CUENTA_ABIERTA } from '../compartido/estadosSalon.js'
 import { estadoPorCodigo, registrarEvento } from '../compartido/estados.service.js'
@@ -23,6 +23,7 @@ import { colaSchema, pedidoEstacionSchema, VENTANA_DESHACER_MS } from './cocina.
 import { publicar, CANAL_TODAS_LAS_ESTACIONES } from '../tiempoReal/bus.js'
 
 export const LIMITE_COLA = 200
+export const LIMITE_ESTACIONES_KDS = 50
 const PENDIENTES = ['enviado', 'en_preparacion']
 const PREPARABLES = ['confirmado', 'en_preparacion']
 
@@ -142,6 +143,14 @@ const tarjetasDomicilio = async (codigo, limite) => {
             lineas: lineasPorPedido.get(String(p._id)),
         })),
     }
+}
+
+/** 2.5 · GET /staff/cocina/estaciones (kds:ver): las activas para el filtro del KDS, con sus umbrales (F2-4). */
+export const listarEstacionesKds = async (sesion) => {
+    exigir(sesion, 'kds:ver')
+    const estaciones = await Estacion.find({ activa: true }).select('codigo nombre umbralAvisoMin umbralAlertaMin')
+        .collation(COLACION_NOMBRE).sort({ nombre: 1 }).limit(LIMITE_ESTACIONES_KDS).lean()
+    return estaciones.map((e) => ({ codigo: e.codigo, nombre: e.nombre, ...umbralesDe(e) }))
 }
 
 /** GET /staff/cocina/cola?estacion=… (kds:ver). */

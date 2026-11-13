@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { requirePermission } from '../identidad/requirePermission.js'
 import { idempotencia } from '../compartido/idempotencia.js'
 import { cambiarEstadoItem, todoListo, obtenerCola, marcarPedidoEstacion } from './cocina.service.js'
+import { listarEstacionesKds } from './cola.service.js'
 
 // 2.2 · /api/v1/staff (ya autenticado): estado de un ítem (preparar o servir, según el destino; la máquina
 // del ítem exige el permiso exacto) y «Todo listo» de una ronda en una estación
@@ -17,6 +18,11 @@ router.post('/cocina/rondas/:comandaId/todo-listo', requirePermission('item:prep
 })
 
 // 2.3 · Cola por estación (kds:ver) y domicilio por estación (pedido:preparar, F2-3)
+// 2.5 · Estaciones activas para el filtro de /kds
+router.get('/cocina/estaciones', requirePermission('kds:ver'), async (req, res) => {
+    res.json(await listarEstacionesKds(req.usuario))
+})
+
 router.get('/cocina/cola', requirePermission('kds:ver'), async (req, res) => {
     res.json(await obtenerCola(req.query, req.usuario))
 })
