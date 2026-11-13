@@ -25,6 +25,7 @@ import ProfileSection from "../CustomerDashboard/sections/ProfileSection";
 import SecuritySection from "../CustomerDashboard/sections/SecuritySection";
 import PlanoMesas from "./plano/PlanoMesas";
 import CuentasAbiertas from "./cuentas/CuentasAbiertas";
+import Logo from "../../components/Logo/Logo";
 import "./StaffDashboard.css";
 import "../CustomerDashboard/CustomerDashboard.css";
 
@@ -171,7 +172,8 @@ export default function StaffDashboard() {
     <main className="staff-tablet">
       <header className="staff-tablet__cabecera">
         <div className="staff-tablet__marca">
-          <span className="staff-tablet__marca-nombre">Brunch Café</span>
+          {/* 2.0c · Logo de la marca (sin el lugar: aquí manda el área) */}
+          <Logo lugar={false} className="staff-tablet__logo" />
           <span className="staff-tablet__marca-area">Sala</span>
         </div>
         <div className="staff-tablet__usuario">

@@ -1,5 +1,5 @@
 import slideImg from "../../assets/imagenes/slide1.jpg";
-import logoClaro from "../../assets/LogoClaro.png";
+import Logo from "../../components/Logo/Logo";
 import { Coffee, UtensilsCrossed, Sparkles } from "lucide-react";
 
 const AuthBanner = ({ modo = "login" }) => {
@@ -13,14 +13,9 @@ const AuthBanner = ({ modo = "login" }) => {
       <div className="auth-banner__overlay" />
 
       <div className="auth-banner__contenido">
-        {/* Identidad de marca superior: ÚNICAMENTE el logo y el nombre 'Brunch Café' */}
+        {/* Identidad de marca superior: el logo (2.0c), en crema sobre la foto */}
         <div className="auth-banner__marca">
-          <img
-            src={logoClaro}
-            alt="Logo Brunch Café"
-            className="auth-banner__logo"
-          />
-          <span className="auth-banner__nombre-marca">Brunch Café</span>
+          <Logo tono="crema" className="auth-banner__logo" />
         </div>
 
         {/* Mensaje inspirador según la pantalla */}

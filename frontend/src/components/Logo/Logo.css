@@ -1,0 +1,53 @@
+/* 2.0c · Logo de Brunch Café. El tamaño se controla con --logo-tam (alto de la línea del nombre); el
+   símbolo y el lugar escalan con él. Colores de la paleta del sitio:
+   bordó #890620 (--color-primario): 9,9:1 sobre blanco, 8,3:1 sobre el fondo rosado #F7E7E2,
+   8,7:1 sobre el marfil #F5EFE6 y 9,8:1 sobre la cabecera de /staff #FFFDF9; crema #F5EFE6
+   (--color-marfil) sobre el bordó 8,7:1, sobre el oscuro #2C0703 16,1:1 y sobre la capa oscura
+   de las portadas y del login. Todo por encima de 4,5:1, también el texto pequeño del lugar. */
+.logo {
+  --logo-tam: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--logo-tam) * 0.38);
+  color: var(--color-primario);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.logo--crema {
+  color: var(--color-marfil);
+}
+
+.logo__simbolo {
+  display: block;
+  flex: none;
+  height: calc(var(--logo-tam) * 1.55);
+  width: auto;
+}
+
+.logo--simbolo .logo__simbolo {
+  height: calc(var(--logo-tam) * 1.3);
+}
+
+.logo__texto {
+  display: grid;
+  gap: calc(var(--logo-tam) * 0.16);
+}
+
+.logo__nombre {
+  font-family: "Fraunces", var(--fuente-titulos, Georgia), serif;
+  font-variation-settings: "opsz" 144, "SOFT" 100;
+  font-weight: 700;
+  font-size: var(--logo-tam);
+  letter-spacing: -0.01em;
+}
+
+/* Mayúsculas pequeñas y espaciadas; nunca por debajo de 10 px para que se lea */
+.logo__lugar {
+  font-family: "Montserrat", sans-serif;
+  font-weight: 600;
+  font-size: max(10px, calc(var(--logo-tam) * 0.24));
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  padding-left: 0.1em;
+}

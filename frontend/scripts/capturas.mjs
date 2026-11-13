@@ -659,6 +659,12 @@ const VISTAS = {
   "admin-pedidos": { usuario: "admin", preparar: abrirPestanaAdmin("Pedidos") },
   "admin-reservas": { usuario: "admin", preparar: abrirPestanaAdmin("Reservas") },
   "admin-resumen": { usuario: "admin", preparar: abrirPestanaAdmin("Resumen") },
+  // 2.0c · El admin recién abierto, arriba del todo: el navbar con el logo a la vista
+  "admin-inicio": { usuario: "admin", completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/admin`);
+    await p.getByRole("heading", { name: /Hola,/ }).waitFor();
+    await p.evaluate(() => window.scrollTo(0, 0));
+  } },
   // Imagen de 3 MB en "Nuevo producto": debe salir el aviso del límite de 2 MB
   "admin-producto-imagen-grande": {
     usuario: "admin",
@@ -962,7 +968,13 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
       await medirNavbar("arriba");
       // 2.0b · Paleta en /staff y el admin (vistas del personal y del admin)
       if (["mesero", "admin"].includes(vista.usuario) && /\/(staff|admin)/.test(page.url())) {
+        // 2.0c · Medir pasa el puntero y el foco por los botones y desplaza la página: se vuelve a donde
+        // estaba (si no, la foto sale desplazada y sin el navbar)
+        const posicion = await page.evaluate(() => [window.scrollX, window.scrollY]);
         const hallados = await medirPaleta(page);
+        await page.evaluate(([x, y]) => { document.activeElement?.blur?.(); window.scrollTo(x, y); }, posicion);
+        await page.mouse.move(ancho - 2, alto - 2);
+        await page.waitForTimeout(700); // el navbar reaparece al subir
         const fuera = hallados.filter((h) => !h.deEstado);
         for (const h of hallados) azules.push({ vista: nombre, tamano: etiqueta, ...h });
         console.log(`  ${fuera.length ? `⚠ ${fuera.length} color(es) azul(es) fuera de la paleta (${fuera.slice(0, 3).map((h) => `${h.elemento} «${h.texto}» ${h.estado}`).join(", ")})` : "✓ sin azules fuera de la paleta"}${hallados.length - fuera.length ? ` · ${hallados.length - fuera.length} de estado` : ""} (${nombre} ${etiqueta})`);

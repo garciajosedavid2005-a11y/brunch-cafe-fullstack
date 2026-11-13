@@ -105,6 +105,14 @@ describe("Panel de mesero", () => {
     expect(await screen.findByRole("heading", { name: "Seguridad y configuración" })).toBeInTheDocument();
   });
 
+  it("la cabecera lleva el logo de Brunch Café (2.0c) y el área «Sala»", () => {
+    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    const logo = screen.getByRole("img", { name: "Brunch Café" });
+    expect(logo).toHaveTextContent("Brunch Café");
+    expect(logo).toHaveClass("logo--bordo");
+    expect(screen.getByText("Sala")).toBeInTheDocument();
+  });
+
   it("oculta los módulos de reservas y pedidos si el rol no tiene esos permisos", () => {
     state.user.permisos = [];
 

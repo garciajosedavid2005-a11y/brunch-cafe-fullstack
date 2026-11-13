@@ -160,27 +160,17 @@
   justify-content: space-between;
 }
 
-/* Área del Logo: ÚNICAMENTE el nombre 'Brunch Café' */
+/* Área del logo (2.0c): símbolo, nombre y lugar en crema */
 .auth-banner__marca {
   display: flex;
   align-items: center;
   gap: 0.85rem;
 }
 
+/* 2.0c · Logo en crema sobre la foto oscurecida; la sombra lo separa de las zonas claras de la foto */
 .auth-banner__logo {
-  height: 46px;
-  width: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.25));
-}
-
-.auth-banner__nombre-marca {
-  font-family: var(--fuente-titulos), serif;
-  font-size: 1.7rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: #FAF5EE;
-  line-height: 1;
+  --logo-tam: 1.9rem;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35));
 }
 
 .auth-banner__cuerpo {

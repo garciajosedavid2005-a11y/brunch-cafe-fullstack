@@ -5,8 +5,7 @@ import { useCarrito } from "../../context/CarritoContext";
 import { useAuth } from "../../context/useAuth";
 import { esAdministrador, esPersonal } from "../../utils/permisos";
 import compras from "../../assets/carrito-de-compras.png";
-import logoOscuro from "../../assets/logoOscuro.png";
-import logoClaro from "../../assets/logoClaro.png";
+import Logo from "../Logo/Logo";
 import { useHayPortada } from "../../context/usePortada";
 import "./navbar.css";
 
@@ -81,21 +80,15 @@ const NavbarContent = () => {
                     {esAdmin ? (
                         <div className="navbar__logo-enlace" style={{ cursor: "default" }}>
                             <div className="navbar__logo-wrapper">
-                                <img
-                                    src={esTransparente ? logoClaro : logoOscuro}
-                                    alt="Brunch Café"
-                                    className="navbar__logo"
-                                />
+                                {/* 2.0c · Crema sobre la portada; bordó sobre fondo claro */}
+                                <Logo tono={esTransparente ? "crema" : "bordo"} className="navbar__logo" />
                             </div>
                         </div>
                     ) : (
                         <NavLink to="/" className="navbar__logo-enlace">
                             <div className="navbar__logo-wrapper">
-                                <img
-                                    src={esTransparente ? logoClaro : logoOscuro}
-                                    alt="Brunch Café"
-                                    className="navbar__logo"
-                                />
+                                {/* 2.0c · Crema sobre la portada; bordó sobre fondo claro */}
+                                <Logo tono={esTransparente ? "crema" : "bordo"} className="navbar__logo" />
                             </div>
                         </NavLink>
                     )}

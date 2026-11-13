@@ -104,10 +104,13 @@
 }
 
 .navbar__logo {
-  width: auto;
-  max-height: 60px;
-  object-fit: contain;
-  display: block;
+  /* 2.0c · Logo en SVG + texto: símbolo de ~42 px y nombre de 27 px */
+  --logo-tam: 1.7rem;
+}
+
+/* 2.0c · Crema sobre la foto: la sombra lo separa si la foto tiene zonas claras (como en el login) */
+.top-bar--transparente .navbar__logo {
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));
 }
 
 /* =========================
@@ -326,8 +329,17 @@
   }
 
   .navbar__logo-wrapper {
-    width: 100px;
+    width: auto;
     height: 50px;
+  }
+
+  /* 2.0c · En el móvil, más pequeño y sin el lugar, para no chocar con el menú ni el carrito */
+  .navbar__logo {
+    --logo-tam: 1.4rem;
+  }
+
+  .navbar__logo .logo__lugar {
+    display: none;
   }
 
   /* Contenedor del menú toma todo el ancho de la fila inferior */
