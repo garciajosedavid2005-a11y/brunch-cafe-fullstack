@@ -24,6 +24,10 @@ export const crearEstacionSchema = z.object({
         .regex(FORMATO_CODIGO, { error: 'El código va en minúsculas, sin espacios ni tildes (2 a 30 caracteres: letras, números o _)' }),
     nombre: texto('El nombre', 2, 40),
     activa: booleano('Activa').optional(),
+    // 2.3 · Umbrales del temporizador del KDS en minutos (F2-4); el aviso va antes que la alerta
+    // null = vuelve a los valores por defecto
+    umbralAvisoMin: entero('El umbral de aviso', 1, 240).nullable().optional(),
+    umbralAlertaMin: entero('El umbral de alerta', 1, 240).nullable().optional(),
 })
 export const actualizarEstacionSchema = crearEstacionSchema.omit({ codigo: true }).partial()
 

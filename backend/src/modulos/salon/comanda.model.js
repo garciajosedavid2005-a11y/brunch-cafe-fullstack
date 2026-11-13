@@ -150,6 +150,12 @@ comandaSchema.pre('validate', function () {
 comandaSchema.index({ cuenta: 1, numeroRonda: 1 }, { unique: true })
 // 2.2 · La cocina y el servir buscan la ronda por el _id del ítem
 comandaSchema.index({ 'items._id': 1 })
+// 2.3 · Cola de cocina por estación: rondas enviadas con ítems de esa estación en cierto estado, de la
+// más antigua a la más nueva (consulta con $elemMatch sobre estacion.codigo y estado del mismo ítem)
+comandaSchema.index(
+    { 'items.estacion.codigo': 1, 'items.estado': 1, enviadaEn: 1 },
+    { partialFilterExpression: { estado: 'enviada' }, name: 'cola_por_estacion' },
+)
 // Una sola ronda en borrador por cuenta
 comandaSchema.index({ cuenta: 1 }, { unique: true, partialFilterExpression: { estado: 'borrador' }, name: 'un_borrador_por_cuenta' })
 

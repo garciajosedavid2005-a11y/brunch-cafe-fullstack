@@ -18,6 +18,8 @@ export const TIPOS_EVENTO = [
     'horarios_cambiados',
     // 2.2 · Cocina, barra y servir: de/a con el estado del ítem y datos.item (entidad 'cuenta')
     'item_estado_cambiado',
+    // 2.3 · Una estación terminó su parte de un pedido a domicilio (entidad 'pedido', datos.estacion)
+    'estacion_lista',
 ]
 const eventoSchema = new mongoose.Schema({
     entidad: {

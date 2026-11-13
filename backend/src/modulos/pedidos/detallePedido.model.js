@@ -46,6 +46,16 @@ const detallePedidoSchema = new mongoose.Schema({
         maxlength: MAX_NOTA_ITEM,
         default: ''
     },
+    // 2.3 · Estación del momento del pedido (como los ítems de la comanda, F1-14): el KDS la usa y un
+    // cambio del catálogo no mueve los pedidos en curso. Sin ella (pedidos anteriores) se lee del catálogo
+    estacion: {
+        type: new mongoose.Schema({
+            id: { type: mongoose.Schema.Types.ObjectId, ref: 'Estacion', required: true },
+            codigo: { type: String, required: true, trim: true, maxlength: 30 },
+            nombre: { type: String, required: true, trim: true, maxlength: 40 },
+        }, { _id: false }),
+        default: null,
+    },
     // Obligatorio en las líneas nuevas; las anteriores a 1.12 no se vuelven a validar
     precioUnitario: {
         type: Number,

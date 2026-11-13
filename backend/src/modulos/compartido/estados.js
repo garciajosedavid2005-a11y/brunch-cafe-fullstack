@@ -55,6 +55,10 @@ const modalidad = (contexto) => contexto?.modalidad || 'domicilio'
 
 const staff = (de, a, permiso, extra = {}) => ({ actor: 'staff', de: [].concat(de), a, permiso, ...extra })
 const cliente = (de, a, extra = {}) => ({ actor: 'cliente', de: [].concat(de), a, ...extra })
+// 2.3 · La cocina y la barra preparan el domicilio (F2-3): solo confirmado → en_preparacion → listo
+const cocina = (de, a, permiso) => ({ actor: 'cocina', de: [].concat(de), a, permiso })
+// Actores que piden la transición con un permiso propio
+const CON_PERMISO = ['staff', 'cocina']
 
 export const TRANSICIONES = {
     pedido: [
@@ -66,6 +70,8 @@ export const TRANSICIONES = {
         staff('listo', 'entregado', 'pedido:cambiar_estado', { condicion: (c) => modalidad(c) === 'para_llevar' }),
         staff(['pendiente', 'confirmado'], 'cancelado', 'pedido:cancelar', { requiereMotivo: true }),
         cliente('pendiente', 'cancelado', { motivoPorDefecto: 'cancelado por cliente' }),
+        cocina('confirmado', 'en_preparacion', 'pedido:preparar'),
+        cocina('en_preparacion', 'listo', 'pedido:preparar'),
     ],
     reserva: [
         staff('pendiente', 'confirmada', 'reserva:cambiar_estado'),
@@ -87,7 +93,7 @@ for (const tipo of TIPOS_ESTADO) {
         for (const codigo of [...t.de, t.a]) {
             if (!CODIGOS_ESTADO[tipo].includes(codigo)) throw new Error(`Transición con código desconocido: ${tipo}.${codigo}`)
         }
-        if (t.actor === 'staff' && !CLAVES.includes(t.permiso)) throw new Error(`Transición con permiso desconocido: ${t.permiso}`)
+        if (CON_PERMISO.includes(t.actor) && !CLAVES.includes(t.permiso)) throw new Error(`Transición con permiso desconocido: ${t.permiso}`)
         if (t.de.some((codigo) => esEstadoFinal(tipo, codigo))) throw new Error(`Transición que reabre un estado final: ${tipo}.${t.de}`)
     }
 }
@@ -97,7 +103,7 @@ const aplica = (t, de, contexto) => t.de.includes(de) && (!t.condicion || t.cond
 /** Transiciones que `actor` ('staff' | 'cliente') puede hacer desde `de`. Para staff filtra por permisos. */
 export const transicionesDisponibles = (tipo, de, { actor = 'staff', permisos = [], contexto } = {}) =>
     (TRANSICIONES[tipo] || []).filter((t) =>
-        t.actor === actor && aplica(t, de, contexto) && (actor !== 'staff' || tienePermiso(permisos, t.permiso))
+        t.actor === actor && aplica(t, de, contexto) && (!CON_PERMISO.includes(actor) || tienePermiso(permisos, t.permiso))
     )
 
 /**
@@ -118,7 +124,7 @@ export const validarTransicion = (tipo, de, a, { actor = 'staff', permisos = [],
         const permitidos = transicionesDisponibles(tipo, de, { actor, permisos, contexto }).map((t) => t.a)
         throw new AppError(409, 'TRANSICION_INVALIDA', `No se puede pasar de "${de}" a "${a}".`, { de, a, permitidos })
     }
-    if (actor === 'staff' && !tienePermiso(permisos, transicion.permiso)) {
+    if (CON_PERMISO.includes(actor) && !tienePermiso(permisos, transicion.permiso)) {
         throw new AppError(403, 'FORBIDDEN', 'No tienes permiso para realizar esta acción.', { requiere: [transicion.permiso] })
     }
     const texto = typeof motivo === 'string' ? motivo.trim() : ''

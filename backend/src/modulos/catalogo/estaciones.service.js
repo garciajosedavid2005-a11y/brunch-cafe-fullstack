@@ -1,5 +1,5 @@
 import mongoose from 'mongoose'
-import Estacion, { COLACION_NOMBRE } from './estacion.model.js'
+import Estacion, { COLACION_NOMBRE, umbralesDe } from './estacion.model.js'
 import Categoria from './categoria.model.js'
 import Producto from './producto.model.js'
 import { AppError, notFound } from '../compartido/errors.js'
@@ -26,8 +26,17 @@ export const formatoEstacion = (estacion) => (estacion
 const formato = (estacion, uso = { categorias: 0, productos: 0 }) => ({
     ...formatoEstacion(estacion),
     activa: estacion.activa,
+    ...umbralesDe(estacion), // 2.3 (F2-4)
     ...uso,
 })
+
+// El aviso va antes que la alerta (con los valores que quedarán, propios o por defecto)
+const exigirUmbrales = (estacion, cambios) => {
+    const { umbralAvisoMin, umbralAlertaMin } = umbralesDe({ ...estacion, ...sinUndefined(cambios) })
+    if (umbralAvisoMin >= umbralAlertaMin) {
+        throw new AppError(400, 'UMBRALES_NO_VALIDOS', 'El aviso debe llegar antes que la alerta (menos minutos).', { umbralAvisoMin, umbralAlertaMin })
+    }
+}
 
 const buscar = async (id) => {
     if (!mongoose.isValidObjectId(id)) throw notFound('Estación no encontrada.')
@@ -92,29 +101,37 @@ const nombreLibre = async (nombre, excepto) => {
     if (await Estacion.exists(filtro).collation(COLACION_NOMBRE)) throw duplicada()
 }
 
-export const crearEstacion = async ({ codigo, nombre, activa }) => {
+export const crearEstacion = async ({ codigo, nombre, activa, umbralAvisoMin, umbralAlertaMin }) => {
+    exigirUmbrales({ codigo }, { umbralAvisoMin, umbralAlertaMin })
     if (await Estacion.exists({ codigo })) throw duplicada()
     await nombreLibre(nombre)
     try {
-        return formato(await Estacion.create(sinUndefined({ codigo, nombre, activa })))
+        return formato(await Estacion.create(sinUndefined({ codigo, nombre, activa, umbralAvisoMin, umbralAlertaMin })))
     } catch (error) {
         if (esDuplicado(error)) throw duplicada() // dos altas simultáneas
         throw error
     }
 }
 
-export const actualizarEstacion = async (id, { nombre, activa }) => {
+export const actualizarEstacion = async (id, { nombre, activa, umbralAvisoMin, umbralAlertaMin }) => {
     const estacion = await buscar(id)
+    exigirUmbrales(estacion.toObject(), { umbralAvisoMin, umbralAlertaMin })
     if (nombre !== undefined) await nombreLibre(nombre, estacion._id)
     try {
         return await conTransaccion(async (session) => {
             if (activa === false) await exigirSinUso(estacion._id, session, 'desactivar')
+            // Condicional sobre los umbrales leídos: dos admins a la vez no dejan el aviso después de la alerta
             const actualizada = await Estacion.findOneAndUpdate(
-                { _id: estacion._id },
-                { $set: sinUndefined({ nombre, activa }) },
+                { _id: estacion._id, umbralAvisoMin: estacion.umbralAvisoMin ?? null, umbralAlertaMin: estacion.umbralAlertaMin ?? null },
+                { $set: sinUndefined({ nombre, activa, umbralAvisoMin, umbralAlertaMin }) },
                 { returnDocument: 'after', runValidators: true, session },
             )
-            if (!actualizada) throw notFound('Estación no encontrada.')
+            if (!actualizada) {
+                if (await Estacion.exists({ _id: estacion._id }).session(session)) {
+                    throw new AppError(409, 'ESTACION_MODIFICADA', 'Otro usuario cambió esta estación: recarga para ver los cambios.')
+                }
+                throw notFound('Estación no encontrada.')
+            }
             return formato(actualizada, await usoDe(estacion._id, session))
         })
     } catch (error) {

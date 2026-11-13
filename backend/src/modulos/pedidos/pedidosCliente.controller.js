@@ -6,6 +6,7 @@ import Pedido from './pedido.model.js';
 import DetallePedido from './detallePedido.model.js';
 import { gruposActivosDeVarios, MAX_NOTA_ITEM, modificadoresEntradaSchema, validarModificadores } from '../catalogo/modificadores.validacion.js';
 import { calcularItem } from '../salon/totales.js';
+import { estacionesDe } from '../salon/cuentas.service.js';
 import MetodoPago from './metodoPago.model.js';
 import Producto from '../catalogo/producto.model.js';
 import { STATUS_CLIENTE } from '../compartido/estados.js';
@@ -160,6 +161,8 @@ export const crearPedido = async (req, res) => {
   // 1.12 · Opciones validadas con el MISMO validador que las cuentas (obligatorio, mín./máx., opción
   // disponible, grupo activo y del producto). Precio y subtotal salen del catálogo, nunca del cliente.
   const gruposDe = await gruposActivosDeVarios(products);
+  // 2.3 · Copia de la estación de cada plato (el KDS la usa; un cambio del catálogo no mueve el pedido)
+  const estacionDe = await estacionesDe(products);
   const lines = parsed.data.items.map((item, linea) => {
     const product = productoDe(item);
     let modificadores;
@@ -182,6 +185,7 @@ export const crearPedido = async (req, res) => {
       subtotal,
       modificadores,
       nota: item.nota,
+      estacion: estacionDe.get(String(product._id)) || null,
     };
   });
 
@@ -215,6 +219,7 @@ export const crearPedido = async (req, res) => {
       precioUnitario: line.unitPrice,
       modificadores: line.modificadores,
       nota: line.nota,
+      estacion: line.estacion,
       cantidad: line.quantity,
       subtotal: line.subtotal,
     })), { session });

@@ -14,10 +14,11 @@ import { conTransaccion } from '../compartido/transacciones.js'
 import { resumenItem } from '../salon/cuentas.service.js'
 import { validar } from '../salon/cuentas.schema.js'
 import { COMODIN, tienePermiso } from '../identidad/permisos.js'
-import { cambioEstadoItemSchema, todoListoSchema } from './cocina.schema.js'
+import { cambioEstadoItemSchema, todoListoSchema, VENTANA_DESHACER_MS } from './cocina.schema.js'
 
-// F2-7: quien marcó «listo» lo puede deshacer durante 10 s; después, solo el admin con motivo
-export const VENTANA_DESHACER_MS = 10_000
+export { VENTANA_DESHACER_MS }
+// 2.3 · Cola por estación y domicilio en el KDS
+export { obtenerCola, marcarPedidoEstacion } from './cola.service.js'
 
 const permisosDe = (sesion) => sesion?.permisos || []
 const itemNoEncontrado = () => new AppError(404, 'ITEM_NO_ENCONTRADO', 'El ítem no existe.')

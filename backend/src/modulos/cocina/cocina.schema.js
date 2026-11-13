@@ -14,6 +14,21 @@ export const cambioEstadoItemSchema = z.strictObject({
     motivo: textoOpcional('El motivo', 300),
 })
 
+// F2-7: quien marcó «listo» lo puede deshacer durante 10 s; después, solo el admin con motivo
+export const VENTANA_DESHACER_MS = 10_000
+
+const codigoEstacion = z.string({ error: 'Indica la estación' }).trim().toLowerCase()
+    .min(1, { error: 'Indica la estación' }).max(30, { error: 'La estación no es válida' })
+
+// 2.3 · GET /staff/cocina/cola?estacion=… (Express entrega la consulta como texto)
+export const colaSchema = z.object({ estacion: codigoEstacion })
+
+// 2.3 · Domicilio por estación (F2-3): la estación empieza o termina su parte
+export const pedidoEstacionSchema = z.strictObject({
+    estacion: codigoEstacion,
+    a: z.enum(['en_preparacion', 'listo'], { error: 'El estado debe ser en_preparacion o listo' }),
+})
+
 export const todoListoSchema = z.strictObject({
     estacion: z.string({ error: 'Indica la estación' }).trim().toLowerCase()
         .min(1, { error: 'Indica la estación' }).max(30, { error: 'La estación no es válida' }),

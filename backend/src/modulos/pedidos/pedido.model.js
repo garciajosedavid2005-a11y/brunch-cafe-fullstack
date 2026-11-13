@@ -75,6 +75,16 @@ pedidoSchema.pre('validate', function () {
     }
 })
 
+// 2.3 · Domicilio en el KDS (F2-3): estaciones que ya terminaron su parte (códigos). El pedido pasa a
+// listo cuando todas las estaciones con líneas están aquí. Sin el campo (pedidos anteriores) = ninguna
+pedidoSchema.add({
+    estacionesListas: {
+        type: [{ type: String, match: /^[a-z][a-z0-9_]{1,29}$/ }],
+        default: [],
+        validate: { validator: (v) => v.length <= 20 && new Set(v).size === v.length, message: 'Las estaciones listas no se repiten (máximo 20)' },
+    },
+})
+
 // 1.9 · «Cuentas abiertas»: pedidos en curso por estado, de los más nuevos a los más viejos
 pedidoSchema.index({ estado: 1, createdAt: -1 })
 

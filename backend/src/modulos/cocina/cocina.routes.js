@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { requirePermission } from '../identidad/requirePermission.js'
 import { idempotencia } from '../compartido/idempotencia.js'
-import { cambiarEstadoItem, todoListo } from './cocina.service.js'
+import { cambiarEstadoItem, todoListo, obtenerCola, marcarPedidoEstacion } from './cocina.service.js'
 
 // 2.2 · /api/v1/staff (ya autenticado): estado de un ítem (preparar o servir, según el destino; la máquina
 // del ítem exige el permiso exacto) y «Todo listo» de una ronda en una estación
@@ -14,6 +14,15 @@ router.post('/items/:itemId/estado', requirePermission('item:preparar', 'item:se
 
 router.post('/cocina/rondas/:comandaId/todo-listo', requirePermission('item:preparar'), idempotencia, async (req, res) => {
     res.json(await todoListo(req.params.comandaId, req.body, req.usuario))
+})
+
+// 2.3 · Cola por estación (kds:ver) y domicilio por estación (pedido:preparar, F2-3)
+router.get('/cocina/cola', requirePermission('kds:ver'), async (req, res) => {
+    res.json(await obtenerCola(req.query, req.usuario))
+})
+
+router.post('/cocina/pedidos/:pedidoId/estacion', requirePermission('pedido:preparar'), idempotencia, async (req, res) => {
+    res.json(await marcarPedidoEstacion(req.params.pedidoId, req.body, req.usuario))
 })
 
 export default router

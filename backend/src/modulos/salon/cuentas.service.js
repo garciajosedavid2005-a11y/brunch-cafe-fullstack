@@ -253,8 +253,8 @@ const estacionesDe = async (productos, session) => {
 // 1.12 · gruposActivosDe y validarModificadores viven en catalogo/modificadores.validacion.js (los
 // comparten las cuentas y el pedido a domicilio); se reexporta el validador para quien lo use desde aquí.
 export { validarModificadores }
-// 2.2 · Para el módulo de cocina: el resumen del ítem de los Eventos
-export { resumenItem }
+// 2.2 · Para el módulo de cocina: el resumen del ítem de los Eventos y (2.3) la estación de cada producto
+export { resumenItem, estacionesDe }
 
 /** Ítem nuevo con la copia del catálogo de este momento (F1-14). */
 const armarItem = async ({ productoId, cantidad, nota, modificadores }, sesion, session) => {
