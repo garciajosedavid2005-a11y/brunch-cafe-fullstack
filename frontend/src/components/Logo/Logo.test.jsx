@@ -59,7 +59,7 @@ describe("Logo (2.0c)", () => {
   it("el favicon SVG dibuja exactamente el mismo símbolo", () => {
     const favicon = readFileSync(join(import.meta.dirname, "../../../public/iconos/favicon.svg"), "utf8");
     expect(favicon).toContain(`d="${SIMBOLO_TRAZADO}"`);
-    expect(favicon).toMatch(/fill="#890620"/); // bordó de la marca (--color-primario)
+    expect(favicon).toMatch(/:root\s*\{\s*color:\s*#890620/); // bordó de la marca (--color-primario)
     // Cuadrado y con el símbolo entero dentro (el contorno del favicon necesita margen)
     const [, , ancho, alto] = SIMBOLO_VIEWBOX.split(" ").map(Number);
     const [x, y, w, h] = favicon.match(/viewBox="([^"]+)"/)[1].split(" ").map(Number);
@@ -84,6 +84,25 @@ describe("Logo (2.0c)", () => {
     for (const png of ["favicon-16.png", "favicon-32.png"]) {
       expect(existsSync(join(import.meta.dirname, "../../../public/iconos", png))).toBe(true);
     }
+  });
+
+  it("en una pestaña oscura el favicon pasa a crema, también la versión de 16 px", () => {
+    const favicon = readFileSync(join(import.meta.dirname, "../../../public/iconos/favicon.svg"), "utf8");
+    // El bordó #890620 sobre la pestaña oscura de Chrome (#35363a) apenas se ve: con el tema
+    // oscuro del sistema el SVG cambia al marfil de la paleta (--color-primario sigue en claro)
+    expect(favicon).toMatch(/@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{\s*color:\s*#F5EFE6/);
+    // Ningún trazo lleva el color fijo: todos siguen a currentColor (completo y de 16 px)
+    expect(favicon).not.toMatch(/(fill|stroke)="#890620"/);
+    const completo = favicon.match(/<path class="fav-completo"[^>]*>/)[0];
+    expect(completo).toContain('fill="currentColor"');
+    expect(completo).toContain('stroke="currentColor"');
+    const simple = favicon.slice(favicon.indexOf('class="fav-simple"'));
+    expect(simple).toMatch(/<g fill="currentColor">/);
+    expect(simple).toMatch(/<circle[^>]*stroke="currentColor"/);
+    // Chrome se queda con el último ícono que le sirve: el SVG (que cambia de color) va tras los PNG
+    const html = readFileSync(join(import.meta.dirname, "../../../index.html"), "utf8");
+    const iconos = [...html.matchAll(/<link rel="icon"[^>]*href="([^"]+)"/g)].map((m) => m[1]);
+    expect(iconos.at(-1)).toBe("/iconos/favicon.svg");
   });
 
   it("la página se declara en español", () => {
