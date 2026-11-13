@@ -4,7 +4,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 vi.mock("../../context/useAuth", () => ({ useAuth: () => ({ user: null, loading: false, logout: vi.fn() }) }));
@@ -68,5 +68,26 @@ describe("Logo (2.0c)", () => {
     expect(x + w).toBeGreaterThanOrEqual(ancho);
     expect(y).toBeLessThanOrEqual(0);
     expect(y + h).toBeGreaterThanOrEqual(alto);
+  });
+
+  it("a 16 px el favicon cambia a la versión simplificada (y a 32 px o más, el símbolo completo)", () => {
+    const favicon = readFileSync(join(import.meta.dirname, "../../../public/iconos/favicon.svg"), "utf8");
+    // Dentro de un SVG usado como imagen, la media query mide el tamaño al que se dibuja el ícono
+    expect(favicon).toMatch(/\.fav-simple\s*\{\s*display:\s*none/);
+    expect(favicon).toMatch(/@media \(max-width: 24px\)\s*\{[^}]*\.fav-completo\s*\{\s*display:\s*none/);
+    expect(favicon).toMatch(/<svg[^>]*class="fav-simple"[^>]*viewBox="0 0 16 16"/);
+    // PNG de 16 px (versión simple) y de 32 px (completa) declarados en index.html
+    const html = readFileSync(join(import.meta.dirname, "../../../index.html"), "utf8");
+    expect(html).toContain('href="/iconos/favicon-16.png"');
+    expect(html).toContain('sizes="16x16"');
+    expect(html).toContain('href="/iconos/favicon-32.png"');
+    for (const png of ["favicon-16.png", "favicon-32.png"]) {
+      expect(existsSync(join(import.meta.dirname, "../../../public/iconos", png))).toBe(true);
+    }
+  });
+
+  it("la página se declara en español", () => {
+    const html = readFileSync(join(import.meta.dirname, "../../../index.html"), "utf8");
+    expect(html).toMatch(/<html lang="es">/);
   });
 });
