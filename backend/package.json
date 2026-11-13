@@ -21,6 +21,7 @@
     "migrate:1.3": "node scripts/migrar-1.3-estaciones.js",
     "migrate:1.5b": "node scripts/migrar-1.5b-quitar-roles.js",
     "migrate:2.1": "node scripts/migrar-2.1-permisos-cocina.js",
+    "migrate:2.5b": "node scripts/migrar-2.5b-estaciones-roles.js",
     "seed:dev": "node scripts/seed-dev.js",
     "seed:salon": "node scripts/seed-salon.js",
     "seed:modificadores": "node scripts/seed-modificadores.js",
