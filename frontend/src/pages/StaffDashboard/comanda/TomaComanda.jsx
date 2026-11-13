@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Minus, Plus, ReceiptText, RefreshCw, Send, Trash2, TriangleAlert, UtensilsCrossed } from "lucide-react";
 import { apiRequest } from "../../../services/api";
 import { useDialogo } from "../../../context/useDialogo";
@@ -222,7 +222,10 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
           <h2 className="comanda__titulo">{nombreMesas(cuenta)}</h2>
           <p className="comanda__sub">
             {[cuenta.mesas[0]?.zona?.nombre, `Cuenta ${cuenta.codigo}`, `${cuenta.comensales} ${cuenta.comensales === 1 ? "comensal" : "comensales"}`, cuenta.mesero?.nombre]
-              .filter(Boolean).map((parte, i) => <span key={parte} className="comanda__sub-parte">{i > 0 ? " · " : ""}{parte}</span>)}
+              .filter(Boolean).map((parte, i) => (
+                // El separador va fuera de la parte: la línea se parte entre partes, nunca dentro de una
+                <Fragment key={parte}>{i > 0 && " · "}<span className="comanda__sub-parte">{parte}</span></Fragment>
+              ))}
           </p>
         </div>
         <span className={`comanda__estado comanda__estado--${cuenta.estado}`}>

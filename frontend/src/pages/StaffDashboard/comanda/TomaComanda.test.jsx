@@ -88,6 +88,15 @@ describe("Toma de comanda: cabecera y catálogo", () => {
     expect(onVolver).toHaveBeenCalled();
   });
 
+  it("el subtítulo puede partirse entre sus partes (a 768 px no se mete bajo la píldora del estado)", async () => {
+    await pintar();
+    const sub = document.querySelector(".comanda__sub");
+    const partes = [...sub.querySelectorAll(".comanda__sub-parte")].map((p) => p.textContent);
+    // Cada parte no se parte por dentro, pero el separador queda fuera, con un espacio donde cortar la línea
+    expect(partes).toEqual(["Interior", "Cuenta C-000001", "2 comensales", "Ana P."]);
+    expect(sub.textContent).toBe("Interior · Cuenta C-000001 · 2 comensales · Ana P.");
+  });
+
   it("categorías en botones; productos con precio en COP; los agotados deshabilitados y dicen «Agotado»", async () => {
     await pintar();
     const categorias = screen.getByRole("group", { name: "Categorías" });
