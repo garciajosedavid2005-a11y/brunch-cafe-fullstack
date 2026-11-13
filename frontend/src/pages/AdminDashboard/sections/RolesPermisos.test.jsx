@@ -65,6 +65,8 @@ describe("Roles: formulario de permisos", () => {
     expect(reservado).toBeDisabled();
     expect(reservado.closest("label")).toHaveClass("admin-permiso--proximo");
     expect(within(reservado.closest("label")).getByText("Próximamente")).toBeInTheDocument();
+    // 2.5c · La etiqueta va dentro del texto, tras la última palabra (sin hueco al partirse en dos líneas)
+    expect(within(reservado.closest("label")).getByText("Próximamente").closest(".admin-permiso__texto")).not.toBeNull();
     const activo = screen.getByRole("checkbox", { name: /ver todos los pedidos/i });
     expect(activo).toBeEnabled();
     expect(activo.closest("label")).not.toHaveClass("admin-permiso--proximo");

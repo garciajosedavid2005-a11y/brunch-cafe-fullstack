@@ -2023,14 +2023,25 @@
   color: #55332e;
 }
 
+/* 2.5c · Casilla y texto en la misma fila aunque el texto ocupe dos líneas: el texto se encoge y
+   parte, la casilla no, y queda a la altura de la primera línea */
 .admin-permiso {
-  flex-wrap: wrap;
+  align-items: flex-start;
   margin: 0 0 0.35rem;
   line-height: 1.4;
 }
 
+.admin-permiso input[type="checkbox"] {
+  flex-shrink: 0;
+  /* centra la casilla de 18 px en la primera línea (≈ 20 px); !important porque la regla base
+     .admin-checkbox-label input (misma especificidad) ya fija margin: 0 !important */
+  margin-top: 1px !important;
+}
+
 /* Texto de permiso con el color normal (antes heredaba un rosa claro ilegible) */
 .admin-permiso .admin-permiso__texto {
+  flex: 0 1 auto;
+  min-width: 0;
   color: #2c0703;
   font-size: 0.9rem;
 }
@@ -2048,7 +2059,12 @@
   color: #595959; /* gris distinguible, 7:1 sobre blanco */
 }
 
+/* 2.5c · En línea dentro del texto, tras la última palabra (sin hueco cuando el texto se parte) */
 .admin-permiso__proximamente {
+  display: inline-block;
+  margin-left: 0.4rem;
+  white-space: nowrap;
+  line-height: 1.3;
   padding: 0.1rem 0.5rem;
   border: 1px solid #c4c4c4;
   border-radius: 999px;

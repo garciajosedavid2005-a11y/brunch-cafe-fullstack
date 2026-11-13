@@ -174,3 +174,21 @@ describe("Cabecera del admin en pantallas estrechas (1.7b)", () => {
     expect(cuerpos.flatMap((c) => declaraciones(c, "justify-content")).map((v) => v.trim())).not.toContain("space-between");
   });
 });
+
+// 2.5c · Admin › Roles: un permiso largo («Preparar pedidos a domicilio…») pasaba entero a la línea
+// de debajo de su casilla (`flex-wrap: wrap` y el texto sin encogerse). La casilla y el texto van en
+// la misma fila aunque el texto ocupe dos líneas; la casilla queda a la altura de la primera.
+describe("Permisos de Admin › Roles: casilla y texto alineados", () => {
+  const todas = (clase, prop) => reglasDe(clase).flatMap((c) => declaraciones(c, prop).map((v) => v.trim()));
+
+  it("la fila no se parte: nada de flex-wrap: wrap y alineada arriba", () => {
+    expect(todas(".admin-permiso", "flex-wrap")).not.toContain("wrap");
+    expect(todas(".admin-permiso", "align-items")).toContain("flex-start");
+  });
+
+  it("el texto se encoge y parte en líneas; la casilla no se encoge", () => {
+    expect(todas(".admin-permiso__texto", "min-width")).toContain("0");
+    expect(todas(".admin-permiso__texto", "flex")).toContain("0 1 auto");
+    expect(todas('.admin-permiso input[type="checkbox"]', "flex-shrink")).toContain("0");
+  });
+});

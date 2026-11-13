@@ -411,8 +411,10 @@ export default function RolesSection() {
                                 checked={formData.permisos.includes(permiso.clave)}
                                 onChange={() => alternarPermiso(permiso.clave)}
                               />
-                              <span className="admin-permiso__texto">{permiso.descripcion}</span>
-                              {permiso.reservado && <span className="admin-permiso__proximamente">Próximamente</span>}
+                              <span className="admin-permiso__texto">
+                                {permiso.descripcion}
+                                {permiso.reservado && <span className="admin-permiso__proximamente">Próximamente</span>}
+                              </span>
                             </label>
                           ))}
                       </fieldset>
@@ -430,8 +432,10 @@ export default function RolesSection() {
                                 checked={formData.estaciones.includes(estacion.codigo)}
                                 onChange={() => alternarEstacion(estacion.codigo)}
                               />
-                              <span className="admin-permiso__texto">{estacion.nombre}</span>
-                              {estacion.activa === false && <span className="admin-permiso__proximamente">Inactiva</span>}
+                              <span className="admin-permiso__texto">
+                                {estacion.nombre}
+                                {estacion.activa === false && <span className="admin-permiso__proximamente">Inactiva</span>}
+                              </span>
                             </label>
                           ))}
                         </fieldset>
