@@ -2,6 +2,7 @@ import mongoose from 'mongoose'
 import Zona from './zona.model.js'
 import Mesa from './mesa.model.js'
 import Cuenta from './cuenta.model.js'
+import Comanda from './comanda.model.js'
 import Evento from '../compartido/evento.model.js'
 import Usuario from '../identidad/usuario.model.js'
 import Rol from '../identidad/rol.model.js'
@@ -19,8 +20,8 @@ import { esEstadoFinal } from '../compartido/estados.js'
 import { estadosDelTipo } from '../compartido/estados.service.js'
 
 // 1.5 · Lecturas del salón para el staff (/api/v1/staff/salon). Cada lectura hace un número fijo de
-// consultas en lote (sin N+1): el plano son 4 (zonas, mesas, cuentas y meseros) sea cual sea el
-// número de mesas. Los permisos se comprueban en la ruta y otra vez aquí.
+// consultas en lote (sin N+1): el plano son 5 (zonas, mesas, cuentas, meseros y, desde 2.6, los ítems
+// listos para servir) sea cual sea el número de mesas. Los permisos se comprueban en la ruta y otra vez aquí.
 export const MAX_HISTORIAL = 200
 export const MAX_MESEROS = 200
 
@@ -41,6 +42,21 @@ const personasPorId = async (ids) => {
 }
 
 const persona = (mapa, id) => (id ? mapa.get(String(id)) || { id: String(id), nombre: '' } : null)
+
+/**
+ * 2.6 · Map(cuentaId → líneas en «listo») de las cuentas indicadas, en una sola consulta. Cuenta líneas,
+ * no unidades: cada línea se sirve con un toque («2 × Latte» es un ítem). Usa el índice { cuenta, numeroRonda }.
+ */
+const listosParaServirPorCuenta = async (idsCuentas) => {
+    if (!idsCuentas.length) return new Map()
+    const filas = await Comanda.aggregate([
+        { $match: { cuenta: { $in: idsCuentas }, estado: 'enviada', 'items.estado': 'listo' } },
+        { $unwind: '$items' },
+        { $match: { 'items.estado': 'listo' } },
+        { $group: { _id: '$cuenta', n: { $sum: 1 } } },
+    ])
+    return new Map(filas.map((f) => [String(f._id), f.n]))
+}
 
 /**
  * Plano de mesas: zonas activas y sus mesas activas (más cualquier mesa con cuenta, aunque su zona
@@ -67,6 +83,7 @@ export const obtenerPlano = async ({ zona } = {}, sesion, ahora = new Date()) =>
             .select('codigo estado comensales mesero abiertaEn total pendiente mesas.mesa mesas.numero mesas.zonaNombre version').lean()
         : []
     const meseros = await personasPorId(cuentas.map((c) => c.mesero))
+    const listos = await listosParaServirPorCuenta(cuentas.map((c) => c._id))
     const cuentaPorId = new Map(cuentas.map((c) => [String(c._id), c]))
     const zonaPorId = new Map(zonas.map((z) => [String(z._id), z]))
 
@@ -102,6 +119,8 @@ export const obtenerPlano = async ({ zona } = {}, sesion, ahora = new Date()) =>
                         // Mesas que comparten la cuenta (F1-9), con la principal primero
                         mesas: c.mesas.map((x) => ({ id: String(x.mesa), numero: x.numero })),
                         version: c.version,
+                        // 2.6 · Líneas que la cocina o la barra dejaron listas y nadie ha servido
+                        listosParaServir: listos.get(String(c._id)) || 0,
                     }
                     : null,
             }

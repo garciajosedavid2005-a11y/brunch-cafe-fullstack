@@ -4,6 +4,8 @@ import { idempotencia } from '../compartido/idempotencia.js'
 import * as cuentas from './cuentas.service.js'
 import * as lecturas from './salonStaff.service.js'
 import { publicar } from '../tiempoReal/bus.js'
+import mongoose from 'mongoose'
+import Cuenta from './cuenta.model.js'
 
 // 1.5 · /api/v1/staff/salon (PLAN_FASE_1 §1.5). La sesión la exige staff.routes.js (validateToken).
 // Permiso en la ruta y otra vez en el servicio (defensa en profundidad). F1-17: cualquiera con el
@@ -20,17 +22,27 @@ const ok = (operacion) => responder(200, operacion)
 
 // 2.4 · Avisos en tiempo real tras una operación que cambió datos (el servicio ya confirmó la
 // transacción): el plano, la cuenta y las estaciones de sus ítems enviados releen. Solo ids.
-const avisarSalon = (resultado) => {
+// 2.6 · También el mesero de la cuenta (su aviso «Listo para servir» cambia al anular, cancelar, cerrar o
+// transferir) y, en la transferencia, el anterior (`extra`).
+const avisarSalon = (resultado, extra = []) => {
     const cuentaId = resultado?.id && Array.isArray(resultado?.rondas) ? String(resultado.id) : null
     const estaciones = (resultado?.rondas || []).filter((r) => r.estado === 'enviada')
         .flatMap((r) => r.items || []).map((i) => i.estacion?.codigo).filter(Boolean)
-    publicar(['plano', cuentaId && `cuenta:${cuentaId}`, ...estaciones.map((c) => `estacion:${c}`)],
+    const mesero = cuentaId && resultado.mesero ? `mesero:${resultado.mesero}` : null
+    publicar(['plano', cuentaId && `cuenta:${cuentaId}`, mesero, ...extra, ...estaciones.map((c) => `estacion:${c}`)],
         { tipo: 'salon_cambio', ids: cuentaId ? { cuentaId } : {} })
 }
-const cambio = (status, operacion) => async (req, res) => {
+const cambio = (status, operacion, canalesPrevios) => async (req, res) => {
+    const extra = canalesPrevios ? await canalesPrevios(req) : []
     const resultado = await operacion(req)
     res.status(status).json(resultado)
-    avisarSalon(resultado)
+    avisarSalon(resultado, extra)
+}
+// Mesero antes de transferir: solo un aviso (si la lectura queda vieja, el polling de respaldo lo corrige)
+const meseroAnterior = async (req) => {
+    if (!mongoose.isValidObjectId(req.params.id)) return []
+    const cuenta = await Cuenta.findById(req.params.id).select('mesero').lean()
+    return cuenta?.mesero ? [`mesero:${cuenta.mesero}`] : []
 }
 
 // Lecturas
@@ -64,7 +76,7 @@ router.post('/cuentas/:id/rondas/:n/enviar', requirePermission('comanda:enviar')
     cambio(200, (req) => cuentas.enviarRonda(req.params.id, { ...req.body, numeroRonda: Number(req.params.n) }, req.usuario)))
 router.post('/cuentas/:id/solicitar', requirePermission('cuenta:solicitar'), cambio(200, (req) => cuentas.solicitarCuenta(req.params.id, req.body, req.usuario)))
 router.post('/cuentas/:id/cancelar', requirePermission('cuenta:abrir'), cambio(200, (req) => cuentas.cancelarCuenta(req.params.id, req.body, req.usuario)))
-router.post('/cuentas/:id/transferir', requirePermission('cuenta:transferir'), cambio(200, (req) => cuentas.transferirCuenta(req.params.id, req.body, req.usuario)))
+router.post('/cuentas/:id/transferir', requirePermission('cuenta:transferir'), cambio(200, (req) => cuentas.transferirCuenta(req.params.id, req.body, req.usuario), meseroAnterior))
 router.post('/cuentas/:id/cerrar-sin-cobro', requirePermission('cuenta:cerrar_sin_cobro'),
     cambio(200, (req) => cuentas.cerrarSinCobro(req.params.id, req.body, req.usuario)))
 

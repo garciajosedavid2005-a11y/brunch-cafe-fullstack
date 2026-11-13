@@ -75,6 +75,10 @@ const formatoItem = (item) => ({
         : null,
     agregadoPor: textoId(item.agregadoPor),
     agregadoEn: item.agregadoEn,
+    // 2.6 · Cuándo empezó, quedó listo y se sirvió (sin quién: la pantalla no lo usa y el Evento lo guarda)
+    iniciadoEn: item.iniciadoEn ?? null,
+    listoEn: item.listoEn ?? null,
+    servidoEn: item.servidoEn ?? null,
 })
 
 const formatoRonda = (comanda) => ({

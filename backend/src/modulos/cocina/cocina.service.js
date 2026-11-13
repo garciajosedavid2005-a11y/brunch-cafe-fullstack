@@ -126,7 +126,9 @@ export const cambiarEstadoItem = async (itemId, datos, sesion) => {
         await comanda.save({ session })
         await eventoItem(cuenta, comanda, resumenItem(item), { de: actual, a, motivo: texto, sesion, session })
         aviso = {
-            canales: [item.estacion?.codigo && `estacion:${item.estacion.codigo}`, `cuenta:${cuenta._id}`, 'plano', ...(a === 'listo' ? [`mesero:${cuenta.mesero}`] : [])],
+            // 2.6 · El mesero se entera de lo que queda listo, se sirve o se deshace (su aviso en /staff)
+            canales: [item.estacion?.codigo && `estacion:${item.estacion.codigo}`, `cuenta:${cuenta._id}`, 'plano',
+                ...(a === 'listo' || actual === 'listo' ? [`mesero:${cuenta.mesero}`] : [])],
             tipo: 'item_estado', ids: { cuentaId: String(cuenta._id), comandaId: String(comanda._id), itemId: String(item._id) },
         }
         return { item: formatoItem(item), cuenta: resumenCuenta(cuenta) }
