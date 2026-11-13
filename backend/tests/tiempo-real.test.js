@@ -347,7 +347,8 @@ describe('Flujo SSE por HTTP (2.4)', () => {
     it('una revocación que llega mientras se comprueba la sesión no se pierde (revisor-backend)', async () => {
         configurarLatido(1000)
         const { cookie } = await cookieDe('cocina')
-        // El primer latido lee la sesión de antes y se queda retenido; el logout llega mientras tanto
+        // La comprobación inicial del flujo (al registrarse) lee la sesión de antes y se queda retenida; el
+        // logout llega mientras tanto
         let soltar
         const retenida = new Promise((ok) => { soltar = ok })
         let avisarRetenida
@@ -364,7 +365,7 @@ describe('Flujo SSE por HTTP (2.4)', () => {
         await enCurso
         await api().post('/api/v1/auth/logout').set('Cookie', cookie)
         soltar()
-        // Sin repetir la comprobación, el flujo seguiría abierto hasta el siguiente latido (1 s después)
+        // Sin repetir la comprobación, el flujo seguiría abierto hasta el primer latido (1 s)
         await flujo.esperar('event: sesion_cerrada', 500)
     })
 
