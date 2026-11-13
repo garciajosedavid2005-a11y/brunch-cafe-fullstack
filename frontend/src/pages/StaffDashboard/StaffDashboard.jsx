@@ -217,7 +217,7 @@ export default function StaffDashboard() {
 
       <div className="staff-tablet__contenido">
         {seccion === "mesas" && <PlanoMesas permisos={permisos} />}
-        {seccion === "cuentas" && <CuentasAbiertas />}
+        {seccion === "cuentas" && <CuentasAbiertas permisos={permisos} />}
 
         {!["mesas", "cuentas"].includes(seccion) && (
         <section className="customer-dashboard__content" aria-live="polite">

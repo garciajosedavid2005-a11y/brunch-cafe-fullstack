@@ -1,6 +1,6 @@
 // Único cliente HTTP del frontend (0.8). Cookies de sesión incluidas, JSON y
 // errores con el formato { error: { code, message, details } } del backend.
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
 export function apiAssetUrl(path) {
   if (!path || /^(data:|https?:\/\/)/i.test(path)) return path || "";

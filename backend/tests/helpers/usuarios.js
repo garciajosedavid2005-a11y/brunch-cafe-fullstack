@@ -4,6 +4,8 @@ import Usuario from '../../src/modulos/identidad/usuario.model.js'
 import Rol from '../../src/modulos/identidad/rol.model.js'
 
 const CLAVE = 'secreta123'
+// 2.4 · Para los tests que abren conexiones sin el agente (SSE con http.get)
+export const CLAVE_PRUEBA = CLAVE
 let contador = 0
 
 /**

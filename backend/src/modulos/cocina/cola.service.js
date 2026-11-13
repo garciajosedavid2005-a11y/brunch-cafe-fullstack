@@ -20,6 +20,7 @@ import { validar } from '../salon/cuentas.schema.js'
 import { codigoPedido } from '../pedidos/pedidoComoCuenta.js'
 import { tienePermiso } from '../identidad/permisos.js'
 import { colaSchema, pedidoEstacionSchema, VENTANA_DESHACER_MS } from './cocina.schema.js'
+import { publicar, CANAL_TODAS_LAS_ESTACIONES } from '../tiempoReal/bus.js'
 
 export const LIMITE_COLA = 200
 const PENDIENTES = ['enviado', 'en_preparacion']
@@ -173,7 +174,7 @@ export const marcarPedidoEstacion = async (pedidoId, datos, sesion) => {
     const permisos = sesion.permisos || []
     const quien = { usuario: sesion.id, actor: sesion.rol || 'staff' }
 
-    return conTransaccion(async (session) => {
+    const resultado = await conTransaccion(async (session) => {
         const pedido = await Pedido.findById(pedidoId).populate('estado', 'codigo').session(session).lean()
         if (!pedido) throw new AppError(404, 'PEDIDO_NO_ENCONTRADO', 'El pedido no existe.')
         const actual = pedido.estado?.codigo
@@ -219,4 +220,7 @@ export const marcarPedidoEstacion = async (pedidoId, datos, sesion) => {
         for (const evento of eventos) await registrarEvento({ ...evento, session })
         return { pedidoId: String(pedido._id), estado: codigo, estacionesListas: nuevasListas }
     })
+    // 2.4 · Después de confirmar: todas las estaciones releen (el pedido sale o entra de sus colas)
+    publicar([CANAL_TODAS_LAS_ESTACIONES], { tipo: 'pedido_estacion', ids: { pedidoId: resultado.pedidoId } })
+    return resultado
 }

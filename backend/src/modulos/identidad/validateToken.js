@@ -53,6 +53,8 @@ export const autenticar = async (req, res, next) => {
     }
 
     req.usuario = sesion
+    // 2.4 · Versión y emisión del token validado: el flujo en vivo lo vuelve a comprobar en cada latido
+    req.tokenSesion = { tv: payload.tv, iat: payload.iat }
     next()
 }
 

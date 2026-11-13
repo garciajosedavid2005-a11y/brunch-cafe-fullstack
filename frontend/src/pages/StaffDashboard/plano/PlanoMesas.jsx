@@ -73,7 +73,7 @@ function TarjetaMesa({ mesa, seleccionada, onElegir }) {
 
 export default function PlanoMesas({ permisos = [] }) {
   const [cuentaVista, setCuentaVista] = useState(null); // 1.7 · cuenta abierta en la toma de comanda
-  const { plano, error, actualizadoEn, cargando, recargar } = usePlano({ activo: !cuentaVista });
+  const { plano, error, actualizadoEn, cargando, recargar, enVivo } = usePlano({ activo: !cuentaVista });
   const [zona, setZona] = useState("todas");
   const [elegida, setElegida] = useState(null);
 
@@ -101,7 +101,7 @@ export default function PlanoMesas({ permisos = [] }) {
       <div className="plano__principal">
         <div className="plano__barra">
           <h2 className="plano__titulo">Plano de mesas</h2>
-          <Actualizado desde={actualizadoEn} error={error} onActualizar={recargar} />
+          <Actualizado desde={actualizadoEn} error={error} onActualizar={recargar} enVivo={enVivo} />
         </div>
 
         {plano?.zonas?.length > 0 && (

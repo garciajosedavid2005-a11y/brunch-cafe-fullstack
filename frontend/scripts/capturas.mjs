@@ -727,6 +727,22 @@ const VISTAS = {
   } },
   // 1.6 · Plano de mesas (tablet): /staff abre en el plano para quien tiene mesa:ver
   "staff-plano": { usuario: "mesero", preparar: (p) => p.goto(`${FRONT}/staff`) },
+  // 2.4 · Estados del tiempo real sin canal: rechazado por el servidor («Sin tiempo real») o cortado
+  // por la red («Reconectando…», EventSource reintenta); con el plano además sin poder actualizarse
+  "staff-plano-sin-vivo": { usuario: "mesero", preparar: async (p) => {
+    await p.route("**/v1/staff/eventos**", (r) => r.fulfill({ status: 503, body: "" }));
+    await p.goto(`${FRONT}/staff`);
+    await p.getByText("Sin tiempo real").waitFor();
+  } },
+  "staff-plano-reconectando": { usuario: "mesero", preparar: async (p) => {
+    await p.route("**/v1/staff/eventos**", (r) => r.abort("connectionreset"));
+    await p.goto(`${FRONT}/staff`);
+    await p.getByText("Actualizado hace").waitFor();
+    await p.route("**/v1/staff/salon/mesas", (r) => r.abort("connectionreset"));
+    await p.getByRole("button", { name: "Actualizar" }).click();
+    await p.getByText("Reconectando…").waitFor();
+    await p.getByRole("alert").filter({ hasText: "No se pudo actualizar" }).waitFor();
+  } },
   // Panel de una mesa ocupada (acciones) y de una libre (abrir cuenta con comensales)
   "staff-plano-ocupada": { usuario: "mesero", preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);

@@ -15,6 +15,7 @@ import { resumenItem } from '../salon/cuentas.service.js'
 import { validar } from '../salon/cuentas.schema.js'
 import { COMODIN, tienePermiso } from '../identidad/permisos.js'
 import { cambioEstadoItemSchema, todoListoSchema, VENTANA_DESHACER_MS } from './cocina.schema.js'
+import { publicar } from '../tiempoReal/bus.js'
 
 export { VENTANA_DESHACER_MS }
 // 2.3 · Cola por estación y domicilio en el KDS
@@ -97,7 +98,8 @@ export const cambiarEstadoItem = async (itemId, datos, sesion) => {
     if (motivo && !esDeshacer) throw new AppError(400, 'MOTIVO_NO_APLICA', 'El motivo solo se indica al deshacer «listo».')
     if (!mongoose.isValidObjectId(itemId)) throw itemNoEncontrado()
 
-    return conTransaccion(async (session) => {
+    let aviso // 2.4 · se publica solo si la transacción se confirma
+    const resultado = await conTransaccion(async (session) => {
         const comanda = await Comanda.findOne({ 'items._id': itemId }).session(session)
         if (!comanda) throw itemNoEncontrado()
         const item = comanda.items.id(itemId)
@@ -119,8 +121,14 @@ export const cambiarEstadoItem = async (itemId, datos, sesion) => {
         }
         await comanda.save({ session })
         await eventoItem(cuenta, comanda, resumenItem(item), { de: actual, a, motivo: texto, sesion, session })
+        aviso = {
+            canales: [item.estacion?.codigo && `estacion:${item.estacion.codigo}`, `cuenta:${cuenta._id}`, 'plano', ...(a === 'listo' ? [`mesero:${cuenta.mesero}`] : [])],
+            tipo: 'item_estado', ids: { cuentaId: String(cuenta._id), comandaId: String(comanda._id), itemId: String(item._id) },
+        }
         return { item: formatoItem(item), cuenta: resumenCuenta(cuenta) }
     })
+    publicar(aviso.canales, aviso)
+    return resultado
 }
 
 /**
@@ -132,7 +140,8 @@ export const todoListo = async (comandaId, datos, sesion) => {
     exigir(sesion, 'item:preparar')
     if (!mongoose.isValidObjectId(comandaId)) throw new AppError(404, 'RONDA_NO_ENCONTRADA', 'La ronda no existe.')
 
-    return conTransaccion(async (session) => {
+    let aviso
+    const resultado = await conTransaccion(async (session) => {
         const comanda = await Comanda.findById(comandaId).session(session)
         if (!comanda || comanda.estado !== 'enviada') throw new AppError(404, 'RONDA_NO_ENCONTRADA', 'La ronda no existe o no se ha enviado.')
         const pendientes = comanda.items.filter((i) => i.estacion?.codigo === estacion && ['enviado', 'en_preparacion'].includes(i.estado))
@@ -152,6 +161,12 @@ export const todoListo = async (comandaId, datos, sesion) => {
         }
         await comanda.save({ session })
         for (const { foto, de, a } of pasos) await eventoItem(cuenta, comanda, foto, { de, a, sesion, session })
+        aviso = {
+            canales: [`estacion:${estacion}`, `cuenta:${cuenta._id}`, 'plano', `mesero:${cuenta.mesero}`],
+            tipo: 'ronda_lista', ids: { cuentaId: String(cuenta._id), comandaId: String(comanda._id) },
+        }
         return { items: pendientes.map(formatoItem), cuenta: resumenCuenta(cuenta) }
     })
+    publicar(aviso.canales, aviso)
+    return resultado
 }

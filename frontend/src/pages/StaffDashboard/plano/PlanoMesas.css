@@ -47,7 +47,38 @@
   gap: 0.75rem;
   font-size: 0.9rem;
   color: #594742;
+  /* 2.4 · Con «Reconectando…» y el error largo, la fila baja de línea en vez de apretar el botón */
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
+
+/* 2.4 · Estado del tiempo real: texto + punto (no solo color). Colores de la paleta del plano
+   (libre, cuenta pedida, bloqueada), contraste ≥ 7:1 sobre su fondo. Se usa también en «Cuentas
+   abiertas», fuera de .plano, por eso van literales. */
+.plano__vivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  background: #ececec;
+  color: #424242;
+}
+
+.plano__vivo::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.plano__vivo--en_vivo { background: #e6f4ea; color: #1d5b2e; }
+.plano__vivo--reconectando,
+.plano__vivo--conectando { background: #fff0d4; color: #7a4100; }
 
 .plano__boton {
   display: inline-flex;

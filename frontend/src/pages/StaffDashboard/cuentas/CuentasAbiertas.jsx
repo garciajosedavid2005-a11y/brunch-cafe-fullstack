@@ -1,6 +1,7 @@
 import { createElement, useState } from "react";
 import { Bike, Clock3, UtensilsCrossed } from "lucide-react";
 import { formatearCOP } from "../../../utils/moneda";
+import { incluyePermiso } from "../../../utils/permisos";
 import { formatearMinutos } from "../plano/estadosMesa";
 import { useSondeo } from "../compartido/useSondeo";
 import Actualizado from "../compartido/Actualizado";
@@ -54,8 +55,13 @@ function TarjetaCuenta({ cuenta }) {
   );
 }
 
-export default function CuentasAbiertas() {
-  const { datos, error, actualizadoEn, cargando, recargar } = useSondeo(RUTA, INTERVALO_MS, { mensajeError: "No se pudieron cargar las cuentas." });
+// 2.4 · Con mesa:ver escucha el canal «plano» (abrir, cerrar, enviar rondas…); los domicilios siguen
+// por polling (no hay canal de pedidos para el personal de sala)
+const CANALES_SALON = ["plano"];
+
+export default function CuentasAbiertas({ permisos = [] }) {
+  const canalesVivo = incluyePermiso(permisos, "mesa:ver") ? CANALES_SALON : undefined;
+  const { datos, error, actualizadoEn, cargando, recargar, enVivo } = useSondeo(RUTA, INTERVALO_MS, { mensajeError: "No se pudieron cargar las cuentas.", canales: canalesVivo });
   const [canal, setCanal] = useState("todas");
   const cuentas = datos?.cuentas || [];
   const canales = datos?.canales || {};
@@ -68,7 +74,7 @@ export default function CuentasAbiertas() {
     <div className="cuentas">
       <div className="plano__barra">
         <h2 className="plano__titulo">Cuentas abiertas</h2>
-        <Actualizado desde={actualizadoEn} error={error} onActualizar={recargar} />
+        <Actualizado desde={actualizadoEn} error={error} onActualizar={recargar} enVivo={canalesVivo ? enVivo : undefined} />
       </div>
       <p className="cuentas__ayuda">
         Salón y domicilios en curso, de la más antigua a la más nueva. Solo lectura: cada cuenta se atiende desde Mesas o Pedidos.
