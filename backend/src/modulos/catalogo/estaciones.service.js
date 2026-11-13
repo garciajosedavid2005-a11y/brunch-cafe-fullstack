@@ -2,6 +2,7 @@ import mongoose from 'mongoose'
 import Estacion, { COLACION_NOMBRE, umbralesDe } from './estacion.model.js'
 import Categoria from './categoria.model.js'
 import Producto from './producto.model.js'
+import Rol from '../identidad/rol.model.js'
 import { AppError, notFound } from '../compartido/errors.js'
 import { conTransaccion } from '../compartido/transacciones.js'
 import { sinUndefined } from '../compartido/utils.js'
@@ -54,10 +55,18 @@ const usoDe = async (id, session) => {
 
 const exigirSinUso = async (id, session, accion) => {
     const { categorias, productos } = await usoDe(id, session)
-    if (categorias + productos === 0) return
-    const usos = [categorias && plural(categorias, 'categoría'), productos && plural(productos, 'producto')].filter(Boolean)
+    // 2.5b · Borrarla dejaría el código colgado en los roles que la tienen asignada (desactivarla no:
+    // el rol la conserva para cuando se reactive)
+    let roles = 0
+    if (accion === 'eliminar') {
+        const estacion = await Estacion.findById(id).select('codigo').session(session ?? null).lean()
+        if (!estacion) throw notFound('Estación no encontrada.')
+        roles = await Rol.countDocuments({ estaciones: estacion.codigo }).session(session ?? null)
+    }
+    if (categorias + productos + roles === 0) return
+    const usos = [categorias && plural(categorias, 'categoría'), productos && plural(productos, 'producto'), roles && plural(roles, 'rol')].filter(Boolean)
     throw new AppError(409, 'ESTACION_EN_USO',
-        `No se puede ${accion}: la usan ${usos.join(' y ')}. Asígnales otra estación primero.`, { categorias, productos })
+        `No se puede ${accion}: la usan ${usos.join(' y ')}. Asígnales otra estación primero.`, { categorias, productos, roles })
 }
 
 /**

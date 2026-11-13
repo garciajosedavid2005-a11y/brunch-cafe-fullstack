@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { texto, textoOpcional } from '../compartido/comunes.schema.js'
 import { CLAVES, CLAVES_ASIGNABLES } from './permisos.js'
+import { FORMATO_CODIGO } from '../catalogo/estacion.model.js'
 
 // Solo claves del catálogo que ya se pueden asignar ("*" y las reservadas no)
 const permiso = z.string({ error: 'Cada permiso debe ser un texto' }).superRefine((clave, ctx) => {
@@ -21,6 +22,13 @@ export const crearRolSchema = z.object({
         .array(permiso, { error: 'Los permisos deben ser una lista' })
         .max(CLAVES_ASIGNABLES.length, { error: 'Hay permisos repetidos' })
         .refine((lista) => new Set(lista).size === lista.length, { error: 'Hay permisos repetidos' })
+        .optional(),
+    // 2.5b · Estaciones del KDS (códigos); el servicio comprueba que existan
+    estaciones: z
+        .array(z.string({ error: 'Cada estación debe ser un texto' }).trim().toLowerCase()
+            .regex(FORMATO_CODIGO, { error: 'El código de estación no es válido' }), { error: 'Las estaciones deben ser una lista' })
+        .max(50, { error: 'Demasiadas estaciones' })
+        .refine((lista) => new Set(lista).size === lista.length, { error: 'Hay estaciones repetidas' })
         .optional(),
 })
 

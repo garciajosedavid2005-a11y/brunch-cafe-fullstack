@@ -82,6 +82,10 @@ export const PERMISOS_COCINA = {
     barista: ['kds:ver', 'item:preparar', 'pedido:preparar', 'producto:agotar', 'producto:reactivar'],
 }
 
+// 2.5b · Estaciones del KDS de cada rol al crearlo (Brayan, 2026-11-13): cocina → Cocina, barista → Barra.
+// Las edita el admin en Admin › Roles; los roles existentes las reciben con la migración 2.5b.
+export const ESTACIONES_POR_ROL = { cocina: ['cocina'], barista: ['barra'] }
+
 // Roles de staff con permisos mínimos (se amplían en cada fase).
 // El seed solo los asigna al crear el rol; después los edita el admin.
 export const ROLES_STAFF = [
@@ -91,8 +95,8 @@ export const ROLES_STAFF = [
         descripcion: 'Atiende mesas, toma comandas y gestiona las reservas.',
         permisos: ['pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear', 'reserva:cambiar_estado', ...PERMISOS_SALON.mesero, ...PERMISOS_COCINA.mesero],
     },
-    { nombre: 'cocina', etiqueta: 'Cocina', descripcion: 'Prepara los platos.', permisos: ['pedido:ver', ...PERMISOS_COCINA.cocina] },
-    { nombre: 'barista', etiqueta: 'Barista', descripcion: 'Prepara las bebidas.', permisos: ['pedido:ver', ...PERMISOS_COCINA.barista] },
+    { nombre: 'cocina', etiqueta: 'Cocina', descripcion: 'Prepara los platos.', permisos: ['pedido:ver', ...PERMISOS_COCINA.cocina], estaciones: ESTACIONES_POR_ROL.cocina },
+    { nombre: 'barista', etiqueta: 'Barista', descripcion: 'Prepara las bebidas.', permisos: ['pedido:ver', ...PERMISOS_COCINA.barista], estaciones: ESTACIONES_POR_ROL.barista },
     { nombre: 'cajero', etiqueta: 'Cajero', descripcion: 'Cobra cuentas y gestiona la caja.', permisos: ['pedido:ver'] },
     { nombre: 'repartidor', etiqueta: 'Repartidor', descripcion: 'Entrega pedidos a domicilio.', permisos: ['pedido:ver'] },
 ]
@@ -103,3 +107,8 @@ export const atiendeMesas = (permisosUsuario = []) => permisosUsuario.includes('
 
 export const tienePermiso = (permisosUsuario = [], clave) =>
     permisosUsuario.includes(COMODIN) || permisosUsuario.includes(clave)
+
+/** 2.5b · ¿Puede ver u operar esa estación del KDS? El comodín, todas; el resto, solo las de su rol
+ * (sin estaciones asignadas, ninguna: cerrado por defecto). */
+export const operaEstacion = (sesion, codigo) =>
+    (sesion?.permisos || []).includes(COMODIN) || (Boolean(codigo) && (sesion?.estaciones || []).includes(codigo))

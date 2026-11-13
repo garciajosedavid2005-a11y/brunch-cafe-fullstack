@@ -5,6 +5,28 @@ import { AppError, conflict, notFound } from '../compartido/errors.js'
 import { slug, sinUndefined } from '../compartido/utils.js'
 import { ROL_ADMIN, ROL_CLIENTE } from './permisos.js'
 import { invalidarSesionesDeRol } from './sesiones.js'
+import Estacion from '../catalogo/estacion.model.js'
+import { conTransaccion } from '../compartido/transacciones.js'
+import { publicarRevocacion } from '../tiempoReal/bus.js'
+
+/**
+ * 2.5b · Dentro de la transacción: 400 si alguna estación no existe (las inactivas sí se asignan: el
+ * admin las reactiva) y las «toca» (updatedAt), como reservarEstacion: un borrado simultáneo de la
+ * estación entra en conflicto con esta transacción y no queda un código colgado en el rol.
+ */
+const reservarEstaciones = async (estaciones, session) => {
+    if (!estaciones?.length) return
+    await Estacion.updateMany({ codigo: { $in: estaciones } }, { $currentDate: { updatedAt: true } }, { session })
+    const existentes = new Set((await Estacion.find({ codigo: { $in: estaciones } }).select('codigo').session(session).lean()).map((e) => e.codigo))
+    const faltan = estaciones.filter((c) => !existentes.has(c))
+    if (faltan.length) throw new AppError(400, 'ESTACION_NO_EXISTE', 'Alguna estación no existe.', { estaciones: faltan })
+}
+
+/** 2.5b · Las pantallas en vivo de los usuarios del rol vuelven a comprobar sus canales al momento. */
+const revocarSesionesDelRol = async (rolId) => {
+    const usuarios = await Usuario.find({ rol: rolId }).select('_id').lean()
+    for (const u of usuarios) publicarRevocacion(u._id)
+}
 
 // Roles base del sistema (además de los marcados con esSistema)
 const ROLES_SISTEMA = [ROL_ADMIN, ROL_CLIENTE]
@@ -21,6 +43,7 @@ const formato = (rol, usuariosAsignados = 0) => ({
     usuariosAsignados,
     esSistema: esProtegido(rol),
     permisos: rol.permisos || [],
+    estaciones: rol.estaciones || [], // 2.5b
     // El rol admin no se edita; el rol cliente no puede tener permisos de staff
     editable: rol.nombre !== ROL_ADMIN,
     permisosEditables: ![ROL_ADMIN, ROL_CLIENTE].includes(rol.nombre),
@@ -42,7 +65,7 @@ export const listarRoles = async (req, res) => {
 }
 
 export const crearRol = async (req, res) => {
-    const { nombre, codigo, descripcion, permisos } = req.validado
+    const { nombre, codigo, descripcion, permisos, estaciones } = req.validado
 
     const identificador = slug(codigo || nombre, '_')
     if (!identificador) throw new AppError(400, 'BAD_REQUEST', 'El nombre debe contener letras o números')
@@ -50,7 +73,11 @@ export const crearRol = async (req, res) => {
     const existe = await Rol.exists({ nombre: identificador })
     if (existe) throw conflict(`Ya existe un rol con el identificador '${identificador}'`)
 
-    const rol = await Rol.create({ nombre: identificador, etiqueta: nombre, descripcion, permisos })
+    const rol = await conTransaccion(async (session) => {
+        await reservarEstaciones(estaciones, session)
+        const [nuevo] = await Rol.create([{ nombre: identificador, etiqueta: nombre, descripcion, permisos, estaciones }], { session })
+        return nuevo
+    })
     res.status(201).json(formato(rol))
 }
 
@@ -61,15 +88,19 @@ export const actualizarRol = async (req, res) => {
     if (rol.nombre === ROL_ADMIN) {
         throw new AppError(403, 'ROL_PROTEGIDO', 'El rol administrador no se puede editar.')
     }
-    const { nombre, descripcion, permisos } = req.validado
-    if (rol.nombre === ROL_CLIENTE && permisos !== undefined && permisos.length > 0) {
+    const { nombre, descripcion, permisos, estaciones } = req.validado
+    if (rol.nombre === ROL_CLIENTE && ((permisos !== undefined && permisos.length > 0) || estaciones?.length)) {
         throw new AppError(403, 'ROL_PROTEGIDO', 'El rol cliente no puede tener permisos de staff.')
     }
 
     // El identificador (rol.nombre) nunca cambia
-    rol.set(sinUndefined({ etiqueta: nombre, descripcion, permisos: rol.nombre === ROL_CLIENTE ? undefined : permisos }))
-    await rol.save()
+    rol.set(sinUndefined({ etiqueta: nombre, descripcion, permisos: rol.nombre === ROL_CLIENTE ? undefined : permisos, estaciones }))
+    await conTransaccion(async (session) => {
+        await reservarEstaciones(estaciones, session)
+        await rol.save({ session })
+    })
     invalidarSesionesDeRol(rol._id)
+    await revocarSesionesDelRol(rol._id) // sus flujos SSE se cierran al momento si ya no valen (2.5b)
 
     const total = await Usuario.countDocuments({ rol: rol._id })
     res.json(formato(rol, total))

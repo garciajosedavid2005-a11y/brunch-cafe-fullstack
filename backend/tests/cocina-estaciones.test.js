@@ -14,8 +14,9 @@ beforeEach(async () => {
 })
 
 describe('Estaciones del KDS (2.5)', () => {
-    it('con kds:ver: las activas por nombre, con sus umbrales (o los de F2-4), y nada más', async () => {
-        const { sesion } = await crearConSesion('cocina')
+    // El admin las ve todas; las de cada rol, en estaciones-por-rol.test.js (2.5b)
+    it('las activas por nombre, con sus umbrales (o los de F2-4), y nada más', async () => {
+        const { sesion } = await crearConSesion('admin')
         const res = await sesion.get('/api/v1/staff/cocina/estaciones')
         expect(res.status).toBe(200)
         expect(res.body).toEqual([

@@ -20,7 +20,8 @@ export const USUARIOS_DEV = [
     { rol: 'cliente', correo: 'cliente.dev@brunchcafe.test', nombre: 'Cliente', apellido: 'Prueba' },
     { rol: 'mesero', correo: 'mesero.dev@brunchcafe.test', nombre: 'Mesero', apellido: 'Prueba' },
     // 2.5 · Para revisar el KDS (/kds) y sus capturas
-    { rol: 'cocina', correo: 'cocina.dev@brunchcafe.test', nombre: 'Cocina', apellido: 'Prueba' },
+    // Nombre propio (no el del rol), para no confundirlo con la estación en pantalla (2.5b)
+    { rol: 'cocina', correo: 'cocina.dev@brunchcafe.test', nombre: 'Carlos', apellido: 'Cocina' },
 ]
 
 /** Devuelve { usuarios, pedido: 'creado' | 'existente' | 'sin-productos' }. */

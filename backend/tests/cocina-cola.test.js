@@ -49,8 +49,8 @@ beforeEach(async () => {
     const rolMesero = await Rol.findOne({ nombre: 'mesero' })
     const persona = await Usuario.create({ nombre: 'Lucía', apellido: 'Gómez', correo: 'lucia@example.com', contraseña: 'x'.repeat(20), rol: rolMesero._id })
     mesero = { id: String(persona._id), rol: 'mesero', permisos: [...PERMISOS_SALON.mesero, ...PERMISOS_COCINA.mesero] }
-    cocinero = { id: String(new ObjectId()), rol: 'cocina', permisos: ['pedido:ver', ...PERMISOS_COCINA.cocina] }
-    barista = { id: String(new ObjectId()), rol: 'barista', permisos: ['pedido:ver', ...PERMISOS_COCINA.barista] }
+    cocinero = { id: String(new ObjectId()), rol: 'cocina', permisos: ['pedido:ver', ...PERMISOS_COCINA.cocina], estaciones: ['cocina'] } // 2.5b
+    barista = { id: String(new ObjectId()), rol: 'barista', permisos: ['pedido:ver', ...PERMISOS_COCINA.barista], estaciones: ['barra'] }
     admin = { id: String(new ObjectId()), rol: 'admin', permisos: ['*'] }
     const zona = await Zona.create({ nombre: 'Interior' })
     mesa1 = await Mesa.create({ numero: 1, zona: zona._id, capacidad: 4 })
@@ -118,7 +118,8 @@ describe('Cola del salón por estación (2.3)', () => {
 
     it('una estación desactivada no tiene cola (409 ESTACION_INACTIVA)', async () => {
         await Estacion.create({ codigo: 'horno', nombre: 'Horno', activa: false })
-        expect(await error(obtenerCola({ estacion: 'horno' }, cocinero))).toMatchObject({ status: 409, code: 'ESTACION_INACTIVA' })
+        // El admin (todas las estaciones): con el cocinero sería 403 por no tenerla asignada (2.5b)
+        expect(await error(obtenerCola({ estacion: 'horno' }, admin))).toMatchObject({ status: 409, code: 'ESTACION_INACTIVA' })
     })
 
     it('un ítem anulado se ve tachado con su motivo mientras la ronda siga pendiente', async () => {
@@ -133,7 +134,7 @@ describe('Cola del salón por estación (2.3)', () => {
     it('los umbrales salen de la estación si el admin los cambió; una estación desconocida → 404; sin kds:ver → 403', async () => {
         await Estacion.updateOne({ codigo: 'cocina' }, { $set: { umbralAvisoMin: 8, umbralAlertaMin: 15 } })
         expect((await obtenerCola({ estacion: 'cocina' }, cocinero)).estacion).toMatchObject({ umbralAvisoMin: 8, umbralAlertaMin: 15 })
-        expect(await error(obtenerCola({ estacion: 'horno' }, cocinero))).toMatchObject({ status: 404, code: 'ESTACION_NO_ENCONTRADA' })
+        expect(await error(obtenerCola({ estacion: 'horno' }, admin))).toMatchObject({ status: 404, code: 'ESTACION_NO_ENCONTRADA' })
         expect(await error(obtenerCola({ estacion: 'cocina' }, mesero))).toMatchObject({ status: 403, code: 'FORBIDDEN' })
     })
 
@@ -251,7 +252,7 @@ describe('Domicilio en la cola, por estación (F2-3)', () => {
         expect(await error(marcarPedidoEstacion(String(pedidoId), { estacion: 'cocina', a: 'en_preparacion' }, mesero)))
             .toMatchObject({ status: 403, code: 'FORBIDDEN' })
         await Estacion.create({ codigo: 'horno', nombre: 'Horno' })
-        expect(await error(marcarPedidoEstacion(String(pedidoId), { estacion: 'horno', a: 'listo' }, cocinero)))
+        expect(await error(marcarPedidoEstacion(String(pedidoId), { estacion: 'horno', a: 'listo' }, admin)))
             .toMatchObject({ status: 409, code: 'ESTACION_SIN_LINEAS' })
         await marcarPedidoEstacion(String(pedidoId), { estacion: 'cocina', a: 'listo' }, cocinero)
         expect(await error(marcarPedidoEstacion(String(pedidoId), { estacion: 'cocina', a: 'listo' }, cocinero)))

@@ -6,7 +6,7 @@
 import { Router } from 'express'
 import mongoose from 'mongoose'
 import { AppError } from '../compartido/errors.js'
-import { tienePermiso } from '../identidad/permisos.js'
+import { tienePermiso, operaEstacion } from '../identidad/permisos.js'
 import { obtenerSesion } from '../identidad/sesiones.js'
 import { duracionSesionMs } from '../identidad/duracionSesion.js'
 import { FORMATO_CODIGO } from '../catalogo/estacion.model.js'
@@ -38,7 +38,8 @@ export const validarCanales = (texto, sesion) => {
         const [tipo, id] = canal.split(':')
         const permitido = {
             plano: () => tienePermiso(sesion.permisos, 'mesa:ver'),
-            estacion: () => tienePermiso(sesion.permisos, 'kds:ver'),
+            // 2.5b · y que la estación sea de su rol (el comodín, todas)
+            estacion: () => tienePermiso(sesion.permisos, 'kds:ver') && operaEstacion(sesion, id),
             cuenta: () => tienePermiso(sesion.permisos, 'cuenta:ver') && mongoose.isValidObjectId(id),
             // Solo el propio usuario, y solo personal de salón (un cliente no abre flujos en /staff)
             mesero: () => id === String(sesion.id) && ['cuenta:ver', 'item:servir'].some((p) => tienePermiso(sesion.permisos, p)),

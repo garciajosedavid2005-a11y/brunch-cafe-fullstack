@@ -20,7 +20,8 @@ import { cambiarEstadoItem, todoListo } from '../src/modulos/cocina/cocina.servi
 import { verificarConsistenciaSalon } from '../src/modulos/salon/consistencia.js'
 
 const { ObjectId } = mongoose.Types
-const sesionDe = (rol, permisos) => ({ id: String(new ObjectId()), rol, permisos })
+// 2.5b · Con las estaciones de su rol (cocina → Cocina, barista → Barra)
+const sesionDe = (rol, permisos) => ({ id: String(new ObjectId()), rol, permisos, estaciones: { cocina: ['cocina'], barista: ['barra'] }[rol] ?? [] })
 const error = async (promesa) => {
     try {
         await promesa

@@ -21,6 +21,8 @@ import { codigoPedido } from '../pedidos/pedidoComoCuenta.js'
 import { tienePermiso } from '../identidad/permisos.js'
 import { colaSchema, pedidoEstacionSchema, VENTANA_DESHACER_MS } from './cocina.schema.js'
 import { publicar, CANAL_TODAS_LAS_ESTACIONES } from '../tiempoReal/bus.js'
+import { operaEstacion } from '../identidad/permisos.js'
+import { exigirEstacion } from './estacionesRol.js'
 
 export const LIMITE_COLA = 200
 export const LIMITE_ESTACIONES_KDS = 50
@@ -148,15 +150,20 @@ const tarjetasDomicilio = async (codigo, limite) => {
 /** 2.5 · GET /staff/cocina/estaciones (kds:ver): las activas para el filtro del KDS, con sus umbrales (F2-4). */
 export const listarEstacionesKds = async (sesion) => {
     exigir(sesion, 'kds:ver')
-    const estaciones = await Estacion.find({ activa: true }).select('codigo nombre umbralAvisoMin umbralAlertaMin')
+    // 2.5b · Filtradas por rol en la consulta (si no, el límite podría dejar fuera las del rol)
+    const todas = (sesion.permisos || []).includes('*')
+    const estaciones = await Estacion.find({ activa: true, ...(todas ? {} : { codigo: { $in: sesion.estaciones || [] } }) })
+        .select('codigo nombre umbralAvisoMin umbralAlertaMin')
         .collation(COLACION_NOMBRE).sort({ nombre: 1 }).limit(LIMITE_ESTACIONES_KDS).lean()
-    return estaciones.map((e) => ({ codigo: e.codigo, nombre: e.nombre, ...umbralesDe(e) }))
+    // 2.5b · Solo las del rol del usuario (el comodín, todas)
+    return estaciones.filter((e) => operaEstacion(sesion, e.codigo)).map((e) => ({ codigo: e.codigo, nombre: e.nombre, ...umbralesDe(e) }))
 }
 
 /** GET /staff/cocina/cola?estacion=… (kds:ver). */
 export const obtenerCola = async (consulta, sesion, { limite = LIMITE_COLA } = {}) => {
     exigir(sesion, 'kds:ver')
     const { estacion: codigo } = validar(colaSchema, consulta)
+    exigirEstacion(sesion, codigo) // 2.5b · antes de leer nada
     const estacion = await buscarEstacion(codigo)
     const ahora = new Date()
     const [salon, domicilio] = await Promise.all([tarjetasSalon(codigo, ahora, limite), tarjetasDomicilio(codigo, limite)])
@@ -179,6 +186,7 @@ export const obtenerCola = async (consulta, sesion, { limite = LIMITE_COLA } = {
 export const marcarPedidoEstacion = async (pedidoId, datos, sesion) => {
     exigir(sesion, 'pedido:preparar')
     const { estacion, a } = validar(pedidoEstacionSchema, datos)
+    exigirEstacion(sesion, estacion) // 2.5b
     if (!mongoose.isValidObjectId(pedidoId)) throw new AppError(404, 'PEDIDO_NO_ENCONTRADO', 'El pedido no existe.')
     const permisos = sesion.permisos || []
     const quien = { usuario: sesion.id, actor: sesion.rol || 'staff' }

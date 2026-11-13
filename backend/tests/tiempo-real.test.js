@@ -68,7 +68,7 @@ describe('Se publica solo después de confirmar (2.4)', () => {
     beforeEach(async () => {
         await Promise.all([Cuenta.createIndexes(), Comanda.createIndexes(), Mesa.createIndexes()])
         mesero = { id: String(new ObjectId()), rol: 'mesero', permisos: [...PERMISOS_SALON.mesero, ...PERMISOS_COCINA.mesero] }
-        cocinero = { id: String(new ObjectId()), rol: 'cocina', permisos: PERMISOS_COCINA.cocina }
+        cocinero = { id: String(new ObjectId()), rol: 'cocina', permisos: PERMISOS_COCINA.cocina, estaciones: ['cocina'] } // 2.5b
         const zona = await Zona.create({ nombre: 'Interior' })
         const mesa = await Mesa.create({ numero: 1, zona: zona._id, capacidad: 4 })
         const platos = await categoriaDePrueba('Desayunos')
@@ -133,7 +133,8 @@ describe('Se publica solo después de confirmar (2.4)', () => {
         await marcarPedidoEstacion(pedidoId, { estacion: 'cocina', a: 'en_preparacion' }, cocinero)
         expect(avisos.map((a) => a.tipo)).toEqual(['pedido_estacion'])
         avisos.length = 0
-        await expect(marcarPedidoEstacion(pedidoId, { estacion: 'barra', a: 'listo' }, cocinero)).rejects.toMatchObject({ status: 409, code: 'ESTACION_SIN_LINEAS' })
+        // Con la estación asignada, para que falle por no tener líneas (409) y no por la estación (2.5b)
+        await expect(marcarPedidoEstacion(pedidoId, { estacion: 'barra', a: 'listo' }, { ...cocinero, estaciones: ['cocina', 'barra'] })).rejects.toMatchObject({ status: 409, code: 'ESTACION_SIN_LINEAS' })
         expect(avisos).toEqual([])
         baja()
     })
@@ -161,7 +162,8 @@ describe('Se publica solo después de confirmar (2.4)', () => {
 })
 
 describe('Permiso por canal (2.4)', () => {
-    const sesion = (permisos, id = String(new ObjectId())) => ({ id, permisos })
+    // 2.5b · Con las dos estaciones: aquí se prueba el permiso por canal (las estaciones del rol, en estaciones-por-rol)
+    const sesion = (permisos, id = String(new ObjectId())) => ({ id, permisos, estaciones: ['cocina', 'barra'] })
 
     it('estación con kds:ver, cuenta con cuenta:ver, plano con mesa:ver y mesero solo el propio (y solo personal)', () => {
         const id = String(new ObjectId())
@@ -316,7 +318,7 @@ describe('Flujo SSE por HTTP (2.4)', () => {
         const { usuario: otro, cookie: otraCookie } = await cookieDe('cocina')
         const revocacionesAntes = totalRevocaciones()
         const flujo = await abrir('estacion:cocina', cookie)
-        const segundo = await abrir('estacion:barra', cookie) // otra pantalla del mismo usuario
+        const segundo = await abrir('estacion:cocina', cookie) // otra pantalla del mismo usuario (su estación, 2.5b)
         const ajeno = await abrir('estacion:cocina', otraCookie)
         await Promise.all([flujo, segundo, ajeno].map((f) => f.esperar('event: conectado')))
         const antes = totalSuscriptores()
@@ -384,6 +386,16 @@ describe('Flujo SSE por HTTP (2.4)', () => {
         expect(texto).not.toContain('sesion_cerrada')
         for (const baja of bajas) baja()
         flujo.cerrar()
+    })
+
+    it('al quitarle la estación al rol, sus flujos se cierran al momento, sin esperar al latido (revisor-backend, 2.5b)', async () => {
+        const { cookie } = await cookieDe('cocina')
+        const { sesion: admin } = await crearConSesion('admin')
+        const flujo = await abrir('estacion:cocina', cookie)
+        await flujo.esperar('event: conectado')
+        const rol = await Rol.findOne({ nombre: 'cocina' }).lean()
+        expect((await admin.put(`/api/v1/admin/roles/${rol._id}`).send({ estaciones: [] })).status).toBe(200)
+        await flujo.esperar('event: sesion_cerrada', 1500)
     })
 
     it('si el rol pierde el permiso del canal con el flujo abierto, se cierra en el siguiente latido (security-reviewer)', async () => {

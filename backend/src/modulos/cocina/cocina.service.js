@@ -16,6 +16,7 @@ import { validar } from '../salon/cuentas.schema.js'
 import { COMODIN, tienePermiso } from '../identidad/permisos.js'
 import { cambioEstadoItemSchema, todoListoSchema, VENTANA_DESHACER_MS } from './cocina.schema.js'
 import { publicar } from '../tiempoReal/bus.js'
+import { exigirEstacion } from './estacionesRol.js'
 
 export { VENTANA_DESHACER_MS }
 // 2.3 · Cola por estación y domicilio en el KDS
@@ -103,6 +104,9 @@ export const cambiarEstadoItem = async (itemId, datos, sesion) => {
         const comanda = await Comanda.findOne({ 'items._id': itemId }).session(session)
         if (!comanda) throw itemNoEncontrado()
         const item = comanda.items.id(itemId)
+        // 2.5b · Preparar (empezar, listo y deshacer) solo en las estaciones del rol; servir no depende de la estación
+        // (Distinguir 404 de 403 aquí solo dice si existe un ítem, a quien ya es personal de cocina: aceptado)
+        if (PERMISO_DESTINO[a] === 'item:preparar') exigirEstacion(sesion, item.estacion?.codigo, { revelar: false })
         if (item.estado !== de) {
             throw new AppError(409, 'ITEM_MODIFICADO', 'Otra persona ya cambió este ítem: recarga la pantalla.', { estado: item.estado })
         }
@@ -138,6 +142,7 @@ export const cambiarEstadoItem = async (itemId, datos, sesion) => {
 export const todoListo = async (comandaId, datos, sesion) => {
     const { estacion } = validar(todoListoSchema, datos)
     exigir(sesion, 'item:preparar')
+    exigirEstacion(sesion, estacion) // 2.5b
     if (!mongoose.isValidObjectId(comandaId)) throw new AppError(404, 'RONDA_NO_ENCONTRADA', 'La ronda no existe.')
 
     let aviso
