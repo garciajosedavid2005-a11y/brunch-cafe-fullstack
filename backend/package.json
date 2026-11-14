@@ -24,6 +24,7 @@
     "migrate:2.5b": "node scripts/migrar-2.5b-estaciones-roles.js",
     "migrate:3.1": "node scripts/migrar-3.1-permiso-cobro.js",
     "seed:dev": "node scripts/seed-dev.js",
+    "seed:demo": "node scripts/seed-demo.js",
     "seed:salon": "node scripts/seed-salon.js",
     "seed:modificadores": "node scripts/seed-modificadores.js",
     "verificar:salon": "node scripts/verificar-salon.js",
