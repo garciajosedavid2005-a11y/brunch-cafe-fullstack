@@ -1,6 +1,6 @@
 # Plan de la Fase 3 (mínima): cobro en caja
 
-> **Estado:** propuesta de Claude (2026-11-14), pendiente de aprobación de Brayan. Sin programar.
+> **Estado:** aprobado por Brayan el 2026-11-14 con las respuestas F3-1 a F3-6 (sección 4, ver `docs/PROGRESO.md`). Implementado el 2026-11-14 (ítems 3.1 a 3.4).
 >
 > **Objetivo:** cerrar el ciclo **mesa → cocina → cobro**. Una cuenta en «cuenta pedida» se cobra en caja, se emite un comprobante interno y la mesa queda «por limpiar», con Evento y aviso en vivo. Alcance reducido a propósito: el proyecto es universitario y queda poco tiempo.
 
@@ -20,12 +20,12 @@
 ### 3.1 Permiso de cobro y pantalla «Caja»
 - Permiso nuevo `cuenta:cobrar` (módulo `caja`), asignado al **cajero** y al **admin** (por `*`). Sustituye al provisional `caja:cerrar` en la transición `cuenta_pedida → cerrada`; `caja:abrir` / `caja:cerrar` siguen reservados.
 - Migración no destructiva (`--dry-run`, `--down`) que añade `cuenta:cobrar` al rol cajero existente, con `mongodump` previo.
-- Pestaña **«Caja»** en `/staff` (solo con `cuenta:cobrar`): lista de las cuentas en «cuenta pedida» (mesa, mesero, desde cuándo, total), en vivo por el canal `plano`. El cajero entra a `/staff` y empieza en «Caja».
+- Pestaña **«Caja»** en `/staff` (solo con `cuenta:cobrar`): lista de las cuentas en «cuenta pedida» (mesa, mesero, desde cuándo, total), en vivo por el canal `caja` (al implementar: canal nuevo con `cuenta:cobrar`, porque el cajero no tiene `mesa:ver` para escuchar `plano`). El cajero entra a `/staff` y empieza en «Caja».
 
 ### 3.2 Cobrar una cuenta
-- `POST /api/v1/staff/cuentas/:id/cobrar` con `Idempotency-Key` y `versionEsperada`, en una transacción: cuenta `cuenta_pedida → cerrada`, mesa → `por_limpiar`, comprobante (3.3) y Evento (`cuenta_cobrada`, con quién, método y montos).
+- `POST /api/v1/staff/caja/cuentas/:id/cobrar` (al implementar, bajo `/staff/caja`, con las lecturas de la caja) con `Idempotency-Key` y `versionEsperada`, en una transacción: cuenta `cuenta_pedida → cerrada`, mesa → `por_limpiar`, comprobante (3.3) y Evento (`cuenta_cobrada`, con quién, método y montos).
 - Pagos: uno o varios (pago mixto) `{ metodo: efectivo | tarjeta | transferencia, monto }`. La suma debe ser exactamente `total + propina`.
-- **Propina voluntaria**: monto en COP que escribe el cajero (con botones de atajo 10 % y «Sin propina»); se guarda en `Cuenta.propina` y entra al total cobrado.
+- **Propina voluntaria**: monto en COP que escribe el cajero (con botones de atajo 10 % y «Sin propina»); entra al total cobrado y se guarda en el comprobante y en el Evento (al implementar: `Cuenta.total` sigue siendo el consumo y `Cuenta.propina` queda en `null`, para no cambiar los invariantes de la cuenta).
 - **Efectivo**: el cajero escribe lo recibido y la pantalla calcula el cambio; el servidor valida que lo recibido cubra la parte en efectivo y guarda `recibido` y `cambio`.
 - Errores: cuenta no pedida o ya cobrada → `409`; pagos que no cuadran → `400 PAGO_NO_CUADRA`; sin permiso → `403`.
 

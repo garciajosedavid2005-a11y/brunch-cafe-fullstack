@@ -1,10 +1,25 @@
 # Progreso Brunch Café
 
-## Fase actual: 2 — Cocina y barra, KDS (cerrada el 2026-11-13, pendiente de la revisión final de Brayan)
+## Fase actual: 3 — Cobro en caja (mínima)
+
+> Fase 2 — Cocina y barra, KDS: cerrada el 2026-11-13 (pendiente de la revisión final de Brayan).
+
+## Fase 3 — Cobro en caja (mínima; plan aprobado por Brayan el 2026-11-14)
+
+Plan en [PLAN_FASE_3.md](PLAN_FASE_3.md) (decisiones F3-1 a F3-6). Orden: 3.1 → 3.4.
+
+### Ítems Fase 3
+
+| ID | Ítem | Estado inicial | Estado actual | Commit | Notas |
+|---|---|---|---|---|---|
+| 3.1 | Permiso de cobro y pantalla «Caja» | FALTA | HECHO (migración 3.1 aplicada en la BD de trabajo el 2026-11-14, tras el respaldo `backups/pre-3.1-20261114T061456Z`; verificada up → down → up) | `266c4af` | Permiso `cuenta:cobrar` (módulo caja) para el cajero (seed y `migrate:3.1`) y el admin (`*`); la transición `cuenta_pedida → cerrada` lo exige (antes el provisional `caja:cerrar`). `GET /staff/caja/cuentas` (cuentas pedidas con mesa, mesero, personas, total, versión y desde cuándo). Pestaña «Caja» en `/staff` (el cajero empieza ahí), en vivo por el canal nuevo `caja` (`cuenta:cobrar`), que también recibe los cambios del salón. Usuario `cajero.dev` (Carla Caja) en `seed:dev`. |
+| 3.2 | Cobrar una cuenta | FALTA | HECHO | `266c4af` | `POST /staff/caja/cuentas/:id/cobrar` con `Idempotency-Key` y `versionEsperada`: propina voluntaria, pagos efectivo/tarjeta/transferencia (mixto, uno por método), `recibido` y cambio en efectivo; `PAGO_NO_CUADRA`, `EFECTIVO_INSUFICIENTE`, 409 si no está en «cuenta pedida» o ya se cobró. En una transacción: cuenta cerrada, mesas por limpiar, comprobante y Evento `cuenta_cobrada`. Pantalla de cobro con atajos «10 %» y «Sin propina», cambio en vivo y «Cobrar» habilitado solo si cuadra. |
+| 3.3 | Comprobante interno | FALTA | HECHO | `266c4af` | Colección `comprobantes` inmutable: consecutivo `CI-000001` (contador incrementado dentro de la transacción: sin huecos), índices únicos por número y por cuenta, copia de líneas, subtotal, propina, total, pagos y cambio, e invariantes en el esquema; leyendas «Precios con impuestos incluidos» y «Documento no válido como factura electrónica». `GET /staff/caja/comprobantes` (hoy, Bogotá) y `/:id`. En pantalla e imprimible (tirilla de 80 mm con `@media print`). |
+| 3.4 | Cierre en vivo y cierre de la fase | FALTA | HECHO | `266c4af` (código) y el commit de docs | Tras confirmar: aviso por `plano`, `caja`, la cuenta, su mesero y sus estaciones. Tests: backend `caja.test.js` (16) y `migracion-31.test.js` (4); frontend `Caja.test.jsx` (7). Capturas `fase3-caja` a 1024×768 y 768×1024. README (sección Caja, endpoints, fila de la migración) y plan al día. Guía de pruebas a mano del ciclo completo en la entrega a Brayan. |
+
+## Fase 2 — Cocina y barra, KDS (cerrada el 2026-11-13)
 
 Plan en [PLAN_FASE_2.md](PLAN_FASE_2.md) (aprobado; decisiones F2-1 a F2-10). Orden: 2.1 → 2.9.
-
-> **Fase 3 (propuesta, 2026-11-14):** plan mínimo de cobro en [PLAN_FASE_3.md](PLAN_FASE_3.md) (4 ítems y preguntas F3-1 a F3-6), pendiente de aprobación de Brayan.
 
 ### Ítems Fase 2
 
@@ -354,6 +369,18 @@ Plan en [PLAN_FASE_1.md](PLAN_FASE_1.md), con las preguntas de negocio respondid
 - 2026-11-13 · 2.7 · Agotar y reactivar no usan `Idempotency-Key`: son escrituras condicionales y repetir responde `cambiado: false` sin Evento ni aviso · Claude (a confirmar por Brayan)
 - 2026-11-13 · 2.7 · Agotar pide confirmación (y avisa si quien agota no podrá reactivar); reactivar no la pide. El panel es una pestaña en `/staff` y una vista dentro de `/kds` (sin ruta nueva), que empieza en la estación de la pantalla · Claude (a confirmar por Brayan)
 - 2026-11-13 · 2.7 · Los textos no nombran roles («Solo quien tenga permiso para reactivar podrá volver a ofrecerlo», «Reactivar requiere permiso»): los permisos se asignan en Admin › Roles · Brayan (confirmada el 2026-11-13)
+- 2026-11-14 · 3.2 · La propina vive en el comprobante y en el Evento; `Cuenta.total` sigue siendo el consumo y `Cuenta.propina` queda en `null` (así no cambian los invariantes de la cuenta ni el verificador del salón) · Claude (a confirmar por Brayan)
+- 2026-11-14 · 3.2 · En efectivo, `recibido` es opcional: sin él se entiende que el cliente pagó lo justo (cambio 0) · Claude (a confirmar por Brayan)
+- 2026-11-14 · 3.2 · Contrato distinto del plan: el cobro va en `POST /api/v1/staff/caja/cuentas/:id/cobrar` (junto a `GET /staff/caja/cuentas` y `/staff/caja/comprobantes`), no en `/staff/cuentas/:id/cobrar` · Claude (a confirmar por Brayan)
+- 2026-11-14 · 3.1 · Canal en vivo nuevo `caja` (solo `cuenta:cobrar`): el cajero no tiene `mesa:ver` para escuchar `plano` · Claude (a confirmar por Brayan)
+- 2026-11-14 · 3.3 · Los comprobantes solo los ve quien cobra (`cuenta:cobrar`); «Cobradas hoy» lista los del día en Bogotá (máximo 200) · Claude (a confirmar por Brayan)
+- 2026-11-14 · F3-1 · Cobran el cajero y el admin (permiso nuevo `cuenta:cobrar`); el mesero no · Brayan
+- 2026-11-14 · F3-2 · Métodos de pago en caja: efectivo, tarjeta y transferencia, fijos en el código · Brayan
+- 2026-11-14 · F3-3 · Propina voluntaria en COP, con atajos «10 %» y «Sin propina» · Brayan
+- 2026-11-14 · F3-4 · Consecutivo del comprobante `CI-000001`, sin reinicio · Brayan
+- 2026-11-14 · F3-5 · Precios con impuestos incluidos, sin desglose; el comprobante dice «Precios con impuestos incluidos» · Brayan
+- 2026-11-14 · F3-6 · Solo se cobran cuentas en «cuenta pedida» · Brayan
+- 2026-11-14 · Fase 3 · Migración 3.1 (cuenta:cobrar al cajero) aprobada de antemano si el simulacro solo agrega ese permiso al cajero · Brayan
 - 2026-11-14 · 2.6c · Plano: propuesta B (ilustrada con sillas); la C (plano arquitectónico con posiciones reales) queda como mejora futura · Brayan
 - 2026-11-14 · 2.6c · Las mesas unidas se dibujan como una sola pieza que representa la de menor número (es la que se elige; el panel ofrece separar); el texto «3/4» muestra comensales y puestos · Claude (a confirmar por Brayan)
 - 2026-11-14 · 2.10d · Recuperación de una cuenta con «Crea tu contraseña» pendiente: se envía de nuevo ese enlace de 24 h (reemplaza al del admin); se acepta que cualquiera pueda pedirlo con el correo, porque llega solo al dueño y como máximo uno por minuto · Brayan
@@ -430,6 +457,8 @@ Plan en [PLAN_FASE_1.md](PLAN_FASE_1.md), con las preguntas de negocio respondid
 - **Cuentas con el admin como responsable (1.7b):** las abiertas antes de 1.7b a nombre del admin siguen así; se pueden transferir a un mesero. Valorar una comprobación en `verificar:salon` que las señale.
 - **Detalles visuales del admin (revisor-visual, 1.7b; anteriores al ítem):** «Salir» lleva icono solo a ≤ 960 px; el fondo oscuro de los diálogos deja sin cubrir el hueco de la barra de scroll (unos 15 px) a 1024 y 1280; en las capturas de página completa los paneles fijos de tablet se cortan (usar `ANCHOxALTO`).
 - **Recuperación de contraseña (2.8; espera de 60 s hecha en 2.10a, `TRUST_PROXY` documentado en 2.10c):** el registro no tiene CAPTCHA ni verificación de correo. La cuenta con «Crea tu contraseña» pendiente se resolvió en 2.10d.
+- **Caja (revisores, Fase 3):** los métodos de pago usan `role="radio"` sin navegación con flechas (volver a `aria-pressed` o implementar el patrón); «Quitar pago» tiene el mismo estilo que «Agregar otro método»; a 1024×768 el botón «Cobrar» queda bajo el pliegue en el pago mixto (botón fijo abajo); un invariante roto del comprobante (error del servidor) sale como 400 `VALIDATION_ERROR` en vez de un 500 genérico; la impresión de la tirilla solo se comprobó leyendo el CSS (probar en la impresora real).
+- **Fase 3 (trabajo futuro, fuera del alcance mínimo):** turnos de caja y arqueo (`caja:abrir`, `caja:cerrar`), división de cuenta, anulación de comprobantes y notas crédito (`factura:anular`), DIAN, impuestos y descuentos, y el cobro de domicilios.
 - **Mejora futura: plano con posiciones reales (propuesta C de 2.6c, Brayan):** muros, puertas y cada mesa en su sitio con `Mesa.posicion` (ya existe en el modelo); falta editarla en Admin › Salón y resolver los choques a 768×1024 (planta con ancho mínimo y desplazamiento).
 - **Plano B (revisor-visual, 2.6c):** con el panel abierto a 1024 px cada sala queda angosta (una columna de mesas y hay que desplazar); en vertical la sala corta deja hueco abajo; el resumen hace bajar «En vivo / Actualizar» a otra línea.
 - **Detalles técnicos de 2.7 (revisor-backend):** `agotados.service.js` importa `extrasDeModificadores` desde `producto.controller.js` (convendría moverlo a un servicio); el historial de una opción se busca por `datos.opcion` sin índice (hoy solo hay consulta por grupo).
