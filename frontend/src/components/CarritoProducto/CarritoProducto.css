@@ -1,6 +1,10 @@
+/* 3.6 · La caligrafía de Great Vibes sobresale de su caja: con alto de línea 1 se cortaba por arriba */
 .carrito-producto__titulo {
     font-family: var(--fuente-acentos);
-    font-size: 4rem;
+    font-size: clamp(2.8rem, 9vw, 4rem);
+    line-height: 1.35;
+    padding-top: 0.15em;
+    overflow: visible;
     color: var(--color-primario);
     text-align: center;
     margin-bottom: 0.5rem;
@@ -103,12 +107,14 @@
     transition: color 0.2s ease;
 }
 
+/* 3.6 · «+» con el bordó de la marca y blanco (antes rosado claro con marfil, casi invisible) */
 .carrito-producto__agregar-btn span {
     width: 35px;
     height: 35px;
     border-radius: 50%;
-    background-color: var(--color-suave);
-    color: var(--color-marfil);
+    background-color: #890620;
+    color: #ffffff;
+    transition: background-color 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -116,8 +122,28 @@
     font-weight: 300;
 }
 
-.carrito-producto__agregar-btn:hover {
+.carrito-producto__agregar-btn:hover,
+.carrito-producto__agregar-btn:focus-visible {
     color: var(--color-primario);
+}
+
+.carrito-producto__agregar-btn:hover span,
+.carrito-producto__agregar-btn:focus-visible span {
+    background-color: #6e0519;
+}
+
+.carrito-producto__agregar-btn:focus-visible {
+    outline: 2px solid var(--color-primario);
+    outline-offset: 3px;
+    border-radius: 8px;
+}
+
+.carrito-producto__vacio-icono {
+    display: inline-block;
+    width: 1.4em;
+    height: 1.4em;
+    margin-right: 0.5rem;
+    vertical-align: -0.3em;
 }
 
 .carrito-producto__eliminar {

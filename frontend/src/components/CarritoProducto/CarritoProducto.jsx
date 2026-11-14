@@ -5,6 +5,7 @@ import { formatearCOP } from '../../utils/moneda'
 import { deLineaCarrito, textoModificadores } from '../../utils/modificadores'
 import { conPunto } from '../../utils/pedido'
 import { TriangleAlert } from 'lucide-react'
+import iconoCarrito from '../../assets/carrito-de-compras.png'
 
 const CarritoProducto = () => {
 
@@ -17,14 +18,16 @@ const CarritoProducto = () => {
                 <h1 className="carrito-producto__titulo">Carrito Brunch Café</h1>
                 <div className="carrito-producto__separador"></div>
                 <p className="carrito-producto__vacio">
-                    🛒 Tu carrito está vacío — agrega productos desde el menú
+                    {/* 3.6 · El icono de línea del carrito del sitio (antes un emoji) */}
+                    <img className="carrito-producto__vacio-icono" src={iconoCarrito} alt="" />
+                    Tu carrito está vacío: agrega productos desde el menú
                 </p>
                 <div className="carrito-producto__agregar">
                     <button 
                         className="carrito-producto__agregar-btn"
                         onClick={() => navigate('/menu')}
                     >
-                        <span>+</span> Agregar Producto al Carrito
+                        <span aria-hidden="true">+</span> Agregar producto al carrito
                     </button>
                 </div>
             </div>
@@ -115,7 +118,7 @@ const CarritoProducto = () => {
                     className="carrito-producto__agregar-btn"
                     onClick={() => navigate('/menu')}
                 >
-                    <span>+</span> Agregar Otro Producto al Carrito
+                    <span aria-hidden="true">+</span> Agregar otro producto al carrito
                 </button>
             </div>
 

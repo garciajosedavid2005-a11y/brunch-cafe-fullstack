@@ -2,6 +2,19 @@
     padding: 1rem 0 2.5rem;
 }
 
+/* 3.6 · «inicia sesión» en bordó (Foundation lo pintaba azul), también con el puntero y el foco */
+.carrito-formulario__enlace,
+.carrito-formulario__enlace:visited {
+    color: var(--color-primario);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.carrito-formulario__enlace:hover,
+.carrito-formulario__enlace:focus {
+    color: #6e0519;
+}
+
 .carrito-formulario__titulo { 
     font-family: var(--fuente-titulos); 
     font-size: 1.8rem; 

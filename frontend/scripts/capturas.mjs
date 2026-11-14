@@ -756,6 +756,22 @@ const VISTAS = {
       await p.waitForLoadState("networkidle");
     },
   },
+  // 3.6 · Sin sesión: el carrito vacío (icono, título y botón «+») y con un plato (enlace «inicia sesión»)
+  "carrito-vacio": { preparar: (p) => p.goto(`${FRONT}/domicilios`) },
+  "carrito-invitado": {
+    preparar: async (p) => {
+      await p.goto(`${FRONT}/menu`);
+      await p.waitForLoadState("networkidle");
+      const catalogo = await (await p.context().request.get(`${API}/catalogo?incluir=modificadores`)).json();
+      const [uno] = catalogo.productos.filter((pr) => pr.disponible !== false && !pr.modificadores?.length);
+      await p.locator(`#producto-${uno.codigo}`).getByRole("button", { name: "Agregar al carrito" }).click({ force: true });
+      // El carrito vive en memoria: se entra por el enlace del navbar, sin recargar
+      const enlace = p.locator(".menu__item-carrito a");
+      if (!(await enlace.isVisible())) await p.locator(".navbar__hamburger").click(); // navbar colapsado
+      await enlace.click();
+      await p.waitForLoadState("networkidle");
+    },
+  },
   // 1.12 · Opciones del plato en el pedido a domicilio: diálogo desde el menú, carrito con el mismo plato
   // en dos líneas (opciones distintas) y el pedido con opciones en Mis pedidos, el admin y /staff
   "menu-opciones": {

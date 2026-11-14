@@ -224,11 +224,11 @@ const CarritoFormulario = () => {
             <div className="carrito-formulario">
                 {/* TITULO */}
                 <h3 className="carrito-formulario__titulo">
-                    Información de Domicilio...
+                    Información de domicilio
                 </h3>
                 {!user && (
                     <p role="status">
-                        Para guardar tu compra en “Mis pedidos”, <Link to="/login" state={{ from: '/domicilios' }}>inicia sesión</Link>.
+                        Para guardar tu compra en “Mis pedidos”, <Link className="carrito-formulario__enlace" to="/login" state={{ from: '/domicilios' }}>inicia sesión</Link>.
                     </p>
                 )}
                 {errorPedido && <p className="carrito-error" role="alert">{errorPedido}</p>}
@@ -241,13 +241,13 @@ const CarritoFormulario = () => {
                             {/* NOMBRE */}
                             <div className="cell small-12">
                                 <label className="carrito-formulario__label">
-                                    Tu Nombre...
+                                    Tu nombre
                                 </label>
                                 <div className="carrito-formulario__campo">
                                     <FaUser className="carrito-formulario__icono" />
                                     <input
                                         type="text"
-                                        placeholder="Indique su Nombre..."
+                                        placeholder="Tu nombre y apellido"
                                         className="carrito-formulario__input"
                                         name="nombre"
                                         value={formData.nombre}
@@ -265,7 +265,7 @@ const CarritoFormulario = () => {
                             {/* DIRECCION */}
                             <div className="cell small-12 medium-6">
                                 <label className="carrito-formulario__label">
-                                    Tu Dirección...
+                                    Tu dirección
                                 </label>
                                 <div className="carrito-formulario__campo">
                                     <FaMapMarkerAlt className="carrito-formulario__icono" />
@@ -289,7 +289,7 @@ const CarritoFormulario = () => {
                             {/* TELÉFONO */}
                             <div className="cell small-12 medium-6">
                                 <label className="carrito-formulario__label" htmlFor="carrito-telefono">
-                                    Teléfono de contacto...
+                                    Teléfono de contacto
                                 </label>
                                 <div className="carrito-formulario__campo">
                                     <FaPhone className="carrito-formulario__icono" />
@@ -315,7 +315,7 @@ const CarritoFormulario = () => {
                             {/* HORA: solo horas en punto de hoy dentro del horario de domicilio */}
                             <div className="cell small-12 medium-6">
                                 <label className="carrito-formulario__label" htmlFor="carrito-hora">
-                                    Hora de entrega...
+                                    Hora de entrega
                                 </label>
                                 <div className="carrito-formulario__campo">
                                     <FaClock className="carrito-formulario__icono" />
@@ -350,7 +350,7 @@ const CarritoFormulario = () => {
                             {/* BARRIO */}
                             <div className="cell small-12 medium-6">
                                 <label className="carrito-formulario__label">
-                                    Barrio o conjunto...
+                                    Barrio o conjunto
                                 </label>
                                 <div className="carrito-formulario__campo">
                                     <FaHome className="carrito-formulario__icono" />
@@ -374,7 +374,7 @@ const CarritoFormulario = () => {
                             {/* INDICACIONES */}
                             <div className="cell small-12">
                                 <label className="carrito-formulario__label">
-                                    Indicaciones especiales...
+                                    Indicaciones especiales
                                 </label>
                                 <div className="carrito-formulario__campo">
                                     <FaStickyNote className="carrito-formulario__icono" />
