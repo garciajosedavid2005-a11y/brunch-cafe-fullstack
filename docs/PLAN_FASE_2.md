@@ -130,7 +130,7 @@ Cada ítem = 1 commit (o pocos) con tests primero, revisores y capturas, como en
 ## 6. Pendientes de la Fase 1 que tocan esta fase
 
 - **PIN y dispositivo**: mejora futura (F2-6); `/kds` no se cierra por inactividad.
-- **Límite de intentos del login** con todas las tablets detrás de la misma IP.
+- ~~Límite de intentos del login con todas las tablets detrás de la misma IP~~: revisado en 2.8 (el login ya contaba por IP + correo; recuperación y restablecimiento pasan a contar por persona).
 - ~~Cambios de horario sin Evento~~: hecho en 1.14.
 - ~~Carrito y opciones~~: desde 1.14 el carrito marca la línea rechazada, también cuando el «86» llegue desde la cocina.
 - **`Pedido.canal` sin rellenar** (1.9): no afecta (F2-3 es la opción b).
