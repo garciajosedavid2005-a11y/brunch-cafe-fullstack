@@ -1,0 +1,132 @@
+/* 2.6c · Página de prueba del plano (solo desarrollo). Paleta y tipografía de la marca (variables.css). */
+.pp {
+  --pp-texto: var(--color-oscuro, #2C0703);
+  --pp-tenue: #6a5752;
+  --pp-borde: #d9c6c1;
+  --pp-pista: #eadcd8;
+  --pp-normal: #1d5b2e;
+  --pp-aviso: #8a5300;
+  --pp-alerta: #b3261e;
+  min-height: 100vh;
+  padding: 14px 20px 24px;
+  color: var(--pp-texto);
+  font-family: var(--fuente-cuerpo), sans-serif;
+  background: #fff;
+}
+
+.pp-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.pp-cabecera__nota { margin: 2px 0 0; font-size: 0.8rem; color: var(--pp-tenue); }
+.pp-cabecera h1 { margin: 0; font-family: var(--fuente-titulos), serif; font-size: 1.7rem; font-weight: 700; color: var(--color-primario); }
+.pp-cabecera nav { display: flex; gap: 6px; }
+.pp-cabecera nav a {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px;
+  border: 1px solid var(--pp-borde); border-radius: 10px; color: var(--pp-texto); font-weight: 700; text-decoration: none;
+}
+.pp-cabecera nav a[aria-current="page"] { background: var(--color-primario); border-color: var(--color-primario); color: #fff; }
+
+/* Resumen de ocupación y leyenda */
+.pp-resumen { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin-bottom: 12px; }
+.pp-resumen__principal { margin: 0; font-size: 1.05rem; }
+.pp-resumen__principal strong { font-size: 1.5rem; color: var(--color-primario); }
+.pp-leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none; font-size: 0.8rem; color: var(--pp-tenue); }
+.pp-leyenda__item { display: inline-flex; align-items: center; gap: 4px; }
+.pp-leyenda__muestra { width: 14px; height: 14px; border-radius: 4px; background: var(--pp-fondo-mesa); border: 2px var(--pp-trazo-estilo, solid) var(--pp-trazo); }
+
+/* Estados de mesa: color + texto + icono (nunca solo color) */
+.pp-mesa--libre { --pp-fondo-mesa: #fff; --pp-trazo: #1d5b2e; --pp-trazo-estilo: dashed; --pp-num: var(--pp-texto); --pp-tono: #1d5b2e; --pp-chip-f: #e6f4ea; --pp-chip-t: #1d5b2e; }
+.pp-mesa--ocupada { --pp-fondo-mesa: var(--color-primario, #890620); --pp-trazo: #5e0416; --pp-num: #fff; --pp-tono: var(--color-primario, #890620); --pp-chip-f: #fbe9ec; --pp-chip-t: #890620; }
+.pp-mesa--cuenta_pedida { --pp-fondo-mesa: #f2b544; --pp-trazo: #7a4100; --pp-num: var(--pp-texto); --pp-tono: #7a4100; --pp-chip-f: #fff0d4; --pp-chip-t: #7a4100; }
+.pp-mesa--por_limpiar { --pp-fondo-mesa: #e5eef8; --pp-trazo: #24466e; --pp-num: #24466e; --pp-tono: #24466e; --pp-chip-f: #e5eef8; --pp-chip-t: #24466e; }
+.pp-mesa--bloqueada { --pp-fondo-mesa: #ececec; --pp-trazo: #424242; --pp-trazo-estilo: dashed; --pp-num: #424242; --pp-tono: #424242; --pp-chip-f: #ececec; --pp-chip-t: #424242; }
+
+.pp-mesa {
+  position: relative;
+  display: inline-flex; flex-direction: column; align-items: center; gap: 4px;
+  min-width: 44px; min-height: 44px; padding: 6px 8px 8px;
+  border: 0; border-radius: 14px; background: transparent; color: inherit; font: inherit; cursor: pointer;
+}
+.pp-mesa:hover { background: rgb(137 6 32 / 0.05); }
+.pp-mesa:focus-visible { outline: 3px solid var(--color-primario); outline-offset: 2px; }
+
+.pp-tablero { fill: var(--pp-fondo-mesa); stroke: var(--pp-trazo); stroke-width: 2.5; }
+.pp-mesa--libre .pp-tablero, .pp-mesa--bloqueada .pp-tablero { stroke-dasharray: 7 5; }
+.pp-union { fill: var(--pp-fondo-mesa); stroke: none; }
+.pp-numero { font-family: var(--fuente-cuerpo), sans-serif; font-size: 30px; font-weight: 800; fill: var(--pp-num); }
+.pp-silla__asiento { fill: #fff; stroke: #8a7470; stroke-width: 2; }
+.pp-silla__respaldo { fill: #8a7470; }
+.pp-silla--ocupada .pp-silla__asiento { fill: var(--pp-tono); stroke: var(--pp-tono); }
+.pp-silla--ocupada .pp-silla__respaldo { fill: var(--pp-tono); }
+.pp-anillo { fill: none; stroke-width: 6; stroke-linecap: round; }
+.pp-anillo--pista { stroke: var(--pp-pista); }
+.pp-anillo--normal { stroke: var(--pp-normal); }
+.pp-anillo--aviso { stroke: #b87400; }
+.pp-anillo--alerta { stroke: var(--pp-alerta); }
+
+.pp-estado {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px;
+  background: var(--pp-chip-f); color: var(--pp-chip-t); font-size: 0.78rem; font-weight: 700;
+}
+.pp-detalle { white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+.pp-mesero {
+  display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--color-oscuro, #2C0703); color: #fff; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.02em;
+}
+.pp-tiempo { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; }
+.pp-detalle svg { flex-shrink: 0; }
+.pp-tiempo--normal { color: var(--pp-normal); }
+.pp-tiempo--aviso { color: var(--pp-aviso); }
+.pp-tiempo--alerta { color: var(--pp-alerta); }
+.pp-total { font-weight: 700; }
+.pp-listo {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px;
+  background: var(--color-primario, #890620); color: #fff; font-size: 0.74rem; font-weight: 700;
+}
+
+/* A y B: zonas en columnas */
+.pp-zonas { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; }
+.pp-zona h2 { margin: 0 0 6px; font-family: var(--fuente-titulos), serif; font-size: 1.35rem; font-weight: 700; }
+.pp-zona__mesas { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 10px; }
+
+/* A · Minimalista plana */
+.pp--a .pp-zona { padding-top: 6px; border-top: 2px solid var(--pp-borde); }
+.pp--a .pp-silla__asiento { stroke-width: 0; fill: #b8a39e; }
+.pp--a .pp-silla--ocupada .pp-silla__asiento { fill: var(--pp-tono); }
+
+/* B · Ilustrada con sillas sobre el piso */
+.pp--b { background: var(--color-fondo, #F7E7E2); }
+.pp--b .pp-zona {
+  padding: 10px 12px 12px; border-radius: 18px; border: 1px solid var(--pp-borde);
+  background: repeating-linear-gradient(90deg, #fbf5f2 0 46px, #f6ece8 46px 48px);
+  box-shadow: 0 2px 10px rgb(44 7 3 / 0.06);
+}
+.pp--b .pp-dibujo { filter: drop-shadow(0 4px 4px rgb(44 7 3 / 0.18)); }
+.pp--b .pp-tablero { stroke-width: 3; }
+.pp--b .pp-silla__asiento { fill: #fffaf7; stroke: #a0837d; }
+
+/* C · Plano arquitectónico: zonas con muros, mesas en su posición (Mesa.posicion) */
+.pp--c {
+  background-color: var(--color-marfil, #F5EFE6);
+  background-image: linear-gradient(rgb(182 70 95 / 0.08) 1px, transparent 1px), linear-gradient(90deg, rgb(182 70 95 / 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.pp-planta { position: relative; height: 560px; }
+.pp-sala { position: absolute; border: 6px solid var(--color-oscuro, #2C0703); border-radius: 2px; }
+.pp-sala__nombre {
+  position: absolute; top: 6px; left: 10px; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pp-tenue);
+}
+.pp-sala__puerta {
+  position: absolute; bottom: -6px; left: 40%; width: 64px; height: 6px; background: var(--color-marfil, #F5EFE6);
+}
+.pp-sala__puerta::after {
+  content: ""; position: absolute; bottom: 6px; left: 0; width: 60px; height: 60px;
+  border-top: 1.5px dashed var(--pp-tenue); border-right: 1.5px solid var(--pp-tenue); border-top-right-radius: 60px;
+}
+.pp--c .pp-mesa { position: absolute; transform: translate(-50%, -50%); }
+.pp--c .pp-dibujo { width: auto; height: 96px; }
+.pp--c .pp-tablero { stroke-width: 1.8; }
+.pp--c .pp-silla__asiento { fill: transparent; stroke: var(--pp-texto); stroke-width: 1.5; }
+.pp--c .pp-silla--ocupada .pp-silla__asiento { fill: var(--pp-tono); stroke: var(--pp-tono); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pp * { transition: none !important; animation: none !important; }
+}
