@@ -2,6 +2,18 @@
 
 **IMPORTANTE: responde SIEMPRE en español**: mensajes, resúmenes, `docs/PROGRESO.md`, comentarios de código y mensajes de commit.
 
+## Reglas de eficiencia (obligatorias en todas las sesiones)
+
+- Durante el desarrollo, solo los tests del módulo que se toca. Antes de cada commit, UNA vez: suite backend, suite frontend, lint, build y humo.
+- Revisores al final de cada ítem, en paralelo y solo los que apliquen: `revisor-reglas` siempre; `revisor-backend` o `schema-reviewer` + `security-reviewer` si tocó el backend; `revisor-visual` si hubo cambios visuales. Lo bloqueante se corrige; lo menor va a Pendientes.
+- Usar el subagente `explorador` para buscar; no leer archivos enteros; sin refactors ni dependencias nuevas sin justificar.
+- Un commit por ítem, `docs/PROGRESO.md` con una línea por ítem y push a `origin Brayan` (nunca `--force` ni merge a `main`).
+- Decisiones técnicas o menores: tomarlas y anotarlas como «Claude (a confirmar por Brayan)».
+- Migraciones que solo AGREGAN campos, índices, permisos o roles: aprobadas de antemano (`mongodump` antes, `--dry-run`, aplicar, up → down → up).
+- Detenerse SOLO si: una migración modifica o borra datos existentes, hay que borrar archivos, colecciones o rutas existentes, surge una decisión de negocio nueva, o un problema no se resuelve en 2 intentos.
+- Una sola pausa por fase, al terminarla: capturas de lo nuevo, resumen, decisiones «a confirmar», pendientes y una guía corta de pruebas a mano.
+- Nunca declarar algo terminado sin evidencia (tests ejecutados de verdad, capturas reales).
+
 ## Proyecto
 
 Brunch Café: evolución a un POS de servicio a la mesa. Backend Node 24 + Express 5 + Mongoose 9 + Zod 4 (ESM); frontend React 19 + Vite + Foundation. La guía es la auditoría de `docs/auditoria/`; el diagnóstico inicial está en `docs/DIAGNOSTICO_FASE_A.md`.
