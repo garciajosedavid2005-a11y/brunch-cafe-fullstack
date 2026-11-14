@@ -62,10 +62,11 @@ export default function Comprobante({ comprobante: c, onVolver }) {
           </tbody>
         </table>
 
-        <dl className="comprobante__totales">
-          <div><dt>Subtotal</dt><dd>{formatearCOP(c.subtotal)}</dd></div>
-          <div><dt>Propina voluntaria</dt><dd>{formatearCOP(c.propina)}</dd></div>
-          <div className="comprobante__total"><dt>Total</dt><dd>{formatearCOP(c.total)}</dd></div>
+        {/* 3.5 · Se lee como una operación: Consumo + Propina = Total pagado */}
+        <dl className="comprobante__totales" role="group" aria-label="Consumo + Propina = Total pagado">
+          <div><dt>Consumo</dt><dd>{formatearCOP(c.subtotal)}</dd></div>
+          <div><dt><span className="comprobante__operador">+</span> Propina voluntaria</dt><dd>{formatearCOP(c.propina)}</dd></div>
+          <div className="comprobante__total"><dt><span className="comprobante__operador">=</span> Total pagado</dt><dd>{formatearCOP(c.total)}</dd></div>
         </dl>
 
         <dl className="comprobante__pagos">

@@ -86,6 +86,10 @@ describe("Caja", () => {
     expect(comprobante).toHaveTextContent("Precios con impuestos incluidos");
     expect(comprobante).toHaveTextContent("Documento no válido como factura electrónica");
     expect(comprobante).toHaveTextContent("Recibido $ 50.000 · Cambio $ 17.000");
+    // 3.5 · La cuenta del comprobante se lee como una operación: Consumo + Propina = Total pagado
+    const totales = within(comprobante).getByRole("group", { name: "Consumo + Propina = Total pagado" });
+    expect(within(totales).getAllByRole("term").map((t) => t.textContent)).toEqual(["Consumo", "+ Propina voluntaria", "= Total pagado"]);
+    expect(within(totales).getAllByRole("definition").map((d) => d.textContent.replace(/\s/g, " "))).toEqual(["$ 30.000", "$ 3.000", "$ 33.000"]);
     expect(screen.getByRole("button", { name: "Imprimir" })).toBeInTheDocument();
     // Al imprimir solo sale el comprobante (clase en <body> y tirilla de 80 mm mientras se ve)
     expect(document.body).toHaveClass("imprimiendo-comprobante");
@@ -103,13 +107,32 @@ describe("Caja", () => {
     await abrirCobro();
     fireEvent.click(within(screen.getByRole("radiogroup", { name: "Método del pago 1" })).getByRole("radio", { name: "Tarjeta" }));
     fireEvent.change(screen.getByLabelText("Monto (todo el total)"), { target: { value: "20000" } });
-    expect(screen.getByRole("status")).toHaveTextContent("Falta asignar $ 10.000");
+    // 3.5 · El estado del pago y «Cobrar» van juntos en la barra fija de abajo (siempre a la vista)
+    const barra = screen.getByRole("region", { name: "Cobrar la cuenta" });
+    expect(within(barra).getByRole("status")).toHaveTextContent("Falta asignar $ 10.000");
+    expect(within(barra).getByRole("button", { name: re("Cobrar $ 30.000") })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Agregar otro método" }));
     const segundo = screen.getByRole("radiogroup", { name: "Método del pago 2" });
     fireEvent.click(within(segundo).getByRole("radio", { name: "Transferencia" }));
     fireEvent.click(screen.getByRole("button", { name: re("Cobrar $ 30.000") }));
     await screen.findByRole("article", { name: "Comprobante CI-000001" });
     expect(cuerpoEnviado()).toEqual({ versionEsperada: 5, propina: 0, pagos: [{ metodo: "tarjeta", monto: 20000 }, { metodo: "transferencia", monto: 10000 }] });
+  });
+
+  it("la pantalla de cobro reserva abajo el alto real de la barra fija", async () => {
+    const anterior = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      constructor(cb) { this.cb = cb; }
+      observe(el) { el.getBoundingClientRect = () => ({ height: 131.2 }); this.cb([{ target: el }]); }
+      disconnect() {}
+    };
+    try {
+      await abrirCobro();
+      const seccion = screen.getByRole("region", { name: "Cobrar la cuenta" }).closest("section");
+      await waitFor(() => expect(seccion.style.getPropertyValue("--alto-barra")).toBe("132px"));
+    } finally {
+      globalThis.ResizeObserver = anterior;
+    }
   });
 
   it("si la cuenta cambió (409) lo dice y no muestra comprobante", async () => {

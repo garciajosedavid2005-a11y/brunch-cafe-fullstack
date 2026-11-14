@@ -1221,6 +1221,13 @@ const VISTAS = {
     await p.getByLabel("Monto (todo el total)").fill("20000");
     await p.getByRole("button", { name: "Agregar otro método" }).click();
   } },
+  // 3.5 · Pago mixto pendiente («Falta asignar», Cobrar deshabilitado) y desplazado al final: el último
+  // pago y «Agregar otro método» quedan por encima de la barra fija
+  "staff-caja-mixto-final": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await VISTAS["staff-caja-mixto"].preparar(p);
+    await p.getByLabel("Monto", { exact: true }).last().fill("5000");
+    await p.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  } },
   "staff-caja-comprobante": { usuario: "cajero", completa: false, preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);
     // Una lista vacía no siempre se expone como «list»: se espera a «Cobradas hoy», que se carga con ella

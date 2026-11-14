@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { apiRequest } from "../../../services/api";
 import { formatearCOP, formatearMiles } from "../../../utils/moneda";
@@ -9,6 +9,14 @@ import { METODOS, cuerpoCobro, estadoPagos, pesos, propinaSugerida } from "./cob
 // pagos (uno por método) y, en efectivo, lo recibido y el cambio. «Cobrar» solo se habilita cuando los pagos
 // suman exactamente lo que hay que cobrar. La Idempotency-Key se reutiliza solo si no llegó respuesta.
 const mesasTexto = (mesas = []) => (mesas.length > 1 ? `Mesas ${mesas.join(" + ")}` : `Mesa ${mesas[0]}`);
+
+/** Qué le falta al pago para poder cobrar (o que ya cuadra, con el cambio si hay). */
+const textoEstado = ({ restante, valido, cambio }) => {
+  if (restante > 0) return `Falta asignar ${formatearCOP(restante)}`;
+  if (restante < 0) return `Sobran ${formatearCOP(-restante)}: ajusta los montos`;
+  if (!valido) return "Revisa los montos y el efectivo recibido";
+  return cambio > 0 ? `Los pagos cuadran · Cambio ${formatearCOP(cambio)}` : "Los pagos cuadran";
+};
 
 function CampoPesos({ id, etiqueta, valor, onCambiar, descripcion }) {
   return (
@@ -34,6 +42,16 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
   const clave = useRef(nuevaClave());
+  // La barra fija tapa el final del formulario: la sección reserva abajo su alto real, que crece con
+  // un error o cuando el estado y el botón se parten en dos filas
+  const barra = useRef(null);
+  const [altoBarra, setAltoBarra] = useState(null);
+  useEffect(() => {
+    if (!barra.current || typeof ResizeObserver === "undefined") return undefined;
+    const observador = new ResizeObserver(([entrada]) => setAltoBarra(Math.ceil(entrada.target.getBoundingClientRect().height)));
+    observador.observe(barra.current);
+    return () => observador.disconnect();
+  }, []);
 
   const pagosVistos = seguirTotal && pagos.length === 1 ? [{ ...pagos[0], monto: total }] : pagos;
   const estado = estadoPagos(pagosVistos, total);
@@ -78,7 +96,7 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
   };
 
   return (
-    <section className="caja-cobro" aria-labelledby={`${id}-titulo`}>
+    <section className="caja-cobro" aria-labelledby={`${id}-titulo`} style={altoBarra ? { "--alto-barra": `${altoBarra}px` } : undefined}>
       <div className="caja__acciones">
         <button type="button" className="caja__boton caja__boton--secundario" onClick={onVolver}>
           <ArrowLeft size={18} aria-hidden="true" /> Volver a la caja
@@ -138,16 +156,20 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
               <Plus size={18} aria-hidden="true" /> Agregar otro método
             </button>
           )}
-          {estado.restante !== 0 && (
-            <p className="caja-cobro__restante" role="status">
-              {estado.restante > 0 ? `Falta asignar ${formatearCOP(estado.restante)}` : `Sobran ${formatearCOP(-estado.restante)}: ajusta los montos`}
-            </p>
-          )}
-          {error && <p className="caja__aviso" role="alert">{error}</p>}
-          <button type="button" className="caja__boton caja__boton--primario caja-cobro__cobrar" disabled={!estado.valido || enviando} onClick={cobrar}>
-            {enviando ? "Cobrando…" : `Cobrar ${formatearCOP(total)}`}
-          </button>
         </div>
+      </div>
+
+      {/* 3.5 · Barra fija abajo: con el pago mixto el formulario crece y «Cobrar» siempre queda a la vista */}
+      <div ref={barra} className="caja-cobro__barra" role="region" aria-label="Cobrar la cuenta">
+        <div className="caja-cobro__barra-texto">
+          <p className={`caja-cobro__estado${estado.valido ? "" : " is-pendiente"}`} role="status">
+            {textoEstado(estado)}
+          </p>
+          {error && <p className="caja__aviso" role="alert">{error}</p>}
+        </div>
+        <button type="button" className="caja__boton caja__boton--primario caja-cobro__cobrar" disabled={!estado.valido || enviando} onClick={cobrar}>
+          {enviando ? "Cobrando…" : `Cobrar ${formatearCOP(total)}`}
+        </button>
       </div>
     </section>
   );

@@ -182,8 +182,35 @@
 .caja-cobro__pago { display: grid; gap: 0.6rem; padding-bottom: 0.75rem; border-bottom: 1px dashed #d9c6c1; }
 .caja-cobro__cambio { margin: 0; font-size: 1.15rem; font-weight: 700; color: #1d5b2e; }
 .caja-cobro__cambio.is-falta { color: #a3211a; }
-.caja-cobro__restante { margin: 0; font-weight: 700; color: #7a4100; }
 .caja-cobro__cobrar { min-height: 56px; font-size: 1.15rem; }
+
+/* 3.5 · Barra fija abajo con el estado del pago y «Cobrar» (siempre a la vista al desplazarse).
+   `fixed` y no `sticky`: html, body y .main-content llevan overflow-x: hidden (index.css), que anula
+   cualquier sticky de dentro. La pantalla de cobro reserva abajo el alto real de la barra
+   (--alto-barra, medido en CobrarCuenta.jsx; 8rem mientras no se mide). */
+.caja-cobro { padding-bottom: calc(var(--alto-barra, 8rem) + 1rem); }
+
+.caja-cobro__barra {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #e3d2cd;
+  background: #fffaf8;
+  box-shadow: 0 -6px 16px #2c070314;
+}
+
+.caja-cobro__barra-texto { display: grid; gap: 0.4rem; flex: 1 1 240px; min-width: 0; }
+.caja-cobro__estado { margin: 0; font-size: 1.05rem; font-weight: 700; color: #1d5b2e; }
+.caja-cobro__estado.is-pendiente { color: #7a4100; }
+.caja-cobro__barra .caja-cobro__cobrar { flex: 1 1 260px; max-width: 420px; }
 
 /* Comprobante: en pantalla como una tirilla; al imprimir, solo ella (80 mm) */
 .comprobante {
@@ -223,6 +250,7 @@
 .comprobante__lineas tbody { border: 0; background: none; }
 .comprobante__detalle { display: block; color: #4a3a36; font-size: 0.82rem; }
 .comprobante__total { font-size: 1.2rem; font-weight: 800; }
+.comprobante__operador { display: inline-block; min-width: 1ch; font-weight: 800; }
 .comprobante__leyendas { margin-top: 0.85rem; padding-top: 0.6rem; border-top: 1px dashed #8a6f69; text-align: center; font-size: 0.85rem; font-weight: 700; }
 .comprobante__leyendas p { margin: 0.15rem 0; }
 
