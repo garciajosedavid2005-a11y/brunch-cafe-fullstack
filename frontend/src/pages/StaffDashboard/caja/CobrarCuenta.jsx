@@ -132,7 +132,7 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
                       onClick={() => cambiarPago(i, { metodo: m.codigo, recibido: null })}>{m.etiqueta}</button>
                   ))}
                 </div>
-                <CampoPesos id={`${id}-monto-${i}`} etiqueta={pagosVistos.length > 1 ? "Monto" : "Monto (todo el total)"} valor={p.monto}
+                <CampoPesos id={`${id}-monto-${i}`} etiqueta={pagosVistos.length > 1 ? "Monto" : "Monto a pagar"} valor={p.monto}
                   onCambiar={(monto) => cambiarPago(i, { monto })} />
                 {p.metodo === "efectivo" && (
                   <>

@@ -76,11 +76,14 @@
 .caja__boton:focus-visible { outline: 3px solid var(--color-oscuro); outline-offset: 2px; }
 .caja__boton--primario { background: #890620; color: #fff; }
 .caja__boton--primario:hover:not(:disabled) { background: #6e0519; }
-.caja__boton--secundario:hover:not(:disabled),
-.caja__boton--opcion:hover:not(:disabled) { background: #fbe9ec; }
+.caja__boton--secundario:hover:not(:disabled) { background: #fbe9ec; }
 .caja__boton--opcion { border-color: #d9c6c1; color: var(--color-oscuro); }
+/* 3.6 · El hover de una opción no elegida no puede pisar a la elegida (quedaba texto blanco sobre rosado, 1,2:1) */
+.caja__boton--opcion:hover:not(:disabled):not([aria-pressed="true"]):not([aria-checked="true"]) { background: #fbe9ec; }
 .caja__boton--opcion[aria-pressed="true"],
 .caja__boton--opcion[aria-checked="true"] { border-color: #890620; background: #890620; color: #fff; }
+.caja__boton--opcion[aria-pressed="true"]:hover:not(:disabled),
+.caja__boton--opcion[aria-checked="true"]:hover:not(:disabled) { border-color: #6e0519; background: #6e0519; color: #fff; }
 
 /* Deshabilitado sin opacidad (como en el plano): legible y con borde discontinuo */
 .caja__boton:disabled { border-style: dashed; border-color: #8a6f69; background: #efe4e1; color: #4a3a36; cursor: not-allowed; }
@@ -132,6 +135,14 @@
 .caja-cobro__sub { margin: -0.5rem 0 0; color: #594742; }
 .caja-cobro__columnas { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; align-items: start; }
 
+/* 3.6 · «Pago» como los demás títulos de la tarjeta («Consumo», «Total a cobrar»): tipografía del cuerpo */
+.caja-cobro__bloque .caja__subtitulo {
+  margin: 0;
+  font-family: var(--fuente-cuerpo), sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
 .caja-cobro__bloque {
   display: grid;
   gap: 0.75rem;
@@ -162,6 +173,8 @@
 .caja-cobro__pesos:focus-within { border-color: #890620; outline: 2px solid #89062033; }
 .caja-cobro__pesos input { width: 100%; min-width: 0; height: 44px; margin: 0; padding: 0; border: 0; box-shadow: none; background: transparent; font: inherit; font-weight: 700; }
 .caja-cobro__pesos input:focus { outline: none; box-shadow: none; }
+/* 3.6 · El «0» de ejemplo se lee (el gris del navegador quedaba muy claro) */
+.caja-cobro__pesos input::placeholder { color: #75645d; opacity: 1; }
 
 .caja-cobro__atajos,
 .caja-cobro__metodos { display: flex; flex-wrap: wrap; gap: 0.5rem; }

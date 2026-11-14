@@ -106,7 +106,7 @@ describe("Caja", () => {
   it("pago mixto: tarjeta y transferencia, sin propina", async () => {
     await abrirCobro();
     fireEvent.click(within(screen.getByRole("radiogroup", { name: "Método del pago 1" })).getByRole("radio", { name: "Tarjeta" }));
-    fireEvent.change(screen.getByLabelText("Monto (todo el total)"), { target: { value: "20000" } });
+    fireEvent.change(screen.getByLabelText("Monto a pagar"), { target: { value: "20000" } });
     // 3.5 · El estado del pago y «Cobrar» van juntos en la barra fija de abajo (siempre a la vista)
     const barra = screen.getByRole("region", { name: "Cobrar la cuenta" });
     expect(within(barra).getByRole("status")).toHaveTextContent("Falta asignar $ 10.000");

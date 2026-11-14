@@ -423,7 +423,7 @@
   padding: 0 0.1rem;
   border: 0;
   background: transparent;
-  color: #81736d;
+  color: #6f625d; /* 3.6 · antes #81736d: 4,49:1 sobre #fffdfa */
   cursor: pointer;
   font-size: 2rem;
   line-height: 1.2;

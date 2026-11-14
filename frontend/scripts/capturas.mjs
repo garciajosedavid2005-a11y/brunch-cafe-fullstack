@@ -522,6 +522,132 @@ const medirPaleta = async (page) => {
 };
 const azules = [];
 
+// 3.6 · Contraste de los controles seleccionables (botones de opción, chips, pestañas, filtros, interruptores)
+// en cada estado: normal, hover, foco, seleccionado, seleccionado+hover, seleccionado+foco y deshabilitado.
+// Se miden todos los textos del control contra lo que hay detrás de verdad (capas compuestas); ≥ 4,5:1.
+// Siempre activo (SIN_ESTADOS=1 lo omite): una medida bajo el mínimo hace fallar la ejecución.
+const MEDIR_ESTADOS = process.env.SIN_ESTADOS !== "1";
+const contrastesEstados = [];
+const SELECTOR_SELECCIONABLE = [
+  "[aria-pressed]", "[role='radio']", "[role='tab']", "[aria-selected]", "[role='switch']",
+  "button[aria-current]", "a[aria-current]", "button.is-active", "a.is-active",
+  "button[class*='--activ']", "a[class*='--activ']", "[class*='is-selected']", "label:has(> input[type='radio'])",
+].join(", ");
+// Marca los controles a medir: los seleccionables y sus hermanos del mismo grupo (las opciones no elegidas)
+const marcarSeleccionables = (selector) => {
+  const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden"; };
+  const controles = new Set();
+  for (const el of document.querySelectorAll(selector)) {
+    if (!visible(el) || el.closest(".navbar, .top-bar")) continue; // el navbar tiene su propia medición
+    controles.add(el);
+    for (const hermano of el.parentElement?.children || []) {
+      if (hermano.matches("button, a, [role='tab'], [role='radio'], label") && visible(hermano)) controles.add(hermano);
+    }
+    // Opciones en una lista (<li><button>): los botones de los demás <li> del grupo
+    if (el.parentElement?.tagName === "LI") {
+      for (const item of el.parentElement.parentElement?.children || []) {
+        const opcion = item.querySelector(":scope > button, :scope > a");
+        if (opcion && visible(opcion)) controles.add(opcion);
+      }
+    }
+  }
+  // Como medirPaleta: un máximo por vista, avisado (ver «recortados» en el resumen)
+  window.__seleccionablesTotal = controles.size;
+  return [...controles].slice(0, 40).map((el, i) => {
+    el.setAttribute("data-medir-estado", String(i));
+    const elegido = el.getAttribute("aria-pressed") === "true" || el.getAttribute("aria-checked") === "true"
+      || el.getAttribute("aria-selected") === "true" || (el.hasAttribute("aria-current") && el.getAttribute("aria-current") !== "false")
+      || /(^|\s)is-(active|selected)(\s|$)|--activ[oa]\b|--active\b/.test(typeof el.className === "string" ? el.className : "")
+      || Boolean(el.querySelector(":scope > input:checked"));
+    return { i, elegido, deshabilitado: el.disabled === true || el.getAttribute("aria-disabled") === "true" };
+  });
+};
+const medirTextosControl = (el, estado) => {
+  const rgba = (texto) => {
+    const m = String(texto).match(/rgba?\(([^)]+)\)/);
+    if (!m) return null;
+    const [r, g, b, a = 1] = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+    return { r, g, b, a };
+  };
+  const sobre = (arriba, abajo) => ({ r: arriba.r * arriba.a + abajo.r * (1 - arriba.a), g: arriba.g * arriba.a + abajo.g * (1 - arriba.a), b: arriba.b * arriba.a + abajo.b * (1 - arriba.a), a: 1 });
+  const lum = ({ r, g, b }) => [r, g, b].map((v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; })
+    .reduce((s, c, i) => s + c * [0.2126, 0.7152, 0.0722][i], 0);
+  const hex = ({ r, g, b }) => `#${[r, g, b].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`;
+  // Los elementos del control con texto propio (el control mismo o sus hijos)
+  const conTexto = [el, ...el.querySelectorAll("*")].filter((n) => [...n.childNodes].some((t) => t.nodeType === 3 && t.textContent.trim())
+    && getComputedStyle(n).visibility !== "hidden" && n.getBoundingClientRect().width > 0);
+  return conTexto.map((n) => {
+    const r = n.getBoundingClientRect();
+    const capas = [];
+    let sobreFoto = false;
+    const punto = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    // Tapado por otra cosa (p. ej. una barra fija): no se puede medir lo que no se ve
+    const tapado = !punto.length || !(punto[0] === n || n.contains(punto[0]) || el.contains(punto[0]));
+    for (const capa of punto) {
+      const estilo = getComputedStyle(capa);
+      if (["IMG", "VIDEO", "CANVAS", "PICTURE"].includes(capa.tagName) || (estilo.backgroundImage && estilo.backgroundImage !== "none")) { sobreFoto = true; break; }
+      const fondo = rgba(estilo.backgroundColor);
+      if (fondo && fondo.a > 0) capas.push(fondo);
+      if (fondo?.a === 1) break;
+    }
+    const fondo = capas.reverse().reduce((abajo, arriba) => sobre(arriba, abajo), { r: 255, g: 255, b: 255, a: 1 });
+    const color = rgba(getComputedStyle(n).color);
+    const fg = sobre({ ...color, a: color.a * Number(getComputedStyle(n).opacity || 1) }, fondo);
+    const [claro, oscuro] = [lum(fg), lum(fondo)].sort((a, b) => b - a);
+    return {
+      control: (el.getAttribute("aria-label") || el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 40),
+      clase: typeof el.className === "string" ? el.className.trim().split(/\s+/)[0] : el.tagName.toLowerCase(),
+      texto: n.textContent.trim().replace(/\s+/g, " ").slice(0, 30), estado, color: hex(fg), fondo: hex(fondo), sobreFoto: sobreFoto || tapado, tapado,
+      ratio: Math.round(((claro + 0.05) / (oscuro + 0.05)) * 100) / 100,
+    };
+  });
+};
+const medirEstados = async (page) => {
+  const posicion = await page.evaluate(() => [window.scrollX, window.scrollY]);
+  const controles = await page.evaluate((sel) => new Function(`return (${sel})`)(), `(${marcarSeleccionables.toString()})(${JSON.stringify(SELECTOR_SELECCIONABLE)})`);
+  const total = await page.evaluate(() => window.__seleccionablesTotal || 0);
+  if (total > 40) console.log(`  · estados: ${total} controles seleccionables; se midieron los primeros 40`);
+  const medidas = [];
+  const medir = async (i, estado) => medidas.push(...await page.locator(`[data-medir-estado="${i}"]`).evaluate(
+    (nodo, [fn, e]) => new Function(`return (${fn})`)()(nodo, e), [medirTextosControl.toString(), estado]));
+  for (const { i, elegido, deshabilitado } of controles) {
+    const prefijo = elegido ? "seleccionado" : "";
+    const nombreEstado = (e) => (prefijo ? (e === "normal" ? prefijo : `${prefijo}+${e}`) : e);
+    const control = page.locator(`[data-medir-estado="${i}"]`);
+    await control.evaluate((el) => el.scrollIntoView({ block: "center" })).catch(() => {});
+    await page.mouse.move(1, 1);
+    await page.evaluate(() => document.activeElement?.blur?.());
+    await page.waitForTimeout(60);
+    await medir(i, deshabilitado ? "deshabilitado" : nombreEstado("normal"));
+    if (deshabilitado) continue;
+    // Cada estado por separado: si uno no se puede provocar (control tapado), queda anotado como no medido
+    for (const [estado, provocar] of [
+      ["hover", () => control.hover({ timeout: 1000 })],
+      ["foco", async () => {
+        await page.mouse.move(1, 1);
+        await page.keyboard.press("Shift"); // modalidad de teclado: el foco programático muestra :focus-visible
+        await control.focus({ timeout: 1000 });
+      }],
+    ]) {
+      try {
+        await provocar();
+        await page.waitForTimeout(250); // transición de color
+        await medir(i, nombreEstado(estado));
+      } catch {
+        medidas.push({ control: `#${i}`, estado: nombreEstado(estado), noMedido: true, sobreFoto: true, ratio: null });
+      }
+    }
+  }
+  await page.mouse.move(1, 1);
+  await page.evaluate(([x, y]) => {
+    document.activeElement?.blur?.();
+    for (const el of document.querySelectorAll("[data-medir-estado]")) el.removeAttribute("data-medir-estado");
+    window.scrollTo(x, y);
+  }, posicion);
+  await page.waitForTimeout(300);
+  return medidas;
+};
+
 // nombre → { usuario, preparar(page), completa }
 const VISTAS = {
   inicio: { preparar: (p) => p.goto(`${FRONT}/`) },
@@ -1214,11 +1340,19 @@ const VISTAS = {
     await p.getByRole("button", { name: /^10 %/ }).click();
     await p.getByLabel("Recibido").fill("100000");
   } },
+  // 3.6 · El caso reportado: «10 %» y «Transferencia» elegidos, con el puntero encima de «Transferencia»
+  // (antes: texto blanco sobre el rosado del hover, 1,2:1)
+  "staff-caja-elegida-hover": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await VISTAS["staff-caja"].preparar(p);
+    await p.getByRole("button", { name: /^Cobrar Mesa 3/ }).click();
+    await p.getByRole("button", { name: /^10 %/ }).click();
+    await p.getByRole("radiogroup", { name: "Método del pago 1" }).getByRole("radio", { name: "Transferencia" }).click();
+  }, alFinal: (p) => p.getByRole("radio", { name: "Transferencia" }).hover() },
   "staff-caja-mixto": { usuario: "cajero", completa: false, preparar: async (p) => {
     await VISTAS["staff-caja"].preparar(p);
     await p.getByRole("button", { name: /^Cobrar Mesa 3/ }).click();
     await p.getByRole("radiogroup", { name: "Método del pago 1" }).getByRole("radio", { name: "Tarjeta" }).click();
-    await p.getByLabel("Monto (todo el total)").fill("20000");
+    await p.getByLabel("Monto a pagar").fill("20000");
     await p.getByRole("button", { name: "Agregar otro método" }).click();
   } },
   // 3.5 · Pago mixto pendiente («Falta asignar», Cobrar deshabilitado) y desplazado al final: el último
@@ -1322,8 +1456,19 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
         console.log(`  ${bajos.length ? `⚠ navbar: ${bajos.length} elemento(s) bajo el contraste mínimo (${bajos.map((m) => `«${m.texto}» ${m.estado} ${m.ratio}:1`).slice(0, 4).join(", ")})` : "✓ navbar con contraste suficiente"}${sobreFoto ? ` · ${sobreFoto} sobre foto (no medible)` : ""} (${nombre} ${etiqueta}, ${momento})`);
       };
       await medirNavbar("arriba");
-      // 2.0b · Paleta en /staff y el admin (vistas del personal y del admin)
-      if (["mesero", "admin", "cocina", "cajero"].includes(vista.usuario) && /\/(staff|admin|kds)/.test(page.url())) {
+      if (MEDIR_ESTADOS) {
+        const medidas = await medirEstados(page);
+        for (const m of medidas) contrastesEstados.push({ vista: nombre, tamano: etiqueta, ...m });
+        const bajos = medidas.filter((m) => !m.sobreFoto && m.ratio < 4.5);
+        const controles = new Set(medidas.map((m) => m.control)).size;
+        const tapados = medidas.filter((m) => m.tapado).length;
+        const noMedidos = medidas.filter((m) => m.noMedido).length;
+        const sobreImagen = medidas.filter((m) => m.sobreFoto && !m.tapado && !m.noMedido).length;
+        if (tapados || noMedidos || sobreImagen) console.log(`  · estados sin medir: ${tapados} tapado(s), ${noMedidos} estado(s) que no se pudieron provocar, ${sobreImagen} sobre imagen o degradado (${nombre} ${etiqueta})`);
+        if (controles) console.log(`  ${bajos.length ? `⚠ estados: ${bajos.length} medida(s) bajo 4,5:1 (${bajos.slice(0, 4).map((m) => `«${m.control}» ${m.estado} ${m.ratio}:1`).join(", ")})` : `✓ ${controles} control(es) seleccionable(s) con contraste ≥ 4,5:1 en todos sus estados`} (${nombre} ${etiqueta})`);
+      }
+      // 2.0b · Paleta en /staff y el admin; 3.6 · en todas las vistas (también el sitio público y Mi cuenta)
+      if (process.env.SIN_PALETA !== "1") {
         // 2.0c · Medir pasa el puntero y el foco por los botones y desplaza la página: se vuelve a donde
         // estaba (si no, la foto sale desplazada y sin el navbar)
         const posicion = await page.evaluate(() => [window.scrollX, window.scrollY]);
@@ -1439,12 +1584,12 @@ if (MEDIR_TACTIL) {
   console.log(`
 Medición táctil: ${pequenos.length} control(es) < 44 px → ${join(SALIDA, "medicion-tactil.json")}`);
 }
-if (azules.length || SOLO?.some((v) => /^(staff|admin|kds)/.test(v))) {
+if (process.env.SIN_PALETA !== "1") {
   const { writeFile } = await import("node:fs/promises");
   await writeFile(join(SALIDA, "medicion-paleta.json"), JSON.stringify(azules, null, 2));
   const fuera = azules.filter((h) => !h.deEstado);
   console.log(`
-Paleta (/staff y admin): ${fuera.length} azul(es) fuera de la paleta, ${azules.length - fuera.length} de estado → ${join(SALIDA, "medicion-paleta.json")}`);
+Paleta (todas las vistas): ${fuera.length} azul(es) fuera de la paleta, ${azules.length - fuera.length} de estado → ${join(SALIDA, "medicion-paleta.json")}`);
   if (fuera.length) process.exitCode = 1;
 }
 if (contrastesNavbar.length) {
@@ -1453,6 +1598,14 @@ if (contrastesNavbar.length) {
   const bajos = contrastesNavbar.filter((m) => !m.sobreFoto && m.ratio < m.minimo);
   console.log(`
 Contraste del navbar: ${bajos.length} medida(s) bajo el mínimo de ${contrastesNavbar.length} → ${join(SALIDA, "medicion-contraste-navbar.json")}`);
+  if (bajos.length) process.exitCode = 1;
+}
+if (contrastesEstados.length) {
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(join(SALIDA, "medicion-contraste-estados.json"), JSON.stringify(contrastesEstados, null, 2));
+  const bajos = contrastesEstados.filter((m) => !m.sobreFoto && m.ratio < 4.5);
+  console.log(`
+Contraste de seleccionables por estado: ${bajos.length} medida(s) bajo 4,5:1 de ${contrastesEstados.length} → ${join(SALIDA, "medicion-contraste-estados.json")}`);
   if (bajos.length) process.exitCode = 1;
 }
 if (MEDIR_SOLAPES) {

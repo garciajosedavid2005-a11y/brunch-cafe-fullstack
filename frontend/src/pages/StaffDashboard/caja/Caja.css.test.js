@@ -24,6 +24,22 @@ describe("Barra de cobro (3.5)", () => {
     expect(valor(regla(".caja-cobro"), "padding-bottom")).toMatch(/var\(--alto-barra/);
   });
 
+  it("3.6 · una opción elegida con el puntero encima sigue legible (el hover de las no elegidas no la pisa)", () => {
+    // El hover rosado solo aplica a las no elegidas
+    const hoverNormal = css.match(/\.caja__boton--opcion:hover[^{]*\{/)?.[0] ?? "";
+    expect(hoverNormal).toMatch(/:not\(\[aria-pressed="true"\]\)/);
+    expect(hoverNormal).toMatch(/:not\(\[aria-checked="true"\]\)/);
+    // La elegida con hover: texto blanco sobre un bordó oscuro
+    const elegidaHover = regla('.caja__boton--opcion[aria-checked="true"]:hover:not(:disabled)');
+    expect(contraste(valor(elegidaHover, "color"), valor(elegidaHover, "background"))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("3.6 · «Pago» con la misma tipografía que los demás títulos de la tarjeta (la del cuerpo, en negrita)", () => {
+    const titulo = regla(".caja-cobro__bloque .caja__subtitulo");
+    expect(valor(titulo, "font-family")).toMatch(/--fuente-cuerpo/);
+    expect(valor(titulo, "font-weight")).toBe("700");
+  });
+
   it("su estado se lee sobre el fondo de la barra (≥ 4,5:1)", () => {
     const fondo = valor(regla(".caja-cobro__barra"), "background");
     for (const selector of [".caja-cobro__estado", ".caja-cobro__estado.is-pendiente"]) {
