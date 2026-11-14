@@ -53,10 +53,13 @@
   background: #fffdfa;
 }
 
+/* 3.6 · Mismo icono, sangrado y alineación en todos los ítems: el icono se centra con la primera línea
+   del texto (también cuando «Seguridad y configuración» ocupa dos) y no se encoge */
 .customer-dashboard__nav button {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
+  line-height: 1.4;
   width: 100%;
   padding: 0.85rem 0.9rem;
   border: 0;
@@ -71,6 +74,13 @@
 
 .customer-dashboard__nav button span {
   color: #594742 !important;
+}
+
+.customer-dashboard__nav button svg {
+  flex: none;
+  width: 19px;
+  height: 19px;
+  margin-top: calc((1.4em - 19px) / 2);
 }
 
 .customer-dashboard__nav button:hover,
@@ -436,8 +446,8 @@
 
 .dashboard-character-count {
   justify-self: end;
-  color: #806d67;
-  font-size: 0.75rem;
+  color: #5f4c46; /* 3.6 · antes #806d67, al límite de 4,5:1 y a 12 px */
+  font-size: 0.8rem;
   font-weight: 400;
 }
 
