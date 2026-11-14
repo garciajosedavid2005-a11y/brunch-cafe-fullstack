@@ -32,3 +32,19 @@ describe("Barra de navegación según el tipo de cuenta", () => {
     expect(screen.getByAltText("Carrito de compras")).toBeInTheDocument();
   });
 });
+
+describe("«Ingresar» activo en las pantallas de acceso (3.6)", () => {
+  it.each(["/login", "/registro", "/recuperar-contrasena", "/restablecer-contrasena"])("en %s", (ruta) => {
+    sesion.user = null;
+    render(<MemoryRouter initialEntries={[ruta]}><Navbar /></MemoryRouter>);
+    const ingresar = screen.getByRole("link", { name: "Ingresar" });
+    // Activo a la vista (aria-current solo en /login, que es la página actual)
+    expect(ingresar).toHaveClass("active");
+  });
+
+  it("no en otras páginas", () => {
+    sesion.user = null;
+    pintar();
+    expect(screen.getByRole("link", { name: "Ingresar" })).not.toHaveClass("active");
+  });
+});

@@ -191,21 +191,35 @@
 
 .testimonios__puntos {
   display: flex;
-  gap: 8px;
+  gap: 0;
 
-  margin-top: 1.5rem;
+  /* El área de 44 px no empuja el contenido: se compensan los 18 px de arriba, de abajo y de la izquierda */
+  margin: calc(1.5rem - 18px) 0 -18px -18px;
 }
 
+/* 3.6 · El botón responde en 44 × 44 (objetivo táctil); el punto de 8 px se dibuja con ::before */
 .testimonios__punto {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start; /* el punto arranca siempre a 18 px y la barra activa crece a la derecha */
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+
+  padding: 0 0 0 18px;
+  border: 0;
+
+  background: transparent;
+  cursor: pointer;
+}
+
+.testimonios__punto::before {
+  content: "";
   width: 8px;
   height: 8px;
-
-  padding: 0;
-  border: 0;
   border-radius: 50%;
-
   background: var(--color-suave);
-  cursor: pointer;
 
   transition:
     background 0.3s ease,
@@ -213,8 +227,14 @@
     border-radius 0.3s ease;
 }
 
-.testimonios__punto--activo {
+.testimonios__punto--activo::before {
   width: 22px;
   border-radius: 4px;
   background: var(--color-primario);
+}
+
+.testimonios__punto:focus-visible {
+  outline: 2px solid var(--color-primario);
+  outline-offset: -6px;
+  border-radius: 8px;
 }

@@ -15,6 +15,9 @@ const Navbar = () => {
 };
 
 const NavbarContent = () => {
+    // 3.6 · «Ingresar» también activo en registro y recuperación (son parte del acceso)
+    const { pathname } = useLocation();
+    const enAcceso = ["/login", "/registro", "/recuperar-contrasena", "/restablecer-contrasena"].includes(pathname);
     const [oculta, setOculta] = useState(false);
     const [menuAbierto, setMenuAbierto] = useState(false);
     const [cerrandoSesion, setCerrandoSesion] = useState(false);
@@ -128,7 +131,7 @@ const NavbarContent = () => {
                                     </li>
                                 </>
                             ) : (
-                                <li><NavLink className="access" to="/login">Ingresar</NavLink></li>
+                                <li><NavLink className={({ isActive }) => `access${isActive || enAcceso ? " active" : ""}`} to="/login">Ingresar</NavLink></li>
                             ))}
 
                             {/* Carrito integrado (no para el personal) */}

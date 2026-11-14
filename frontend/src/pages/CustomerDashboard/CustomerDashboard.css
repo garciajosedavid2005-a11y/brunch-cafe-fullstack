@@ -426,10 +426,17 @@
 
 .dashboard-rating > div {
   display: flex;
-  gap: 0.25rem;
+  gap: 0;
+  margin-left: -8px; /* 3.6b · el área de 44 px centra la estrella: la primera vuelve a alinearse con el título */
 }
 
+/* 3.6 · Cada estrella responde en 44 × 44 sin agrandar el dibujo */
 .dashboard-rating button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0 0.1rem;
   border: 0;
   background: transparent;
@@ -699,4 +706,9 @@
 
 .dashboard-review__acciones {
   margin-top: 0.75rem;
+}
+
+/* 3.6 · «Cerrar sesión» de la cabecera en una sola línea (a 768 px se partía) */
+.customer-dashboard__header .dashboard-button {
+  white-space: nowrap;
 }
