@@ -108,6 +108,7 @@ export default function UsersSection() {
   const [busqueda, setBusqueda] = useState("");
   const [creando, setCreando] = useState(false);
   const [reenviando, setReenviando] = useState("");
+  const [eliminando, setEliminando] = useState("");
 
   const texto = busqueda.toLowerCase();
   const filtrados = usuarios.filter((u) =>
@@ -194,6 +195,41 @@ export default function UsersSection() {
     }
   };
 
+  // 3.8 · Eliminar una cuenta del personal: sin historial se borra; con historial se archiva
+  const eliminarUsuario = async (usuario) => {
+    const { confirmado } = await confirmar({
+      titulo: "Eliminar cuenta",
+      mensaje: "¿Eliminar esta cuenta del personal? No se puede deshacer.",
+      detalle: resumenUsuario(usuario, (
+        <>
+          <br />
+          <span>Rol: {usuario.rol?.nombre || "Sin rol"}</span>
+          <br />
+          <small>Perderá el acceso de inmediato. Si tiene historial, su nombre se conserva en él como «eliminado».</small>
+        </>
+      )),
+      confirmarTexto: "Eliminar cuenta",
+      cancelarTexto: "Cancelar",
+      peligroso: true,
+    });
+    if (!confirmado) return;
+    setEliminando(usuario.id);
+    try {
+      const { resultado } = await apiRequest(`/v1/admin/usuarios/${usuario.id}`, { method: "DELETE" });
+      setItems((lista) => lista.filter((u) => u.id !== usuario.id));
+      await avisar({
+        titulo: resultado === "archivado" ? "Cuenta archivada" : "Cuenta eliminada",
+        mensaje: resultado === "archivado"
+          ? `${nombreCompleto(usuario)} ya no tiene acceso y su correo quedó libre. Como tenía historial, su nombre se conserva en él como «eliminado».`
+          : `Se eliminó la cuenta de ${nombreCompleto(usuario)}.`,
+      });
+    } catch (e) {
+      await avisar({ tipo: "error", titulo: "No se pudo eliminar la cuenta", mensaje: e.message });
+    } finally {
+      setEliminando("");
+    }
+  };
+
   const cambiarActivo = async (usuario) => {
     if (usuario.activo) {
       const { confirmado } = await confirmar({
@@ -220,7 +256,7 @@ export default function UsersSection() {
         <div>
           <h2 className="admin-section__title">Usuarios</h2>
           <p className="admin-section__subtitle">
-            Crea cuentas, asigna roles y activa o desactiva cuentas. Un usuario desactivado pierde el acceso de inmediato.
+            Crea cuentas, asigna roles, activa o desactiva cuentas y elimina las del personal. Un usuario desactivado o eliminado pierde el acceso de inmediato.
           </p>
         </div>
         <button type="button" className="admin-button--primary" onClick={() => setCreando(true)}>
@@ -326,6 +362,17 @@ export default function UsersSection() {
                             >
                               {usuario.activo ? "Desactivar" : "Activar"}
                             </button>
+                            {usuario.eliminable && (
+                              <button
+                                type="button"
+                                className="admin-button--secondary-sm admin-users__eliminar"
+                                disabled={guardando || eliminando === usuario.id}
+                                onClick={() => eliminarUsuario(usuario)}
+                                aria-label={`Eliminar la cuenta de ${nombreCompleto(usuario)}`}
+                              >
+                                Eliminar
+                              </button>
+                            )}
                           </div>
                         )}
                       </td>

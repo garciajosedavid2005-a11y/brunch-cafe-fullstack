@@ -1,12 +1,13 @@
 import mongoose from 'mongoose'
 import Usuario from './usuario.model.js'
 import Rol from './rol.model.js'
-import Contador from '../compartido/contador.model.js'
 import { conTransaccion } from '../compartido/transacciones.js'
 import { AppError, notFound } from '../compartido/errors.js'
-import { ROL_ADMIN, puedeOtorgarRol } from './permisos.js'
+import { ROL_ADMIN, ROL_CLIENTE, puedeOtorgarRol } from './permisos.js'
 import { invalidarSesionUsuario } from './sesiones.js'
 import { crearUsuarioAdmin, reenviarEnlaceCreacion } from './altaUsuario.service.js'
+import { asegurarBloqueoAdmins, comprobarQuedaOtroAdmin } from './ultimoAdmin.js'
+import { eliminarUsuario as bajaUsuario } from './bajaUsuario.service.js'
 
 const formato = (usuario) => ({
     id: usuario._id,
@@ -21,6 +22,8 @@ const formato = (usuario) => ({
         ? { id: usuario.rol._id, codigo: usuario.rol.nombre, nombre: usuario.rol.etiqueta || usuario.rol.nombre }
         : null,
     createdAt: usuario.createdAt,
+    // 3.8 · Solo las cuentas del personal se pueden eliminar (el botón depende de esto)
+    eliminable: Boolean(usuario.rol) && usuario.rol.nombre !== ROL_CLIENTE,
 })
 
 /** POST /api/v1/admin/usuarios { nombre, apellido, correo, telefono?, rolId } → 201 (1.5b). */
@@ -36,27 +39,13 @@ export const reenviarEnlace = async (req, res) => {
 }
 
 export const listarUsuarios = async (req, res) => {
-    const usuarios = await Usuario.find()
+    // 3.8 · Las cuentas archivadas no aparecen
+    const usuarios = await Usuario.find({ eliminado: { $ne: true } })
         .select('-contraseña')
         .populate('rol', 'nombre etiqueta')
         .sort({ createdAt: -1 })
         .lean()
     res.json(usuarios.map(formato))
-}
-
-// Otros administradores activos distintos de `excluirId`
-const contarOtrosAdminsActivos = async (rolAdminId, excluirId, session) =>
-    Usuario.countDocuments({ rol: rolAdminId, activo: { $ne: false }, _id: { $ne: excluirId } }).session(session)
-
-// Documento común que escriben todas las transacciones que quitan un admin: dos degradaciones
-// simultáneas chocan aquí (WriteConflict), la segunda se reintenta y vuelve a contar (0.9).
-const BLOQUEO_ADMINS = 'bloqueo-ultimo-admin'
-const asegurarBloqueo = async () => {
-    try {
-        await Contador.updateOne({ _id: BLOQUEO_ADMINS }, { $setOnInsert: { seq: 0 } }, { upsert: true })
-    } catch (error) {
-        if (error?.code !== 11000) throw error // otro upsert simultáneo ya lo creó
-    }
 }
 
 /**
@@ -71,7 +60,7 @@ export const actualizarUsuario = async (req, res) => {
     const { activo, rolId } = req.validado
 
     const usuario = await Usuario.findById(req.params.id).populate('rol', 'nombre etiqueta permisos')
-    if (!usuario) throw notFound('Usuario no encontrado')
+    if (!usuario || usuario.eliminado === true) throw notFound('Usuario no encontrado')
     // 1.5b · Solo se edita a quien no tiene más permisos que uno (un gestor sin * no desactiva ni
     // degrada a un admin)
     if (!puedeOtorgarRol(req.usuario.permisos || [], usuario.rol?.permisos || [])) {
@@ -104,18 +93,20 @@ export const actualizarUsuario = async (req, res) => {
     if (activo !== undefined) usuario.activo = activo
     if (rolNuevo) usuario.rol = rolNuevo._id
 
-    if (pierdeAdmin) await asegurarBloqueo()
+    if (pierdeAdmin) await asegurarBloqueoAdmins()
     await conTransaccion(async (session) => {
-        if (pierdeAdmin) {
-            await Contador.updateOne({ _id: BLOQUEO_ADMINS }, { $inc: { seq: 1 } }, { session })
-            if ((await contarOtrosAdminsActivos(rolAdminId, usuario._id, session)) === 0) {
-                throw new AppError(409, 'ULTIMO_ADMIN', 'Debe quedar al menos un administrador activo.')
-            }
-        }
+        // 3.8 · Si se archivó mientras tanto, no se reactiva (el save escribe el mismo documento: choca y se reintenta)
+        if (!(await Usuario.exists({ _id: usuario._id, eliminado: { $ne: true } }).session(session))) throw notFound('Usuario no encontrado')
+        if (pierdeAdmin) await comprobarQuedaOtroAdmin(rolAdminId, usuario._id, session)
         await usuario.save({ session })
     })
     invalidarSesionUsuario(usuario._id)
 
     await usuario.populate('rol', 'nombre etiqueta')
     res.json(formato(usuario.toObject()))
+}
+
+/** DELETE /api/v1/admin/usuarios/:id (3.8): borrado real sin historial; archivado con historial. */
+export const eliminarUsuario = async (req, res) => {
+    res.json(await bajaUsuario(req.params.id, req.usuario))
 }

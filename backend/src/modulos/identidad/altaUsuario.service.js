@@ -100,7 +100,7 @@ export const reenviarEnlaceCreacion = async (usuarioId, sesion) => {
     const noExiste = () => new AppError(404, 'NOT_FOUND', 'Usuario no encontrado')
     if (!mongoose.isValidObjectId(usuarioId)) throw noExiste()
     const usuario = await Usuario.findById(usuarioId).populate('rol', 'nombre etiqueta permisos')
-    if (!usuario) throw noExiste()
+    if (!usuario || usuario.eliminado === true) throw noExiste() // 3.8 · archivada = ya no existe
     if (!puedeOtorgarRol(sesion.permisos || [], usuario.rol?.permisos || [])) {
         throw new AppError(403, 'FORBIDDEN', 'No puedes modificar una cuenta que tiene permisos que tú no tienes.')
     }

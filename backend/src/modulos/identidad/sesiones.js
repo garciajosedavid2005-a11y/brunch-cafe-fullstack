@@ -14,7 +14,7 @@ const generacionDe = (id) => `${generacionGlobal}:${generaciones.get(id) || 0}`
 
 const resolverDesdeBD = async (id) => {
     const usuario = await Usuario.findById(id)
-        .select('nombre apellido correo telefono activo rol tokenVersion')
+        .select('nombre apellido correo telefono activo eliminado rol tokenVersion')
         .populate('rol', 'nombre etiqueta permisos estaciones')
         .lean()
     if (!usuario) return null
@@ -23,7 +23,8 @@ const resolverDesdeBD = async (id) => {
         nombre: usuario.nombre,
         apellido: usuario.apellido,
         correo: usuario.correo,
-        activo: usuario.activo !== false, // documentos antiguos sin el campo = activos
+        // Documentos antiguos sin el campo = activos; una cuenta archivada (3.8) nunca lo está
+        activo: usuario.activo !== false && usuario.eliminado !== true,
         tokenVersion: usuario.tokenVersion || 0,
         rolId: usuario.rol ? String(usuario.rol._id) : null,
         rol: usuario.rol?.nombre || null,

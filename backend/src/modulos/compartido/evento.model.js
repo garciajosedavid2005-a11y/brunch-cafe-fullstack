@@ -26,6 +26,8 @@ export const TIPOS_EVENTO = [
     'producto_agotado', 'producto_reactivado', 'opcion_agotada', 'opcion_reactivada',
     // Fase 3 · Cobro en caja (entidad 'cuenta'; datos: comprobante, montos y métodos)
     'cuenta_cobrada',
+    // 3.8 · Baja de una cuenta del personal (entidad 'usuario'): borrado real o archivado
+    'usuario_eliminado', 'usuario_archivado',
 ]
 const eventoSchema = new mongoose.Schema({
     entidad: {

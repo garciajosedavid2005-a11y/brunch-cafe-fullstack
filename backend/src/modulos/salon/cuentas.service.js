@@ -7,6 +7,7 @@ import Producto from '../catalogo/producto.model.js'
 import Categoria from '../catalogo/categoria.model.js'
 import Estacion from '../catalogo/estacion.model.js'
 import Usuario from '../identidad/usuario.model.js'
+import Evento from '../compartido/evento.model.js'
 import GrupoModificadores from '../catalogo/grupoModificadores.model.js'
 import { gruposActivosDe, validarModificadores } from '../catalogo/modificadores.validacion.js'
 import { estacionEfectiva } from '../catalogo/estaciones.js'
@@ -353,11 +354,29 @@ const siMesaEnOtraCuenta = async (operacion) => {
 }
 const crearCuentaOConflicto = (docs, opciones) => siMesaEnOtraCuenta(() => Cuenta.create(docs, opciones))
 
-/** 1.5 · El responsable de una cuenta: usuario activo que atiende mesas (1.7b: sin el comodín del admin). */
+const meseroNoValido = () => error(400, 'MESERO_NO_VALIDO', 'Ese usuario no puede atender mesas: elige un mesero activo.')
+
+/**
+ * 1.5 · El responsable de una cuenta: usuario activo que atiende mesas (1.7b: sin el comodín del admin).
+ * 3.8 · Escribe en el usuario (updatedAt) dentro de la transacción: si a la vez se elimina o desactiva
+ * esa cuenta, las dos transacciones chocan y la que se reintenta ve el estado nuevo.
+ */
 const exigirMeseroValido = async (meseroId, session) => {
-    const usuario = await Usuario.findById(meseroId).select('activo rol').populate('rol', 'permisos').session(session).lean()
-    if (!usuario || usuario.activo === false || !atiendeMesas(usuario.rol?.permisos)) {
-        throw error(400, 'MESERO_NO_VALIDO', 'Ese usuario no puede atender mesas: elige un mesero activo.')
+    const usuario = await Usuario.findOneAndUpdate({ _id: meseroId }, { $currentDate: { updatedAt: true } },
+        { session, projection: { activo: 1, eliminado: 1, rol: 1 } }).populate('rol', 'permisos').lean()
+    if (!usuario || usuario.activo === false || usuario.eliminado === true || !atiendeMesas(usuario.rol?.permisos)) {
+        throw meseroNoValido()
+    }
+}
+
+/** 3.8 · Quien abre a su nombre: misma escritura en su usuario (choca con una baja simultánea). */
+const tocarResponsable = async (usuarioId, session) => {
+    const usuario = await Usuario.findOneAndUpdate({ _id: usuarioId }, { $currentDate: { updatedAt: true } },
+        { session, projection: { activo: 1, eliminado: 1 } }).lean()
+    if (usuario && (usuario.activo === false || usuario.eliminado === true)) throw meseroNoValido()
+    // Borrada de verdad mientras tanto (la baja sin historial ya confirmó): su Evento lo delata
+    if (!usuario && await Evento.exists({ entidad: 'usuario', entidadId: usuarioId, tipo: 'usuario_eliminado' }).session(session)) {
+        throw meseroNoValido()
     }
 }
 
@@ -413,6 +432,7 @@ export const abrirCuenta = async (datos, sesion) => {
         )
         if (!zona) throw noDisponible(`La zona de la mesa ${mesa.numero} está inactiva.`)
         if (otroMesero) await exigirMeseroValido(meseroId, session)
+        else await tocarResponsable(sesion.id, session)
 
         MAQUINA_MESA.validar('libre', 'ocupada', { via: 'sistema' })
         const cuentaId = new ObjectId()

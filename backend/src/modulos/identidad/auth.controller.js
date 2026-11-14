@@ -78,7 +78,7 @@ export const login = async (req, res) => {
         throw new AppError(401, 'CREDENCIALES_INVALIDAS', MENSAJE_LOGIN)
     }
     // Solo se informa después de validar la contraseña
-    if (usuario.activo === false) {
+    if (usuario.activo === false || usuario.eliminado === true) { // 3.8 · archivada = sin acceso
         throw new AppError(403, 'ACCOUNT_DISABLED', 'Tu cuenta está desactivada. Contacta al administrador.')
     }
 

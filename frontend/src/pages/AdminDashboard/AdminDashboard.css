@@ -1169,6 +1169,17 @@
   gap: 0.5rem; /* ≥ 8 px entre «Reenviar enlace» y «Desactivar» cuando se apilan */
 }
 
+/* 3.8 · «Eliminar» (irreversible) se distingue de «Desactivar»: rojo de peligro sobre blanco */
+.admin-users__eliminar {
+  background: #ffffff !important;
+  color: #b71c1c !important;
+  border-color: #b71c1c !important;
+}
+
+.admin-users__eliminar:hover:not(:disabled) {
+  background: #fdecea !important;
+}
+
 .admin-users__fila {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 0 1rem;

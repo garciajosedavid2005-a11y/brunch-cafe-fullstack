@@ -7,6 +7,7 @@ import { AppError } from '../compartido/errors.js'
 import { tienePermiso } from '../identidad/permisos.js'
 import { fechaLocal, instanteLocal } from '../compartido/fechas.js'
 import Comprobante, { LEYENDAS_COMPROBANTE, codigoComprobante } from './comprobante.model.js'
+import { nombreCorto, CAMPOS_NOMBRE } from '../compartido/nombres.js'
 
 // Fase 3 · Caja (PLAN_FASE_3 §3.1–3.3): lecturas de la caja y emisión del comprobante interno. El cobro
 // (la transacción con la cuenta y las mesas) está en salon/cuentas.service.js (cobrarCuenta), que llama a
@@ -20,9 +21,8 @@ export const exigirCobro = (sesion) => {
     }
 }
 
-const nombreCorto = (u) => (u ? [u.nombre, u.apellido?.[0] ? `${u.apellido[0]}.` : ''].filter(Boolean).join(' ') : '')
 const nombresDe = async (ids, session) => {
-    const usuarios = await Usuario.find({ _id: { $in: ids } }).select('nombre apellido').session(session ?? null).lean()
+    const usuarios = await Usuario.find({ _id: { $in: ids } }).select(CAMPOS_NOMBRE).session(session ?? null).lean()
     return new Map(usuarios.map((u) => [String(u._id), nombreCorto(u)]))
 }
 

@@ -58,7 +58,8 @@ export const listarPermisos = async (req, res) => {
 export const listarRoles = async (req, res) => {
     const [roles, conteos] = await Promise.all([
         Rol.find().sort({ createdAt: 1 }),
-        Usuario.aggregate([{ $group: { _id: '$rol', total: { $sum: 1 } } }]),
+        // 3.8 · Las cuentas archivadas no cuentan como asignadas
+        Usuario.aggregate([{ $match: { eliminado: { $ne: true } } }, { $group: { _id: '$rol', total: { $sum: 1 } } }]),
     ])
     const porRol = new Map(conteos.map((c) => [String(c._id), c.total]))
     res.json(roles.map((r) => formato(r, porRol.get(String(r._id)) || 0)))
@@ -102,7 +103,7 @@ export const actualizarRol = async (req, res) => {
     invalidarSesionesDeRol(rol._id)
     await revocarSesionesDelRol(rol._id) // sus flujos SSE se cierran al momento si ya no valen (2.5b)
 
-    const total = await Usuario.countDocuments({ rol: rol._id })
+    const total = await Usuario.countDocuments({ rol: rol._id, eliminado: { $ne: true } })
     res.json(formato(rol, total))
 }
 
@@ -113,7 +114,7 @@ export const eliminarRol = async (req, res) => {
     if (esProtegido(rol)) {
         throw new AppError(403, 'ROL_PROTEGIDO', 'Los roles de sistema no se pueden eliminar.')
     }
-    const asignados = await Usuario.countDocuments({ rol: rol._id })
+    const asignados = await Usuario.countDocuments({ rol: rol._id, eliminado: { $ne: true } })
     if (asignados > 0) {
         const texto = asignados === 1 ? '1 usuario asignado' : `${asignados} usuarios asignados`
         throw new AppError(409, 'ROL_CON_USUARIOS', `No se puede eliminar: tiene ${texto}.`, { usuariosAsignados: asignados })

@@ -26,8 +26,8 @@ const USUARIOS = [
   usuario("luis", { activo: false }),
 ];
 
-const montar = async () => {
-  api.get.mockImplementation((ruta) => Promise.resolve(ruta === "/v1/admin/roles" ? ROLES : USUARIOS));
+const montar = async (lista = USUARIOS) => {
+  api.get.mockImplementation((ruta) => Promise.resolve(ruta === "/v1/admin/roles" ? ROLES : lista));
   render(<DialogoProvider><UsersSection /></DialogoProvider>);
   await screen.findByText("ana@example.com");
 };
@@ -244,5 +244,53 @@ describe("Usuarios (admin)", () => {
       expect(await screen.findByRole("alertdialog")).toHaveTextContent("Esta persona ya creó su contraseña.");
       await waitFor(() => expect(api.get.mock.calls.filter(([r]) => r === "/v1/admin/usuarios").length).toBeGreaterThan(cargasAntes));
     });
+  });
+});
+
+// 3.8 · Eliminar cuentas del personal (no clientes ni la propia), con confirmación de nombre, correo y rol
+describe("Usuarios (admin) · eliminar", () => {
+  const MESERA = usuario("maria", { rol: { id: "r-mesero", codigo: "mesero", nombre: "Mesero" }, eliminable: true });
+  const LISTA = [...USUARIOS, MESERA];
+  beforeEach(() => vi.clearAllMocks());
+
+  it("solo las cuentas del personal tienen «Eliminar» (ni clientes ni la propia)", async () => {
+    await montar(LISTA);
+    expect(within(fila("maria@example.com")).getByRole("button", { name: /eliminar la cuenta de nombre-maria/i })).toBeInTheDocument();
+    expect(within(fila("ana@example.com")).queryByRole("button", { name: /eliminar/i })).not.toBeInTheDocument();
+    expect(within(fila("yo@example.com")).queryByRole("button", { name: /eliminar/i })).not.toBeInTheDocument();
+  });
+
+  it("confirma con nombre, correo y rol; al aceptar borra y la quita de la lista", async () => {
+    apiRequest.mockResolvedValue({ id: "maria", resultado: "archivado" });
+    await montar(LISTA);
+    fireEvent.click(within(fila("maria@example.com")).getByRole("button", { name: /eliminar/i }));
+    const dialogo = screen.getByRole("dialog");
+    expect(dialogo).toHaveTextContent("Nombre-maria Apellido");
+    expect(dialogo).toHaveTextContent("maria@example.com");
+    expect(dialogo).toHaveTextContent("Rol: Mesero");
+    const confirmar = within(dialogo).getByRole("button", { name: "Eliminar cuenta" });
+    expect(confirmar).toHaveClass("dialogo__boton--peligro");
+    fireEvent.click(confirmar);
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/v1/admin/usuarios/maria", { method: "DELETE" }));
+    expect(await screen.findByText("Cuenta archivada")).toBeInTheDocument();
+    expect(screen.queryByText("maria@example.com")).not.toBeInTheDocument();
+  });
+
+  it("«Cancelar» no borra nada", async () => {
+    await montar(LISTA);
+    fireEvent.click(within(fila("maria@example.com")).getByRole("button", { name: /eliminar/i }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(apiRequest).not.toHaveBeenCalled();
+    expect(screen.getByText("maria@example.com")).toBeInTheDocument();
+  });
+
+  it("si el backend lo bloquea (409) muestra su mensaje y la cuenta sigue en la lista", async () => {
+    apiRequest.mockRejectedValue(Object.assign(new Error("Tiene una cuenta abierta: transfiere sus cuentas primero."), { status: 409 }));
+    await montar(LISTA);
+    fireEvent.click(within(fila("maria@example.com")).getByRole("button", { name: /eliminar/i }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Eliminar cuenta" }));
+    expect(await screen.findByText(/transfiere sus cuentas primero/)).toBeInTheDocument();
+    expect(screen.getByText("maria@example.com")).toBeInTheDocument();
   });
 });

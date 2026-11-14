@@ -61,6 +61,21 @@ const usuarioSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    // 3.8 · Cuenta del personal eliminada con historial (archivada): inactiva, fuera de listas y selectores,
+    // con el correo liberado. Sin el campo = no eliminada (no necesita migración).
+    eliminado: {
+        type: Boolean,
+        default: undefined,
+    },
+    eliminadoEn: {
+        type: Date,
+        default: undefined,
+    },
+    // Correo que tenía al archivarse (el campo correo pasa a una dirección interna para liberarlo)
+    correoArchivado: {
+        type: String,
+        select: false,
+    },
     //Se relaciona con el rol del usuario, usando el ObjectId del rol
     rol: {
         type: mongoose.Schema.Types.ObjectId,

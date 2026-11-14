@@ -18,6 +18,7 @@ import Pedido from '../pedidos/pedido.model.js'
 import { pedidoComoCuenta } from '../pedidos/pedidoComoCuenta.js'
 import { esEstadoFinal } from '../compartido/estados.js'
 import { estadosDelTipo } from '../compartido/estados.service.js'
+import { nombreCorto, CAMPOS_NOMBRE } from '../compartido/nombres.js'
 
 // 1.5 · Lecturas del salón para el staff (/api/v1/staff/salon). Cada lectura hace un número fijo de
 // consultas en lote (sin N+1): el plano son 5 (zonas, mesas, cuentas, meseros y, desde 2.6, los ítems
@@ -31,13 +32,12 @@ const exigirAlguno = (sesion, claves) => {
     }
 }
 
-const nombreCorto = (u) => (u ? [u.nombre, u.apellido?.[0] ? `${u.apellido[0]}.` : ''].filter(Boolean).join(' ') : '')
 
 /** Map(id → { id, nombre }) de los usuarios indicados (una consulta). */
 const personasPorId = async (ids) => {
     const unicos = [...new Set(ids.filter(Boolean).map(String))]
     if (!unicos.length) return new Map()
-    const usuarios = await Usuario.find({ _id: { $in: unicos } }).select('nombre apellido').lean()
+    const usuarios = await Usuario.find({ _id: { $in: unicos } }).select(CAMPOS_NOMBRE).lean()
     return new Map(usuarios.map((u) => [String(u._id), { id: String(u._id), nombre: nombreCorto(u) }]))
 }
 
@@ -197,10 +197,10 @@ export const listarMeseros = async (sesion, { limite = MAX_MESEROS } = {}) => {
     const filtro = { rol: { $in: roles.map((r) => r._id) }, activo: { $ne: false } }
     // Orden alfabético en español («Íngrid» entre «Ana» y «Zoe»), no por bytes
     const usuarios = await Usuario.find(filtro).collation({ locale: 'es' })
-        .sort({ nombre: 1, apellido: 1 }).limit(limite).select('nombre apellido').lean()
+        .sort({ nombre: 1, apellido: 1 }).limit(limite).select(CAMPOS_NOMBRE).lean()
     // Si el límite deja fuera al usuario conectado y atiende mesas, va igualmente (es el valor por defecto)
     if (atiendeMesas(sesion.permisos) && !usuarios.some((u) => String(u._id) === String(sesion.id))) {
-        const yo = await Usuario.findOne({ ...filtro, _id: sesion.id }).select('nombre apellido').lean()
+        const yo = await Usuario.findOne({ ...filtro, _id: sesion.id }).select(CAMPOS_NOMBRE).lean()
         if (yo) usuarios.push(yo)
     }
     return usuarios.map((u) => ({ id: String(u._id), nombre: nombreCorto(u), yo: String(u._id) === String(sesion.id) }))

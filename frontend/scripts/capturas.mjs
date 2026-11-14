@@ -1042,6 +1042,12 @@ const VISTAS = {
     await abrirPestanaAdmin("Usuarios")(p);
     await p.getByRole("button", { name: "Crear usuario" }).click();
   } },
+  // 3.8 · Confirmación de «Eliminar» en una cuenta del personal (nombre, correo y rol)
+  "admin-usuarios-eliminar": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Usuarios")(p);
+    await p.getByRole("button", { name: /^Eliminar la cuenta de/ }).first().click();
+    await p.getByRole("dialog", { name: "Eliminar cuenta" }).waitFor();
+  } },
   "admin-estados": { usuario: "admin", preparar: abrirPestanaAdmin("Estados") },
   "admin-comentarios": { usuario: "admin", preparar: abrirPestanaAdmin("Comentarios") },
   comentarios: { preparar: (p) => p.goto(`${FRONT}/comentarios`) },

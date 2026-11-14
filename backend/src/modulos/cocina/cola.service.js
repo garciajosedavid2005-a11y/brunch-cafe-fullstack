@@ -23,6 +23,7 @@ import { colaSchema, pedidoEstacionSchema, VENTANA_DESHACER_MS } from './cocina.
 import { publicar, CANAL_TODAS_LAS_ESTACIONES } from '../tiempoReal/bus.js'
 import { operaEstacion } from '../identidad/permisos.js'
 import { exigirEstacion } from './estacionesRol.js'
+import { nombreCorto, CAMPOS_NOMBRE } from '../compartido/nombres.js'
 
 export const LIMITE_COLA = 200
 export const LIMITE_ESTACIONES_KDS = 50
@@ -34,7 +35,6 @@ const exigir = (sesion, clave) => {
         throw new AppError(403, 'FORBIDDEN', 'No tienes permiso para realizar esta acción.', { requiere: [clave] })
     }
 }
-const nombreCorto = (u) => (u ? [u.nombre, u.apellido?.[0] ? `${u.apellido[0]}.` : ''].filter(Boolean).join(' ') : '')
 const opciones = (modificadores = []) => modificadores.map((m) => ({ grupo: m.grupoNombre, opcion: m.opcionNombre }))
 
 const itemDeCola = (item) => ({
@@ -92,7 +92,7 @@ const tarjetasSalon = async (codigo, ahora, limite) => {
     ])
     const comandas = [...new Map([...pendientes, ...recientes].map((c) => [String(c._id), c])).values()]
         .sort((a, b) => new Date(a.enviadaEn) - new Date(b.enviadaEn))
-    const meseros = await Usuario.find({ _id: { $in: cuentas.map((c) => c.mesero) } }).select('nombre apellido').lean()
+    const meseros = await Usuario.find({ _id: { $in: cuentas.map((c) => c.mesero) } }).select(CAMPOS_NOMBRE).lean()
     const meseroPorId = new Map(meseros.map((u) => [String(u._id), u]))
     return {
         truncado: pendientes.length === limite || recientes.length === limite,

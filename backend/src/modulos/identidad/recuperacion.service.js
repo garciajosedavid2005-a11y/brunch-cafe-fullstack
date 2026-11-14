@@ -29,7 +29,7 @@ export const esperarRecuperacionesPendientes = () => Promise.allSettled([...pend
 const procesarSolicitud = async (correo) => {
     const usuario = await Usuario.findOne({ correo }).collation({ locale: 'en', strength: 2 })
 
-    if (usuario && usuario.activo !== false) {
+    if (usuario && usuario.activo !== false && usuario.eliminado !== true) {
         // 2.10d (Brayan) · Si aún no creó su contraseña, se le envía de nuevo «Crea tu contraseña» (24 h):
         // un enlace de recuperación de 30 min acortaría el que le mandó el admin
         const crear = usuario.contraseñaPendiente === true
