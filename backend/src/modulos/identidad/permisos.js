@@ -39,6 +39,8 @@ export const PERMISOS = [
     { clave: 'item:servir', modulo: 'salon', descripcion: 'Marcar como servidos los ítems listos' },
     { clave: 'producto:agotar', modulo: 'catalogo', descripcion: 'Marcar un producto u opción como agotado' },
     { clave: 'producto:reactivar', modulo: 'catalogo', descripcion: 'Volver a ofrecer un producto u opción agotado' },
+    // Fase 3 · cobro en caja (F3-1): cajero y admin (por «*»)
+    { clave: 'cuenta:cobrar', modulo: 'caja', descripcion: 'Cobrar cuentas en caja y emitir el comprobante interno' },
     // Fases futuras (reservados)
     { clave: 'caja:abrir', modulo: 'caja', descripcion: 'Abrir turno de caja', reservado: true },
     { clave: 'caja:cerrar', modulo: 'caja', descripcion: 'Cerrar turno de caja y arqueo', reservado: true },
@@ -82,6 +84,10 @@ export const PERMISOS_COCINA = {
     barista: ['kds:ver', 'item:preparar', 'pedido:preparar', 'producto:agotar', 'producto:reactivar'],
 }
 
+// Permiso de cobro de la Fase 3 (F3-1). La migración 3.1 usa una copia fija; un cambio aquí necesita su
+// propia migración. El admin cobra por "*"; el mesero no cobra.
+export const PERMISOS_CAJA = { cajero: ['cuenta:cobrar'] }
+
 // 2.5b · Estaciones del KDS de cada rol al crearlo (Brayan, 2026-11-13): cocina → Cocina, barista → Barra.
 // Las edita el admin en Admin › Roles; los roles existentes las reciben con la migración 2.5b.
 export const ESTACIONES_POR_ROL = { cocina: ['cocina'], barista: ['barra'] }
@@ -97,7 +103,7 @@ export const ROLES_STAFF = [
     },
     { nombre: 'cocina', etiqueta: 'Cocina', descripcion: 'Prepara los platos.', permisos: ['pedido:ver', ...PERMISOS_COCINA.cocina], estaciones: ESTACIONES_POR_ROL.cocina },
     { nombre: 'barista', etiqueta: 'Barista', descripcion: 'Prepara las bebidas.', permisos: ['pedido:ver', ...PERMISOS_COCINA.barista], estaciones: ESTACIONES_POR_ROL.barista },
-    { nombre: 'cajero', etiqueta: 'Cajero', descripcion: 'Cobra cuentas y gestiona la caja.', permisos: ['pedido:ver'] },
+    { nombre: 'cajero', etiqueta: 'Cajero', descripcion: 'Cobra cuentas y gestiona la caja.', permisos: ['pedido:ver', ...PERMISOS_CAJA.cajero] },
     { nombre: 'repartidor', etiqueta: 'Repartidor', descripcion: 'Entrega pedidos a domicilio.', permisos: ['pedido:ver'] },
 ]
 

@@ -24,12 +24,13 @@ const ok = (operacion) => responder(200, operacion)
 // transacción): el plano, la cuenta y las estaciones de sus ítems enviados releen. Solo ids.
 // 2.6 · También el mesero de la cuenta (su aviso «Listo para servir» cambia al anular, cancelar, cerrar o
 // transferir) y, en la transferencia, el anterior (`extra`).
-const avisarSalon = (resultado, extra = []) => {
+// Fase 3 · También la caja (sus cuentas por cobrar cambian al pedir, reabrir, cerrar o cobrar la cuenta)
+export const avisarSalon = (resultado, extra = []) => {
     const cuentaId = resultado?.id && Array.isArray(resultado?.rondas) ? String(resultado.id) : null
     const estaciones = (resultado?.rondas || []).filter((r) => r.estado === 'enviada')
         .flatMap((r) => r.items || []).map((i) => i.estacion?.codigo).filter(Boolean)
     const mesero = cuentaId && resultado.mesero ? `mesero:${resultado.mesero}` : null
-    publicar(['plano', cuentaId && `cuenta:${cuentaId}`, mesero, ...extra, ...estaciones.map((c) => `estacion:${c}`)],
+    publicar(['plano', 'caja', cuentaId && `cuenta:${cuentaId}`, mesero, ...extra, ...estaciones.map((c) => `estacion:${c}`)],
         { tipo: 'salon_cambio', ids: cuentaId ? { cuentaId } : {} })
 }
 const cambio = (status, operacion, canalesPrevios) => async (req, res) => {

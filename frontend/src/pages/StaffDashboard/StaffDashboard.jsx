@@ -15,6 +15,7 @@ import {
   UserRound,
   UserRoundCog,
   Users,
+  Wallet,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -30,6 +31,7 @@ import SecuritySection from "../CustomerDashboard/sections/SecuritySection";
 import PlanoMesas from "./plano/PlanoMesas";
 import AvisoListos from "./plano/AvisoListos";
 import PanelAgotados from "./agotados/PanelAgotados";
+import Caja from "./caja/Caja";
 import LimiteErrores from "../../components/LimiteErrores/LimiteErrores";
 import { useSonidoKds } from "../Kds/useSonidoKds";
 import CuentasAbiertas from "./cuentas/CuentasAbiertas";
@@ -58,8 +60,9 @@ export default function StaffDashboard() {
   const puedeAgotar = tienePermiso(user, "producto:agotar") || tienePermiso(user, "producto:reactivar");
   // 1.9 · «Cuentas abiertas» (salón con cuenta:ver, domicilio con pedido:ver)
   const puedeVerCuentas = tienePermiso(user, "cuenta:ver") || puedeVerPedidos;
-  // Con mesa:ver, el panel abre primero el plano de mesas (decisión 1.6 del 2026-11-07)
-  const [seccion, setSeccion] = useState(() => (puedeVerMesas ? "mesas" : "resumen"));
+  const puedeCobrar = tienePermiso(user, "cuenta:cobrar"); // Fase 3 · cajero y admin (F3-1)
+  // Con mesa:ver, el panel abre primero el plano de mesas (decisión 1.6 del 2026-11-07); el cajero, la caja
+  const [seccion, setSeccion] = useState(() => (puedeVerMesas ? "mesas" : puedeCobrar ? "caja" : "resumen"));
   // 2.6 · Aviso «Listo para servir» a quien sirve mesas (el de sus cuentas), con sonido apagado por
   // defecto en esta pantalla (F2-8). Tocar una mesa del aviso abre su cuenta en «Mesas»
   const avisaListos = puedeVerMesas && tienePermiso(user, "item:servir") && Boolean(user?.id);
@@ -153,6 +156,7 @@ export default function StaffDashboard() {
   const navigation = [
     ...(puedeVerMesas ? [{ id: "mesas", label: "Mesas", icon: LayoutGrid }] : []),
     ...(puedeVerCuentas ? [{ id: "cuentas", label: "Cuentas", icon: ReceiptText }] : []),
+    ...(puedeCobrar ? [{ id: "caja", label: "Caja", icon: Wallet }] : []),
     { id: "resumen", label: "Resumen", icon: CalendarCheck2 },
     ...(puedeVerReservas || puedeCrearReservas
       ? [{ id: "reservas", label: "Reservas", icon: CalendarDays }]
@@ -272,8 +276,9 @@ export default function StaffDashboard() {
         {seccion === "mesas" && <PlanoMesas permisos={permisos} cuentaVista={cuentaVista} onCuentaVista={setCuentaVista} />}
         {seccion === "cuentas" && <CuentasAbiertas permisos={permisos} />}
         {seccion === "agotados" && <PanelAgotados permisos={permisos} />}
+        {seccion === "caja" && <Caja />}
 
-        {!["mesas", "cuentas", "agotados"].includes(seccion) && (
+        {!["mesas", "cuentas", "agotados", "caja"].includes(seccion) && (
         <section className="customer-dashboard__content" aria-live="polite">
           {seccion === "resumen" && (
             <div>

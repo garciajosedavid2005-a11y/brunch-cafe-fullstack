@@ -1,5 +1,5 @@
 // 2.4 · GET /api/v1/staff/eventos?canales=a,b (Server-Sent Events). Autenticado (staff.routes.js) y con
-// permiso por canal: estacion:<codigo> → kds:ver; cuenta:<id> → cuenta:ver; plano → mesa:ver;
+// permiso por canal: estacion:<codigo> → kds:ver; cuenta:<id> → cuenta:ver; plano → mesa:ver; caja → cuenta:cobrar;
 // mesero:<id> → solo el propio usuario y con un permiso del salón (cuenta:ver o item:servir). Latido
 // cada 25 s, cabeceras anti-buffer, límite de conexiones por usuario y cierre si la sesión deja de valer (contraseña cambiada, desactivado, cerrada o vencida)
 // o si, con los permisos de ahora, ya no puede escuchar alguno de sus canales (rol cambiado).
@@ -23,7 +23,7 @@ export const MAX_CONEXIONES_POR_USUARIO = 5
 export const MAX_CANALES = 10
 // El código de estación sigue el formato del modelo (si cambia allí, cambia aquí)
 const CODIGO = FORMATO_CODIGO.source.slice(1, -1) // sin ^ ni $
-const FORMATO_CANAL = new RegExp(`^(plano|catalogo|estacion:${CODIGO}|cuenta:[0-9a-f]{24}|mesero:[0-9a-f]{24})$`)
+const FORMATO_CANAL = new RegExp(`^(plano|catalogo|caja|estacion:${CODIGO}|cuenta:[0-9a-f]{24}|mesero:[0-9a-f]{24})$`)
 
 const conexiones = new Map() // usuarioId → número de conexiones abiertas
 
@@ -38,6 +38,8 @@ export const validarCanales = (texto, sesion) => {
         const [tipo, id] = canal.split(':')
         const permitido = {
             plano: () => tienePermiso(sesion.permisos, 'mesa:ver'),
+            // Fase 3 · La caja (cuentas por cobrar y cobradas): solo quien cobra
+            caja: () => tienePermiso(sesion.permisos, 'cuenta:cobrar'),
             // 2.7 · Agotados y reactivados: quien toma comanda, el KDS y quien agota o reactiva
             catalogo: () => ['comanda:tomar', 'kds:ver', 'producto:agotar', 'producto:reactivar'].some((p) => tienePermiso(sesion.permisos, p)),
             // 2.5b · y que la estación sea de su rol (el comodín, todas)

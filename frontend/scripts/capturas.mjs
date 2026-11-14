@@ -67,6 +67,7 @@ const USUARIOS = {
   cliente: "cliente.dev@brunchcafe.test",
   mesero: "mesero.dev@brunchcafe.test",
   cocina: "cocina.dev@brunchcafe.test", // 2.5 · KDS
+  cajero: "cajero.dev@brunchcafe.test", // Fase 3 · Caja
 };
 
 // ── Entorno aislado: API sobre la BD de capturas + Vite apuntando a ella ──
@@ -1201,6 +1202,43 @@ const VISTAS = {
     await p.getByRole("button", { name: /^Deshacer «listo» de / }).first().click();
     await p.getByRole("dialog", { name: "Deshacer «listo»" }).waitFor();
   } },
+  // Fase 3 · Caja (cajero.dev): la cuenta pedida de la mesa 3 del salón sembrado. Van al final: el cobro
+  // cierra esa cuenta en la BD de capturas (la mesa 3 queda por limpiar)
+  "staff-caja": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("list", { name: "Cuentas por cobrar" }).getByRole("button", { name: /^Cobrar Mesa 3/ }).waitFor();
+  } },
+  "staff-caja-cobro": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await VISTAS["staff-caja"].preparar(p);
+    await p.getByRole("button", { name: /^Cobrar Mesa 3/ }).click();
+    await p.getByRole("button", { name: /^10 %/ }).click();
+    await p.getByLabel("Recibido").fill("100000");
+  } },
+  "staff-caja-mixto": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await VISTAS["staff-caja"].preparar(p);
+    await p.getByRole("button", { name: /^Cobrar Mesa 3/ }).click();
+    await p.getByRole("radiogroup", { name: "Método del pago 1" }).getByRole("radio", { name: "Tarjeta" }).click();
+    await p.getByLabel("Monto (todo el total)").fill("20000");
+    await p.getByRole("button", { name: "Agregar otro método" }).click();
+  } },
+  "staff-caja-comprobante": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    // Una lista vacía no siempre se expone como «list»: se espera a «Cobradas hoy», que se carga con ella
+    await p.getByRole("heading", { name: /^Cobradas hoy/ }).waitFor();
+    await p.waitForLoadState("networkidle");
+    if (await p.getByRole("button", { name: /^Cobrar Mesa 3/ }).count()) {
+      await VISTAS["staff-caja-cobro"].preparar(p);
+      await p.getByRole("button", { name: /^Cobrar \$/ }).click();
+    } else {
+      // Segundo tamaño: la mesa 3 ya se cobró; el mismo comprobante desde «Cobradas hoy»
+      await p.getByRole("button", { name: /^Ver comprobante CI-/ }).first().click();
+    }
+    await p.getByRole("article", { name: /^Comprobante CI-/ }).waitFor();
+  } },
+  "staff-caja-cobradas": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("list", { name: "Cobradas hoy" }).getByRole("button", { name: /^Ver comprobante CI-/ }).first().waitFor();
+  } },
 };
 
 // Sin --hide-scrollbars (Playwright lo pone por defecto): así se ven las barras de desplazamiento
@@ -1278,7 +1316,7 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
       };
       await medirNavbar("arriba");
       // 2.0b · Paleta en /staff y el admin (vistas del personal y del admin)
-      if (["mesero", "admin", "cocina"].includes(vista.usuario) && /\/(staff|admin|kds)/.test(page.url())) {
+      if (["mesero", "admin", "cocina", "cajero"].includes(vista.usuario) && /\/(staff|admin|kds)/.test(page.url())) {
         // 2.0c · Medir pasa el puntero y el foco por los botones y desplaza la página: se vuelve a donde
         // estaba (si no, la foto sale desplazada y sin el navbar)
         const posicion = await page.evaluate(() => [window.scrollX, window.scrollY]);

@@ -39,8 +39,8 @@ export const MAQUINA_CUENTA = crearMaquina({
         // F1-18: anular el último ítem no anulado la reabre sola (consecuencia de la anulación ya autorizada)
         { de: 'cuenta_pedida', a: 'abierta', via: 'sistema' },
         { de: ['abierta', 'cuenta_pedida'], a: 'cerrada_sin_cobro', permiso: 'cuenta:cerrar_sin_cobro', requiereMotivo: true },
-        // Cobro: Fase 3, sin uso aún. Permiso provisional: quién cobra y cierra se decide en la Fase 3
-        { de: 'cuenta_pedida', a: 'cerrada', permiso: 'caja:cerrar' },
+        // Fase 3 · Cobro en caja (F3-1, F3-6): solo desde «cuenta pedida», con cuenta:cobrar (cajero y admin)
+        { de: 'cuenta_pedida', a: 'cerrada', permiso: 'cuenta:cobrar' },
         { de: 'abierta', a: 'cancelada', permiso: 'cuenta:abrir', requiereMotivo: true }, // solo sin ítems enviados (D4)
     ],
 })

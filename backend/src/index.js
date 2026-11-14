@@ -7,6 +7,7 @@ import { sembrarEstados, MigracionPendienteError } from './seeds/estados.js'
 import { sembrarHorarios } from './modulos/configuracion/horarios.service.js'
 import Cuenta from './modulos/salon/cuenta.model.js'
 import Comanda from './modulos/salon/comanda.model.js'
+import Comprobante from './modulos/caja/comprobante.model.js'
 
 const start = async () => {
     await connectDB()
@@ -34,11 +35,12 @@ const start = async () => {
     // Horarios por defecto si la BD no los tiene (no pisa los editados en el admin)
     await sembrarHorarios()
     // 1.4 · Índices únicos de cuentas y rondas (una mesa en una sola cuenta abierta, un borrador por
-    // cuenta) listos antes de atender: crean las colecciones si aún no existen
+    // cuenta) y (Fase 3) de comprobantes (un número y una cuenta por comprobante) listos antes de atender:
+    // crean las colecciones si aún no existen (un cobro no debe crearlas dentro de su transacción)
     try {
-        await Promise.all([Cuenta.init(), Comanda.init()])
+        await Promise.all([Cuenta.init(), Comanda.init(), Comprobante.init()])
     } catch (error) {
-        logger.fatal({ err: error }, 'No se pudieron crear los índices de cuentas y comandas (¿datos duplicados?). Revisa con npm run verificar:salon.')
+        logger.fatal({ err: error }, 'No se pudieron crear los índices de cuentas, comandas y comprobantes (¿datos duplicados?). Revisa con npm run verificar:salon.')
         process.exit(1)
     }
     const app = createApp()

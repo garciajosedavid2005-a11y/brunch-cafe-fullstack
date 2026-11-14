@@ -25,6 +25,8 @@ import {
     transferirSchema, moverSchema, unirSchema,
 } from './cuentas.schema.js'
 import { MAX_MESAS_POR_CUENTA } from './cuenta.model.js'
+import { cobrarSchema } from '../caja/caja.schema.js'
+import { asegurarContador, calcularPagos, emitirComprobante, formatoComprobante } from '../caja/caja.service.js'
 
 // 1.4 · Núcleo de cuenta y comanda (sin endpoints: llegan en 1.5 y reciben `sesion` = req.usuario).
 // Reglas:
@@ -642,6 +644,37 @@ export const cerrarSinCobro = async (cuentaId, datos, sesion) => {
         const { motivo: texto } = MAQUINA_CUENTA.validar(cuenta.estado, 'cerrada_sin_cobro', { permisos: permisosDe(sesion), motivo })
         await cerrarCuenta(cuenta, 'cerrada_sin_cobro', { sesion, session, motivo: texto })
         return detalle(cuenta, session)
+    })
+}
+
+/**
+ * Fase 3 · Cobro en caja (F3-1 a F3-6): solo una cuenta en «cuenta pedida» y con cuenta:cobrar. En una
+ * transacción: la cuenta pasa a cerrada, sus mesas a por limpiar, se emite el comprobante (consecutivo sin
+ * huecos) y queda el Evento con quién cobró, montos y métodos. La propina vive en el comprobante (y el
+ * Evento); Cuenta.total sigue siendo el consumo. Idempotency-Key en la ruta; sin ella, un segundo cobro → 409.
+ */
+export const cobrarCuenta = async (cuentaId, datos, sesion) => {
+    exigirPermiso(sesion, 'cuenta:cobrar')
+    const { versionEsperada, propina, pagos } = validar(cobrarSchema, datos)
+    await asegurarContador()
+
+    return conTransaccion(async (session) => {
+        const cuenta = await tocarCuenta(cuentaId, { versionEsperada }, session)
+        MAQUINA_CUENTA.validar(cuenta.estado, 'cerrada', { permisos: permisosDe(sesion) })
+        const total = cuenta.total + propina
+        const pagosCalculados = calcularPagos(pagos, total)
+        const comandas = await comandasDe(cuenta._id, session).lean()
+        await cerrarCuenta(cuenta, 'cerrada', { sesion, session, motivo: '' })
+        const comprobante = await emitirComprobante({ cuenta, comandas, propina, total, pagos: pagosCalculados, sesion, session })
+        await registrarEvento({
+            entidad: 'cuenta', entidadId: cuenta._id, tipo: 'cuenta_cobrada', ...quien(sesion),
+            datos: {
+                comprobante: comprobante.codigo, subtotal: cuenta.subtotal, propina, total,
+                pagos: pagosCalculados.map((p) => ({ metodo: p.metodo, monto: p.monto })),
+            },
+            session,
+        })
+        return { cuenta: await detalle(cuenta, session), comprobante: formatoComprobante(comprobante) }
     })
 }
 

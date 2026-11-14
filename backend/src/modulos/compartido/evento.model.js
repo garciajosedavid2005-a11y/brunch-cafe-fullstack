@@ -24,6 +24,8 @@ export const TIPOS_EVENTO = [
     'estacion_lista',
     // 2.7 · Agotar y reactivar (de/a: 'disponible' ↔ 'agotado')
     'producto_agotado', 'producto_reactivado', 'opcion_agotada', 'opcion_reactivada',
+    // Fase 3 · Cobro en caja (entidad 'cuenta'; datos: comprobante, montos y métodos)
+    'cuenta_cobrada',
 ]
 const eventoSchema = new mongoose.Schema({
     entidad: {

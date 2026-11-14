@@ -11,6 +11,7 @@ import cuentasAbiertasRoutes from '../../modulos/salon/cuentasAbiertas.routes.js
 import cocinaRoutes from '../../modulos/cocina/cocina.routes.js'
 import eventosRoutes from '../../modulos/tiempoReal/eventos.routes.js'
 import agotadosRoutes from '../../modulos/catalogo/agotados.routes.js'
+import cajaRoutes from '../../modulos/caja/caja.routes.js'
 
 // /api/v1/staff: operación del salón y la cocina, por permiso (no por rol)
 const router = Router()
@@ -38,5 +39,8 @@ router.use(eventosRoutes)
 
 // 2.7 · Agotar y reactivar productos y opciones desde la operación (producto:agotar / producto:reactivar)
 router.use('/agotados', agotadosRoutes)
+
+// Fase 3 · Caja: cuentas por cobrar, cobro y comprobante interno (cuenta:cobrar)
+router.use('/caja', cajaRoutes)
 
 export default router
