@@ -4,9 +4,11 @@ import Usuario from './usuario.model.js'
 import { config } from '../../config.js'
 import { logger } from '../compartido/logger.js'
 import { AppError } from '../compartido/errors.js'
-import { enviarCorreoRecuperacion, smtpConfigurado } from './recuperacion.email.js'
+import { enviarCorreoRecuperacion, enviarCorreoCreacion, smtpConfigurado } from './recuperacion.email.js'
 
 const DURACION_TOKEN_MS = 30 * 60 * 1000
+// 1.5b · Enlace «Crea tu contraseña» (alta desde el admin y, desde 2.10d, la recuperación de esas cuentas)
+export const DURACION_ENLACE_CREACION_MS = 24 * 60 * 60 * 1000
 // Espera mínima entre correos de recuperación a la misma cuenta (también desde varias IP; pendiente de 2.8)
 export const ESPERA_ENTRE_CORREOS_MS = 60 * 1000
 const MENSAJE_SOLICITUD = 'Si la cuenta existe, recibirás un enlace para restablecer tu contraseña.'
@@ -27,15 +29,19 @@ const procesarSolicitud = async (correo) => {
     const usuario = await Usuario.findOne({ correo }).collation({ locale: 'en', strength: 2 })
 
     if (usuario && usuario.activo !== false) {
-        const { token, hash: tokenHash, expira } = nuevoTokenDeContrasena()
+        // 2.10d (Brayan) · Si aún no creó su contraseña, se le envía de nuevo «Crea tu contraseña» (24 h):
+        // un enlace de recuperación de 30 min acortaría el que le mandó el admin
+        const crear = usuario.contraseñaPendiente === true
+        const { token, hash: tokenHash, expira } = nuevoTokenDeContrasena(crear ? DURACION_ENLACE_CREACION_MS : DURACION_TOKEN_MS)
         const url = new URL('/restablecer-contrasena', config.CLIENT_URLS[0])
         url.searchParams.set('token', token)
+        if (crear) url.searchParams.set('tipo', 'crear')
 
         // Escritura condicional: dentro del minuto no se regenera el enlace ni se envía otro correo (dos
         // solicitudes a la vez: solo una gana). La respuesta al cliente es la misma en los dos casos.
         const ahora = new Date()
         const { modifiedCount } = await Usuario.updateOne(
-            { _id: usuario._id, $or: [{ passwordResetSolicitadoEn: null }, { passwordResetSolicitadoEn: { $lte: new Date(ahora - ESPERA_ENTRE_CORREOS_MS) } }] },
+            { _id: usuario._id, contraseñaPendiente: crear ? true : { $ne: true }, $or: [{ passwordResetSolicitadoEn: null }, { passwordResetSolicitadoEn: { $lte: new Date(ahora - ESPERA_ENTRE_CORREOS_MS) } }] },
             { $set: { passwordResetTokenHash: tokenHash, passwordResetExpiresAt: expira, passwordResetSolicitadoEn: ahora } },
         )
         if (modifiedCount === 0) return
@@ -43,12 +49,14 @@ const procesarSolicitud = async (correo) => {
         // Solo en desarrollo y sin SMTP: el enlace va al log para poder probar el flujo (0.15c).
         // Nunca se registra el correo; en test y producción el enlace no se escribe en ningún log.
         if (config.NODE_ENV === 'development' && !smtpConfigurado()) {
-            logger.info({ usuarioId: usuario._id, enlace: url.toString() }, 'SMTP sin configurar: enlace de recuperación (solo en desarrollo; vence en 30 min)')
+            logger.info({ usuarioId: usuario._id, enlace: url.toString() }, crear
+                ? 'SMTP sin configurar: enlace «Crea tu contraseña» (solo en desarrollo; vence en 24 h)'
+                : 'SMTP sin configurar: enlace de recuperación (solo en desarrollo; vence en 30 min)')
             return
         }
 
         try {
-            await enviarCorreoRecuperacion({
+            await (crear ? enviarCorreoCreacion : enviarCorreoRecuperacion)({
                 correo: usuario.correo,
                 nombre: usuario.nombre,
                 url: url.toString(),
@@ -70,7 +78,7 @@ const procesarSolicitud = async (correo) => {
                 errorCode: error?.code || 'SMTP_SEND_FAILED',
                 errorName: error?.name,
                 usuarioId: usuario._id,
-            }, 'No se pudo enviar el correo de recuperación')
+            }, crear ? 'No se pudo enviar el correo «Crea tu contraseña»' : 'No se pudo enviar el correo de recuperación')
         }
     }
 }

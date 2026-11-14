@@ -8,9 +8,10 @@ import { config } from '../src/config.js'
 import { logger } from '../src/modulos/compartido/logger.js'
 import { esperarRecuperacionesPendientes } from '../src/modulos/identidad/recuperacion.service.js'
 
-const correoMock = vi.hoisted(() => ({ enviar: vi.fn(), configurado: vi.fn() }))
+const correoMock = vi.hoisted(() => ({ enviar: vi.fn(), configurado: vi.fn(), crear: vi.fn() }))
 vi.mock('../src/modulos/identidad/recuperacion.email.js', () => ({
     enviarCorreoRecuperacion: correoMock.enviar,
+    enviarCorreoCreacion: correoMock.crear,
     smtpConfigurado: correoMock.configurado,
 }))
 
@@ -27,6 +28,7 @@ describe('Recuperación de contraseña: envío del enlace (0.15c)', () => {
         vi.clearAllMocks()
         correoMock.configurado.mockReturnValue(true)
         correoMock.enviar.mockResolvedValue(undefined)
+        correoMock.crear.mockResolvedValue(undefined)
     })
 
     afterEach(async () => {
@@ -67,6 +69,28 @@ describe('Recuperación de contraseña: envío del enlace (0.15c)', () => {
         await esperarRecuperacionesPendientes()
         expect(correoMock.enviar).toHaveBeenCalledTimes(2)
         expect((await conToken(usuario._id)).passwordResetTokenHash).not.toBe(primero)
+    })
+
+    // 2.10d (Brayan) · Quien aún no creó su contraseña recibe otra vez «Crea tu contraseña» (24 h), no un
+    // enlace de recuperación de 30 min que acortaría el que le mandó el admin
+    it('con «Crea tu contraseña» pendiente envía de nuevo ese enlace de 24 h, no uno de recuperación', async () => {
+        const { usuario } = await crearConSesion('mesero', { contraseñaPendiente: true })
+        const antes = Date.now()
+        expect((await solicitar(usuario.correo)).status).toBe(202)
+        await esperarRecuperacionesPendientes()
+        expect(correoMock.enviar).not.toHaveBeenCalled()
+        expect(correoMock.crear).toHaveBeenCalledOnce()
+        const url = new URL(correoMock.crear.mock.calls[0][0].url)
+        expect(url.searchParams.get('tipo')).toBe('crear')
+        const guardado = await conToken(usuario._id)
+        // La espera de 60 s también vale aquí: otra solicitud no reenvía ni cambia el enlace
+        await solicitar(usuario.correo)
+        await esperarRecuperacionesPendientes()
+        expect(correoMock.crear).toHaveBeenCalledOnce()
+        expect((await conToken(usuario._id)).passwordResetTokenHash).toBe(guardado.passwordResetTokenHash)
+        expect(guardado.passwordResetExpiresAt.getTime() - antes).toBeGreaterThan(23 * 60 * 60 * 1000)
+        expect((await restablecer(url.searchParams.get('token'))).status).toBe(200)
+        expect((await Usuario.findById(usuario._id).lean()).contraseñaPendiente).toBeUndefined()
     })
 
     it('dos solicitudes a la vez: un solo correo y un solo enlace', async () => {

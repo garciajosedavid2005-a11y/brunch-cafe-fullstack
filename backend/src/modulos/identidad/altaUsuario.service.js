@@ -10,13 +10,13 @@ import { conTransaccion } from '../compartido/transacciones.js'
 import { registrarEvento } from '../compartido/estados.service.js'
 import { puedeOtorgarRol } from './permisos.js'
 import { enviarCorreoCreacion, smtpConfigurado } from './recuperacion.email.js'
-import { nuevoTokenDeContrasena } from './recuperacion.service.js'
+import { nuevoTokenDeContrasena, DURACION_ENLACE_CREACION_MS } from './recuperacion.service.js'
 
 // 1.5b · Alta de usuarios desde Admin › Usuarios (usuario:gestionar). El admin no escribe la
 // contraseña: la cuenta nace con un hash de bytes aleatorios que nadie conoce (ninguna contraseña
 // sirve) y con un enlace «Crea tu contraseña» de 24 h y un solo uso, el mismo mecanismo que la
 // recuperación (POST /auth/restablecer-contrasena lo consume y sube tokenVersion).
-export const DURACION_ENLACE_CREACION_MS = 24 * 60 * 60 * 1000
+export { DURACION_ENLACE_CREACION_MS }
 const COLACION_CORREO = { locale: 'en', strength: 2 }
 
 const pendientes = new Set()
