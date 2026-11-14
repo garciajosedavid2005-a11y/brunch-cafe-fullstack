@@ -204,7 +204,6 @@ export default function ModificadoresSection() {
                 <tr key={g.id}>
                   <td>
                     <strong className="admin-table__client-name">{g.nombre}</strong>
-                    {g.ejemplo && <span className="admin-badge admin-badge--neutral admin-salon__ejemplo">Ejemplo</span>}
                     <span className="admin-salon__detalle">{reglaDelGrupo(g)}</span>
                     <span className="admin-salon__detalle">{g.productos > 0 ? `Lo usa ${plural(g.productos, "producto")}` : "Sin productos"}</span>
                   </td>

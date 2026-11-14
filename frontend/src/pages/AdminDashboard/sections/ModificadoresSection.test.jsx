@@ -46,7 +46,8 @@ describe("Admin › Modificadores", () => {
     expect(leche).toHaveTextContent(`Almendra (+${cop(2000)})`);
     expect(leche).toHaveTextContent("Agotada");
     expect(leche).toHaveTextContent("1 producto");
-    expect(within(leche).getByText("Ejemplo")).toBeInTheDocument();
+    // 3.7 · La marca de ejemplo sigue en los datos, pero ya no se muestra en la interfaz
+    expect(screen.queryByText("Ejemplo")).not.toBeInTheDocument();
     expect(within(leche).getByText("Activo")).toBeInTheDocument();
     const huevo = filaDe(tabla, "Término del huevo");
     expect(huevo).toHaveTextContent("Obligatorio · elige 1");

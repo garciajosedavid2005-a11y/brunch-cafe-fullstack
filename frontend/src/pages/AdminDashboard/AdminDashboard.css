@@ -2616,10 +2616,6 @@
   outline: none;
 }
 
-.admin-salon__ejemplo {
-  margin-left: 0.5rem;
-}
-
 .admin-salon__detalle {
   display: block;
   margin-top: 0.2rem;
@@ -2832,12 +2828,6 @@
   background: #ffebee;
   color: #7f1010;
   font-size: 0.84rem;
-}
-
-/* Modificadores en tablet: «Ejemplo» bajo el nombre y acciones en columna estrecha */
-.admin-modificadores__tabla .admin-salon__ejemplo {
-  display: inline-block;
-  margin: 0.3rem 0 0;
 }
 
 /* .admin-table td lleva nowrap: aquí nombre y opciones se parten en líneas para caber a 1024 px */

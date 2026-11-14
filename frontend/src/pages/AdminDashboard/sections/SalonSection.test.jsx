@@ -32,11 +32,12 @@ describe("Admin › Salón", () => {
     for (const fn of Object.values(api)) fn.mockReset();
   });
 
-  it("lista zonas y mesas con su estado en texto (no solo color) y marca los datos de ejemplo", async () => {
+  it("lista zonas y mesas con su estado en texto (no solo color) sin la etiqueta «Ejemplo» (3.7)", async () => {
     await montar();
     const zonas = screen.getByRole("table", { name: "Zonas del salón" });
     const filaInterior = within(zonas).getByText("Interior").closest("tr");
-    expect(within(filaInterior).getByText("Ejemplo")).toBeInTheDocument();
+    // 3.7 · La marca de ejemplo sigue en los datos (zonas y mesas), pero ya no se muestra
+    expect(screen.queryByText("Ejemplo")).not.toBeInTheDocument();
     expect(within(filaInterior).getByText("Activa")).toBeInTheDocument();
     expect(within(zonas).getByText("Terraza").closest("tr")).toHaveTextContent("Inactiva");
 

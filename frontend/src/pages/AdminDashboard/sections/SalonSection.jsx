@@ -153,7 +153,6 @@ export default function SalonSection() {
                 <tr key={zona.id}>
                   <td>
                     <strong className="admin-table__client-name">{zona.nombre}</strong>
-                    {zona.ejemplo && <span className="admin-badge admin-badge--neutral admin-salon__ejemplo">Ejemplo</span>}
                     <span className="admin-salon__detalle">Orden {zona.orden}</span>
                   </td>
                   <td>{zona.mesas}</td>
@@ -240,7 +239,6 @@ export default function SalonSection() {
                       {mesa.nombre && <span className="admin-salon__detalle">{mesa.nombre}</span>}
                       <span className="admin-salon__marcas">
                         {mesa.combinable && <span className="admin-badge admin-badge--marca">Combinable</span>}
-                        {mesa.ejemplo && <span className="admin-badge admin-badge--neutral">Ejemplo</span>}
                       </span>
                     </td>
                     <td>
