@@ -29,6 +29,14 @@ const leerClave = async () => {
   }
 };
 const CLAVE = await leerClave();
+// Pendiente de 2.7 · Hora fija (como el reloj de los tests): la API y el navegador ven hoy a las 6:00 a. m. de
+// Bogotá (CAPTURAS_HORA=HH:MM para otra), con el reloj en marcha desde ahí. Así las vistas no dependen de la
+// hora real (carrito-problema fallaba después de las 4:00 p. m.: no quedaban horas de domicilio). A las 6:00
+// la primera franja de domicilio (8:00) queda con 2 h de margen aunque la ejecución dure (el servidor exige 1 h).
+const HORA_CAPTURAS = /^\d{2}:\d{2}$/.test(process.env.CAPTURAS_HORA || "") ? process.env.CAPTURAS_HORA : "06:00";
+const HOY_BOGOTA = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
+const DESFASE_MS = new Date(`${HOY_BOGOTA}T${HORA_CAPTURAS}:00-05:00`).getTime() - Date.now();
+const ahoraCapturas = () => Date.now() + DESFASE_MS;
 const ETIQUETA = process.argv[2] || "actual";
 // Cada tamaño es un ancho (alto 900, página completa) o ANCHOxALTO (1.6: pantalla de tablet, solo lo visible)
 const TAMANOS = (process.env.ANCHOS || "1280,1024,768").split(",").map((t) => {
@@ -90,7 +98,7 @@ const esperar = async (url, hijo, nombre, segundos = 90) => {
 
 const api = arrancar("api", ["scripts/entorno-capturas.js"], {
   cwd: BACKEND,
-  env: { ...process.env, DEV_USUARIOS_PASSWORD: CLAVE, CAPTURAS_API_PORT: PUERTO_API, CAPTURAS_FRONT_URL: FRONT },
+  env: { ...process.env, DEV_USUARIOS_PASSWORD: CLAVE, CAPTURAS_API_PORT: PUERTO_API, CAPTURAS_FRONT_URL: FRONT, CAPTURAS_DESFASE_MS: String(DESFASE_MS) },
 });
 const vite = arrancar("vite", [join(process.cwd(), "node_modules/vite/bin/vite.js"), "--port", PUERTO_FRONT, "--strictPort"], {
   cwd: process.cwd(),
@@ -99,7 +107,7 @@ const vite = arrancar("vite", [join(process.cwd(), "node_modules/vite/bin/vite.j
 try {
   await esperar(`http://localhost:${PUERTO_API}/api/health`, api, "La API de capturas");
   await esperar(FRONT, vite, "Vite");
-  console.log(`Entorno de capturas listo (BD brunch-cafe-capturas · API ${PUERTO_API} · web ${PUERTO_FRONT}).`);
+  console.log(`Entorno de capturas listo (BD brunch-cafe-capturas · API ${PUERTO_API} · web ${PUERTO_FRONT} · hora ${HORA_CAPTURAS} de Bogotá).`);
 } catch (error) {
   console.error(error.message);
   detenerTodo();
@@ -140,7 +148,7 @@ const pedidoConOpciones = async () => {
     const extras = producto.modificadores.find((g) => !g.obligatorio && g.opciones.some((o) => o.precioExtra > 0));
     if (extras) modificadores.push({ grupoId: extras.id, opcionIds: [extras.opciones.find((o) => o.precioExtra > 0).id] });
     const metodos = await (await cliente.get(`${API}/cliente/metodos-pago`)).json();
-    const hora = `${String(Math.min(16, Math.max(9, new Date().getUTCHours() - 5 + 2))).padStart(2, "0")}:00`;
+    const hora = `${String(Math.min(16, Math.max(9, new Date(ahoraCapturas()).getUTCHours() - 5 + 2))).padStart(2, "0")}:00`;
     const res = await cliente.post(`${API}/cliente/pedidos`, {
       headers: { "Idempotency-Key": `capturas-opciones-${Date.now()}` },
       data: {
@@ -531,7 +539,7 @@ const VISTAS = {
   // Sin sesión, /reservas avisa y a los 1,8 s lleva al login: el reloj se congela para la foto
   "reservas-sin-sesion": { preparar: async (p) => {
     // Reloj instalado y en pausa: el temporizador de 1,8 s no avanza mientras se mide y se captura
-    const ahora = Date.now();
+    const ahora = ahoraCapturas();
     await p.clock.install({ time: ahora });
     await p.clock.pauseAt(ahora + 1000);
     await p.goto(`${FRONT}/reservas`);
@@ -1167,7 +1175,7 @@ const VISTAS = {
     await p.route(/\/staff\/cocina\/cola\?/, async (ruta) => {
       const r = await ruta.fetch();
       const cola = await r.json();
-      await ruta.fulfill({ response: r, json: { ...cola, salon: [{ tipo: "salon", comandaId: "x", cuentaId: "c", numeroRonda: 1, mesas: [1], mesero: "Mesero P.", enviadaEn: new Date().toISOString(), items: null }] } });
+      await ruta.fulfill({ response: r, json: { ...cola, salon: [{ tipo: "salon", comandaId: "x", cuentaId: "c", numeroRonda: 1, mesas: [1], mesero: "Mesero P.", enviadaEn: new Date(ahoraCapturas()).toISOString(), items: null }] } });
     });
     await p.goto(`${FRONT}/kds`);
     await p.getByRole("alert").filter({ hasText: "Algo salió mal en esta sección" }).waitFor();
@@ -1202,6 +1210,7 @@ const contextoDe = async (usuario) => {
   const clave = usuario || "invitado";
   if (contextos[clave]) return contextos[clave];
   const contexto = await navegador.newContext({ locale: "es-CO", timezoneId: process.env.ZONA_NAVEGADOR || "America/Bogota" });
+  await contexto.clock.install({ time: ahoraCapturas() });
   if (usuario) {
     const res = await contexto.request.post(`${API}/auth/login`, { data: { correo: USUARIOS[usuario], contraseña: CLAVE } });
     if (!res.ok()) throw new Error(`Login de prueba falló para ${usuario}: ${res.status()} (¿ejecutaste npm run seed:dev?)`);
@@ -1219,6 +1228,10 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
     escucharErrores(page, consola);
     try {
       await page.setViewportSize({ width: ancho, height: alto });
+      // El reloj es del contexto: cada vista empieza a la hora de capturas y en marcha (una vista anterior
+      // pudo pausarlo o fijarlo)
+      await page.clock.setSystemTime(ahoraCapturas());
+      await page.clock.resume();
       await vista.preparar(page);
       await page.waitForLoadState("networkidle");
       // 2.6b · Una pantalla que se queda en blanco (React desmontó todo) es un fallo, no una foto
