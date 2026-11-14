@@ -83,7 +83,7 @@ const Testimonios = () => {
         {loading && <p role="status">Cargando opiniones...</p>}
         {error && <p role="alert">{error}</p>}
         {!loading && !error && !testimonio && (
-          <p>Aún no hay opiniones publicadas. Visita la <Link to="/comentarios">sección de comentarios</Link>.</p>
+          <p>Aún no hay opiniones publicadas. Visita la <Link className="testimonios__enlace testimonios__enlace--en-linea" to="/comentarios">sección de comentarios</Link>.</p>
         )}
 
         {testimonio && (
@@ -93,13 +93,15 @@ const Testimonios = () => {
               aria-atomic="true"
               className={`testimonios__cuerpo ${animando ? "testimonios__cuerpo--oculto" : "testimonios__cuerpo--visible"}`}
             >
+              {/* 3.6 · El rótulo va fuera de la cita: la comilla grande abre el comentario, no el rótulo */}
+              {testimonio.tipo === "producto" && (
+                <p className="testimonios__producto">Sobre: {testimonio.producto || "un producto del menú"}</p>
+              )}
               <blockquote className="testimonios__blockquote">
-                {testimonio.tipo === "producto" && (
-                  <p className="testimonios__producto">Sobre: {testimonio.producto || "un producto del menú"}</p>
-                )}
-                <p className="testimonios__comentario">“{testimonio.comentario}”</p>
+                <p className="testimonios__comentario">{testimonio.comentario}</p>
                 <footer className="testimonios__autor">
-                  <cite className="testimonios__nombre">— {testimonio.nombre}</cite>
+                  {/* 3.6 · El guion lo pone el CSS (Foundation ya añadía «— » a todo <cite>: salía doble) */}
+                  <cite className="testimonios__nombre">{testimonio.nombre}</cite>
                   <Estrellas calificacion={testimonio.calificacion} />
                 </footer>
               </blockquote>

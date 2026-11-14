@@ -7,6 +7,7 @@
   align-items: stretch;
 
   width: 100%;
+  height: 100%; /* 3.6 · mismo alto que la tarjeta de testimonios a su lado */
   max-width: 900px;
   margin: 0 auto;
 

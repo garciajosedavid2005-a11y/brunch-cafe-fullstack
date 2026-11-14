@@ -651,6 +651,20 @@ const medirEstados = async (page) => {
 // nombre → { usuario, preparar(page), completa }
 const VISTAS = {
   inicio: { preparar: (p) => p.goto(`${FRONT}/`) },
+  // 3.6 · «Lo que dicen nuestros clientes» con reseñas (la BD de capturas no tiene publicadas): la respuesta
+  // pública de comentarios se reemplaza en el navegador; no se guarda nada
+  "inicio-testimonios": { completa: false, preparar: async (p) => {
+    await p.route(/\/v1\/comentarios(\?.*)?$/, (ruta) => ruta.fulfill({ json: { reviews: [
+      { _id: "t1", nombre: "Emperatriz Gonzalez", calificacion: 5, tipo: "general", comentario: "El mejor brunch de Neiva: todo llegó caliente y la atención fue muy amable." },
+      { _id: "t2", nombre: "Andrés Mejía", calificacion: 4, tipo: "producto", producto: "Tostada de aguacate gourmet", comentario: "Muy rica y bien servida." },
+    ] } }));
+    await p.goto(`${FRONT}/`);
+    // En pantallas estrechas la sección está más abajo y aparece al desplazarse (animación de entrada)
+    await p.waitForLoadState("networkidle");
+    await p.evaluate(() => document.querySelector(".testimonios")?.scrollIntoView({ block: "center" }));
+    await p.locator(".testimonios__nombre").first().waitFor({ state: "attached" });
+    await p.waitForTimeout(800);
+  }, alFinal: (p) => p.getByRole("heading", { name: "Lo que dicen nuestros clientes" }).evaluate((h) => h.scrollIntoView({ block: "center" })) },
   menu: { preparar: (p) => p.goto(`${FRONT}/menu`) },
   // 1.5b · Login y registro (botón «Continuar con Google»), sin sesión
   login: { preparar: (p) => p.goto(`${FRONT}/login`) },
