@@ -18,7 +18,7 @@ const PROPIOS = /^(Brunch|Café|Cafe|Bogotá|Neiva|Huila|Google|Colombia|DIAN|CO
 // Artículos, preposiciones y posesivos: en mayúsculas de oración van en minúscula y no cuentan
 const CONECTORES = /^(de|del|la|las|el|los|en|y|o|a|al|por|para|con|sin|tu|tus|su|sus|mi|mis|un|una|e|u|que|se)$/i;
 // Pantallas que se corrigen en un grupo posterior (se quitan de aquí al corregirlas)
-const PENDIENTES = ["pages/Login/", "pages/Registro/"]; // 3.6.6
+const PENDIENTES = [];
 
 const textosJsx = (linea) => [
   ...[...linea.matchAll(/>([^<>{}]{3,80})[<{]/g)].map((m) => m[1]),

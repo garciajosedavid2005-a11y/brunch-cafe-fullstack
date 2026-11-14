@@ -684,6 +684,12 @@ const VISTAS = {
     if (await hamburguesa.isVisible()) await hamburguesa.click();
   } },
   registro: { preparar: (p) => p.goto(`${FRONT}/registro`) },
+  // 3.6 · Pestaña activa con el foco del teclado y la inactiva con el puntero (antes, azul de Foundation)
+  "login-pestanas-foco": { completa: false, preparar: (p) => p.goto(`${FRONT}/login`), alFinal: async (p) => {
+    await p.getByRole("link", { name: "Registrarse", exact: true }).first().hover();
+    await p.keyboard.press("Shift");
+    await p.locator(".auth-tab--activo").focus();
+  } },
   // 2.0b · Páginas sin foto de portada (navbar sobre fondo claro)
   "recuperar-contrasena": { preparar: (p) => p.goto(`${FRONT}/recuperar-contrasena`) },
   // Sin sesión, /reservas avisa y a los 1,8 s lleva al login: el reloj se congela para la foto

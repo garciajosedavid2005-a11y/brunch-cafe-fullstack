@@ -266,6 +266,7 @@
 
 .auth-tab {
   flex: 1;
+  min-height: 44px; /* 3.6 · medía ~40 px */
   padding: 0.65rem 1rem;
   border: none;
   border-radius: 10px;
@@ -273,7 +274,7 @@
   font-family: var(--fuente-cuerpo), sans-serif;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #72625D;
+  color: #5f4f4a; /* 3.6 · antes #72625D: con más margen sobre #F7EFE9 */
   cursor: pointer;
   transition: all 0.25s ease;
   text-align: center;
@@ -281,14 +282,24 @@
   display: inline-block;
 }
 
-.auth-tab--activo {
+/* 3.6 · La activa sigue bordó con el puntero y el foco (Foundation la pintaba azul con a:hover y a:focus) */
+.auth-tab--activo,
+.auth-tab--activo:hover,
+.auth-tab--activo:focus,
+.auth-tab--activo:visited {
   background: #FFFFFF;
   color: #890620;
   box-shadow: 0 3px 10px rgba(44, 7, 3, 0.08);
 }
 
-.auth-tab:hover:not(.auth-tab--activo) {
+.auth-tab:hover:not(.auth-tab--activo),
+.auth-tab:focus:not(.auth-tab--activo) {
   color: #2C0703;
+}
+
+.auth-tab:focus-visible {
+  outline: 2px solid #890620;
+  outline-offset: 2px;
 }
 
 /* Encabezado del Formulario */
@@ -557,6 +568,7 @@
 }
 
 .auth-footer-link {
+  white-space: nowrap; /* 3.6 · «Regístrate aquí» no se parte a 390 px */
   color: #890620;
   font-weight: 600;
   text-decoration: none;

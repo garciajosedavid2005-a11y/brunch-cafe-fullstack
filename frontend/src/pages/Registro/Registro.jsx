@@ -77,7 +77,7 @@ const Registro = () => {
           {/* Pestañas de navegación */}
           <nav className="auth-tabs auth-animar-item auth-delay-1" aria-label="Navegación de autenticación">
             <Link to="/login" className="auth-tab">
-              Iniciar Sesión
+              Iniciar sesión
             </Link>
             <Link to="/registro" className="auth-tab auth-tab--activo">
               Registrarse
@@ -87,7 +87,7 @@ const Registro = () => {
           {/* Encabezado del Formulario */}
           <header className="auth-header auth-animar-item auth-delay-2">
             <span className="auth-header__subtitulo-acento">Empieza tu experiencia</span>
-            <h1 className="auth-header__titulo">Crear Cuenta</h1>
+            <h1 className="auth-header__titulo">Crear cuenta</h1>
             <p className="auth-header__descripcion">
               Únete a Brunch Café y disfruta de una atmósfera gastronómica única con beneficios exclusivos.
             </p>

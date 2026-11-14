@@ -47,7 +47,7 @@ const Login = () => {
         <div className="auth-formulario-contenedor">
           <nav className="auth-tabs auth-animar-item auth-delay-1" aria-label="Navegación de autenticación">
             <Link to="/login" className="auth-tab auth-tab--activo">
-              Iniciar Sesión
+              Iniciar sesión
             </Link>
             <Link to="/registro" className="auth-tab">
               Registrarse
@@ -56,7 +56,7 @@ const Login = () => {
 
           <header className="auth-header auth-animar-item auth-delay-2">
             <span className="auth-header__subtitulo-acento">Nos alegra verte</span>
-            <h1 className="auth-header__titulo">Iniciar Sesión</h1>
+            <h1 className="auth-header__titulo">Iniciar sesión</h1>
             <p className="auth-header__descripcion">
               Ingresa tus credenciales para ordenar, reservar y disfrutar de tus beneficios.
             </p>
