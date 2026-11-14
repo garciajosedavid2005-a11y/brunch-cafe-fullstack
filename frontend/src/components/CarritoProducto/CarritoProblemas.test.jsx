@@ -47,7 +47,7 @@ const comprar = async () => {
   await within(screen.getByLabelText(/hora de entrega/i)).findByRole("option", { name: /10:00/ });
   fireEvent.change(screen.getByLabelText(/hora de entrega/i), { target: { name: "hora", value: "10:00" } });
   fireEvent.click(await screen.findByRole("button", { name: "FINALIZAR COMPRA" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Confirmar Pedido" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Confirmar pedido" }));
 };
 const lineas = () => screen.getAllByRole("heading", { level: 3 }).filter((h) => /Huevos|Jugo/.test(h.textContent)).map((h) => h.closest(".carrito-producto__item"));
 const error = (status, code, message, details) => Object.assign(new Error(message), { status, code, details });

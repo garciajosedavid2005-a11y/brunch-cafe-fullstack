@@ -46,13 +46,13 @@ const sections = [
   { id: "categories", label: "Categorías", icon: Tags },
   { id: "modificadores", label: "Modificadores", icon: ListPlus }, // 1.3
   { id: "reviews", label: "Comentarios", icon: MessageSquareQuote },
-  { id: "payments", label: "Métodos de Pago", icon: CreditCard },
+  { id: "payments", label: "Métodos de pago", icon: CreditCard },
   { id: "states", label: "Estados", icon: Sliders },
   { id: "horarios", label: "Horarios", icon: Clock },
   { id: "salon", label: "Salón", icon: LayoutGrid },
   { id: "users", label: "Usuarios", icon: Users },
   { id: "roles", label: "Roles", icon: Shield },
-  { id: "profile", label: "Mi Perfil", icon: UserRound },
+  { id: "profile", label: "Mi perfil", icon: UserRound },
 ];
 
 export default function AdminDashboard() {
@@ -114,7 +114,7 @@ export default function AdminDashboard() {
         <div className="admin-dashboard__top-info">
           <div className="admin-dashboard__badge">
             <ShieldCheck size={16} />
-            <span>Panel de Administración</span>
+            <span>Panel de administración</span>
           </div>
           <h1>Hola, {user?.nombre || "Administrador"}</h1>
           <p>
@@ -147,7 +147,7 @@ export default function AdminDashboard() {
       <div className="admin-dashboard__layout">
         {/* SIDEBAR DE LAS 10 SECCIONES */}
         <aside className="admin-dashboard__sidebar">
-          <span className="admin-sidebar__title">Módulos del Sistema</span>
+          <span className="admin-sidebar__title">Módulos del sistema</span>
           <nav className="admin-sidebar__nav" aria-label="Navegación del panel de administración">
             {sections.map((section) => {
               const SectionIcon = section.icon;

@@ -8,7 +8,7 @@ const ContactoReservas = () => {
             {/*  Título de contacto */}
             <div className="contacto-separador">
                 <span className="contacto-separador__linea"></span>
-                <span className="contacto-separador__texto">Disfruta de una Experiencia Única</span>
+                <span className="contacto-separador__texto">Disfruta de una experiencia única</span>
                 <span className="contacto-separador__linea"></span>
             </div>
 
@@ -18,7 +18,7 @@ const ContactoReservas = () => {
                     <div className="cell small-12 medium-8 large-6">
                         <div className="contacto-card">
                             <h3 className="contacto-card__titulo">
-                                ¿Deseas hacer tu reserva por Teléfono?
+                                ¿Deseas hacer tu reserva por teléfono?
                             </h3>
                             <div className="contacto-card__telefono">
                                 <FaPhone className="contacto-card__icono" />

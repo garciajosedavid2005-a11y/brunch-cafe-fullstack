@@ -7,7 +7,7 @@
   "title": "Bienvenido a Brunch Café",
   "subtitle": "Disfruta de nuestros deliciosos platos y bebidas en un ambiente acogedor.",
   "buttons": [
-    { "label": "Ver Menú", "href": "/menu"
+    { "label": "Ver menú", "href": "/menu"
     },
     { "label": "Reservar", "href": "/reservas" }
   ]

@@ -282,6 +282,7 @@
 
 .admin-section__header {
   display: flex;
+  flex-wrap: wrap; /* 3.6 · a 390 px el botón de la derecha se salía de la tarjeta */
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
@@ -1739,7 +1740,8 @@
 /* 1. SECCIÓN MI PERFIL */
 .admin-profile-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  /* 3.6 · min(): a 390 px una columna de 360 px no cabía y las tarjetas se salían por la derecha */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
   gap: 1.5rem;
 }
 
@@ -3027,4 +3029,14 @@
 /* Sin «Última modificación» (nunca hubo un cambio real), «Guardar horarios» sigue a la derecha */
 .admin-horarios__pie .admin-button--primary {
   margin-left: auto !important;
+}
+
+/* 3.6 · La descripción de los métodos de pago no se aprieta en una columna de 4 palabras */
+.admin-pagos__descripcion {
+  min-width: 16rem;
+}
+
+/* 3.6 · «Ver todos» / «Ver todas» del resumen en una sola línea */
+.admin-button--link {
+  white-space: nowrap;
 }

@@ -15,7 +15,7 @@ export default function PlaceholderSection({ title, description, phase }) {
           <div className="admin-placeholder-icon">
             <Hammer size={36} />
           </div>
-          <h3>Módulo en Preparación</h3>
+          <h3>Módulo en preparación</h3>
           <p>
             Esta vista corresponde a la <strong>{phase}</strong> del desarrollo del panel de administración.
           </p>

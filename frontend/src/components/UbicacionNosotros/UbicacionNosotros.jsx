@@ -29,7 +29,7 @@ const UbicacionNosotros = () => {
                     {/* Card de ubicación - derecha */}
                     <div className="cell small-12 medium-6">
                         <div className="ubicacion-card">
-                            <h3 className="ubicacion-titulo">Nuestra Ubicación...</h3>
+                            <h3 className="ubicacion-titulo">Nuestra ubicación</h3>
 
                             <div className="ubicacion-item">
                                 <FaMapMarkerAlt className="ubicacion-icono" />
@@ -46,7 +46,7 @@ const UbicacionNosotros = () => {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="ubicacion-btn button">
-                                    Como Llegar
+                                    Cómo llegar
                             </a>
                         </div>
                     </div>

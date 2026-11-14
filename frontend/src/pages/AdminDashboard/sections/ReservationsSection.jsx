@@ -49,7 +49,7 @@ export default function ReservationsSection() {
       {/* CABECERA */}
       <div className="admin-section__header">
         <div>
-          <h2 className="admin-section__title">Gestión de Reservas</h2>
+          <h2 className="admin-section__title">Gestión de reservas</h2>
           <p className="admin-section__subtitle">
             Consulta todas las reservas realizadas por los comensales y gestiona su aprobación o cancelación.
           </p>
@@ -198,7 +198,7 @@ export default function ReservationsSection() {
                 <span className="admin-badge admin-badge--neutral">
                   Reserva {reservaSeleccionada.codigo}
                 </span>
-                <h3 className="admin-modal-title">Detalle de la Reserva</h3>
+                <h3 className="admin-modal-title">Detalle de la reserva</h3>
               </div>
               <button
                 type="button"
@@ -215,7 +215,7 @@ export default function ReservationsSection() {
                 <div className="admin-modal-box">
                   <div className="admin-modal-box__title">
                     <Users size={16} />
-                    <strong>Datos de Contacto</strong>
+                    <strong>Datos de contacto</strong>
                   </div>
                   <p><strong>Titular:</strong> {reservaSeleccionada.cliente}</p>
                   <p><strong>Teléfono:</strong> {reservaSeleccionada.telefono}</p>
@@ -225,7 +225,7 @@ export default function ReservationsSection() {
                 <div className="admin-modal-box">
                   <div className="admin-modal-box__title">
                     <CalendarDays size={16} />
-                    <strong>Fecha y Asistencia</strong>
+                    <strong>Fecha y asistencia</strong>
                   </div>
                   <p><strong>Fecha:</strong> {reservaSeleccionada.fecha}</p>
                   <p><strong>Hora:</strong> {reservaSeleccionada.hora}</p>

@@ -51,7 +51,7 @@ const Experiencia = () => {
         </div>
 
         <h2 className="experiencia__titulo">
-          Nuestra Experiencia
+          Nuestra experiencia
         </h2>
 
         {/* Lista */}

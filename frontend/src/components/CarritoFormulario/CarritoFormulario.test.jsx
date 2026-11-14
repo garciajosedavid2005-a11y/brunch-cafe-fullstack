@@ -66,7 +66,7 @@ describe("Checkout: hora de entrega y teléfono", () => {
     await within(screen.getByLabelText(/hora de entrega/i)).findByRole("option", { name: /10:00/ });
     fireEvent.change(screen.getByLabelText(/hora de entrega/i), { target: { name: "hora", value: "10:00" } });
     fireEvent.click(screen.getByRole("button", { name: "FINALIZAR COMPRA" }));
-    expect(await screen.findByRole("button", { name: "Confirmar Pedido" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Confirmar pedido" })).toBeInTheDocument();
     expect(screen.queryByText(/Ingresa una dirección válida/)).not.toBeInTheDocument();
   });
 
@@ -88,7 +88,7 @@ describe("Checkout: hora de entrega y teléfono", () => {
       await within(screen.getByLabelText(/hora de entrega/i)).findByRole("option", { name: /10:00/ });
       fireEvent.change(screen.getByLabelText(/hora de entrega/i), { target: { name: "hora", value: "10:00" } });
       fireEvent.click(await screen.findByRole("button", { name: "FINALIZAR COMPRA" }));
-      fireEvent.click(await screen.findByRole("button", { name: "Confirmar Pedido" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Confirmar pedido" }));
     };
     const claves = () => apiRequest.mock.calls
       .filter(([ruta]) => ruta === "/v1/cliente/pedidos")
@@ -96,7 +96,7 @@ describe("Checkout: hora de entrega y teléfono", () => {
 
     await comprar();
     await waitFor(() => expect(claves()).toHaveLength(1));
-    fireEvent.click(await screen.findByRole("button", { name: "Confirmar Pedido" })); // reintento
+    fireEvent.click(await screen.findByRole("button", { name: "Confirmar pedido" })); // reintento
     await waitFor(() => expect(claves()).toHaveLength(2));
     expect(claves()[0]).toMatch(/^[A-Za-z0-9_-]{8,100}$/);
     expect(claves()[1]).toBe(claves()[0]);

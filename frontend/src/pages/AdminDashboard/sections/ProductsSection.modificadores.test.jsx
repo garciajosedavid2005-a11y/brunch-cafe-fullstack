@@ -39,7 +39,7 @@ const abrirEdicion = async () => {
   render(<DialogoProvider><ProductsSection /></DialogoProvider>);
   const fila = (await screen.findByText("Latte")).closest("tr");
   fireEvent.click(within(fila).getByRole("button", { name: /editar/i }));
-  return screen.getByRole("dialog", { name: "Editar Producto" });
+  return screen.getByRole("dialog", { name: "Editar producto" });
 };
 
 describe("Productos: estación y modificadores (1.3)", () => {
@@ -76,7 +76,7 @@ describe("Productos: estación y modificadores (1.3)", () => {
     api.put.mockImplementation((ruta, datos) => Promise.resolve({ ...LATTE, ...datos }));
     render(<DialogoProvider><ProductsSection /></DialogoProvider>);
     fireEvent.click(within((await screen.findByText("Latte")).closest("tr")).getByRole("button", { name: /editar/i }));
-    const dialogo = screen.getByRole("dialog", { name: "Editar Producto" });
+    const dialogo = screen.getByRole("dialog", { name: "Editar producto" });
     expect(within(dialogo).getByText(/no se pudieron cargar los grupos/i)).toBeInTheDocument();
     expect(within(dialogo).queryByText(/no hay grupos activos/i)).not.toBeInTheDocument();
     expect(within(dialogo).getByRole("button", { name: "Reintentar" })).toBeInTheDocument();

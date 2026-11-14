@@ -35,7 +35,7 @@ describe("Destacados (inicio)", () => {
   it("cuando llegan los productos, la sección se observa y queda visible", async () => {
     apiRequest.mockResolvedValue({ productos: PRODUCTOS });
     render(<MemoryRouter><Destacados /></MemoryRouter>);
-    const titulo = await screen.findByText("Nuestros Destacados");
+    const titulo = await screen.findByText("Nuestros destacados");
     expect(screen.getAllByText("Waffle").length).toBeGreaterThan(0);
     expect(screen.queryByText("Latte")).not.toBeInTheDocument();
 

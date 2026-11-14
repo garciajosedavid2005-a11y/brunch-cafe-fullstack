@@ -89,7 +89,7 @@ export default function OverviewSection({ onNavigateTab }) {
             <ShoppingBag size={26} />
           </div>
           <div className="admin-kpi-card__info">
-            <span className="admin-kpi-card__label">Pedidos del Día</span>
+            <span className="admin-kpi-card__label">Pedidos del día</span>
             <h3 className="admin-kpi-card__value">{pedidosHoy.length} {pedidosHoy.length === 1 ? "pedido" : "pedidos"}</h3>
             <span className="admin-kpi-card__sub">{formatCurrency(pedidosHoy.reduce((total, pedido) => total + pedido.total, 0))} hoy</span>
           </div>
@@ -106,7 +106,7 @@ export default function OverviewSection({ onNavigateTab }) {
             <CalendarDays size={26} />
           </div>
           <div className="admin-kpi-card__info">
-            <span className="admin-kpi-card__label">Reservas Pendientes</span>
+            <span className="admin-kpi-card__label">Reservas pendientes</span>
             <h3 className="admin-kpi-card__value">{reservasPendientes.length} por revisar</h3>
             <span className="admin-kpi-card__sub admin-kpi-card__sub--alert">
               Requieren confirmación
@@ -125,7 +125,7 @@ export default function OverviewSection({ onNavigateTab }) {
             <Star size={26} />
           </div>
           <div className="admin-kpi-card__info">
-            <span className="admin-kpi-card__label">Satisfacción Clientes</span>
+            <span className="admin-kpi-card__label">Satisfacción de clientes</span>
             <h3 className="admin-kpi-card__value">{promedio} ★</h3>
             <span className="admin-kpi-card__sub">{datos.comentarios.length} {datos.comentarios.length === 1 ? "opinión" : "opiniones"}</span>
           </div>
@@ -139,7 +139,7 @@ export default function OverviewSection({ onNavigateTab }) {
         <div className="admin-card">
           <div className="admin-card__header">
             <div>
-              <h3 className="admin-card__title">Últimos Pedidos del Día</h3>
+              <h3 className="admin-card__title">Últimos pedidos del día</h3>
               <p className="admin-card__subtitle">Actividad más reciente de domicilios</p>
             </div>
             <button
@@ -192,7 +192,7 @@ export default function OverviewSection({ onNavigateTab }) {
         <div className="admin-card">
           <div className="admin-card__header">
             <div>
-              <h3 className="admin-card__title">Reservas por Confirmar</h3>
+              <h3 className="admin-card__title">Reservas por confirmar</h3>
               <p className="admin-card__subtitle">Solicitudes pendientes de aprobación</p>
             </div>
             <button
@@ -254,7 +254,7 @@ export default function OverviewSection({ onNavigateTab }) {
       <div className="admin-card">
         <div className="admin-card__header">
           <div>
-            <h3 className="admin-card__title">Opiniones y Comentarios Recientes</h3>
+            <h3 className="admin-card__title">Opiniones y comentarios recientes</h3>
             <p className="admin-card__subtitle">Lo que dicen los comensales sobre Brunch Café</p>
           </div>
           <button

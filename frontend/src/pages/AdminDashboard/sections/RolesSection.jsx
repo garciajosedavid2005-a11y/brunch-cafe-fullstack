@@ -155,7 +155,7 @@ export default function RolesSection() {
       {/* CABECERA */}
       <div className="admin-section__header">
         <div>
-          <h2 className="admin-section__title">Catálogo de Roles y Permisos</h2>
+          <h2 className="admin-section__title">Catálogo de roles y permisos</h2>
           <p className="admin-section__subtitle">
             Administra los roles del sistema de Brunch Café y los privilegios asignados a cada tipo de usuario.
           </p>
@@ -166,7 +166,7 @@ export default function RolesSection() {
           onClick={abrirModalCrear}
         >
           <Plus size={18} />
-          <span>Nuevo Rol</span>
+          <span>Nuevo rol</span>
         </button>
       </div>
 
@@ -346,7 +346,7 @@ export default function RolesSection() {
           >
             <div className="admin-modal-header">
               <h3 className="admin-modal-title">
-                {rolEnEdicion ? `Editar Rol: ${rolEnEdicion.nombre}` : "Nuevo Rol de Usuario"}
+                {rolEnEdicion ? `Editar rol: ${rolEnEdicion.nombre}` : "Nuevo rol de usuario"}
               </h3>
               <button
                 type="button"
@@ -360,7 +360,7 @@ export default function RolesSection() {
             <form onSubmit={handleGuardar}>
               <div className="admin-modal-body">
                 <div className="admin-form-group">
-                  <label className="admin-form-label">Nombre del Rol *</label>
+                  <label className="admin-form-label">Nombre del rol *</label>
                   <input
                     type="text"
                     className="admin-form-input"
@@ -466,7 +466,7 @@ export default function RolesSection() {
                   Cancelar
                 </button>
                 <button type="submit" className="admin-button--primary" disabled={guardando}>
-                  {rolEnEdicion ? "Guardar Cambios" : "Crear Rol"}
+                  {rolEnEdicion ? "Guardar cambios" : "Crear rol"}
                 </button>
               </div>
             </form>

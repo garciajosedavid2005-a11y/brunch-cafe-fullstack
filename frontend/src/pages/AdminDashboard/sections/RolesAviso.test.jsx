@@ -44,7 +44,7 @@ describe("Roles: aviso de «abrir cuenta» sin poder hacerlo", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Transferir una cuenta a otro mesero" }));
     expect(screen.queryByText(AVISO)).not.toBeInTheDocument();
     // No bloquea: se puede guardar igual
-    expect(screen.getByRole("button", { name: "Guardar Cambios" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Guardar cambios" })).toBeEnabled();
   });
 
   it("en la lista, el rol con ese hueco lleva el aviso; uno completo, no", async () => {

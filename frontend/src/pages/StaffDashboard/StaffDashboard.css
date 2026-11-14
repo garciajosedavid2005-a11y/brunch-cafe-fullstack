@@ -512,7 +512,8 @@ a.staff-tablet__boton:visited {
     flex: 1 1 0;
     flex-direction: column;
     gap: 0.2rem;
-    min-width: 0;
+    /* 3.6 · Nunca más estrecha que su texto (a 390 px se encimaban): si no caben, la barra se desplaza */
+    min-width: min-content;
     min-height: 56px;
     padding: 0.4rem 0.3rem;
     font-size: 0.85rem;

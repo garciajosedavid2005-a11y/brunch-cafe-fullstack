@@ -52,7 +52,7 @@ export default function StatesSection() {
       {/* CABECERA */}
       <div className="admin-section__header">
         <div>
-          <h2 className="admin-section__title">Catálogo de Estados</h2>
+          <h2 className="admin-section__title">Catálogo de estados</h2>
           <p className="admin-section__subtitle">
             Los estados y sus transiciones son fijos. Aquí puedes cambiar la etiqueta, la descripción y los colores con que se muestran.
           </p>
@@ -70,7 +70,7 @@ export default function StatesSection() {
           }}
         >
           <ShoppingBag size={18} />
-          <span>Estados de Pedidos ({pedidosResource.items.length})</span>
+          <span>Estados de pedidos ({pedidosResource.items.length})</span>
         </button>
         <button
           type="button"
@@ -81,7 +81,7 @@ export default function StatesSection() {
           }}
         >
           <CalendarDays size={18} />
-          <span>Estados de Reservas ({reservasResource.items.length})</span>
+          <span>Estados de reservas ({reservasResource.items.length})</span>
         </button>
       </div>
 
@@ -115,7 +115,7 @@ export default function StatesSection() {
               <tr>
                 <th>Etiqueta</th>
                 <th>Código</th>
-                <th>Descripción / Significado</th>
+                <th>Descripción / significado</th>
                 <th>Etapa</th>
                 <th>Acciones</th>
               </tr>
@@ -146,9 +146,9 @@ export default function StatesSection() {
                     </td>
                     <td>
                       {item.esFinal ? (
-                        <span className="admin-badge admin-badge--neutral">Estado Final</span>
+                        <span className="admin-badge admin-badge--neutral">Estado final</span>
                       ) : (
-                        <span className="admin-badge admin-badge--marca">En Proceso</span>
+                        <span className="admin-badge admin-badge--marca">En proceso</span>
                       )}
                     </td>
                     <td>
@@ -188,7 +188,7 @@ export default function StatesSection() {
           >
             <div className="admin-modal-header">
               <h3 className="admin-modal-title">
-                {`Editar Estado de ${tipoActivo === "pedidos" ? "Pedido" : "Reserva"}`}
+                {`Editar estado de ${tipoActivo === "pedidos" ? "pedido" : "reserva"}`}
               </h3>
               <button
                 type="button"
@@ -230,7 +230,7 @@ export default function StatesSection() {
 
                 <div className="admin-modal-grid">
                   <div className="admin-form-group">
-                    <label className="admin-form-label">Color del Texto / Borde</label>
+                    <label className="admin-form-label">Color del texto / borde</label>
                     <input
                       type="color"
                       className="admin-form-input"
@@ -242,7 +242,7 @@ export default function StatesSection() {
                     />
                   </div>
                   <div className="admin-form-group">
-                    <label className="admin-form-label">Color de Fondo</label>
+                    <label className="admin-form-label">Color de fondo</label>
                     <input
                       type="color"
                       className="admin-form-input"
@@ -269,7 +269,7 @@ export default function StatesSection() {
                   Cancelar
                 </button>
                 <button type="submit" className="admin-button--primary" disabled={recursoActual.guardando}>
-                  Guardar Cambios
+                  Guardar cambios
                 </button>
               </div>
             </form>

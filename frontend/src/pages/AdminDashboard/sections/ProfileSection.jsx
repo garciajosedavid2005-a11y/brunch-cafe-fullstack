@@ -24,7 +24,7 @@ export default function ProfileSection() {
     apellido: user?.apellido || "",
     correo: user?.email || "",
     telefono: user?.telefono || "",
-    rol: "Administrador del Sistema",
+    rol: "Administrador del sistema",
   });
 
   const [mensajePerfil, setMensajePerfil] = useState("");
@@ -104,7 +104,7 @@ export default function ProfileSection() {
       {/* CABECERA */}
       <div className="admin-section__header">
         <div>
-          <h2 className="admin-section__title">Mi Perfil de Administrador</h2>
+          <h2 className="admin-section__title">Mi perfil de administrador</h2>
           <p className="admin-section__subtitle">
             Consulta y gestiona tu información personal, correo electrónico y credenciales de acceso.
           </p>
@@ -117,7 +117,7 @@ export default function ProfileSection() {
         <div className="admin-card">
           <div className="admin-card__header">
             <div>
-              <h3 className="admin-card__title">Información Personal</h3>
+              <h3 className="admin-card__title">Información personal</h3>
               <p className="admin-card__subtitle">
                 Datos de contacto y representación de tu cuenta de administrador
               </p>
@@ -179,7 +179,7 @@ export default function ProfileSection() {
             <div className="admin-modal-grid">
               <div className="admin-form-group">
                 <label className="admin-form-label">
-                  Correo Electrónico
+                  Correo electrónico
                 </label>
                 <div className="admin-input-icon-wrapper">
                   <Mail size={18} className="admin-input-icon" />
@@ -197,7 +197,7 @@ export default function ProfileSection() {
 
               <div className="admin-form-group">
                 <label className="admin-form-label">
-                  Teléfono de Contacto
+                  Teléfono de contacto
                 </label>
                 <div className="admin-input-icon-wrapper">
                   <Phone size={18} className="admin-input-icon" />
@@ -216,7 +216,7 @@ export default function ProfileSection() {
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
               <button type="submit" className="admin-button--primary" disabled={guardandoPerfil || cargando}>
                 <Save size={18} />
-                <span>Guardar Cambios</span>
+                <span>Guardar cambios</span>
               </button>
             </div>
           </form>
@@ -226,7 +226,7 @@ export default function ProfileSection() {
         <div className="admin-card">
           <div className="admin-card__header">
             <div>
-              <h3 className="admin-card__title">Seguridad y Credenciales</h3>
+              <h3 className="admin-card__title">Seguridad y credenciales</h3>
               <p className="admin-card__subtitle">
                 Actualiza tu clave de acceso al panel para mantener tu cuenta protegida
               </p>
@@ -250,7 +250,7 @@ export default function ProfileSection() {
           <form onSubmit={cambio.enviar} className="admin-form" noValidate>
             <div className="admin-form-group">
               <label className="admin-form-label" htmlFor="perfil-clave-actual">
-                Contraseña Actual
+                Contraseña actual
               </label>
               <div className="admin-input-icon-wrapper">
                 <Lock size={18} className="admin-input-icon" />
@@ -269,7 +269,7 @@ export default function ProfileSection() {
             <div className="admin-modal-grid">
               <div className="admin-form-group">
                 <label className="admin-form-label" htmlFor="perfil-clave-nueva">
-                  Nueva Contraseña
+                  Nueva contraseña
                 </label>
                 <div className="admin-input-icon-wrapper">
                   <KeyRound size={18} className="admin-input-icon" />
@@ -287,7 +287,7 @@ export default function ProfileSection() {
 
               <div className="admin-form-group">
                 <label className="admin-form-label" htmlFor="perfil-clave-confirmar">
-                  Confirmar Nueva Contraseña
+                  Confirmar nueva contraseña
                 </label>
                 <div className="admin-input-icon-wrapper">
                   <KeyRound size={18} className="admin-input-icon" />
@@ -307,7 +307,7 @@ export default function ProfileSection() {
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
               <button type="submit" className="admin-button--secondary-sm" disabled={cambio.guardando} style={{ height: "42px", padding: "0 1.25rem" }}>
                 <KeyRound size={16} />
-                <span>Actualizar Contraseña</span>
+                <span>Actualizar contraseña</span>
               </button>
             </div>
           </form>

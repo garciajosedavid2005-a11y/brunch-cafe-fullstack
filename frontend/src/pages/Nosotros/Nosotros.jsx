@@ -16,7 +16,7 @@ const Nosotros = () => {
             <section ref={heroRef} className="animar nosotros-hero">
               <Hero 
                   estatico={true}
-                  titulo="¡Sobre Nosotros!..."
+                  titulo="¡Sobre nosotros!"
                   colorFondo="var(--color-primario)"
                   centrado={true}
               />

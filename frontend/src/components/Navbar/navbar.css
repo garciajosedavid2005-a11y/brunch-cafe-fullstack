@@ -92,6 +92,13 @@
    LOGO
 ========================= */
 
+/* 3.6 · El enlace del logo hereda el color del navbar (Foundation le ponía el azul de los enlaces) */
+.navbar__logo-enlace,
+.navbar__logo-enlace:hover,
+.navbar__logo-enlace:focus {
+  color: inherit;
+}
+
 .navbar__logo-enlace {
   display: flex;
   align-items: center;

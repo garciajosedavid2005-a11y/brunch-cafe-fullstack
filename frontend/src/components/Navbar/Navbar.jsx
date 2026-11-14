@@ -99,10 +99,10 @@ const NavbarContent = () => {
             <nav className={`top-bar-right ${menuAbierto ? "top-bar-right--abierto" : ""}`}>
                 <ul className="menu">
                     {esAdmin ? (
-                        /* Si es Admin, solo ve Panel Admin */
+                        /* Si es Admin, solo ve Panel admin */
                         <li>
                             <NavLink className="access" to="/admin" onClick={() => setMenuAbierto(false)}>
-                                Panel Admin
+                                Panel admin
                             </NavLink>
                         </li>
                     ) : (

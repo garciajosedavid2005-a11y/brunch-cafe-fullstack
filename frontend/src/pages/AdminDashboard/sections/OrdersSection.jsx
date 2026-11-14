@@ -45,7 +45,7 @@ export default function OrdersSection() {
       {/* CABECERA DE LA SECCIÓN */}
       <div className="admin-section__header">
         <div>
-          <h2 className="admin-section__title">Gestión de Pedidos</h2>
+          <h2 className="admin-section__title">Gestión de pedidos</h2>
           <p className="admin-section__subtitle">
             Visualiza los pedidos de domicilios, consulta el detalle de productos y actualiza sus estados en tiempo real.
           </p>
@@ -168,7 +168,7 @@ export default function OrdersSection() {
                 <span className="admin-badge admin-badge--neutral">
                   Pedido {pedidoSeleccionado.codigo}
                 </span>
-                <h3 className="admin-modal-title">Detalle del Pedido</h3>
+                <h3 className="admin-modal-title">Detalle del pedido</h3>
                 <small className="admin-modal-date">{formatDate(pedidoSeleccionado.fecha)} · {formatTime(pedidoSeleccionado.fecha)}</small>
               </div>
               <button
@@ -187,7 +187,7 @@ export default function OrdersSection() {
                 <div className="admin-modal-box">
                   <div className="admin-modal-box__title">
                     <Phone size={16} />
-                    <strong>Datos del Cliente</strong>
+                    <strong>Datos del cliente</strong>
                   </div>
                   <p><strong>Nombre:</strong> {pedidoSeleccionado.cliente}</p>
                   <p><strong>Teléfono:</strong> {pedidoSeleccionado.telefono}</p>
@@ -197,7 +197,7 @@ export default function OrdersSection() {
                 <div className="admin-modal-box">
                   <div className="admin-modal-box__title">
                     <MapPin size={16} />
-                    <strong>Datos de Entrega</strong>
+                    <strong>Datos de entrega</strong>
                   </div>
                   <p><strong>Dirección:</strong> {pedidoSeleccionado.direccion}</p>
                   <p><strong>Barrio:</strong> {pedidoSeleccionado.barrio}</p>
@@ -218,7 +218,7 @@ export default function OrdersSection() {
                     <tr>
                       <th>Artículo</th>
                       <th>Cant.</th>
-                      <th>Precio Unit.</th>
+                      <th>Precio unit.</th>
                       <th>Subtotal</th>
                     </tr>
                   </thead>

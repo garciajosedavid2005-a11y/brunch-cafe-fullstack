@@ -78,7 +78,7 @@ export default function ReviewsSection() {
       {/* CABECERA */}
       <div className="admin-section__header">
         <div>
-          <h2 className="admin-section__title">Gestión de Comentarios</h2>
+          <h2 className="admin-section__title">Gestión de comentarios</h2>
           <p className="admin-section__subtitle">
             Visualiza las calificaciones y comentarios enviados por comensales. Modera y administra su visibilidad.
           </p>
@@ -92,7 +92,7 @@ export default function ReviewsSection() {
             <Star size={24} />
           </div>
           <div className="admin-kpi-card__info">
-            <span className="admin-kpi-card__label">Calificación Promedio</span>
+            <span className="admin-kpi-card__label">Calificación promedio</span>
             <span className="admin-kpi-card__value">{promedioCalificacion} ★</span>
             <span className="admin-kpi-card__sub">Basado en {comentarios.length} {comentarios.length === 1 ? "opinión" : "opiniones"}</span>
           </div>
@@ -103,7 +103,7 @@ export default function ReviewsSection() {
             <MessageSquareQuote size={24} />
           </div>
           <div className="admin-kpi-card__info">
-            <span className="admin-kpi-card__label">Total Opiniones</span>
+            <span className="admin-kpi-card__label">Total de opiniones</span>
             <span className="admin-kpi-card__value">{comentarios.length}</span>
             <span className="admin-kpi-card__sub">
               {comentarios.filter((c) => c.visible).length} visibles en la web
@@ -116,7 +116,7 @@ export default function ReviewsSection() {
             <CheckCircle2 size={24} />
           </div>
           <div className="admin-kpi-card__info">
-            <span className="admin-kpi-card__label">Satisfacción 5 Estrellas</span>
+            <span className="admin-kpi-card__label">Satisfacción 5 estrellas</span>
             {/* 0.14: el texto depende del dato (antes decía siempre «Mayoría de clientes satisfechos») */}
             <span className="admin-kpi-card__value">
               {comentarios.length ? `${Math.round((cincoEstrellas / comentarios.length) * 100)}%` : "—"}
@@ -317,7 +317,7 @@ export default function ReviewsSection() {
             role="dialog"
           >
             <div className="admin-modal-header">
-              <h3 className="admin-modal-title">¿Eliminar Comentario?</h3>
+              <h3 className="admin-modal-title">¿Eliminar comentario?</h3>
             </div>
             <div className="admin-modal-body">
               <div className="admin-delete-alert">
@@ -342,7 +342,7 @@ export default function ReviewsSection() {
                 className="admin-button--danger"
                 onClick={handleEliminar}
               >
-                Sí, Eliminar
+                Sí, eliminar
               </button>
             </div>
           </div>

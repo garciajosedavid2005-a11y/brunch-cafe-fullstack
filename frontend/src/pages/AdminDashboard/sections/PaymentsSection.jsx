@@ -79,7 +79,7 @@ export default function PaymentsSection() {
       {/* CABECERA */}
       <div className="admin-section__header">
         <div>
-          <h2 className="admin-section__title">Métodos de Pago</h2>
+          <h2 className="admin-section__title">Métodos de pago</h2>
           <p className="admin-section__subtitle">
             Crea, lista, edita y administra las opciones de pago que los clientes eligen al pedir domicilios.
           </p>
@@ -90,7 +90,7 @@ export default function PaymentsSection() {
           onClick={abrirModalCrear}
         >
           <Plus size={18} />
-          <span>Nuevo Método de Pago</span>
+          <span>Nuevo método de pago</span>
         </button>
       </div>
 
@@ -118,9 +118,10 @@ export default function PaymentsSection() {
           <table className="admin-table admin-table--acciones-fijas">
             <thead>
               <tr>
-                <th>Método de Pago</th>
+                <th>Método de pago</th>
                 <th>Descripción</th>
-                <th>Pedidos Históricos</th>
+                {/* 3.6 · «Pedidos históricos» quedaba cortado bajo la columna fija de estado */}
+                <th>Pedidos</th>
                 <th className="admin-col-estado">Estado</th>
                 <th>Acciones</th>
               </tr>
@@ -137,7 +138,7 @@ export default function PaymentsSection() {
                         <strong className="admin-table__client-name">{item.nombre}</strong>
                       </div>
                     </td>
-                    <td>
+                    <td className="admin-pagos__descripcion">
                       <span className="admin-table__category-desc">{item.descripcion}</span>
                     </td>
                     <td>
@@ -203,7 +204,7 @@ export default function PaymentsSection() {
           >
             <div className="admin-modal-header">
               <h3 className="admin-modal-title">
-                {metodoEnEdicion ? "Editar Método de Pago" : "Nuevo Método de Pago"}
+                {metodoEnEdicion ? "Editar método de pago" : "Nuevo método de pago"}
               </h3>
               <button
                 type="button"
@@ -217,7 +218,7 @@ export default function PaymentsSection() {
             <form onSubmit={handleGuardar}>
               <div className="admin-modal-body">
                 <div className="admin-form-group">
-                  <label className="admin-form-label">Nombre del Método *</label>
+                  <label className="admin-form-label">Nombre del método *</label>
                   <input
                     type="text"
                     className="admin-form-input"
@@ -231,7 +232,7 @@ export default function PaymentsSection() {
                 </div>
 
                 <div className="admin-form-group">
-                  <label className="admin-form-label">Instrucciones o Descripción</label>
+                  <label className="admin-form-label">Instrucciones o descripción</label>
                   <textarea
                     rows={3}
                     className="admin-form-textarea"
@@ -266,7 +267,7 @@ export default function PaymentsSection() {
                   Cancelar
                 </button>
                 <button type="submit" className="admin-button--primary" disabled={guardando}>
-                  {metodoEnEdicion ? "Guardar Cambios" : "Crear Método"}
+                  {metodoEnEdicion ? "Guardar cambios" : "Crear método"}
                 </button>
               </div>
             </form>
@@ -283,7 +284,7 @@ export default function PaymentsSection() {
             role="dialog"
           >
             <div className="admin-modal-header">
-              <h3 className="admin-modal-title">¿Eliminar Método de Pago?</h3>
+              <h3 className="admin-modal-title">¿Eliminar método de pago?</h3>
             </div>
             <div className="admin-modal-body">
               <div className="admin-delete-alert">
@@ -307,7 +308,7 @@ export default function PaymentsSection() {
                 className="admin-button--danger"
                 onClick={handleEliminar}
               >
-                Eliminar Definitivamente
+                Eliminar definitivamente
               </button>
             </div>
           </div>

@@ -68,7 +68,7 @@ export default function CategoriesSection() {
       {/* CABECERA */}
       <div className="admin-section__header">
         <div>
-          <h2 className="admin-section__title">Categorías del Menú</h2>
+          <h2 className="admin-section__title">Categorías del menú</h2>
           <p className="admin-section__subtitle">
             Organiza las secciones del menú de Brunch Café. Crea, edita y administra cada categoría.
           </p>
@@ -79,7 +79,7 @@ export default function CategoriesSection() {
           onClick={abrirModalCrear}
         >
           <Plus size={18} />
-          <span>Nueva Categoría</span>
+          <span>Nueva categoría</span>
         </button>
       </div>
 
@@ -107,7 +107,7 @@ export default function CategoriesSection() {
           <table className="admin-table admin-table--acciones-fijas" aria-label="Categorías del menú">
             <thead>
               <tr>
-                <th>Nombre de Categoría</th>
+                <th>Nombre de la categoría</th>
                 <th>Descripción</th>
                 <th>Acciones</th>
               </tr>
@@ -180,7 +180,7 @@ export default function CategoriesSection() {
                   {categoriaEnEdicion ? "Modificar" : "Crear nueva"}
                 </span>
                 <h3 className="admin-modal-title" id={idTituloModal}>
-                  {categoriaEnEdicion ? "Editar Categoría" : "Nueva Categoría"}
+                  {categoriaEnEdicion ? "Editar categoría" : "Nueva categoría"}
                 </h3>
               </div>
               <button

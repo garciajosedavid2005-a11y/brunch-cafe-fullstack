@@ -158,7 +158,8 @@
 }
 
 .tarjeta-menu__imagen-icon {
-  font-size: 2rem;
+  color: var(--color-primario);
+  opacity: 0.7;
 }
 
 @media (max-width: 640px) {

@@ -221,6 +221,17 @@
   color: var(--color-marfil) !important;
 }
 
+/* 3.6 · Con el foco del teclado, el texto sigue marfil (Foundation lo pintaba azul con a:focus) */
+.hero__boton--primario:focus,
+.hero__boton--contorno:focus {
+  color: var(--color-marfil);
+}
+
+.hero__boton:focus-visible {
+  outline: 2px solid var(--color-marfil);
+  outline-offset: 3px;
+}
+
 /* ───────── Ola ───────── */
 
 .hero__ola {

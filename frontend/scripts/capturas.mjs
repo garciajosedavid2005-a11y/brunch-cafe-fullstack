@@ -486,7 +486,9 @@ const buscarAzules = (raiz, estadoInteraccion) => {
       // Solo el color en línea del propio elemento o de su padre (p. ej. un punto de color dentro de la insignia)
       const colorEnLinea = (nodo) => Boolean(nodo?.matches?.("[style*='color']"));
       const deEstado = colorEnLinea(el) || colorEnLinea(el.parentElement)
-        || Boolean(el.closest("[class*='por_limpiar'], .comanda-item__estado, .admin-badge--info, .staff-dashboard__status--info"));
+        || Boolean(el.closest("[class*='por_limpiar'], .comanda-item__estado, .admin-badge--info, .staff-dashboard__status--info"))
+        // 3.6 · Colores de marcas ajenas (la «G» de Google en «Continuar con Google»)
+        || Boolean(el.closest(".boton-google__logo"));
       hallazgos.push({
         estado: estadoInteraccion, deEstado, propiedad, valor,
         elemento: `${el.tagName.toLowerCase()}${el.className && typeof el.className === "string" ? `.${el.className.trim().split(/\s+/).join(".")}` : ""}`,
@@ -604,6 +606,12 @@ const medirTextosControl = (el, estado) => {
 };
 const medirEstados = async (page) => {
   const posicion = await page.evaluate(() => [window.scrollX, window.scrollY]);
+  // Centrar cada control también desplaza los contenedores interiores (p. ej. la barra de pestañas):
+  // se guardan y se restauran al final para que la foto salga como la deja la vista
+  await page.evaluate(() => {
+    window.__desplazados = [...document.querySelectorAll("*")].filter((el) => el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight)
+      .map((el) => [el, el.scrollLeft, el.scrollTop]);
+  });
   const controles = await page.evaluate((sel) => new Function(`return (${sel})`)(), `(${marcarSeleccionables.toString()})(${JSON.stringify(SELECTOR_SELECCIONABLE)})`);
   const total = await page.evaluate(() => window.__seleccionablesTotal || 0);
   if (total > 40) console.log(`  · estados: ${total} controles seleccionables; se midieron los primeros 40`);
@@ -642,6 +650,7 @@ const medirEstados = async (page) => {
   await page.evaluate(([x, y]) => {
     document.activeElement?.blur?.();
     for (const el of document.querySelectorAll("[data-medir-estado]")) el.removeAttribute("data-medir-estado");
+    for (const [el, izquierda, arriba] of window.__desplazados || []) { el.scrollLeft = izquierda; el.scrollTop = arriba; }
     window.scrollTo(x, y);
   }, posicion);
   await page.waitForTimeout(300);
@@ -849,9 +858,9 @@ const VISTAS = {
         await hora.locator("option[value]:not([value=''])").first().waitFor({ state: "attached" });
         await hora.selectOption(await hora.locator("option[value]:not([value=''])").first().getAttribute("value"));
         await p.getByRole("button", { name: "FINALIZAR COMPRA" }).click();
-        await p.getByRole("button", { name: "Confirmar Pedido" }).click();
+        await p.getByRole("button", { name: "Confirmar pedido" }).click();
         await p.locator(".carrito-producto__item.is-problema").first().waitFor();
-        await p.getByRole("button", { name: "Editar Pedido" }).click(); // cierra el resumen; el aviso queda en el formulario
+        await p.getByRole("button", { name: "Editar pedido" }).click(); // cierra el resumen; el aviso queda en el formulario
         await p.locator(".carrito-producto__item.is-problema").first().scrollIntoViewIfNeeded();
       } finally {
         await disponibilidad(nombre, true);
@@ -977,16 +986,16 @@ const VISTAS = {
   // Tras 1.12 · Aviso en el formulario de un rol con «abrir cuenta» sin «tomar comandas» ni «transferir»
   "admin-rol-aviso": { usuario: "admin", completa: false, preparar: async (p) => {
     await abrirPestanaAdmin("Roles")(p);
-    await p.getByRole("button", { name: /Nuevo Rol/ }).click();
+    await p.getByRole("button", { name: /Nuevo rol/ }).click();
     const abrir = p.getByRole("checkbox", { name: "Abrir la cuenta de una mesa" });
     await abrir.check();
     await abrir.scrollIntoViewIfNeeded();
   } },
   "admin-rol-aviso-pie": { usuario: "admin", completa: false, preparar: async (p) => {
     await abrirPestanaAdmin("Roles")(p);
-    await p.getByRole("button", { name: /Nuevo Rol/ }).click();
+    await p.getByRole("button", { name: /Nuevo rol/ }).click();
     await p.getByRole("checkbox", { name: "Abrir la cuenta de una mesa" }).check();
-    await p.getByRole("button", { name: "Crear Rol" }).scrollIntoViewIfNeeded();
+    await p.getByRole("button", { name: "Crear rol" }).scrollIntoViewIfNeeded();
   } },
   // La fila de la lista con el aviso: un rol de ejemplo creado por la API (solo en la BD de capturas)
   "admin-roles-aviso": { usuario: "admin", preparar: async (p) => {
@@ -994,7 +1003,7 @@ const VISTAS = {
     await abrirPestanaAdmin("Roles")(p);
     await p.getByText("Recepción (ejemplo)").scrollIntoViewIfNeeded();
   } },
-  "admin-metodos-pago": { usuario: "admin", preparar: abrirPestanaAdmin("Métodos de Pago") },
+  "admin-metodos-pago": { usuario: "admin", preparar: abrirPestanaAdmin("Métodos de pago") },
   "admin-usuarios": { usuario: "admin", preparar: abrirPestanaAdmin("Usuarios") },
   // Ajuste tras 1.5b · Una cuenta creada por el admin que aún no definió su contraseña: «Reenviar enlace»
   "admin-usuarios-pendiente": { usuario: "admin", preparar: async (p) => {
@@ -1120,7 +1129,7 @@ const VISTAS = {
     const mostrar = p.getByRole("button", { name: "Mostrar contraseña" });
     if (await mostrar.count()) await mostrar.first().click();
   } },
-  "admin-perfil": { usuario: "admin", preparar: abrirPestanaAdmin("Mi Perfil") },
+  "admin-perfil": { usuario: "admin", preparar: abrirPestanaAdmin("Mi perfil") },
   // Revisión de 1.6 · Aviso tras crear un usuario sin servidor de correo (la API de capturas no tiene SMTP)
   "admin-usuarios-aviso": { usuario: "admin", completa: false, preparar: async (p) => {
     await abrirPestanaAdmin("Usuarios")(p);

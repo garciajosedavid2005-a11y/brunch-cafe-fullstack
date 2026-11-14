@@ -62,7 +62,7 @@ describe("Paleta en /staff y el admin (2.0b)", () => {
     ["pages/AdminDashboard/sections/ReviewsSection.jsx", /admin-badge admin-badge--marca">Producto</],
     ["pages/AdminDashboard/sections/RolesSection.jsx", /admin-badge admin-badge--marca admin-roles__permiso/],
     ["pages/AdminDashboard/sections/SalonSection.jsx", /admin-badge admin-badge--marca">Combinable</],
-    ["pages/AdminDashboard/sections/StatesSection.jsx", /admin-badge admin-badge--marca">En Proceso</],
+    ["pages/AdminDashboard/sections/StatesSection.jsx", /admin-badge admin-badge--marca">En proceso</],
     // Estados de mesa en Admin › Salón con los colores del plano (1.6): libre verde, ocupada bordó,
     // cuenta pedida ámbar, por limpiar azul y bloqueada gris
     ["pages/AdminDashboard/sections/SalonSection.jsx", /libre: \{ texto: "Libre", clase: "admin-badge--success" \}/],

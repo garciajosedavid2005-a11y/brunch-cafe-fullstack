@@ -10,7 +10,7 @@ const Footer = () => {
 
         {/* Enlaces rápidos */}
         <div className="cell small-12 medium-4">
-          <h4>Enlaces Rápidos</h4>
+          <h4>Enlaces rápidos</h4>
           <ul>
             <li><Link className="fast-access" to="/">Inicio</Link></li>
             <li><Link className="fast-access" to="/menu">Menú</Link></li>

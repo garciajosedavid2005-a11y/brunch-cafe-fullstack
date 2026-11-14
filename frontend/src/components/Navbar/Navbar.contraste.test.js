@@ -1,4 +1,4 @@
-// El enlace activo/hover del navbar claro ("Panel Admin" en /admin) debe leerse
+// El enlace activo/hover del navbar claro ("Panel admin" en /admin) debe leerse
 // sobre el fondo rosado: contraste WCAG AA ≥ 4.5:1. Antes era --color-suave (~2:1).
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

@@ -132,7 +132,7 @@ const Destacados = () => {
           </div>
 
           <h2 className="destacados__titulo">
-            Nuestros Destacados
+            Nuestros destacados
           </h2>
 
           <p className="destacados__subtitulo">

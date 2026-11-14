@@ -60,7 +60,7 @@ describe("Rutas de staff", () => {
     expect(await screen.findByRole("heading", { name: "Plano de mesas" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/staff");
     expect(screen.queryByRole("button", { name: "Abrir menú de navegación" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Panel Admin" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Panel admin" })).not.toBeInTheDocument();
     expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Panel de administración" })).toHaveAttribute("href", "/admin");
   });

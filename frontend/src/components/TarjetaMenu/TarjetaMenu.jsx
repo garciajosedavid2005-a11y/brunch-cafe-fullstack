@@ -1,4 +1,5 @@
 import "./TarjetaMenu.css";
+import { UtensilsCrossed } from "lucide-react";
 import { useAgregarAlCarrito } from "../AgregarAlCarrito/useAgregarAlCarrito";
 import { formatearCOP } from "../../utils/moneda";
 
@@ -18,7 +19,8 @@ const TarjetaMenu = ({ id, codigo, nombre, descripcion, precio, imagen, modifica
           />
         ) : (
           <div className="tarjeta-menu__imagen-placeholder">
-            <span className="tarjeta-menu__imagen-icon">🍽️</span>
+            {/* 3.6 · Icono de línea (antes el emoji 🍽️) */}
+            <UtensilsCrossed className="tarjeta-menu__imagen-icon" size={40} strokeWidth={1.5} aria-hidden="true" />
           </div>
         )}
 

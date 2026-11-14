@@ -189,7 +189,7 @@ export default function ProductsSection() {
       {/* CABECERA */}
       <div className="admin-section__header">
         <div>
-          <h2 className="admin-section__title">Catálogo de Productos</h2>
+          <h2 className="admin-section__title">Catálogo de productos</h2>
           <p className="admin-section__subtitle">
             Administra los platos, postres y bebidas que ofrece Brunch Café a sus comensales.
           </p>
@@ -200,7 +200,7 @@ export default function ProductsSection() {
           onClick={abrirModalCrear}
         >
           <Plus size={18} />
-          <span>Nuevo Producto</span>
+          <span>Nuevo producto</span>
         </button>
       </div>
 
@@ -248,7 +248,7 @@ export default function ProductsSection() {
           <table className="admin-table admin-table--compacta admin-products__tabla admin-table--acciones-fijas">
             <thead>
               <tr>
-                <th>Plato / Producto</th>
+                <th>Plato / producto</th>
                 <th>Precio</th>
                 <th className="admin-col-estado">Disponible</th>
                 <th>Destacado</th>
@@ -380,7 +380,7 @@ export default function ProductsSection() {
                   {productoEnEdicion ? "Modificar" : "Crear nuevo"}
                 </span>
                 <h3 className="admin-modal-title" id={idTituloModal}>
-                  {productoEnEdicion ? "Editar Producto" : "Nuevo Producto"}
+                  {productoEnEdicion ? "Editar producto" : "Nuevo producto"}
                 </h3>
               </div>
               <button
@@ -404,7 +404,7 @@ export default function ProductsSection() {
                       id="prod-nombre"
                       type="text"
                       className="admin-form-input"
-                      placeholder="Ej. Tostada de Salmón Ahumado"
+                      placeholder="Ej. Tostada de salmón ahumado"
                       required
                       value={formData.nombre}
                       onChange={(e) =>
@@ -455,7 +455,7 @@ export default function ProductsSection() {
 
                   <div className="admin-form-group">
                     <label className="admin-form-label">
-                      Imagen del Producto
+                      Imagen del producto
                     </label>
                     <div className="admin-file-uploader">
                       <input
@@ -509,7 +509,7 @@ export default function ProductsSection() {
 
                 <div className="admin-form-group">
                   <label htmlFor="prod-desc" className="admin-form-label">
-                    Descripción / Ingredientes
+                    Descripción / ingredientes
                   </label>
                   <textarea
                     id="prod-desc"
@@ -592,7 +592,7 @@ export default function ProductsSection() {
                         setFormData({ ...formData, destacado: e.target.checked })
                       }
                     />
-                    <span>Marcar como <strong>Producto Destacado</strong> (visible en portada)</span>
+                    <span>Marcar como <strong>Producto destacado</strong> (visible en portada)</span>
                   </label>
                 </div>
               </div>

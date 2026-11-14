@@ -12,7 +12,7 @@ const HistoriaNosotros = () => {
                     {/* Card de texto - izquierda */}
                     <div className="cell small-12 medium-6">
                         <div className="historia-card">
-                            <h3 className="historia-titulo">Nuestra Historia...</h3>
+                            <h3 className="historia-titulo">Nuestra historia</h3>
                             <p className="historia-texto">
                                 Brunch nació con la idea de crear un espacio acogedor 
                                 donde las personas pudieran disfrutar de café, buena 

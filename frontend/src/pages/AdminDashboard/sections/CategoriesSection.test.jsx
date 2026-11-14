@@ -40,7 +40,7 @@ describe("Admin › Categorías: estación por defecto", () => {
     await montar();
     api.post.mockResolvedValue({ ...CATEGORIAS[0], id: "c9", nombre: "Postres" });
     fireEvent.click(screen.getByRole("button", { name: /nueva categoría/i }));
-    const dialogo = screen.getByRole("dialog", { name: "Nueva Categoría" });
+    const dialogo = screen.getByRole("dialog", { name: "Nueva categoría" });
     const estacion = within(dialogo).getByLabelText("Estación por defecto *");
     expect(estacion).toHaveValue("e1");
     expect([...estacion.options].map((o) => o.textContent)).toEqual(["Barra", "Cocina"]);
@@ -55,7 +55,7 @@ describe("Admin › Categorías: estación por defecto", () => {
     await montar();
     api.put.mockResolvedValue({ ...CATEGORIAS[0], estacion: { id: "e1", codigo: "cocina", nombre: "Cocina" } });
     fireEvent.click(within(screen.getByRole("table", { name: "Categorías del menú" })).getByText("Bebidas").closest("tr").querySelector("button"));
-    const dialogo = screen.getByRole("dialog", { name: "Editar Categoría" });
+    const dialogo = screen.getByRole("dialog", { name: "Editar categoría" });
     const estacion = within(dialogo).getByLabelText("Estación por defecto *");
     expect(estacion).toHaveValue("e2");
     fireEvent.change(estacion, { target: { value: "e1" } });
@@ -68,7 +68,7 @@ describe("Admin › Categorías: estación por defecto", () => {
     render(<DialogoProvider><CategoriesSection /></DialogoProvider>);
     await screen.findByRole("table", { name: "Categorías del menú" });
     fireEvent.click(screen.getByRole("button", { name: /nueva categoría/i }));
-    const dialogo = screen.getByRole("dialog", { name: "Nueva Categoría" });
+    const dialogo = screen.getByRole("dialog", { name: "Nueva categoría" });
     expect(await within(dialogo).findByText(/no se pudieron cargar las estaciones/i)).toBeInTheDocument();
     expect(within(dialogo).getByRole("button", { name: "Reintentar" })).toBeInTheDocument();
   });
@@ -76,7 +76,7 @@ describe("Admin › Categorías: estación por defecto", () => {
   it("una categoría sin estación (anterior a la migración) exige elegirla al editar", async () => {
     await montar();
     fireEvent.click(within(screen.getByRole("table", { name: "Categorías del menú" })).getByText("Antigua").closest("tr").querySelector("button"));
-    const estacion = within(screen.getByRole("dialog", { name: "Editar Categoría" })).getByLabelText("Estación por defecto *");
+    const estacion = within(screen.getByRole("dialog", { name: "Editar categoría" })).getByLabelText("Estación por defecto *");
     expect(estacion).toHaveValue("");
     expect(estacion).toBeRequired();
   });

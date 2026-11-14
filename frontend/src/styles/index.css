@@ -71,6 +71,18 @@ select {
   min-height: 100vh;
 }
 
+/* 3.6 · Enlaces sin clase propia: bordó de la marca (Foundation los pintaba azules #1779ba y, con el
+   puntero o el foco, #1468a0). Los enlaces con clase definen sus colores en su CSS */
+a:not([class]),
+a:not([class]):visited {
+  color: var(--color-primario);
+}
+
+a:not([class]):hover,
+a:not([class]):focus {
+  color: #6e0519;
+}
+
 .main-content {
   width: 100%;
   max-width: 100%;

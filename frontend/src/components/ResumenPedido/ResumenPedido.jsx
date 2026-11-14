@@ -24,7 +24,7 @@ const ResumenPedido = ({ formData, metodoPago, onEditar, onConfirmar, guardando 
                 {/* Encabezado */}
                 <div className="resumen-pedido__header">
                     <FaShoppingCart className="resumen-pedido__header-icono" />
-                    <h2 className="resumen-pedido__header-titulo">Resumen de tu Pedido</h2>
+                    <h2 className="resumen-pedido__header-titulo">Resumen de tu pedido</h2>
                     <p className="resumen-pedido__header-subtitulo">Verifica los datos antes de confirmar</p>
                 </div>
 
@@ -57,7 +57,7 @@ const ResumenPedido = ({ formData, metodoPago, onEditar, onConfirmar, guardando 
 
                 {/* Datos de domicilio */}
                 <div className="resumen-pedido__seccion">
-                    <h3 className="resumen-pedido__seccion-titulo">Datos de Domicilio</h3>
+                    <h3 className="resumen-pedido__seccion-titulo">Datos de domicilio</h3>
 
                     <div className="resumen-pedido__dato">
                         <FaUser className="resumen-pedido__dato-icono" />
@@ -133,10 +133,10 @@ const ResumenPedido = ({ formData, metodoPago, onEditar, onConfirmar, guardando 
                 {/* Botones */}
                 <div className="resumen-pedido__botones">
                     <button className="resumen-pedido__btn-editar" onClick={onEditar} disabled={guardando}>
-                        Editar Pedido
+                        Editar pedido
                     </button>
                     <button className="resumen-pedido__btn-confirmar" onClick={onConfirmar} disabled={guardando}>
-                        {guardando ? 'Guardando pedido...' : 'Confirmar Pedido'}
+                        {guardando ? 'Guardando pedido...' : 'Confirmar pedido'}
                     </button>
                 </div>
 

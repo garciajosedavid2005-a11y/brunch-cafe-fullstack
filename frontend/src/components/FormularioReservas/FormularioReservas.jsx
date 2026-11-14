@@ -187,8 +187,8 @@ export default function FormularioReservas() {
                     <button type="button" className="button secondary hollow" onClick={() => {
                       setFormData(initialForm(user));
                       setErrores({});
-                    }}>Limpiar Reserva</button>
-                    <button type="submit" className="button">Enviar Reserva</button>
+                    }}>Limpiar reserva</button>
+                    <button type="submit" className="button">Enviar reserva</button>
                   </div>
                   <p className="formulario-reserva-horario">
                     {horarios

@@ -23,3 +23,12 @@ describe("Layout de /staff (2.6)", () => {
     expect(regla(".staff-tablet__contenido")).toMatch(/flex:\s*1/);
   });
 });
+
+describe("Pestañas de /staff (3.6)", () => {
+  it("no se encogen por debajo de su texto (a 390 px «Resumen», «Mi perfil» y «Seguridad» se encimaban): si no caben, la barra se desplaza", () => {
+    const bloques = css.replace(/\r\n/g, "\n").split("}").filter((b) => (b.split("{").at(-2) ?? "").split("*/").at(-1).trim() === ".staff-tablet__nav button"); // también dentro de @media
+    for (const b of bloques) expect(b).not.toMatch(/min-width:\s*0\s*;/);
+    expect(bloques.some((b) => /min-width:\s*min-content/.test(b))).toBe(true);
+    expect(regla(".staff-tablet__nav")).toMatch(/overflow-x:\s*auto/);
+  });
+});
