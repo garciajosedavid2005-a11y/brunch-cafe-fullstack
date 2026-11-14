@@ -92,7 +92,7 @@ export default function ModificadoresSection() {
       min: String(g.min),
       max: String(g.max),
       activo: g.activo,
-      opciones: g.opciones.map((o) => ({ id: o.id, nombre: o.nombre, precioExtra: String(o.precioExtra), disponible: o.disponible })),
+      opciones: g.opciones.map((o) => ({ id: o.id, nombre: o.nombre, precioExtra: String(o.precioExtra), disponible: o.disponible, disponibleAlAbrir: o.disponible })),
     },
   });
 
@@ -104,7 +104,6 @@ export default function ModificadoresSection() {
   });
   const cambiarOpcion = (i, campo, valor) => setForm((f) => ({
     ...f,
-   
     datos: { ...f.datos, opciones: f.datos.opciones.map((o, j) => (j === i ? { ...o, [campo]: valor } : o)) },
   }));
   const agregarOpcion = () => setForm((f) => ({ ...f, datos: { ...f.datos, opciones: [...f.datos.opciones, { ...OPCION_VACIA }] } }));
@@ -150,7 +149,9 @@ export default function ModificadoresSection() {
         ...(o.id ? { id: o.id } : {}),
         nombre: o.nombre.trim(),
         precioExtra: Number(o.precioExtra),
-        disponible: o.disponible,
+        // 2.7b · De una opción guardada, «Disponible» solo si el admin lo cambió: así no se pisa lo que la
+        // cocina agotó o reactivó con el diálogo abierto (el backend lo registra como en la operación)
+        ...(!o.id || o.disponible !== o.disponibleAlAbrir ? { disponible: o.disponible } : {}),
       })),
     };
     const guardado = original ? await grupos.actualizar(original.id, datos) : await grupos.crear(datos);

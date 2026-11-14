@@ -56,57 +56,75 @@ export const listarAgotables = async (sesion) => {
     }
 }
 
+/** Agotar exige producto:agotar y reactivar producto:reactivar (2.7b: también desde el admin). */
+export const exigirPermisoDisponibilidad = exigirSegun
+
+/** Aviso en vivo por «catalogo» (solo ids), ya confirmada la transacción. */
+export const avisarDisponibilidad = (resultado) => {
+    if (!resultado?.cambiado) return
+    const ids = resultado.grupoId ? { grupoId: resultado.grupoId, opcionId: resultado.id } : { productoId: resultado.id }
+    publicar(['catalogo'], { tipo: 'disponibilidad', ids })
+}
+
+const productoNoExiste = () => new AppError(404, 'PRODUCTO_NO_ENCONTRADO', 'El producto no existe.')
+const opcionNoExiste = () => new AppError(404, 'OPCION_NO_ENCONTRADA', 'La opción no existe.')
+
+/**
+ * Dentro de una transacción (`session`): marca el producto si está en el estado contrario y deja su Evento.
+ * La usan la operación (2.7) y Admin › Productos (2.7b); el permiso se comprueba antes.
+ */
+export const marcarProducto = async (productoId, disponible, sesion, session) => {
+    // Solo si está en el estado contrario (los productos anteriores al campo se leen como disponibles)
+    const filtro = disponible ? { _id: productoId, disponible: false } : { _id: productoId, disponible: { $ne: false } }
+    const producto = await Producto.findOneAndUpdate(filtro, { $set: { disponible } }, { returnDocument: 'after', session })
+    if (!producto) {
+        if (!(await Producto.exists({ _id: productoId }).session(session))) throw productoNoExiste()
+        return { id: String(productoId), disponible, cambiado: false }
+    }
+    await registrarEvento({
+        entidad: 'producto', entidadId: producto._id, tipo: disponible ? 'producto_reactivado' : 'producto_agotado',
+        de: textoEstado(!disponible), a: textoEstado(disponible), usuario: sesion.id, actor: actorDe(sesion),
+        datos: { nombre: producto.nombre }, session,
+    })
+    return { id: String(producto._id), disponible, cambiado: true }
+}
+
+/** Como `marcarProducto`, para una opción de un grupo (2.7 y Admin › Modificadores, 2.7b). */
+export const marcarOpcion = async (grupoId, opcionId, disponible, sesion, session) => {
+    // Condicional sobre la opción exacta; sube __v (concurrencia optimista del admin al editar el grupo)
+    const grupo = await GrupoModificadores.findOneAndUpdate(
+        // Como en el producto: una opción sin el campo guardado se lee como disponible (schema-reviewer)
+        { _id: grupoId, opciones: { $elemMatch: { _id: opcionId, disponible: disponible ? false : { $ne: false } } } },
+        { $set: { 'opciones.$.disponible': disponible }, $inc: { __v: 1 } },
+        { returnDocument: 'after', session },
+    )
+    if (!grupo) {
+        if (!(await GrupoModificadores.exists({ _id: grupoId, 'opciones._id': opcionId }).session(session))) throw opcionNoExiste()
+        return { id: String(opcionId), grupoId: String(grupoId), disponible, cambiado: false }
+    }
+    const opcion = grupo.opciones.id(opcionId)
+    await registrarEvento({
+        entidad: 'modificador', entidadId: grupo._id, tipo: disponible ? 'opcion_reactivada' : 'opcion_agotada',
+        de: textoEstado(!disponible), a: textoEstado(disponible), usuario: sesion.id, actor: actorDe(sesion),
+        datos: { opcion: opcion._id, nombre: opcion.nombre }, session,
+    })
+    return { id: String(opcion._id), grupoId: String(grupo._id), disponible, cambiado: true }
+}
+
 export const cambiarDisponibilidadProducto = async (productoId, datos, sesion) => {
     const { disponible } = validar(disponibilidadSchema, datos)
     exigirSegun(sesion, disponible)
-    const noExiste = () => new AppError(404, 'PRODUCTO_NO_ENCONTRADO', 'El producto no existe.')
-    if (!mongoose.isValidObjectId(productoId)) throw noExiste()
-
-    const resultado = await conTransaccion(async (session) => {
-        // Solo si está en el estado contrario (los productos anteriores al campo se leen como disponibles)
-        const filtro = disponible ? { _id: productoId, disponible: false } : { _id: productoId, disponible: { $ne: false } }
-        const producto = await Producto.findOneAndUpdate(filtro, { $set: { disponible } }, { returnDocument: 'after', session })
-        if (!producto) {
-            if (!(await Producto.exists({ _id: productoId }).session(session))) throw noExiste()
-            return { id: String(productoId), disponible, cambiado: false }
-        }
-        await registrarEvento({
-            entidad: 'producto', entidadId: producto._id, tipo: disponible ? 'producto_reactivado' : 'producto_agotado',
-            de: textoEstado(!disponible), a: textoEstado(disponible), usuario: sesion.id, actor: actorDe(sesion),
-            datos: { nombre: producto.nombre }, session,
-        })
-        return { id: String(producto._id), disponible, cambiado: true }
-    })
-    if (resultado.cambiado) publicar(['catalogo'], { tipo: 'disponibilidad', ids: { productoId: resultado.id } })
+    if (!mongoose.isValidObjectId(productoId)) throw productoNoExiste()
+    const resultado = await conTransaccion((session) => marcarProducto(productoId, disponible, sesion, session))
+    avisarDisponibilidad(resultado)
     return resultado
 }
 
 export const cambiarDisponibilidadOpcion = async (grupoId, opcionId, datos, sesion) => {
     const { disponible } = validar(disponibilidadSchema, datos)
     exigirSegun(sesion, disponible)
-    const noExiste = () => new AppError(404, 'OPCION_NO_ENCONTRADA', 'La opción no existe.')
-    if (!mongoose.isValidObjectId(grupoId) || !mongoose.isValidObjectId(opcionId)) throw noExiste()
-
-    const resultado = await conTransaccion(async (session) => {
-        // Condicional sobre la opción exacta; sube __v (concurrencia optimista del admin al editar el grupo)
-        const grupo = await GrupoModificadores.findOneAndUpdate(
-            // Como en el producto: una opción sin el campo guardado se lee como disponible (schema-reviewer)
-            { _id: grupoId, opciones: { $elemMatch: { _id: opcionId, disponible: disponible ? false : { $ne: false } } } },
-            { $set: { 'opciones.$.disponible': disponible }, $inc: { __v: 1 } },
-            { returnDocument: 'after', session },
-        )
-        if (!grupo) {
-            if (!(await GrupoModificadores.exists({ _id: grupoId, 'opciones._id': opcionId }).session(session))) throw noExiste()
-            return { id: String(opcionId), grupoId: String(grupoId), disponible, cambiado: false }
-        }
-        const opcion = grupo.opciones.id(opcionId)
-        await registrarEvento({
-            entidad: 'modificador', entidadId: grupo._id, tipo: disponible ? 'opcion_reactivada' : 'opcion_agotada',
-            de: textoEstado(!disponible), a: textoEstado(disponible), usuario: sesion.id, actor: actorDe(sesion),
-            datos: { opcion: opcion._id, nombre: opcion.nombre }, session,
-        })
-        return { id: String(opcion._id), grupoId: String(grupo._id), disponible, cambiado: true }
-    })
-    if (resultado.cambiado) publicar(['catalogo'], { tipo: 'disponibilidad', ids: { grupoId: resultado.grupoId, opcionId: resultado.id } })
+    if (!mongoose.isValidObjectId(grupoId) || !mongoose.isValidObjectId(opcionId)) throw opcionNoExiste()
+    const resultado = await conTransaccion((session) => marcarOpcion(grupoId, opcionId, disponible, sesion, session))
+    avisarDisponibilidad(resultado)
     return resultado
 }

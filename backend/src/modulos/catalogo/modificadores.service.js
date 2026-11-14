@@ -4,6 +4,7 @@ import Producto from './producto.model.js'
 import { AppError, notFound } from '../compartido/errors.js'
 import { conTransaccion } from '../compartido/transacciones.js'
 import { sinUndefined } from '../compartido/utils.js'
+import { exigirPermisoDisponibilidad, marcarOpcion, avisarDisponibilidad } from './agotados.service.js'
 
 // 1.3 · Grupos de modificadores (Admin › Modificadores, permiso catalogo:gestionar). F1-4.
 //   - Las reglas del grupo viven en el esquema (grupoModificadores.model.js) y se comprueban
@@ -82,21 +83,45 @@ const fusionarOpciones = (actuales, nuevas) => {
     })
 }
 
-export const actualizarGrupo = async (id, { nombre, obligatorio, min, max, opciones, activo }) => {
+/**
+ * 2.7b · «Disponible» de una opción que ya existía no se asigna al guardar el grupo: si cambia, pasa por el
+ * servicio de agotados (permiso de agotar o reactivar, escritura condicional, Evento con autor y aviso por
+ * «catalogo») en la misma transacción. Una opción nueva nace con el valor que traiga (sin Evento).
+ */
+const cambiosDeDisponible = (actuales, nuevas = []) => {
+    const porId = new Map(actuales.map((o) => [String(o._id), o]))
+    return nuevas
+        .filter((o) => o.id !== undefined && o.disponible !== undefined && porId.has(o.id))
+        .filter((o) => o.disponible !== (porId.get(o.id).disponible !== false))
+        .map((o) => ({ opcionId: o.id, disponible: o.disponible }))
+}
+
+export const actualizarGrupo = async (id, { nombre, obligatorio, min, max, opciones, activo }, sesion) => {
     const grupo = await buscar(id)
+    const marcas = cambiosDeDisponible(grupo.opciones, opciones)
+    for (const { disponible } of marcas) exigirPermisoDisponibilidad(sesion, disponible) // el permiso, antes que nada
     if (nombre !== undefined) await nombreLibre(nombre, grupo._id)
+    const sinMarcas = opciones?.map((o) => (marcas.some((m) => m.opcionId === o.id) ? { ...o, disponible: undefined } : o))
     grupo.set(sinUndefined({
         nombre, obligatorio, min, max, activo,
-        opciones: opciones === undefined ? undefined : fusionarOpciones(grupo.opciones, opciones),
+        opciones: sinMarcas === undefined ? undefined : fusionarOpciones(grupo.opciones, sinMarcas.map(sinUndefined)),
     }))
+    let resultados = []
     try {
-        await grupo.save() // valida el grupo completo; __v detecta otra edición intermedia
+        resultados = await conTransaccion(async (session) => {
+            await grupo.save({ session }) // valida el grupo completo; __v detecta otra edición intermedia
+            const hechos = []
+            for (const m of marcas) hechos.push(await marcarOpcion(grupo._id, m.opcionId, m.disponible, sesion, session))
+            return hechos
+        })
     } catch (error) {
         if (error?.name === 'VersionError' || error instanceof mongoose.Error.VersionError) throw modificado()
         if (esDuplicado(error)) throw duplicado()
         throw error
     }
-    return formato(grupo, await Producto.countDocuments({ gruposModificadores: grupo._id }))
+    resultados.forEach(avisarDisponibilidad)
+    const guardado = marcas.length ? await GrupoModificadores.findById(grupo._id) : grupo
+    return formato(guardado, await Producto.countDocuments({ gruposModificadores: grupo._id }))
 }
 
 export const eliminarGrupo = async (id) => {

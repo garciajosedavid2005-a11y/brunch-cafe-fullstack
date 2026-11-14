@@ -13,7 +13,7 @@ export const eliminarEstacion = async (req, res) => {
 
 export const listarGrupos = async (req, res) => res.json(await grupos.listarGrupos())
 export const crearGrupo = async (req, res) => res.status(201).json(await grupos.crearGrupo(req.validado))
-export const actualizarGrupo = async (req, res) => res.json(await grupos.actualizarGrupo(req.params.id, req.validado))
+export const actualizarGrupo = async (req, res) => res.json(await grupos.actualizarGrupo(req.params.id, req.validado, req.usuario))
 export const eliminarGrupo = async (req, res) => {
     await grupos.eliminarGrupo(req.params.id)
     res.json({ message: 'Grupo de modificadores eliminado.' })

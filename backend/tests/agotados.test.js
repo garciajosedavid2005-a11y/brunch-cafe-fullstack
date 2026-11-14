@@ -14,6 +14,7 @@ import Zona from '../src/modulos/salon/zona.model.js'
 import Mesa from '../src/modulos/salon/mesa.model.js'
 import Cuenta from '../src/modulos/salon/cuenta.model.js'
 import Comanda from '../src/modulos/salon/comanda.model.js'
+import Rol from '../src/modulos/identidad/rol.model.js'
 import { PERMISOS_SALON, PERMISOS_COCINA } from '../src/modulos/identidad/permisos.js'
 import { abrirCuenta, agregarItem, enviarRonda } from '../src/modulos/salon/cuentas.service.js'
 
@@ -248,5 +249,160 @@ describe('Canal «catalogo» (2.7)', () => {
         expect(validarCanales('catalogo', { id: '1', permisos: ['kds:ver'], estaciones: [] })).toEqual(['catalogo'])
         expect(validarCanales('catalogo', { id: '1', permisos: ['producto:agotar'] })).toEqual(['catalogo'])
         expect(() => validarCanales('catalogo', { id: '1', permisos: ['pedido:crear'] })).toThrow()
+    })
+})
+
+// 2.7b · Admin › Productos («Disponible») y Admin › Modificadores (opciones) pasan por el mismo servicio de
+// agotados: Evento con quién lo hizo y aviso en vivo por «catalogo». Editar sin tocar «Disponible» no cambia
+// el estado de agotado (aunque la cocina lo haya agotado mientras el admin tenía el formulario abierto).
+describe('Desde el admin (2.7b)', () => {
+    const PRODUCTOS = '/api/v1/admin/productos'
+    const GRUPOS = '/api/v1/admin/grupos-modificadores'
+
+    it('agotar y reactivar un producto desde Admin › Productos deja su Evento con autor y avisa en vivo', async () => {
+        const { sesion, usuario } = await crearConSesion('admin')
+        const { avisos, baja } = escuchar()
+        try {
+            const r = await sesion.put(`${PRODUCTOS}/${huevos._id}`).send({ disponible: false })
+            expect(r.status, JSON.stringify(r.body)).toBe(200)
+            expect(r.body.disponible).toBe(false)
+            expect((await Producto.findById(huevos._id).lean()).disponible).toBe(false)
+            const r2 = await sesion.put(`${PRODUCTOS}/${huevos._id}`).send({ disponible: true })
+            expect(r2.status, JSON.stringify(r2.body)).toBe(200)
+            expect((await Producto.findById(huevos._id).lean()).disponible).toBe(true)
+            const eventos = await Evento.find({ entidad: 'producto', entidadId: huevos._id }).sort({ _id: 1 }).lean()
+            expect(eventos.map((e) => [e.tipo, e.actor, String(e.usuario)])).toEqual([
+                ['producto_agotado', 'admin', String(usuario._id)], ['producto_reactivado', 'admin', String(usuario._id)],
+            ])
+            expect(avisos).toEqual([
+                expect.objectContaining({ canal: 'catalogo', tipo: 'disponibilidad', ids: { productoId: String(huevos._id) } }),
+                expect.objectContaining({ canal: 'catalogo', tipo: 'disponibilidad', ids: { productoId: String(huevos._id) } }),
+            ])
+        } finally {
+            baja()
+        }
+    })
+
+    it('editar un producto sin tocar «Disponible» no lo reactiva ni deja Evento ni aviso', async () => {
+        await Producto.updateOne({ _id: huevos._id }, { disponible: false })
+        const { sesion } = await crearConSesion('admin')
+        const { avisos, baja } = escuchar()
+        try {
+            const r = await sesion.put(`${PRODUCTOS}/${huevos._id}`).send({ nombre: 'Huevos pericos', precio: 16000 })
+            expect(r.status, JSON.stringify(r.body)).toBe(200)
+            const guardado = await Producto.findById(huevos._id).lean()
+            expect(guardado).toMatchObject({ nombre: 'Huevos pericos', precio: 16000, disponible: false })
+            expect(r.body.disponible).toBe(false)
+            expect(await Evento.countDocuments({ entidad: 'producto' })).toBe(0)
+            expect(avisos).toEqual([])
+        } finally {
+            baja()
+        }
+    })
+
+    it('enviar el mismo «Disponible» que ya tiene no deja Evento ni aviso', async () => {
+        const { sesion } = await crearConSesion('admin')
+        const { avisos, baja } = escuchar()
+        try {
+            expect((await sesion.put(`${PRODUCTOS}/${huevos._id}`).send({ disponible: true, nombre: 'Huevos' })).status).toBe(200)
+            expect(await Evento.countDocuments({ entidad: 'producto' })).toBe(0)
+            expect(avisos).toEqual([])
+        } finally {
+            baja()
+        }
+    })
+
+    it('si el Evento falla, el cambio de «Disponible» y el resto de la edición no se guardan ni se avisa', async () => {
+        const { sesion } = await crearConSesion('admin')
+        const { avisos, baja } = escuchar()
+        try {
+            vi.spyOn(Evento, 'create').mockRejectedValue(new Error('fallo simulado del Evento'))
+            expect((await sesion.put(`${PRODUCTOS}/${huevos._id}`).send({ disponible: false, nombre: 'Otro' })).status).toBe(500)
+            expect(await Producto.findById(huevos._id).lean()).toMatchObject({ nombre: 'Huevos' })
+            expect((await Producto.findById(huevos._id).lean()).disponible).not.toBe(false)
+            expect(avisos).toEqual([])
+        } finally {
+            baja()
+        }
+    })
+
+    it('agotar y reactivar una opción desde Admin › Modificadores deja su Evento con autor y avisa en vivo', async () => {
+        const { sesion, usuario } = await crearConSesion('admin')
+        const { avisos, baja } = escuchar()
+        const opciones = (disp) => [{ id: entera, nombre: 'Entera' }, { id: avena, nombre: 'Avena', precioExtra: 2000, disponible: disp }]
+        try {
+            const r = await sesion.put(`${GRUPOS}/${leche._id}`).send({ opciones: opciones(false) })
+            expect(r.status, JSON.stringify(r.body)).toBe(200)
+            expect(r.body.opciones.map((o) => o.disponible)).toEqual([true, false])
+            const r2 = await sesion.put(`${GRUPOS}/${leche._id}`).send({ opciones: opciones(true) })
+            expect(r2.status, JSON.stringify(r2.body)).toBe(200)
+            const grupo = await GrupoModificadores.findById(leche._id).lean()
+            expect(grupo.opciones.map((o) => o.disponible)).toEqual([true, true])
+            const eventos = await Evento.find({ entidad: 'modificador', entidadId: leche._id }).sort({ _id: 1 }).lean()
+            expect(eventos.map((e) => [e.tipo, e.actor, String(e.usuario), String(e.datos.opcion)])).toEqual([
+                ['opcion_agotada', 'admin', String(usuario._id), avena], ['opcion_reactivada', 'admin', String(usuario._id), avena],
+            ])
+            const aviso = expect.objectContaining({ canal: 'catalogo', tipo: 'disponibilidad', ids: { grupoId: String(leche._id), opcionId: avena } })
+            expect(avisos).toEqual([aviso, aviso])
+        } finally {
+            baja()
+        }
+    })
+
+    it('desde el admin, reactivar exige producto:reactivar: 403 sin cambios ni Evento ni aviso; agotar sí lo permite', async () => {
+        await Rol.create({ nombre: 'catalogo-sin-reactivar', permisos: ['catalogo:gestionar', 'producto:agotar'] })
+        await Producto.updateOne({ _id: huevos._id }, { disponible: false })
+        await GrupoModificadores.updateOne({ _id: leche._id, 'opciones._id': avena }, { $set: { 'opciones.$.disponible': false } })
+        const { sesion } = await crearConSesion('catalogo-sin-reactivar')
+        const { avisos, baja } = escuchar()
+        try {
+            const p = await sesion.put(`${PRODUCTOS}/${huevos._id}`).send({ disponible: true, nombre: 'Otro' })
+            expect(p.status, JSON.stringify(p.body)).toBe(403)
+            expect(await Producto.findById(huevos._id).lean()).toMatchObject({ nombre: 'Huevos', disponible: false })
+            const g = await sesion.put(`${GRUPOS}/${leche._id}`).send({ nombre: 'Leche', opciones: [{ id: entera, nombre: 'Entera' }, { id: avena, nombre: 'Avena', disponible: true }] })
+            expect(g.status, JSON.stringify(g.body)).toBe(403)
+            expect((await GrupoModificadores.findById(leche._id).lean()).opciones.map((o) => o.disponible)).toEqual([true, false])
+            expect(await Evento.countDocuments({ entidad: { $in: ['producto', 'modificador'] } })).toBe(0)
+            expect(avisos).toEqual([])
+            const agotar = await sesion.put(`${PRODUCTOS}/${latte._id}`).send({ disponible: false })
+            expect(agotar.status, JSON.stringify(agotar.body)).toBe(200)
+            expect(await Evento.countDocuments({ entidad: 'producto', tipo: 'producto_agotado' })).toBe(1)
+        } finally {
+            baja()
+        }
+    })
+
+    it('Modificadores: si el Evento falla, ni la opción ni el resto del grupo cambian y no se avisa', async () => {
+        const { sesion } = await crearConSesion('admin')
+        const { avisos, baja } = escuchar()
+        try {
+            vi.spyOn(Evento, 'create').mockRejectedValue(new Error('fallo simulado del Evento'))
+            const r = await sesion.put(`${GRUPOS}/${leche._id}`).send({ nombre: 'Otro nombre', opciones: [{ id: entera, nombre: 'Entera' }, { id: avena, nombre: 'Avena', disponible: false }] })
+            expect(r.status).toBe(500)
+            const grupo = await GrupoModificadores.findById(leche._id).lean()
+            expect(grupo.nombre).toBe('Leche')
+            expect(grupo.opciones.map((o) => o.disponible)).toEqual([true, true])
+            expect(grupo.__v).toBe(leche.__v)
+            expect(avisos).toEqual([])
+        } finally {
+            baja()
+        }
+    })
+
+    it('editar el grupo sin enviar «Disponible» de una opción agotada no la reactiva', async () => {
+        await GrupoModificadores.updateOne({ _id: leche._id, 'opciones._id': avena }, { $set: { 'opciones.$.disponible': false } })
+        const { sesion } = await crearConSesion('admin')
+        const { avisos, baja } = escuchar()
+        try {
+            const r = await sesion.put(`${GRUPOS}/${leche._id}`).send({ nombre: 'Tipo de leche', opciones: [{ id: entera, nombre: 'Entera' }, { id: avena, nombre: 'Avena' }] })
+            expect(r.status, JSON.stringify(r.body)).toBe(200)
+            const grupo = await GrupoModificadores.findById(leche._id).lean()
+            expect(grupo.nombre).toBe('Tipo de leche')
+            expect(grupo.opciones.map((o) => o.disponible)).toEqual([true, false])
+            expect(await Evento.countDocuments({ entidad: 'modificador' })).toBe(0)
+            expect(avisos).toEqual([])
+        } finally {
+            baja()
+        }
     })
 })

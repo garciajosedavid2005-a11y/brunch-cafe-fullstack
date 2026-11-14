@@ -116,10 +116,27 @@ describe("Admin › Modificadores", () => {
     await waitFor(() => expect(api.put).toHaveBeenCalledWith("/v1/admin/grupos-modificadores/g1", {
       nombre: "Leche", obligatorio: false, min: 0, max: 1, activo: true,
       opciones: [
-        { id: "o1", nombre: "Entera", precioExtra: 0, disponible: true },
-        { id: "o2", nombre: "Leche de almendra", precioExtra: 2000, disponible: false },
+        { id: "o1", nombre: "Entera", precioExtra: 0 },
+        { id: "o2", nombre: "Leche de almendra", precioExtra: 2000 },
       ],
     }));
+  });
+
+  // 2.7b · Si la cocina agotó o reactivó una opción con el diálogo abierto, guardar no la pisa: «Disponible»
+  // solo se envía de las opciones en que el admin lo cambió (el backend lo pasa por el servicio de agotados)
+  it("envía «Disponible» solo de la opción en que se cambió", async () => {
+    await montar();
+    api.put.mockResolvedValue(LECHE);
+    fireEvent.click(screen.getByRole("button", { name: "Editar grupo Leche" }));
+    const dialogo = screen.getByRole("dialog", { name: "Editar grupo" });
+    fireEvent.click(within(dialogo).getByLabelText("Disponible: opción 2"));
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Guardar cambios" }));
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith("/v1/admin/grupos-modificadores/g1", expect.objectContaining({
+      opciones: [
+        { id: "o1", nombre: "Entera", precioExtra: 0 },
+        { id: "o2", nombre: "Almendra", precioExtra: 2000, disponible: true },
+      ],
+    })));
   });
 
   it("quitar una opción y desactivar un grupo en uso piden confirmación", async () => {

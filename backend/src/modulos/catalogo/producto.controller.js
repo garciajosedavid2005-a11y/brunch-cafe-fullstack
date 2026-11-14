@@ -14,6 +14,7 @@ import { reservarGrupos, formatoGrupoPublico } from './modificadores.service.js'
 import { consultaCatalogoSchema } from './catalogoConfig.schema.js'
 import Estacion from './estacion.model.js'
 import GrupoModificadores from './grupoModificadores.model.js'
+import { exigirPermisoDisponibilidad, marcarProducto, avisarDisponibilidad } from './agotados.service.js'
 
 // Poblado que necesita el formato del admin (1.3: estación de la categoría, propia y grupos)
 const POBLAR_ADMIN = [
@@ -140,7 +141,7 @@ export const listarProductos = async (req, res) => {
  * borrado o una desactivación simultáneos de la estación o un borrado del grupo entran en
  * conflicto. connection.transaction() restaura el estado del documento si hay que reintentar.
  */
-const guardarConReferencias = (producto, { estacionId, gruposModificadoresIds }) => {
+const guardarConReferencias = (producto, { estacionId, gruposModificadoresIds }, alGuardar) => {
     // Grupos que ya tenía (leídos antes: un reintento de la transacción no debe ver los nuevos)
     const yaAsignados = producto.isNew ? [] : (producto.gruposModificadores || []).map(String)
     return conTransaccion(async (session) => {
@@ -151,6 +152,7 @@ const guardarConReferencias = (producto, { estacionId, gruposModificadoresIds })
             producto.gruposModificadores = (await reservarGrupos(gruposModificadoresIds, session, { yaAsignados })).map((g) => g._id)
         }
         await producto.save({ session })
+        return alGuardar ? alGuardar(session) : undefined
     })
 }
 
@@ -189,7 +191,12 @@ export const actualizarProducto = async (req, res) => {
         const producto = await Producto.findById(req.params.id)
         if (!producto) return res.status(404).json(cuerpoError('NOT_FOUND', 'Producto no encontrado'))
 
-        const { categoriaId, estacionId, gruposModificadoresIds, ...datos } = req.validado
+        // 2.7b · «Disponible» no se asigna aquí: si cambia, pasa por el servicio de agotados (permiso de
+        // agotar o reactivar, escritura condicional, Evento con autor y aviso por «catalogo»), en la misma
+        // transacción que el resto de la edición. Una edición que no lo envía no toca el estado de agotado.
+        const { categoriaId, estacionId, gruposModificadoresIds, disponible, ...datos } = req.validado
+        const cambiaDisponible = disponible !== undefined && disponible !== (producto.disponible !== false)
+        if (cambiaDisponible) exigirPermisoDisponibilidad(req.usuario, disponible)
         const cambios = { ...datos }
         if (categoriaId !== undefined) {
             if (!mongoose.isValidObjectId(categoriaId)) {
@@ -203,15 +210,18 @@ export const actualizarProducto = async (req, res) => {
         const imagenAnterior = producto.imagen
         if (esDataUrl(cambios.imagen)) cambios.imagen = await guardarImagenSubida(cambios.imagen, producto.codigo)
         producto.set(sinUndefined(cambios))
+        let marcado
         try {
-            await guardarConReferencias(producto, { estacionId, gruposModificadoresIds })
+            marcado = await guardarConReferencias(producto, { estacionId, gruposModificadoresIds },
+                cambiaDisponible ? (session) => marcarProducto(producto._id, disponible, req.usuario, session) : null)
         } catch (error) {
             if (cambios.imagen !== imagenAnterior) await borrarImagenSubida(cambios.imagen)
             throw error
         }
         if (cambios.imagen !== undefined && cambios.imagen !== imagenAnterior) await borrarImagenSubida(imagenAnterior)
+        avisarDisponibilidad(marcado)
         await producto.populate(POBLAR_ADMIN)
-        res.json(formato(producto))
+        res.json({ ...formato(producto), ...(marcado ? { disponible: marcado.disponible } : {}) })
     } catch (error) {
         manejarError(res, error)
     }
