@@ -889,6 +889,20 @@ const VISTAS = {
     await p.getByRole("alert").filter({ hasText: "No se pudo actualizar" }).waitFor();
   } },
   // Panel de una mesa ocupada (acciones) y de una libre (abrir cuenta con comensales)
+  // 2.6c · Mesas unidas dibujadas como una pieza («1+2»): el navegador recibe el plano con la mesa 2 unida
+  // a la cuenta de la 1 (solo en la respuesta; la BD de capturas no cambia)
+  "staff-plano-unidas": { usuario: "mesero", completa: false, preparar: async (p) => {
+    await p.route(/\/staff\/salon\/mesas$/, async (ruta) => {
+      const r = await ruta.fetch();
+      const plano = await r.json();
+      const [m1, m2] = [1, 2].map((n) => plano.mesas.find((m) => m.numero === n));
+      const cuenta = { ...m1.cuenta, comensales: 3, mesas: [{ id: m1.id, numero: 1 }, { id: m2.id, numero: 2 }] };
+      for (const m of [m1, m2]) Object.assign(m, { estado: m1.estado, cuenta });
+      await ruta.fulfill({ response: r, json: plano });
+    });
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: /^Mesa 1,.*unida con 2/ }).waitFor();
+  } },
   "staff-plano-ocupada": { usuario: "mesero", preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);
     await p.getByRole("button", { name: /^Mesa 1,/ }).click();

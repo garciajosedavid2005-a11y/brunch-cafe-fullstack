@@ -55,8 +55,9 @@ describe("Insignia en el plano (2.6)", () => {
     const m1 = await screen.findByRole("button", { name: /^Mesa 1\b/ });
     expect(m1.querySelector(".plano__listos")).toHaveTextContent("Listo para servir (2)");
     expect(m1).toHaveAccessibleName(/listo para servir: 2/);
-    // Mesas unidas: la insignia en las dos tarjetas de la misma cuenta
-    expect(screen.getByRole("button", { name: /^Mesa 3\b/ }).querySelector(".plano__listos")).toHaveTextContent("Listo para servir (1)");
+    // Mesas unidas (2.6c): una sola pieza «2+3» con la insignia de su cuenta
+    expect(screen.getByRole("button", { name: /^Mesa 2\b.*unida con 3/ }).querySelector(".plano__listos")).toHaveTextContent("Listo para servir (1)");
+    expect(screen.queryByRole("button", { name: /^Mesa 3\b/ })).not.toBeInTheDocument();
     const m4 = screen.getByRole("button", { name: /^Mesa 4\b/ });
     expect(within(m4).queryByText(/Listo para servir/)).not.toBeInTheDocument();
     expect(m4).not.toHaveAccessibleName(/listo para servir/);

@@ -1,6 +1,6 @@
 import { PortadaProvider } from "./context/PortadaContext";
 import NoEncontrada from "./pages/NoEncontrada/NoEncontrada";
-import { lazy, Suspense, useEffect } from "react";
+import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import Navbar from "./components/Navbar/Navbar";
 import Footer from "./components/Footer/Footer";
@@ -23,9 +23,6 @@ import { useAuth } from "./context/useAuth";
 import { CarritoProvider } from "./context/CarritoContext";
 import { DialogoProvider } from "./context/DialogoContext";
 import { esAdministrador, esPersonal, puedeEntrarAKds, puedeEntrarAStaff, rutaInicio, tienePermiso } from "./utils/permisos";
-
-// 2.6c · Página de prueba del plano: solo en desarrollo (en el build, la rama se elimina con su import)
-const PruebaPlano = import.meta.env.DEV ? lazy(() => import("./pages/PruebaPlano/PruebaPlano")) : null;
 
 import "./styles/index.css";
 import "./styles/variables.css";
@@ -151,7 +148,6 @@ function AppRoutes() {
           {/* Rutas anteriores del panel (rama developers) */}
           <Route path="/mesero" element={<Navigate to="/staff" replace />} />
           <Route path="/dashboard/mesero" element={<Navigate to="/staff" replace />} />
-          {PruebaPlano && <Route path="/prueba-plano" element={<Suspense fallback={null}><PruebaPlano /></Suspense>} />}
           {/* 2.0b · Ruta desconocida */}
           <Route path="*" element={<NoEncontrada />} />
         </Routes>

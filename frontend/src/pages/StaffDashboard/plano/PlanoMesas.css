@@ -236,62 +236,144 @@
   color: #594742;
 }
 
-.plano__mesas {
-  display: grid;
-  /* 160 px: «Cuenta pedida» cabe con su icono también a 1024 px con el panel abierto (con 148 se encogía) */
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+/* 2.6c · Propuesta B (Brayan): cada zona es una sala con piso de madera y cada mesa se dibuja con sus
+   sillas (DibujoMesa). Colores del tablero por estado, siempre con la píldora de texto e icono debajo.
+   Número sobre el tablero: libre #2c0703/#fff ~19:1, ocupada #fff/#890620 ~10:1, cuenta pedida
+   #2c0703/#f2b544 ~11:1, por limpiar #24466e/#e5eef8 ~8:1, bloqueada #424242/#ececec ~8,5:1. */
+.plano__salas {
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+.plano__sala {
+  flex: var(--mesas, 1) 1 300px;
+  min-width: 0;
+  padding: 0.45rem 0.6rem 0.6rem;
+  border: 1px solid #e3d2cd;
+  border-radius: 18px;
+  background: repeating-linear-gradient(90deg, #fbf5f2 0 46px, #f6ece8 46px 48px);
+  box-shadow: 0 2px 10px #2c07030f;
+}
+
+.plano__sala-nombre {
+  margin: 0 0 0.2rem;
+  font-family: var(--fuente-titulos), serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-oscuro);
+}
+
+.plano__resumen {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-oscuro);
+}
+
+.plano__resumen strong {
+  font-size: 1.35rem;
+  color: var(--color-primario);
+}
+
+.plano__mesas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.25rem 0.4rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .plano__mesa {
+  --tablero: #fff;
+  --tablero-borde: #1d5b2e;
+  --numero: var(--color-oscuro);
+  --silla-llena: #1d5b2e;
   display: grid;
-  align-content: start;
-  gap: 0.3rem;
-  width: 100%;
-  min-height: 132px;
-  padding: 0.75rem 0.8rem;
+  justify-items: center;
+  align-content: end;
+  gap: 0.25rem;
+  min-width: 150px;
+  min-height: 44px;
+  padding: 0.3rem 0.4rem 0.45rem;
   border: 2px solid transparent;
-  border-left-width: 6px;
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 4px 14px #2c07030d;
+  border-radius: 16px;
+  background: transparent;
   color: var(--color-oscuro);
   font: inherit;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.plano__mesa--libre { border-color: #b9dcc3; border-left-color: var(--libre-texto); }
-.plano__mesa--ocupada { border-color: #efc2ca; border-left-color: var(--ocupada-texto); }
-.plano__mesa--cuenta_pedida { border-color: #f0d29a; border-left-color: var(--pedida-texto); }
-.plano__mesa--por_limpiar { border-color: #bcd0e8; border-left-color: var(--limpiar-texto); }
-.plano__mesa--bloqueada { border-color: #cfcfcf; border-left-color: var(--bloqueada-texto); border-style: dashed; border-left-style: solid; background: #f7f7f7; }
+.plano__mesa:hover { background: #8906200a; }
+
+.plano__mesa--libre { --tablero: #fff; --tablero-borde: #1d5b2e; --silla-llena: #1d5b2e; }
+.plano__mesa--ocupada { --tablero: #890620; --tablero-borde: #5e0416; --numero: #fff; --silla-llena: #890620; }
+.plano__mesa--cuenta_pedida { --tablero: #f2b544; --tablero-borde: #7a4100; --silla-llena: #7a4100; }
+.plano__mesa--por_limpiar { --tablero: #e5eef8; --tablero-borde: #24466e; --numero: #24466e; --silla-llena: #24466e; }
+.plano__mesa--bloqueada { --tablero: #ececec; --tablero-borde: #424242; --numero: #424242; --silla-llena: #424242; }
 
 .plano__mesa.is-seleccionada {
-  box-shadow: 0 0 0 3px var(--color-primario);
+  border-color: var(--color-primario);
+  background: #fffaf8;
+  box-shadow: 0 4px 14px #2c07031f;
 }
 
-/* Revisión de 1.6 · Número arriba y estado debajo, siempre: con flex-wrap la píldora saltaba de línea
-   solo cuando no cabía («Cuenta pedida», «Bloqueada») y cada tarjeta quedaba distinta. */
-.plano__mesa-cabecera {
-  display: grid;
-  justify-items: start;
-  gap: 0.4rem;
+/* Dibujo de la mesa (DibujoMesa.jsx) */
+.dibujo-mesa {
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 4px 4px #2c07032e);
 }
 
-.plano__mesa-numero {
-  font-size: 1.75rem;
-  line-height: 1;
+.dibujo-mesa__tablero,
+.dibujo-mesa__union {
+  fill: var(--tablero);
 }
+
+.dibujo-mesa__tablero {
+  stroke: var(--tablero-borde);
+  stroke-width: 3;
+}
+
+/* Libre y bloqueada: borde discontinuo (además del texto de la píldora) */
+.plano__mesa--libre .dibujo-mesa__tablero,
+.plano__mesa--bloqueada .dibujo-mesa__tablero {
+  stroke-dasharray: 7 5;
+}
+
+.dibujo-mesa__numero {
+  fill: var(--numero);
+  font-family: var(--fuente-cuerpo), sans-serif;
+  font-weight: 800;
+}
+
+.dibujo-mesa__asiento { fill: #fffaf7; stroke: #8a6f69; stroke-width: 2; }
+.dibujo-mesa__respaldo { fill: #8a6f69; }
+.dibujo-mesa__silla[data-silla="ocupada"] .dibujo-mesa__asiento { fill: var(--silla-llena); stroke: var(--silla-llena); }
+.dibujo-mesa__silla[data-silla="ocupada"] .dibujo-mesa__respaldo { fill: var(--silla-llena); }
+
+/* Anillo del tiempo ocupada: verde, ámbar a los 60 min y rojo a los 90 (gráfico ≥ 3:1 sobre el piso;
+   el tiempo también va en texto) */
+.dibujo-mesa__anillo {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s ease;
+}
+
+.dibujo-mesa__anillo--pista { stroke: #e6d7d2; }
+.dibujo-mesa__anillo--normal { stroke: #1d5b2e; }
+.dibujo-mesa__anillo--aviso { stroke: #a86a00; }
+.dibujo-mesa__anillo--alerta { stroke: #b3261e; }
 
 .plano__estado {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  white-space: nowrap; /* la píldora baja entera bajo el número en vez de partirse */
+  white-space: nowrap; /* la píldora no se parte */
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
   font-size: 0.8rem;
@@ -314,24 +396,57 @@
   color: #594742;
 }
 
-.plano__mesa-dato {
+.plano__mesa-detalle {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.9rem;
-  color: #4a2a24;
-  overflow-wrap: anywhere;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
 }
 
-.plano__mesa-total {
-  font-size: 1rem;
+.plano__mesa-detalle svg { flex: none; }
+
+.plano__mesero {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--color-oscuro);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.plano__tiempo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
   font-weight: 700;
 }
 
-.plano__mesa-unida {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #594742;
+/* Sobre el piso más oscuro (#f6ece8): verde ~6,7:1, ámbar ~5,5:1, rojo ~5,2:1 */
+.plano__tiempo--normal { color: #1d5b2e; }
+.plano__tiempo--aviso { color: #7a4100; }
+.plano__tiempo--alerta { color: #a3211a; }
+
+.plano__mesa-total {
+  font-weight: 700;
+}
+
+.plano__comensales {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  color: #4a2a24;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plano__mesa,
+  .dibujo-mesa__anillo {
+    transition: none;
+  }
 }
 
 /* Panel de la mesa elegida: columna a la derecha en horizontal, hoja inferior en vertical */

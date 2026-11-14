@@ -76,6 +76,51 @@ describe("Plano de mesas", () => {
     expect(within(leyenda).getByText("Bloqueada").closest("li")).toHaveTextContent("1");
   });
 
+  // 2.6c · Propuesta B (Brayan): mesas dibujadas con sus sillas, anillo de tiempo y resumen de ocupación
+  it("el resumen dice cuántas mesas están ocupadas (también las de cuenta pedida)", async () => {
+    pintar();
+    await screen.findByRole("button", { name: /^Mesa 1\b/ });
+    expect(screen.getByText(/mesas ocupadas/).closest("p")).toHaveTextContent("2 de 5 mesas ocupadas");
+  });
+
+  it("cada mesa se dibuja con una silla por puesto (rellenas según los comensales) y el anillo de tiempo", async () => {
+    pintar();
+    await screen.findByRole("button", { name: /^Mesa 1\b/ });
+    const sillas = (n) => [...tarjeta(n).querySelectorAll("[data-silla]")].map((s) => s.dataset.silla);
+    expect(sillas(1)).toEqual(["ocupada", "ocupada", "ocupada", "libre"]);
+    expect(sillas(2)).toEqual(["libre", "libre", "libre", "libre"]);
+    expect(tarjeta(1).querySelector("[data-anillo]").dataset.anillo).toBe("normal");
+    expect(tarjeta(2).querySelector("[data-anillo]")).toBeNull();
+    expect(within(tarjeta(1)).getByText("AP")).toHaveAttribute("title", "Ana P."); // iniciales del mesero
+    expect(tarjeta(1).querySelector(".plano__comensales")).toHaveTextContent("3/4");
+  });
+
+  it("los estados llevan texto además del color y el total no sale si la cuenta no tiene consumo", async () => {
+    respuestas.plano.mesas[0].cuenta.total = 0;
+    pintar();
+    await screen.findByRole("button", { name: /^Mesa 1\b/ });
+    for (const [n, texto] of [[1, "Ocupada"], [2, "Libre"], [3, "Cuenta pedida"], [4, "Bloqueada"], [7, "Por limpiar"]]) {
+      expect(within(tarjeta(n)).getByText(texto)).toBeInTheDocument();
+    }
+    expect(within(tarjeta(1)).queryByText(/\$/)).not.toBeInTheDocument();
+    expect(within(tarjeta(3)).getByText("$ 18.000")).toBeInTheDocument();
+  });
+
+  it("las mesas unidas se dibujan como una sola pieza conectada («1+2») y se eligen con un toque", async () => {
+    const unida = cuenta({ comensales: 6, mesas: [{ id: "m1", numero: 1 }, { id: "m2", numero: 2 }] });
+    respuestas.plano.mesas[0] = mesa(1, "ocupada", { cuenta: unida });
+    respuestas.plano.mesas[1] = mesa(2, "ocupada", { cuenta: unida });
+    pintar();
+    const pieza = await screen.findByRole("button", { name: /^Mesa 1\b.*unida con 2/ });
+    expect(screen.queryByRole("button", { name: /^Mesa 2\b/ })).not.toBeInTheDocument();
+    expect(pieza.querySelectorAll(".dibujo-mesa__tablero")).toHaveLength(2);
+    expect(pieza.querySelector("svg text").textContent).toBe("1+2");
+    expect([...pieza.querySelectorAll("[data-silla]")]).toHaveLength(8);
+    expect(screen.getByText(/mesas ocupadas/).closest("p")).toHaveTextContent("3 de 5 mesas ocupadas");
+    fireEvent.click(pieza);
+    expect(await screen.findByRole("heading", { name: /^Mesa 1/, level: 2 })).toBeInTheDocument();
+  });
+
   it("filtra por zona con pestañas", async () => {
     pintar();
     await screen.findByRole("button", { name: /^Mesa 1\b/ });

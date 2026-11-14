@@ -12,19 +12,37 @@ const regla = (selector) => {
 };
 const valor = (bloque, propiedad) => bloque?.match(new RegExp(`(?:^|;|\\s)${propiedad}\\s*:\\s*([^;]+);`))?.[1].trim();
 
-describe("Tarjeta de mesa: etiqueta de estado", () => {
-  it("la cabecera apila número y estado (la píldora no salta de línea según quepa o no)", () => {
-    const cabecera = regla(".plano__mesa-cabecera");
-    expect(cabecera, "falta .plano__mesa-cabecera").not.toBeNull();
-    expect(cabecera).not.toMatch(/flex-wrap\s*:\s*wrap/);
-    expect(valor(cabecera, "display")).toBe("grid");
+describe("Tarjeta de mesa (2.6c, propuesta B)", () => {
+  it("apila dibujo, estado y detalle en columna (la píldora siempre en el mismo sitio) y el icono no se encoge", () => {
+    expect(valor(regla(".plano__mesa"), "display")).toBe("grid");
+    expect(css).toMatch(/\.plano__estado svg\s*\{[^}]*flex:\s*none/);
+    expect(valor(regla(".plano__estado"), "white-space")).toBe("nowrap");
   });
 
-  // A 1024 px con el panel abierto, «Cuenta pedida» no cabía y el icono se encogía hasta desaparecer
-  it("el icono de la píldora no se encoge y las tarjetas tienen ancho para «Cuenta pedida»", () => {
-    expect(css).toMatch(/\.plano__estado svg\s*\{[^}]*flex:\s*none/);
-    const minimo = Number(valor(regla(".plano__mesas"), "grid-template-columns").match(/minmax\((\d+)px/)?.[1]);
-    expect(minimo).toBeGreaterThanOrEqual(160);
+  it("objetivo táctil ≥ 44 px y ancho para «Cuenta pedida»", () => {
+    expect(Number.parseInt(valor(regla(".plano__mesa"), "min-height"), 10)).toBeGreaterThanOrEqual(44);
+    expect(Number.parseInt(valor(regla(".plano__mesa"), "min-width"), 10)).toBeGreaterThanOrEqual(150);
+  });
+
+  it("el número se lee sobre el tablero de cada estado (≥ 4,5:1)", () => {
+    for (const estado of ["libre", "ocupada", "cuenta_pedida", "por_limpiar", "bloqueada"]) {
+      const bloque = regla(`.plano__mesa--${estado}`);
+      const numero = valor(bloque, "--numero") || "#2C0703"; // por defecto, --color-oscuro
+      expect(contraste(numero, valor(bloque, "--tablero")), estado).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("los tiempos (verde, ámbar y rojo) se leen sobre el piso de la sala (≥ 4,5:1)", () => {
+    for (const nivel of ["normal", "aviso", "alerta"]) {
+      expect(contraste(valor(regla(`.plano__tiempo--${nivel}`), "color"), "#f6ece8"), nivel).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("el anillo se ve sobre el piso (≥ 3:1) y respeta prefers-reduced-motion", () => {
+    for (const nivel of ["normal", "aviso", "alerta"]) {
+      expect(contraste(valor(regla(`.dibujo-mesa__anillo--${nivel}`), "stroke"), "#f6ece8"), nivel).toBeGreaterThanOrEqual(3);
+    }
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{[^@]*\.dibujo-mesa__anillo[^}]*transition:\s*none/);
   });
 });
 
