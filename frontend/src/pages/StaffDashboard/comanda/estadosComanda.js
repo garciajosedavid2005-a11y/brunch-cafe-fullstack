@@ -49,6 +49,8 @@ export { textoModificadores } from "../../../utils/modificadores";
 /** Regla de un grupo en palabras: «obligatorio, elige 1», «opcional, hasta 2»… */
 export const reglaGrupo = (g) => {
   const tipo = g.obligatorio ? "obligatorio" : "opcional";
+  // 3.7.1 · Con opción por defecto no es «opcional»: ya viene marcada y no se puede dejar vacío
+  if (g.max === 1 && !g.obligatorio && opcionPorDefecto(g) !== null) return "elige 1";
   if (g.max === 1) return `${tipo}, elige 1`;
   if (g.min > 0) return `${tipo}, elige de ${g.min} a ${g.max}`;
   return `${tipo}, hasta ${g.max}`;

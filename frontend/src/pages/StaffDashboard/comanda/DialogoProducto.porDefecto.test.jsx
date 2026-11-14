@@ -25,6 +25,8 @@ describe("DialogoProducto · opción por defecto (3.7.1)", () => {
     expect(within(dialogo).getByRole("radio", { name: "Entera" })).toBeChecked();
     expect(within(dialogo).getByRole("radio", { name: "Normal" })).toBeChecked();
     expect(within(dialogo).getByRole("checkbox", { name: /Queso/ })).not.toBeChecked();
+    // No dice «opcional»: el grupo no se puede dejar vacío
+    expect(within(dialogo).getByRole("group", { name: "Leche (elige 1)" })).toBeInTheDocument();
   });
 
   it("al agregar sin tocar nada se envían las opciones por defecto; cambiar Leche reemplaza la por defecto", async () => {

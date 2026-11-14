@@ -9,7 +9,7 @@ import { AppError } from '../compartido/errors.js'
 import { conTransaccion } from '../compartido/transacciones.js'
 import { registrarEvento } from '../compartido/estados.service.js'
 import { puedeOtorgarRol } from './permisos.js'
-import { enviarCorreoCreacion, smtpConfigurado } from './recuperacion.email.js'
+import { enviarCorreoCreacion, rolParaCorreo, smtpConfigurado } from './recuperacion.email.js'
 import { nuevoTokenDeContrasena, DURACION_ENLACE_CREACION_MS } from './recuperacion.service.js'
 
 // 1.5b · Alta de usuarios desde Admin › Usuarios (usuario:gestionar). El admin no escribe la
@@ -22,8 +22,8 @@ const COLACION_CORREO = { locale: 'en', strength: 2 }
 const pendientes = new Set()
 export const esperarAltasPendientes = () => Promise.allSettled([...pendientes])
 
-const enviarEnSegundoPlano = ({ usuarioId, correo, nombre, url }) => {
-    const tarea = enviarCorreoCreacion({ correo, nombre, url })
+const enviarEnSegundoPlano = ({ usuarioId, correo, nombre, rol, url }) => {
+    const tarea = enviarCorreoCreacion({ correo, nombre, rol, url })
         .catch((error) => logger.error({
             errorCode: error?.code || 'SMTP_SEND_FAILED', errorName: error?.name, usuarioId,
         }, 'No se pudo enviar el correo «Crea tu contraseña»; la persona puede pedir uno nuevo con «¿Olvidaste tu contraseña?»'))
@@ -68,7 +68,7 @@ export const crearUsuarioAdmin = async ({ nombre, apellido, correo, telefono, ro
         return creado
     })
 
-    const entrega = entregarEnlace(usuario, token)
+    const entrega = entregarEnlace(usuario, token, rolParaCorreo(rol))
     return { usuario: { ...usuario.toObject(), rol: { _id: rol._id, nombre: rol.nombre, etiqueta: rol.etiqueta } }, entrega }
 }
 
@@ -76,12 +76,13 @@ export const crearUsuarioAdmin = async ({ nombre, apellido, correo, telefono, ro
  * Envía (o, en desarrollo sin SMTP, registra) el enlace «Crea tu contraseña» y dice cómo salió:
  * 'correo' (SMTP en segundo plano), 'registro_desarrollo' (al log, nunca el correo) o 'sin_smtp'.
  */
-const entregarEnlace = (usuario, token) => {
+// 3.7.4 · `rol`: el nombre visible del rol, para el correo («te creó una cuenta como Mesero»)
+const entregarEnlace = (usuario, token, rol) => {
     const url = new URL('/restablecer-contrasena', config.CLIENT_URLS[0])
     url.searchParams.set('token', token)
     url.searchParams.set('tipo', 'crear')
     if (smtpConfigurado()) {
-        enviarEnSegundoPlano({ usuarioId: usuario._id, correo: usuario.correo, nombre: usuario.nombre, url: url.toString() })
+        enviarEnSegundoPlano({ usuarioId: usuario._id, correo: usuario.correo, nombre: usuario.nombre, rol, url: url.toString() })
         return 'correo'
     }
     if (config.NODE_ENV !== 'development') return 'sin_smtp'
@@ -125,6 +126,6 @@ export const reenviarEnlaceCreacion = async (usuarioId, sesion) => {
             usuario: sesion.id, actor: sesion.rol || 'admin', datos: { vence: expira }, session,
         })
     })
-    const entrega = entregarEnlace(usuario, token)
+    const entrega = entregarEnlace(usuario, token, rolParaCorreo(usuario.rol))
     return { usuario: usuario.toObject(), entrega }
 }

@@ -53,14 +53,11 @@ export const up = async (db, { dryRun = false } = {}) => {
     return { grupos: resultado }
 }
 
+// Por la marca, no por el nombre: si el admin renombró el grupo después de up, down lo sigue encontrando
 export const down = async (db, { dryRun = false } = {}) => {
     const resultado = []
-    for (const { grupo: nombre, opcion } of POR_DEFECTO) {
-        const grupo = await grupos(db).findOne({ nombre, [MARCA]: { $exists: true } }, { collation: COLACION })
-        if (!grupo) {
-            resultado.push({ grupo: nombre, opcion, aplicado: false, quitar: false })
-            continue
-        }
+    for (const grupo of await grupos(db).find({ [MARCA]: { $exists: true } }).toArray()) {
+        const opcion = (grupo.opciones || []).find((o) => String(o._id) === String(grupo[MARCA].opcion))?.nombre ?? '(opción quitada)'
         const opcionId = grupo[MARCA].opcion
         let aplicado = false
         if (!dryRun) {
@@ -71,7 +68,7 @@ export const down = async (db, { dryRun = false } = {}) => {
             )
             aplicado = r.modifiedCount === 1
         }
-        resultado.push({ grupo: nombre, opcion, aplicado, quitar: true })
+        resultado.push({ grupo: grupo.nombre, opcion, aplicado, quitar: true })
     }
     return { grupos: resultado }
 }

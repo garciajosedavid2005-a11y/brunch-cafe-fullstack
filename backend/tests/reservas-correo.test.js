@@ -38,6 +38,10 @@ describe('Confirmación de reserva por correo (0.16)', () => {
         expect(correo.texto).toMatch(/3 personas/)
         expect(correo.texto).toMatch(/9:00 a\.\s?m\./)
         expect(correo.texto).toMatch(/pendiente de confirmación/i)
+        // 3.7.4 · Plantilla HTML con el logo adjunto y el botón a «Mis reservas» (la hizo desde su cuenta)
+        expect(correo.html).toContain('Ana Pérez')
+        expect(correo.html).toContain('Ver mis reservas')
+        expect(correo.adjuntos).toEqual([expect.objectContaining({ contentType: 'image/png' })])
     })
 
     it('responde sin esperar el envío', async () => {

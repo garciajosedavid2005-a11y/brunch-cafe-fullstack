@@ -33,6 +33,7 @@ Cada vez que traigas cambios de otra rama (`git pull`, fusión de `developers`, 
    | 9 | `npm run migrate:2.1 -- --dry-run` | Permisos de cocina y barra (Fase 2): `kds:ver`, `item:preparar`, `pedido:preparar`, `producto:agotar` y `producto:reactivar` para cocina y barista; `item:servir` y `producto:agotar` para el mesero. Solo toca un rol que no tenga ninguna (BD anterior a 2.1); si tiene algunas, el admin ya decidió y no se toca; `--down` quita solo lo que agregó |
    | 10 | `npm run migrate:2.5b -- --dry-run` | Estaciones del KDS en los roles (2.5b): cocina → Cocina, barista → Barra. Solo toca los roles sin el campo `estaciones` (si el admin ya las decidió, aunque sea ninguna, no se tocan); requiere 1.3 y 2.1. `--down` quita solo lo que puso, si nadie lo cambió después. Las sesiones abiertas lo ven en ≤ 30 s |
    | 11 | `npm run migrate:3.1 -- --dry-run` | Permiso de cobro (Fase 3, F3-1): `cuenta:cobrar` para el rol cajero, solo si no lo tiene; marca `_migracion31`; `--down` quita solo lo que agregó |
+   | 12 | `npm run migrate:3.7 -- --dry-run` | Opción por defecto (3.7.1): marca Leche → Entera y Tamaño → Normal en los grupos ya guardados, solo si el grupo es de opción única y no tiene otra por defecto; marca `_migracion37`; `--down` quita solo lo que marcó |
 
    Antes de aplicar una que tenga cambios: respaldo con `mongodump` (ver «Migraciones y respaldo»). Luego el mismo comando sin `--dry-run`; para revertir, `-- --down` (también con `--dry-run`).
 4. **Datos base**: `npm run seed:base` solo inserta lo que falte (roles, estados, horarios, métodos de pago, estaciones Cocina y Barra); no cambia lo que el admin personalizó.
@@ -111,7 +112,9 @@ SMTP_PASSWORD=contraseña-de-aplicación-de-16-letras
 SMTP_FROM=Brunch Café <cuenta-del-negocio@gmail.com>
 ```
 
-Con el puerto 465 la conexión es TLS directa; con cualquier otro (por defecto 587, `config.js`) se pasa a STARTTLS si el servidor lo ofrece, como hacen Mailtrap y Gmail (lo decide `compartido/correo.js`, que aún no lo exige: ver Pendientes en PROGRESO). Fuera de desarrollo, sin SMTP el enlace ni se envía ni se registra: Admin › Usuarios lo avisa y la persona puede pedir uno nuevo con «¿Olvidaste tu contraseña?». Para comprobarlo, crea un usuario en Admin › Usuarios: el aviso debe decir «Enviamos a … el enlace» y el correo debe aparecer en la bandeja de Mailtrap o llegar al destinatario (Gmail). Si el envío falla, el error queda en el log sin la dirección de correo.
+Con el puerto 465 la conexión es TLS directa; con cualquier otro (por defecto 587, `config.js`) se exige STARTTLS (`requireTLS`, 3.7.4): si el servidor no lo ofrece, el envío falla en vez de mandar las credenciales en claro. Gmail funciona igual con 465 o con 587. Fuera de desarrollo, sin SMTP el enlace ni se envía ni se registra: Admin › Usuarios lo avisa y la persona puede pedir uno nuevo con «¿Olvidaste tu contraseña?». Para comprobarlo, crea un usuario en Admin › Usuarios: el aviso debe decir «Enviamos a … el enlace» y el correo debe aparecer en la bandeja de Mailtrap o llegar al destinatario (Gmail). Si el envío falla, el error queda en el log sin la dirección de correo.
+
+**Plantillas (3.7.4).** Los tres correos (recuperar contraseña, «Crea tu contraseña» con el rol del empleado y la solicitud de reserva) salen en HTML con la marca y en texto plano, con el logo incrustado (`compartido/recursos/logo-correo.png`, adjunto CID). Se definen en `compartido/plantillasCorreo.js`. Para ver cómo llegan sin crear usuarios ni reservas: `npm run correo:prueba -- <recuperacion|creacion|reserva> <correo>` (datos de ejemplo, asunto con «[Prueba]» y un enlace que no sirve para cambiar ninguna contraseña; no toca la BD).
 
 ## MongoDB Atlas en Windows
 

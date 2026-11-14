@@ -28,8 +28,9 @@ try {
     console.log(`BD: ${db.databaseName} · ${reversa ? 'DOWN' : 'UP'}${dryRun ? ' · SIMULACRO (no escribe)' : ''}`)
     if (reversa) {
         const { grupos } = await down(db, { dryRun })
+        if (!grupos.length) console.log('Nada que revertir: ningún grupo tiene la marca de esta migración.')
         for (const g of grupos) {
-            console.log(`Grupo ${g.grupo}: ${g.quitar ? `se ${dryRun ? 'quitaría' : 'quitó'} «${g.opcion}» por defecto` : 'nada que revertir (up no lo marcó)'}`)
+            console.log(`Grupo ${g.grupo}: se ${dryRun ? 'quitaría' : 'quitó'} «${g.opcion}» por defecto`)
         }
         console.log(dryRun ? '\n✓ Simulacro sin problemas.' : '\n✓ Reversión aplicada.')
     } else {

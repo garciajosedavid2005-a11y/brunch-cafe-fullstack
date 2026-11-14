@@ -13,6 +13,7 @@ vi.mock('../src/modulos/identidad/recuperacion.email.js', () => ({
     enviarCorreoRecuperacion: correoMock.enviar,
     enviarCorreoCreacion: correoMock.crear,
     smtpConfigurado: correoMock.configurado,
+    rolParaCorreo: (rol) => (rol && rol.nombre !== 'cliente' ? rol.etiqueta || rol.nombre : undefined), // 3.7.4
 }))
 
 const solicitar = (correo) => api().post('/api/v1/auth/recuperar-contrasena').send({ correo })
@@ -81,6 +82,8 @@ describe('Recuperación de contraseña: envío del enlace (0.15c)', () => {
         expect(correoMock.enviar).not.toHaveBeenCalled()
         expect(correoMock.crear).toHaveBeenCalledOnce()
         const url = new URL(correoMock.crear.mock.calls[0][0].url)
+        // 3.7.4 · Con el rol del empleado (nombre visible)
+        expect(correoMock.crear.mock.calls[0][0].rol).toBe('Mesero')
         expect(url.searchParams.get('tipo')).toBe('crear')
         const guardado = await conToken(usuario._id)
         // La espera de 60 s también vale aquí: otra solicitud no reenvía ni cambia el enlace

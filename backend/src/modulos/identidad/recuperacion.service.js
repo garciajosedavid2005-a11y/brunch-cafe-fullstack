@@ -1,10 +1,11 @@
 import { createHash, randomBytes } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import Usuario from './usuario.model.js'
+import Rol from './rol.model.js'
 import { config } from '../../config.js'
 import { logger } from '../compartido/logger.js'
 import { AppError } from '../compartido/errors.js'
-import { enviarCorreoRecuperacion, enviarCorreoCreacion, smtpConfigurado } from './recuperacion.email.js'
+import { enviarCorreoRecuperacion, enviarCorreoCreacion, rolParaCorreo, smtpConfigurado } from './recuperacion.email.js'
 
 const DURACION_TOKEN_MS = 30 * 60 * 1000
 // 1.5b · Enlace «Crea tu contraseña» (alta desde el admin y, desde 2.10d, la recuperación de esas cuentas)
@@ -56,9 +57,12 @@ const procesarSolicitud = async (correo) => {
         }
 
         try {
+            // 3.7.4 · «Crea tu contraseña» lleva el rol del empleado (nombre visible)
+            const rol = crear ? await Rol.findById(usuario.rol).select('nombre etiqueta').lean() : null
             await (crear ? enviarCorreoCreacion : enviarCorreoRecuperacion)({
                 correo: usuario.correo,
                 nombre: usuario.nombre,
+                ...(crear ? { rol: rolParaCorreo(rol) } : {}),
                 url: url.toString(),
             })
         } catch (error) {

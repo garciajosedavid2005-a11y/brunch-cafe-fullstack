@@ -19,6 +19,13 @@ beforeEach(async () => {
 })
 
 describe('Migración 3.7 (opción por defecto)', () => {
+    it('down revierte aunque el admin haya renombrado el grupo después de up', async () => {
+        await up(db())
+        await grupos().updateOne({ nombre: 'Leche' }, { $set: { nombre: 'Leches' } })
+        expect(porGrupo(await down(db())).Leches).toMatchObject({ opcion: 'Entera', aplicado: true })
+        expect(await marcas('Leches')).toEqual([undefined, undefined, undefined])
+    })
+
     it('solo asigna Leche → Entera y Tamaño → Normal', () => {
         expect(POR_DEFECTO).toEqual([{ grupo: 'Leche', opcion: 'Entera' }, { grupo: 'Tamaño', opcion: 'Normal' }])
     })
@@ -58,6 +65,6 @@ describe('Migración 3.7 (opción por defecto)', () => {
         expect(r.Leche).toMatchObject({ accion: 'ya-tiene', aplicado: false })
         expect(r['Tamaño']).toMatchObject({ accion: 'no-unica', aplicado: false })
         expect(await marcas('Leche')).toEqual([undefined, true, undefined])
-        expect(porGrupo(await down(db())).Leche).toMatchObject({ aplicado: false, quitar: false })
+        expect(porGrupo(await down(db())).Leche).toBeUndefined() // up no marcó nada: down no toca nada
     })
 })

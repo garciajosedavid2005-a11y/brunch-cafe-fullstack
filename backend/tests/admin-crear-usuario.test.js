@@ -65,8 +65,9 @@ describe('Crear usuario desde el admin', () => {
         await crear()
         await esperarAltasPendientes()
         expect(correoMock.enviar).toHaveBeenCalledTimes(1)
-        const { url, correo, nombre } = correoMock.enviar.mock.calls[0][0]
-        expect({ correo, nombre }).toEqual({ correo: 'laura.gomez@example.com', nombre: 'Laura' })
+        const { url, correo, nombre, rol } = correoMock.enviar.mock.calls[0][0]
+        // 3.7.4 · El correo dice el rol con su nombre visible (un cliente creado por el admin no lleva rol)
+        expect({ correo, nombre, rol }).toEqual({ correo: 'laura.gomez@example.com', nombre: 'Laura', rol: 'Mesero' })
         expect(new URL(url).searchParams.get('tipo')).toBe('crear')
 
         const usuario = await conToken('laura.gomez@example.com')
@@ -83,8 +84,9 @@ describe('Crear usuario desde el admin', () => {
     })
 
     it('el correo dice «Crea tu contraseña» y que vence en 24 horas', async () => {
-        const { textoCorreoCreacion } = await vi.importActual('../src/modulos/identidad/recuperacion.email.js')
-        const { asunto, texto } = textoCorreoCreacion({ nombre: 'Laura', url: 'http://x/restablecer-contrasena?token=t&tipo=crear' })
+        // 3.7.4 · La plantilla de la marca (también en texto plano)
+        const { correoCreacion } = await import('../src/modulos/compartido/plantillasCorreo.js')
+        const { asunto, texto } = correoCreacion({ nombre: 'Laura', rol: 'Mesero', enlace: 'http://x/restablecer-contrasena?token=t&tipo=crear' })
         expect(asunto).toMatch(/Crea tu contraseña/)
         expect(texto).toMatch(/Crea tu contraseña/)
         expect(texto).toMatch(/24 horas/)

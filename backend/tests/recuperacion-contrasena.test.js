@@ -11,6 +11,7 @@ const correoMock = vi.hoisted(() => ({ enviar: vi.fn(), configurado: vi.fn() }))
 vi.mock('../src/modulos/identidad/recuperacion.email.js', () => ({
     enviarCorreoRecuperacion: correoMock.enviar,
     smtpConfigurado: correoMock.configurado,
+    rolParaCorreo: (rol) => (rol && rol.nombre !== 'cliente' ? rol.etiqueta || rol.nombre : undefined), // 3.7.4
 }))
 
 const solicitar = (correo) => api().post('/api/v1/auth/recuperar-contrasena').send({ correo })
