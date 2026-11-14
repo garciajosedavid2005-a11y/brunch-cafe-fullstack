@@ -35,6 +35,7 @@ import HorariosSection from "./sections/HorariosSection";
 import SalonSection from "./sections/SalonSection";
 import ProfileSection from "./sections/ProfileSection";
 import useAnchoAccionesFijas from "./hooks/useAnchoAccionesFijas";
+import LimiteErrores from "../../components/LimiteErrores/LimiteErrores";
 import "./AdminDashboard.css";
 
 const sections = [
@@ -169,7 +170,8 @@ export default function AdminDashboard() {
 
         {/* ÁREA DE CONTENIDO */}
         <section ref={contenidoRef} className="admin-dashboard__content" aria-live="polite">
-          {renderContent()}
+          {/* 2.6b · Si la sección falla al dibujarse, la cabecera y el menú siguen en pie */}
+          <LimiteErrores key={activeTab} seccion={sections.find((s) => s.id === activeTab)?.label}>{renderContent()}</LimiteErrores>
         </section>
       </div>
     </main>

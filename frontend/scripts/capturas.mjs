@@ -216,6 +216,33 @@ const agregarRondaDeEjemplo = async (p) => {
   await limonada.waitFor({ state: "detached" });
 };
 
+// 2.7 · Un producto de cocina y una opción agotados (una sola vez por ejecución), por la API con el admin
+let agotadosPreparados = false;
+const prepararAgotados = async () => {
+  if (agotadosPreparados) return;
+  agotadosPreparados = true;
+  const ctx = await request.newContext();
+  try {
+    const login = await ctx.post(`${API}/auth/login`, { data: { correo: USUARIOS.admin, contraseña: CLAVE } });
+    if (!login.ok()) throw new Error(`Login de prueba falló para admin: ${login.status()}`);
+    const lista = await (await ctx.get(`${API}/staff/agotados`)).json();
+    const plato = lista.productos.find((pr) => pr.disponible && pr.estacion?.codigo === "cocina");
+    const grupo = lista.grupos.find((g) => g.opciones.length > 1);
+    for (const [ruta, que] of [[`${API}/staff/agotados/productos/${plato.id}`, plato.nombre], [`${API}/staff/agotados/grupos/${grupo.id}/opciones/${grupo.opciones.at(-1).id}`, grupo.nombre]]) {
+      const r = await ctx.post(ruta, { data: { disponible: false } });
+      if (!r.ok()) throw new Error(`Agotados (${que}): ${r.status()} ${(await r.text()).slice(0, 200)}`);
+    }
+  } finally {
+    await ctx.dispose();
+  }
+};
+
+// 2.6b · Lo que registra el límite de errores (su mensaje y el aviso de React con el error capturado). Solo
+// para las vistas que provocan el fallo a propósito
+// para las vistas que provocan el fallo a propósito. El aviso de React («%o») solo se exime emparejado: uno
+// por cada mensaje del límite, para no tapar otro error de React sin relación (revisor-reglas, 2.7)
+const ERRORES_LIMITE = { mensaje: /^console\.error: \[Brunch Café\] Error en la sección/, acompanante: /^console\.error: %o$/ };
+
 // 2.5 · Cola del KDS (una sola vez por ejecución; las vistas del KDS van al final porque cambian el
 // salón): umbrales de Cocina en 30/60 min (así las rondas sembradas de 35 y 80 min salen en «Atención» y
 // «Retrasada» y la nueva «A tiempo»), una ronda nueva en la mesa 5 con cocina y barra (con nota), un ítem
@@ -381,7 +408,13 @@ const medirContrasteNavbar = async (page) => {
   const medidas = await page.evaluate(({ selector, medir }) => {
     const fn = new Function(`return (${medir})`)();
     // Solo lo que se ve: un navbar transparente (absoluto) queda fuera de la pantalla al bajar
-    const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < window.innerHeight && getComputedStyle(el).visibility !== "hidden"; };
+    // 2.6b · y que no esté tapado (p. ej. por el fondo de un diálogo abierto): eso no lo ve nadie
+    const visible = (el) => {
+      const r = el.getBoundingClientRect();
+      if (!(r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < window.innerHeight && getComputedStyle(el).visibility !== "hidden")) return false;
+      const encima = document.elementFromPoint(r.left + r.width / 2, Math.min(Math.max(r.top + r.height / 2, 0), window.innerHeight - 1));
+      return Boolean(encima) && (encima === el || el.contains(encima) || encima.contains(el));
+    };
     // Un enlace sin texto que solo envuelve un icono (el carrito) se mide por su <img>
     const soloIcono = (el) => el.tagName === "A" && !el.textContent.trim() && el.querySelector("img");
     return [...document.querySelectorAll(selector)].filter(visible).filter((el) => !soloIcono(el))
@@ -393,7 +426,9 @@ const medirContrasteNavbar = async (page) => {
     const enlace = enlaces.nth(i);
     if (!(await enlace.isVisible())) continue;
     if (!(await enlace.evaluate((el) => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight; }))) continue;
-    await enlace.hover();
+    // 2.6b · Tapado (p. ej. por el fondo de un diálogo abierto): el usuario tampoco puede pasar el puntero,
+    // no se mide (antes esperaba 30 s y la vista fallaba sin foto)
+    if (!(await enlace.hover({ timeout: 2000 }).then(() => true, () => false))) continue;
     await page.waitForTimeout(300); // transición de color
     medidas.push(await enlace.evaluate((el, medir) => {
       const objetivo = !el.textContent.trim() && el.querySelector("img") ? el.querySelector("img") : el;
@@ -1001,7 +1036,7 @@ const VISTAS = {
     await p.getByRole("dialog", { name: /^Anular / }).waitFor();
   } },
   // Login tras «Cambiar de usuario». Cierra la sesión del contexto: se vuelve a iniciar en cada ancho
-  "staff-cambio-usuario": { usuario: "mesero", preparar: async (p) => {
+  "staff-cambio-usuario": { usuario: "mesero", cierraSesion: true, preparar: async (p) => {
     await p.context().request.post(`${API}/auth/login`, { data: { correo: USUARIOS.mesero, contraseña: CLAVE } });
     await p.goto(`${FRONT}/staff`);
     await p.getByRole("button", { name: "Cambiar de usuario" }).click();
@@ -1047,6 +1082,96 @@ const VISTAS = {
     // En vertical se baja a las rondas; en horizontal se ven la cabecera y el aviso
     if (p.viewportSize().width < 1000) await p.getByRole("region", { name: "Rondas enviadas" }).evaluate((r) => r.scrollIntoView({ block: "start" }));
   } },
+  // 2.6b · El caso 2 de Brayan con dos pantallas reales: el mesero tiene abierta la cuenta de la mesa 5 y
+  // cocina.dev marca «Empezar» y «Listo» en /kds; sin recargar, en la cuenta aparece un «Servir» más (canal
+  // en vivo). Falla si la cuenta no se actualiza o si cualquiera de las dos pantallas registra errores
+  "staff-listo-en-vivo": { usuario: "mesero", completa: false, preparar: async (p) => {
+    await prepararListos();
+    const api = p.context().request;
+    const leer = async (promesa, que) => {
+      const res = await promesa;
+      if (!res.ok()) throw new Error(`En vivo (${que}): ${res.status()} ${(await res.text()).slice(0, 200)}`);
+      return res.json();
+    };
+    const { mesas } = await leer(api.get(`${API}/staff/salon/mesas`), "plano");
+    const cuentaId = mesas.find((m) => m.numero === 5)?.cuenta?.id;
+    const { productos } = await leer(api.get(`${API}/staff/salon/catalogo`), "catálogo");
+    const plato = productos.find((pr) => pr.disponible && pr.estacion?.codigo === "cocina" && !pr.modificadores?.length);
+    const { cuenta } = await leer(api.post(`${API}/staff/salon/cuentas/${cuentaId}/items`, { data: { productoId: plato.id, cantidad: 1 } }), "agregar");
+    const n = cuenta.rondas.find((r) => r.estado === "borrador").numeroRonda;
+    await leer(api.post(`${API}/staff/salon/cuentas/${cuentaId}/rondas/${n}/enviar`, { data: { numeroRonda: n, versionEsperada: cuenta.version } }), "enviar");
+    await abrirCuentaDeMesa(p, 5);
+    await verCuentaEnVertical(p);
+    const nombreServir = `Servir 1 × ${plato.nombre}`;
+    const antes = await p.getByRole("button", { name: nombreServir }).count();
+
+    const kds = await (await contextoDe("cocina")).newPage();
+    const erroresKds = [];
+    escucharErrores(kds, erroresKds);
+    try {
+      await kds.setViewportSize({ width: 1280, height: 800 });
+      await kds.goto(`${FRONT}/kds`);
+      await kds.getByRole("region", { name: "Cola de Cocina" }).waitFor();
+      // La tarjeta de esta ronda (en la ejecución completa la cola tiene otras con el mismo plato)
+      const tarjeta = kds.locator("article")
+        .filter({ has: kds.getByRole("heading", { name: /^Mesa 5$/ }) })
+        .filter({ has: kds.getByText(new RegExp(`^Ronda ${n}( ·|$)`)) });
+      await tarjeta.getByRole("button", { name: `Empezar: 1 × ${plato.nombre}` }).first().click();
+      await tarjeta.getByRole("button", { name: `Listo: 1 × ${plato.nombre}` }).first().click();
+      await tarjeta.getByRole("button", { name: /^Deshacer: / }).first().waitFor();
+      if (erroresKds.length) throw new Error(`errores en /kds: ${erroresKds.join(" | ")}`);
+    } finally {
+      await kds.close();
+    }
+    // Sin recargar: llega por el canal en vivo de la cuenta
+    await p.waitForFunction(([nombre, previos]) => [...document.querySelectorAll("button")]
+      .filter((b) => b.getAttribute("aria-label") === nombre).length > previos, [nombreServir, antes], { timeout: 10_000 });
+  }, alFinal: async (p) => {
+    if (p.viewportSize().width < 1000) await p.getByRole("region", { name: "Rondas enviadas" }).evaluate((r) => r.scrollIntoView({ block: "end" }));
+  } },
+  // 2.7 · «Agotados» (F2-5): el mesero agota desde /staff (confirmación: no puede reactivar) y la cocina ve
+  // el panel desde /kds en su estación, con un producto y una opción ya agotados (los agota el admin por la API)
+  "staff-agotados": { usuario: "mesero", completa: false, preparar: async (p) => {
+    await prepararAgotados();
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("navigation", { name: /secciones del panel/i }).getByRole("button", { name: "Agotados" }).click();
+    await p.getByRole("list", { name: "Productos" }).waitFor();
+  } },
+  "staff-agotados-confirmar": { usuario: "mesero", completa: false, preparar: async (p) => {
+    await prepararAgotados();
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("navigation", { name: /secciones del panel/i }).getByRole("button", { name: "Agotados" }).click();
+    await p.getByRole("button", { name: /^Agotar / }).first().click();
+    await p.getByRole("dialog", { name: /^Agotar / }).waitFor();
+  } },
+  "kds-agotados": { usuario: "cocina", completa: false, preparar: async (p) => {
+    await prepararAgotados();
+    await p.goto(`${FRONT}/kds`);
+    await p.getByRole("button", { name: "Agotados" }).click();
+    await p.getByRole("list", { name: "Productos" }).waitFor();
+  } },
+  // 2.6b · Aviso del límite de errores: una sección que no puede dibujarse (la API responde, en el navegador,
+  // una ronda sin ítems) muestra «Algo salió mal en esta sección» y el resto de la pantalla sigue
+  "staff-limite-errores": { usuario: "mesero", completa: false, erroresEsperados: ERRORES_LIMITE, preparar: async (p) => {
+    await p.route(/\/staff\/salon\/cuentas\/[0-9a-f]{24}$/, async (ruta) => {
+      const r = await ruta.fetch();
+      const cuenta = await r.json();
+      await ruta.fulfill({ response: r, json: { ...cuenta, rondas: [{ id: "x", numeroRonda: 1, estado: "enviada", subtotal: 0, items: null }] } });
+    });
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: /^Mesa 1,/ }).click();
+    await p.getByRole("button", { name: /^Ver cuenta/ }).click();
+    await p.getByRole("alert").filter({ hasText: "Algo salió mal en esta sección" }).waitFor();
+  } },
+  "kds-limite-errores": { usuario: "cocina", completa: false, erroresEsperados: ERRORES_LIMITE, preparar: async (p) => {
+    await p.route(/\/staff\/cocina\/cola\?/, async (ruta) => {
+      const r = await ruta.fetch();
+      const cola = await r.json();
+      await ruta.fulfill({ response: r, json: { ...cola, salon: [{ tipo: "salon", comandaId: "x", cuentaId: "c", numeroRonda: 1, mesas: [1], mesero: "Mesero P.", enviadaEn: new Date().toISOString(), items: null }] } });
+    });
+    await p.goto(`${FRONT}/kds`);
+    await p.getByRole("alert").filter({ hasText: "Algo salió mal en esta sección" }).waitFor();
+  } },
   "staff-listos-deshacer": { usuario: "admin", completa: false, preparar: async (p) => {
     await prepararListos();
     await abrirCuentaDeMesa(p, 5);
@@ -1057,6 +1182,18 @@ const VISTAS = {
 };
 
 // Sin --hide-scrollbars (Playwright lo pone por defecto): así se ven las barras de desplazamiento
+// 2.6b · Errores del navegador que hacen fallar una vista: los de la página (excepciones sin capturar, como
+// el ReferenceError que dejó /staff en blanco) y los console.error (también los del límite de errores y los
+// avisos de React). Los «Failed to load resource» son respuestas HTTP de error que algunas vistas provocan a
+// propósito (409, 401…): esas no cuentan.
+const erroresConsola = [];
+const escucharErrores = (pagina, lista) => {
+  pagina.on("pageerror", (e) => lista.push(`pageerror: ${e.message}`));
+  pagina.on("console", (m) => {
+    if (m.type() === "error" && !m.text().startsWith("Failed to load resource")) lista.push(`console.error: ${m.text().split("\n")[0]}`);
+  });
+};
+
 const navegador = await chromium.launch({ ignoreDefaultArgs: ["--hide-scrollbars"] });
 await mkdir(SALIDA, { recursive: true });
 const contextos = {};
@@ -1079,11 +1216,15 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
   for (const { ancho, alto, etiqueta, pantalla } of TAMANOS) {
     const page = await (await contextoDe(vista.usuario)).newPage();
     const consola = [];
-    page.on("console", (m) => m.type() === "error" && consola.push(m.text()));
+    escucharErrores(page, consola);
     try {
       await page.setViewportSize({ width: ancho, height: alto });
       await vista.preparar(page);
       await page.waitForLoadState("networkidle");
+      // 2.6b · Una pantalla que se queda en blanco (React desmontó todo) es un fallo, no una foto
+      if (await page.evaluate(() => (document.getElementById("root")?.innerHTML.trim().length ?? 0) === 0)) {
+        throw new Error(`la pantalla quedó en blanco${consola.length ? `: ${consola[0]}` : ""}`);
+      }
       const completa = vista.completa !== false && !pantalla;
       if (completa) {
         // Recorre la página como un usuario: las secciones con animación de entrada
@@ -1182,13 +1323,39 @@ for (const [nombre, vista] of Object.entries(VISTAS)) {
         await page.waitForTimeout(300);
       }
       await page.screenshot({ path: archivo, fullPage: completa });
-      console.log(`✓ ${archivo}${consola.length ? `  (errores de consola: ${consola.join(" | ").slice(0, 200)})` : ""}`);
+      // 2.6b · Errores de la página o de la consola: la vista falla (antes solo se anotaban junto a la foto).
+      // Solo las vistas que provocan un fallo a propósito declaran los suyos (`erroresEsperados`, una lista
+      // cerrada); un pageerror nunca se exime
+      if (vista.erroresEsperados) {
+        const { mensaje, acompanante } = vista.erroresEsperados;
+        const propios = consola.filter((e) => mensaje.test(e)).length;
+        if (!propios) throw new Error("se esperaba el fallo provocado y no apareció en la consola");
+        let acompanantes = propios;
+        consola.splice(0, consola.length, ...consola.filter((e) => {
+          if (mensaje.test(e)) return false;
+          if (acompanante.test(e) && acompanantes > 0) { acompanantes -= 1; return false; }
+          return true;
+        }));
+      }
+      if (consola.length) {
+        erroresConsola.push({ vista: nombre, tamano: etiqueta, errores: [...consola] });
+        console.error(`✗ ${archivo}\n    errores en la consola: ${consola.join(" | ").slice(0, 400)}`);
+      } else {
+        console.log(`✓ ${archivo}`);
+      }
     } catch (error) {
       fallidas += 1;
       console.error(`✗ ${nombre} ${etiqueta}px: ${error.message.split("\n")[0]}`);
     } finally {
       await page.close();
     }
+  }
+  // 2.6b · Una vista que cierra la sesión (staff-cambio-usuario) deja su contexto sin cookie: las vistas
+  // siguientes del mismo usuario abren uno nuevo con su login (en la ejecución completa fallaban con 401)
+  if (vista.cierraSesion) {
+    const clave = vista.usuario || "invitado";
+    await contextos[clave]?.close();
+    delete contextos[clave];
   }
 }
 await sesionAdmin?.dispose();
@@ -1221,6 +1388,12 @@ if (MEDIR_SOLAPES) {
   await writeFile(join(SALIDA, "medicion-solapes.json"), JSON.stringify(solapes, null, 2));
   console.log(`
 Medición de solapes: ${solapes.length} columna(s) tapada(s) → ${join(SALIDA, "medicion-solapes.json")}`);
+}
+if (erroresConsola.length) {
+  console.error(`
+Errores en la consola del navegador en ${erroresConsola.length} captura(s):`);
+  for (const { vista, tamano, errores } of erroresConsola) console.error(`  ${vista} ${tamano}: ${errores.join(" | ").slice(0, 300)}`);
+  process.exitCode = 1;
 }
 // No se pisa el 1 de las mediciones (contraste del navbar, paleta)
 if (fallidas) process.exitCode = 1;

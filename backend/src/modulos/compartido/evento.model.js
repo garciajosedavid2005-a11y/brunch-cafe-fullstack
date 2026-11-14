@@ -7,7 +7,9 @@ import { AppError } from './errors.js'
 // datos.comanda): así el historial de una cuenta sale con el índice { entidad, entidadId, createdAt }.
 // 1.5b · 'usuario': alta de cuentas desde el admin (quién la creó)
 // 1.14 · 'configuracion': cambios de los horarios (quién y datos.antes / datos.despues)
-export const ENTIDADES_EVENTO = ['pedido', 'reserva', 'mesa', 'cuenta', 'usuario', 'configuracion']
+// 2.7 · 'producto' (F2-5) y 'modificador' (grupo de modificadores; datos.opcion y datos.nombre): agotar y
+// reactivar desde la operación, con quién lo hizo
+export const ENTIDADES_EVENTO = ['pedido', 'reserva', 'mesa', 'cuenta', 'usuario', 'configuracion', 'producto', 'modificador']
 // Los Eventos anteriores a 1.4 no guardan `tipo` (se leen como 'cambio_estado' por el default): un filtro
 // por tipo debe usar { tipo: { $in: ['cambio_estado', null] } } para incluirlos.
 export const TIPOS_EVENTO = [
@@ -20,6 +22,8 @@ export const TIPOS_EVENTO = [
     'item_estado_cambiado',
     // 2.3 · Una estación terminó su parte de un pedido a domicilio (entidad 'pedido', datos.estacion)
     'estacion_lista',
+    // 2.7 · Agotar y reactivar (de/a: 'disponible' ↔ 'agotado')
+    'producto_agotado', 'producto_reactivado', 'opcion_agotada', 'opcion_reactivada',
 ]
 const eventoSchema = new mongoose.Schema({
     entidad: {

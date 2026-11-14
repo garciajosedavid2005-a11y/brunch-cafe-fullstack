@@ -1,0 +1,42 @@
+/* 2.6b · Aviso del límite de errores: texto e icono (no solo color), botón de 44 px */
+.limite-errores {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+  margin: 0.5rem 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid #e3b7b0;
+  border-left: 6px solid #a1261e;
+  border-radius: 12px;
+  background: #fdf1ef;
+  color: #5e1712;
+}
+
+.limite-errores__texto {
+  display: grid;
+  flex: 1 1 240px;
+  gap: 0.15rem;
+}
+
+.limite-errores__boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 10px;
+  background: #890620;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.limite-errores__boton:hover { background: #6f0519; }
+
+.limite-errores__boton:focus-visible {
+  outline: 3px solid #2c0703;
+  outline-offset: 2px;
+}

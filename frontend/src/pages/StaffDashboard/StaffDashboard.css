@@ -503,8 +503,11 @@ a.staff-tablet__boton:visited {
   .staff-tablet__acciones {
     margin-left: auto;
   }
+}
 
-  /* En vertical las seis pestañas caben sin desplazar: icono sobre el texto */
+/* Por debajo de 1100 px las pestañas caben sin desplazar con el icono sobre el texto (desde 2.7 son
+   hasta ocho con «Agotados»; en fila desbordaban a 1024 y «Mesas» quedaba cortada) */
+@media (max-width: 1100px) {
   .staff-tablet__nav button {
     flex: 1 1 0;
     flex-direction: column;

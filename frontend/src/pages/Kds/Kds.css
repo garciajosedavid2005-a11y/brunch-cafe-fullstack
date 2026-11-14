@@ -125,6 +125,20 @@ a.kds__boton:visited {
 
 .kds__acciones > .kds__boton { flex-shrink: 0; }
 
+/* 2.7 · Por debajo de 1100 px (tablet) los botones no caben junto al logo: bajan a su propia fila y se
+   reparten en varias si hace falta, con el saludo arriba; sin esto, a 768 la página desplazaba en
+   horizontal (revisor-visual, 2.7) */
+@media (max-width: 1100px) {
+  .kds__acciones {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+
+  .kds__hola { flex-basis: 100%; }
+}
+
 .kds__estacion:focus-visible,
 .kds__boton:focus-visible,
 .kds-boton:focus-visible {

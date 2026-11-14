@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, BellRing, HandPlatter, Minus, Plus, ReceiptText, RefreshCw, Send, Trash2, TriangleAlert, Undo2, UtensilsCrossed } from "lucide-react";
 import { apiRequest } from "../../../services/api";
 import { useDialogo } from "../../../context/useDialogo";
@@ -6,6 +6,7 @@ import { formatearCOP } from "../../../utils/moneda";
 import { formatearHora } from "../../../utils/fechas";
 import { nuevaClave } from "../plano/estadosMesa";
 import { useCuenta } from "./useCuenta";
+import { useEnVivo } from "../compartido/useEnVivo";
 import DialogoProducto from "./DialogoProducto";
 import DialogoAnular from "./DialogoAnular";
 import {
@@ -91,6 +92,9 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
   useEffect(() => {
     if (tomaComandas) cargarCatalogo();
   }, [tomaComandas, cargarCatalogo]);
+  // 2.7 · Lo que se agota o se reactiva en otra pantalla (canal «catalogo») recarga el menú al momento
+  const canalesCatalogo = useMemo(() => (tomaComandas ? ["catalogo"] : []), [tomaComandas]);
+  useEnVivo(canalesCatalogo, cargarCatalogo);
 
   if (!cuenta) {
     return (
@@ -110,7 +114,16 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
   const enviadas = cuenta.rondas.filter((r) => r.estado !== "borrador");
   const huboEnviados = enviadas.some((r) => r.items.length > 0);
   const enRonda = borrador ? cantidadItems(borrador) : 0;
-  const conProblema = Boolean(borrador?.items.some((i) => problemas[i.id]));
+  // 2.7 · Además de lo que rechazó el último envío, lo que el menú ya marca como agotado (producto u opción)
+  const agotadoEnMenu = (item) => {
+    const producto = catalogo?.productos.find((p) => p.id === item.productoId);
+    if (!producto) return null;
+    if (!producto.disponible) return "producto_agotado";
+    const opciones = (producto.modificadores || []).flatMap((g) => g.opciones);
+    return item.modificadores.some((m) => opciones.find((o) => o.id === m.opcionId)?.disponible === false) ? "opcion_agotada" : null;
+  };
+  const problemaDe = (item) => problemas[item.id] || agotadoEnMenu(item);
+  const conProblema = Boolean(borrador?.items.some((i) => problemaDe(i)));
   const listos = enviadas.reduce((suma, r) => suma + r.items.filter((i) => i.estado === "listo").length, 0);
   const sirve = editable && puede(permisos, "item:servir");
   const deshaceListo = editable && permisos.includes("*"); // F2-7: pasados los 10 s, solo el admin
@@ -321,7 +334,7 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
                 <>
                   <ul className="comanda-items">
                     {borrador.items.map((item) => {
-                      const problema = problemas[item.id];
+                      const problema = problemaDe(item);
                       return (
                         <li key={item.id} className={`comanda-item${problema ? " is-problema" : ""}`}>
                           <div className="comanda-item__texto">

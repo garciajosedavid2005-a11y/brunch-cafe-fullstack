@@ -1,0 +1,165 @@
+/* 2.7 · Panel «Agotados» (/staff y /kds): estado con texto e icono, botones de 44 px */
+.agotados {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.agotados__barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.agotados__titulo {
+  margin: 0;
+  font-family: var(--fuente-titulos, inherit);
+  font-size: 1.6rem;
+  color: var(--color-oscuro);
+}
+
+.agotados__filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+}
+
+.agotados__estaciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.agotados__estacion {
+  min-height: 44px;
+  padding: 0 1.1rem;
+  border: 1px solid #d8c3bc;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--color-oscuro);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.agotados__estacion[aria-pressed="true"] {
+  border-color: var(--color-primario);
+  background: var(--color-primario);
+  color: #ffffff;
+}
+
+.agotados__buscar {
+  flex: 1 1 220px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 0.9rem;
+  border: 1px solid #d8c3bc;
+  border-radius: 12px;
+  background: #ffffff;
+  font: inherit;
+}
+
+.agotados__columnas {
+  display: grid;
+  /* Dos columnas solo si cada una tiene 360 px: en vertical (768) va una, y el nombre no se parte en 4 líneas */
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 1rem 1.25rem;
+  align-items: start;
+}
+
+.agotados__subtitulo {
+  margin: 0 0 0.5rem;
+  font-family: inherit; /* la del cuerpo en negrita: la serif fina de títulos se leía poco (revisor-visual, 2.7) */
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-oscuro);
+}
+
+.agotados__sin-accion {
+  max-width: 8.5rem;
+  font-size: 0.85rem;
+  line-height: 1.25;
+  color: #6a5752;
+}
+
+.agotados__lista {
+  display: grid;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  border: 1px solid #ead8d2;
+  border-radius: 14px;
+  background: #fffdfb;
+  list-style: none;
+}
+
+.agotados__fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  padding: 0.55rem 0.8rem;
+  border-top: 1px solid #f1e4df;
+}
+
+.agotados__fila:first-child { border-top: 0; }
+
+.agotados__fila.is-agotado .agotados__texto strong { color: #594742; }
+
+.agotados__texto {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.agotados__detalle {
+  font-size: 0.82rem;
+  color: #6a5752;
+}
+
+.agotados__estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.agotados__estado--disponible { background: #e6f4ea; color: #1d5b2e; }
+.agotados__estado--agotado { background: #ececec; color: #424242; }
+
+.agotados__boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 1px solid #d8c3bc;
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--color-primario);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.agotados__boton--agotar { color: #a1261e; }
+.agotados__boton:hover:not(:disabled) { background: #f7e7e2; }
+.agotados__boton:disabled { opacity: 0.6; cursor: wait; }
+
+.agotados__vacio,
+.agotados__aviso {
+  margin: 0;
+  color: #6a5752;
+}
+
+.agotados__aviso { color: #a1261e; }
+
+@media (max-width: 600px) {
+  .agotados__fila { grid-template-columns: minmax(0, 1fr) auto; }
+  .agotados__fila > .agotados__boton { grid-column: 1 / -1; justify-self: start; }
+}

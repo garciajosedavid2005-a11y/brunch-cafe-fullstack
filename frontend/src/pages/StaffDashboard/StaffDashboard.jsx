@@ -1,6 +1,7 @@
 import { createElement, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  Ban,
   CalendarCheck2,
   ChefHat,
   CalendarDays,
@@ -28,6 +29,8 @@ import ProfileSection from "../CustomerDashboard/sections/ProfileSection";
 import SecuritySection from "../CustomerDashboard/sections/SecuritySection";
 import PlanoMesas from "./plano/PlanoMesas";
 import AvisoListos from "./plano/AvisoListos";
+import PanelAgotados from "./agotados/PanelAgotados";
+import LimiteErrores from "../../components/LimiteErrores/LimiteErrores";
 import { useSonidoKds } from "../Kds/useSonidoKds";
 import CuentasAbiertas from "./cuentas/CuentasAbiertas";
 import Logo from "../../components/Logo/Logo";
@@ -51,6 +54,8 @@ export default function StaffDashboard() {
   const puedeVerPedidos = tienePermiso(user, "pedido:ver");
   const puedeVerMesas = tienePermiso(user, "mesa:ver");
   const puedeVerKds = tienePermiso(user, "kds:ver"); // 2.5 · enlace a la pantalla de cocina
+  // 2.7 · Agotar («86») o reactivar productos y opciones desde la operación
+  const puedeAgotar = tienePermiso(user, "producto:agotar") || tienePermiso(user, "producto:reactivar");
   // 1.9 · «Cuentas abiertas» (salón con cuenta:ver, domicilio con pedido:ver)
   const puedeVerCuentas = tienePermiso(user, "cuenta:ver") || puedeVerPedidos;
   // Con mesa:ver, el panel abre primero el plano de mesas (decisión 1.6 del 2026-11-07)
@@ -153,6 +158,7 @@ export default function StaffDashboard() {
       ? [{ id: "reservas", label: "Reservas", icon: CalendarDays }]
       : []),
     ...(puedeVerPedidos ? [{ id: "pedidos", label: "Pedidos", icon: ListOrdered }] : []),
+    ...(puedeAgotar ? [{ id: "agotados", label: "Agotados", icon: Ban }] : []),
     { id: "perfil", label: "Mi perfil", icon: UserRound },
     { id: "seguridad", label: "Seguridad", icon: ShieldCheck },
   ];
@@ -254,13 +260,20 @@ export default function StaffDashboard() {
       </nav>
 
       {errorPanel && <p className="dashboard-notice is-error staff-tablet__aviso" role="alert">{errorPanel}</p>}
-      {avisaListos && <AvisoListos usuarioId={user.id} onAbrirCuenta={abrirCuentaLista} onNuevos={sonido.sonar} />}
+      {/* 2.6b · Límites de errores: si el aviso o la sección fallan, el resto de /staff sigue en pie */}
+      {avisaListos && (
+        <LimiteErrores seccion="Listo para servir">
+          <AvisoListos usuarioId={user.id} onAbrirCuenta={abrirCuentaLista} onNuevos={sonido.sonar} />
+        </LimiteErrores>
+      )}
 
       <div className="staff-tablet__contenido">
+        <LimiteErrores key={seccion} seccion={navigation.find((n) => n.id === seccion)?.label}>
         {seccion === "mesas" && <PlanoMesas permisos={permisos} cuentaVista={cuentaVista} onCuentaVista={setCuentaVista} />}
         {seccion === "cuentas" && <CuentasAbiertas permisos={permisos} />}
+        {seccion === "agotados" && <PanelAgotados permisos={permisos} />}
 
-        {!["mesas", "cuentas"].includes(seccion) && (
+        {!["mesas", "cuentas", "agotados"].includes(seccion) && (
         <section className="customer-dashboard__content" aria-live="polite">
           {seccion === "resumen" && (
             <div>
@@ -480,6 +493,7 @@ export default function StaffDashboard() {
           {seccion === "seguridad" && <SecuritySection />}
         </section>
         )}
+        </LimiteErrores>
       </div>
     </main>
   );

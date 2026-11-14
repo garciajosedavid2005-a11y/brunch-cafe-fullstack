@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { DialogoProvider } from "../../../context/DialogoContext";
 
 const estado = vi.hoisted(() => ({ apiRequest: vi.fn() }));
-vi.mock("../../../services/api", () => ({ apiRequest: estado.apiRequest }));
+vi.mock("../../../services/api", () => ({ apiRequest: estado.apiRequest, API_URL: "http://api.test" }));
 
 import TomaComanda from "./TomaComanda";
 
@@ -131,5 +131,43 @@ describe("«Deshacer listo» del admin (F2-7)", () => {
     fireEvent.click(confirmar);
     await waitFor(() => expect(llamadasEstado("i1")).toHaveLength(1));
     expect(JSON.parse(llamadasEstado("i1")[0][1].body)).toEqual({ a: "en_preparacion", de: "listo", motivo: "Faltaba la salsa" });
+  });
+});
+
+// 2.6b · Los dos casos de Brayan, como pasan en la tablet: el mesero (permisos reales, sin anular) abre una
+// cuenta con ítems enviados y, con ella abierta, la cocina marca uno «Listo» (llega por «cuenta:<id>» y la
+// cuenta se relee). Con la versión que servía su Vite (`conAccionesListo` usada sin declarar) los dos
+// lanzaban ReferenceError y /staff quedaba en blanco.
+describe("Casos de Brayan (2.6b)", () => {
+  const MESERO_REAL = [
+    "mesa:ver", "mesa:operar", "mesa:bloquear", "mesa:unir", "cuenta:abrir", "cuenta:ver", "cuenta:transferir",
+    "comanda:tomar", "comanda:enviar", "cuenta:solicitar", "item:servir", "producto:agotar",
+  ];
+  class FakeEventSource {
+    static instancias = [];
+    static CLOSED = 2;
+    constructor(url) { this.url = url; FakeEventSource.instancias.push(this); }
+    addEventListener() {}
+    close() {}
+  }
+  beforeEach(() => { FakeEventSource.instancias = []; globalThis.EventSource = FakeEventSource; });
+  afterEach(() => { delete globalThis.EventSource; });
+
+  it("1 · abrir la cuenta para agregar un producto, con rondas enviadas, la dibuja entera", async () => {
+    respuestas.cuenta = CUENTA({ rondas: [{ ...CUENTA().rondas[0], items: [item("i4", "Arepa"), item("i5", "Jugo", { estado: "en_preparacion", iniciadoEn: LISTO.iniciadoEn })] }] });
+    await pintar(MESERO_REAL);
+    expect(screen.getByRole("region", { name: "Rondas enviadas" })).toHaveTextContent("Arepa");
+    expect(screen.getByRole("region", { name: "Menú" })).toBeInTheDocument();
+  });
+
+  it("2 · con la cuenta abierta, la cocina marca «Listo»: aparece «Servir» sin romper la pantalla", async () => {
+    respuestas.cuenta = CUENTA({ rondas: [{ ...CUENTA().rondas[0], items: [item("i4", "Arepa")] }] });
+    await pintar(MESERO_REAL);
+    const fuente = FakeEventSource.instancias.find((f) => f.url.includes("cuenta%3Ac1") || f.url.includes("cuenta:c1"));
+    expect(fuente).toBeTruthy();
+    respuestas.cuenta = CUENTA({ rondas: [{ ...CUENTA().rondas[0], items: [item("i4", "Arepa", LISTO)] }] });
+    await act(async () => { fuente.onmessage({ data: JSON.stringify({ canal: "cuenta:c1", tipo: "item_estado", ids: { cuentaId: "c1", itemId: "i4" } }) }); });
+    expect(await screen.findByRole("button", { name: "Servir 1 × Arepa" })).toBeInTheDocument();
+    expect(screen.getByText("Listo para servir (1)")).toBeInTheDocument();
   });
 });

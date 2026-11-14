@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LayoutGrid, UserRoundCog, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, Ban, LayoutGrid, UserRoundCog, Volume2, VolumeX } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 import { apiRequest } from "../../services/api";
 import { tienePermiso } from "../../utils/permisos";
@@ -11,6 +11,8 @@ import { nuevaClave } from "../StaffDashboard/plano/estadosMesa";
 import { TarjetaDomicilio, TarjetaRonda } from "./TarjetasKds";
 import { INTERVALO_MS, guardarEstacion, leerEstacion, nivelTiempo } from "./kdsUtils";
 import { useSonidoKds } from "./useSonidoKds";
+import LimiteErrores from "../../components/LimiteErrores/LimiteErrores";
+import PanelAgotados from "../StaffDashboard/agotados/PanelAgotados";
 import "../StaffDashboard/plano/PlanoMesas.css";
 import "./Kds.css";
 
@@ -35,6 +37,9 @@ export default function Kds() {
   const navigate = useNavigate();
   const puedePreparar = tienePermiso(user, "item:preparar");
   const puedePrepararPedido = tienePermiso(user, "pedido:preparar");
+  // 2.7 · «Agotados»: la cocina o la barra agotan y reactivan desde su pantalla (la cola sigue al día detrás)
+  const puedeAgotar = tienePermiso(user, "producto:agotar") || tienePermiso(user, "producto:reactivar");
+  const [vista, setVista] = useState("cola");
   const [estaciones, setEstaciones] = useState(null);
   const [errorEstaciones, setErrorEstaciones] = useState("");
   const [elegida, setElegida] = useState(leerEstacion);
@@ -147,6 +152,15 @@ export default function Kds() {
               Sonido
             </button>
           )}
+          {puedeAgotar && (vista === "cola" ? (
+            <button type="button" className="kds__boton" onClick={() => setVista("agotados")}>
+              <Ban size={20} aria-hidden="true" /> Agotados
+            </button>
+          ) : (
+            <button type="button" className="kds__boton kds__boton--destacado" onClick={() => setVista("cola")}>
+              <ArrowLeft size={20} aria-hidden="true" /> Volver a la cola
+            </button>
+          ))}
           <Link className="kds__boton" to="/staff">
             <LayoutGrid size={20} aria-hidden="true" /> Mi panel
           </Link>
@@ -156,6 +170,14 @@ export default function Kds() {
         </div>
       </header>
 
+      {vista === "agotados" ? (
+        <div className="kds__agotados">
+          <LimiteErrores seccion="Agotados">
+            <PanelAgotados permisos={user?.permisos || []} estacionInicial={codigo || "todas"} />
+          </LimiteErrores>
+        </div>
+      ) : (
+      <>
       <div className="kds__barra">
         {estacion && <p className="kds__estacion-activa">Estación: <strong>{estacion.nombre}</strong></p>}
         {codigo && <Actualizado desde={actualizadoEn} error={error} onActualizar={recargar} enVivo={enVivo} />}
@@ -176,7 +198,9 @@ export default function Kds() {
       )}
       {!datos && codigo && !error && <p className="kds__vacio">Cargando la cola…</p>}
 
+      {/* 2.6b · Si una tarjeta falla al dibujarse, la cabecera y «Cambiar de usuario» siguen en pie */}
       {tarjetas.length > 0 && (
+        <LimiteErrores key={codigo} seccion={`Cola de ${datos.estacion.nombre}`}>
         <section className="kds__tarjetas" aria-label={`Cola de ${datos.estacion.nombre}`}>
           {tarjetas.map((t) => {
             const minutos = minutosDesde(t.desde);
@@ -196,6 +220,9 @@ export default function Kds() {
             );
           })}
         </section>
+        </LimiteErrores>
+      )}
+      </>
       )}
     </main>
   );

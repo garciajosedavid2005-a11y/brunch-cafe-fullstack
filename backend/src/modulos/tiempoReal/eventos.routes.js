@@ -23,7 +23,7 @@ export const MAX_CONEXIONES_POR_USUARIO = 5
 export const MAX_CANALES = 10
 // El código de estación sigue el formato del modelo (si cambia allí, cambia aquí)
 const CODIGO = FORMATO_CODIGO.source.slice(1, -1) // sin ^ ni $
-const FORMATO_CANAL = new RegExp(`^(plano|estacion:${CODIGO}|cuenta:[0-9a-f]{24}|mesero:[0-9a-f]{24})$`)
+const FORMATO_CANAL = new RegExp(`^(plano|catalogo|estacion:${CODIGO}|cuenta:[0-9a-f]{24}|mesero:[0-9a-f]{24})$`)
 
 const conexiones = new Map() // usuarioId → número de conexiones abiertas
 
@@ -38,6 +38,8 @@ export const validarCanales = (texto, sesion) => {
         const [tipo, id] = canal.split(':')
         const permitido = {
             plano: () => tienePermiso(sesion.permisos, 'mesa:ver'),
+            // 2.7 · Agotados y reactivados: quien toma comanda, el KDS y quien agota o reactiva
+            catalogo: () => ['comanda:tomar', 'kds:ver', 'producto:agotar', 'producto:reactivar'].some((p) => tienePermiso(sesion.permisos, p)),
             // 2.5b · y que la estación sea de su rol (el comodín, todas)
             estacion: () => tienePermiso(sesion.permisos, 'kds:ver') && operaEstacion(sesion, id),
             cuenta: () => tienePermiso(sesion.permisos, 'cuenta:ver') && mongoose.isValidObjectId(id),

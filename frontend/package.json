@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "capturas": "node scripts/capturas.mjs",
+    "humo": "node scripts/humo.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
