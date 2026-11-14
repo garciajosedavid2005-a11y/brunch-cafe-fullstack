@@ -11,9 +11,9 @@ import {
 import { validateToken } from './validateToken.js'
 import {
   crearLimiteLogin,
-  crearLimiteRecuperacion,
+  crearLimitesRecuperacion,
   crearLimiteRegistro,
-  crearLimiteRestablecimiento,
+  crearLimitesRestablecimiento,
 } from './rateLimit.js'
 import Usuario from './usuario.model.js'
 import { ROL_CLIENTE } from './permisos.js'
@@ -22,8 +22,8 @@ const router = Router()
 
 router.post('/registro', crearLimiteRegistro(), validateSchema(registroSchema), register)
 router.post('/login', crearLimiteLogin(), validateSchema(loginSchema), login)
-router.post('/recuperar-contrasena', crearLimiteRecuperacion(), validateSchema(solicitarRecuperacionSchema), solicitarRecuperacion)
-router.post('/restablecer-contrasena', crearLimiteRestablecimiento(), validateSchema(restablecerContrasenaSchema), restablecerContrasena)
+router.post('/recuperar-contrasena', ...crearLimitesRecuperacion(), validateSchema(solicitarRecuperacionSchema), solicitarRecuperacion)
+router.post('/restablecer-contrasena', ...crearLimitesRestablecimiento(), validateSchema(restablecerContrasenaSchema), restablecerContrasena)
 router.post('/logout', logout)
 router.get('/me', validateToken, async (req, res) => {
   const usuario = await Usuario.findById(req.usuario.id)

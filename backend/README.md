@@ -56,7 +56,7 @@ Sin tiempo real hasta la Fase 2. El plano se refresca cada 10 s y la cuenta y «
 
 **Probar en local:** `npm run seed:dev` crea `admin.dev`, `mesero.dev`, `cliente.dev` y `cocina.dev` (para el KDS en `/kds`) (@brunchcafe.test), con la contraseña de `DEV_USUARIOS_PASSWORD`. Las zonas y mesas de ejemplo las crea `npm run seed:salon` (solo si no hay zonas) y se editan en Admin › Salón.
 
-Para habilitar el enlace de recuperación configura `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` y, opcionalmente, `SMTP_FROM` en `backend/.env`. La solicitud se hace en `POST /api/v1/auth/recuperar-contrasena`; el enlace de un solo uso vence a los 30 minutos y actualiza la contraseña en `POST /api/v1/auth/restablecer-contrasena`. La API responde siempre `202` con el mismo mensaje y sin esperar el envío: así ni la respuesta ni su tiempo revelan si existe una cuenta. El token se guarda con hash (SHA-256), es de un solo uso, vence a los 30 minutos y, al usarlo, sube `tokenVersion` (se cierran todas las sesiones). Límites: 5 solicitudes y 10 restablecimientos por hora por IP. Si el envío falla, el enlace se invalida y el error se registra sin el correo.
+Para habilitar el enlace de recuperación configura `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` y, opcionalmente, `SMTP_FROM` en `backend/.env`. La solicitud se hace en `POST /api/v1/auth/recuperar-contrasena`; el enlace de un solo uso vence a los 30 minutos y actualiza la contraseña en `POST /api/v1/auth/restablecer-contrasena`. La API responde siempre `202` con el mismo mensaje y sin esperar el envío: así ni la respuesta ni su tiempo revelan si existe una cuenta. El token se guarda con hash (SHA-256), es de un solo uso, vence a los 30 minutos y, al usarlo, sube `tokenVersion` (se cierran todas las sesiones). Límites (2.8): 3 solicitudes por hora por IP + correo y 5 restablecimientos por hora por IP + enlace, con un tope de 30 por hora por IP en cada ruta (las tablets del local comparten IP: el error de una persona no bloquea a las demás). Si el envío falla, el enlace se invalida y el error se registra sin el correo.
 
 **Probar sin SMTP (solo desarrollo):** con `NODE_ENV=development` y sin `SMTP_HOST`/`SMTP_USER`/`SMTP_PASSWORD`, el enlace no se envía: aparece en el log del backend (`SMTP sin configurar: enlace de recuperación`) y sigue siendo válido 30 minutos. Pide el enlace en `/recuperar-contrasena` con un usuario de `npm run seed:dev`, copia el `enlace` del log y ábrelo. En `test` y `production` el enlace nunca se escribe en el log.
 
@@ -191,7 +191,7 @@ Lee `seed-data/menu.json` (categorías con descripción y productos con `codigo`
 - Sesión en cookie `token` **httpOnly**, `sameSite` configurable (`lax` por defecto) y `secure` automático en producción; dura lo mismo que el JWT. **Clientes y admin: 2 h** (`JWT_EXPIRES_IN`); **personal sin `*`** (mesero, cocina o un rol creado por el admin): **12 h** (`JWT_EXPIRES_IN_STAFF`), para el turno en tablet (F1-10). La duración se vuelve a comprobar en cada petición con el rol actual: si un mesero pasa a cliente o a admin, su sesión vale 2 h desde que se inició.
 - Token ausente, inválido o vencido → `401` (`UNAUTHORIZED`, `INVALID_TOKEN` o `SESSION_EXPIRED`); la cookie inválida se borra.
 - Login y registro responden con mensajes genéricos (no revelan si un correo está registrado).
-- Rate limit en memoria (una sola instancia): login 5 intentos **fallidos** cada 15 min por IP + correo; registro 10 por hora por IP → `429 TOO_MANY_REQUESTS`. Detrás de un proxy configura `TRUST_PROXY`.
+- Rate limit en memoria (una sola instancia): login 5 intentos **fallidos** cada 15 min por IP + correo; registro 30 por hora por IP; recuperación 3 por hora por IP + correo y restablecimiento 5 por hora por IP + enlace, ambos con tope de 30 por hora por IP → `429 TOO_MANY_REQUESTS`. Las tablets del local salen por la misma IP: por eso lo que lleva correo o enlace cuenta por persona (2.8). Detrás de un proxy configura `TRUST_PROXY`.
 - `helmet` activo; CORS solo para los orígenes de `CLIENT_URL` (lista separada por comas).
 - Correos normalizados (trim + minúsculas). Para revisar cuentas antiguas: `npm run report:correos` (solo reporta, no modifica).
 
@@ -277,8 +277,10 @@ Desde 0.12 la API es solo `/api/v1`. Las rutas sin versión responden `404 NOT_F
 
 | Método | Ruta | Acción |
 |---|---|---|
-| POST | `/api/v1/auth/registro` | Crear cuenta de cliente (rate limit 10/h por IP) |
+| POST | `/api/v1/auth/registro` | Crear cuenta de cliente (rate limit 30/h por IP) |
 | POST | `/api/v1/auth/login` | Iniciar sesión (rate limit 5 fallos/15 min por IP + correo) |
+| POST | `/api/v1/auth/recuperar-contrasena` | Pedir el enlace de recuperación (siempre `202`; rate limit 3/h por IP + correo y 30/h por IP) |
+| POST | `/api/v1/auth/restablecer-contrasena` | Cambiar la contraseña con el enlace (rate limit 5/h por IP + enlace y 30/h por IP) |
 | POST | `/api/v1/auth/logout` | Cerrar sesión. Personal (incluido el admin): sube `tokenVersion`, así el token deja de servir al instante y se cierran sus otras sesiones (1.1b). Cliente: solo borra la cookie |
 | GET | `/api/v1/auth/me` | Usuario de la sesión, rol y permisos |
 
