@@ -37,6 +37,7 @@ const opcion = z.object({
     nombre: texto('El nombre de la opción', 1, 40),
     precioExtra: entero('El recargo', 0, MAX_RECARGO).optional(),
     disponible: booleano('Disponible').optional(),
+    porDefecto: booleano('Por defecto').optional(), // 3.7.1
 })
 
 export const crearGrupoSchema = z.object({

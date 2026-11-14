@@ -13,7 +13,7 @@ const MAX_SELECCION = 20;
 const MAX_OPCIONES = 30;
 const MAX_RECARGO = 1_000_000;
 
-const OPCION_VACIA = { nombre: "", precioExtra: "0", disponible: true };
+const OPCION_VACIA = { nombre: "", precioExtra: "0", disponible: true, porDefecto: false };
 const GRUPO_VACIO = { nombre: "", obligatorio: false, min: "0", max: "1", activo: true, opciones: [OPCION_VACIA] };
 
 const entero = (texto) => (/^\d+$/.test(String(texto).trim()) ? Number(texto) : null);
@@ -92,7 +92,7 @@ export default function ModificadoresSection() {
       min: String(g.min),
       max: String(g.max),
       activo: g.activo,
-      opciones: g.opciones.map((o) => ({ id: o.id, nombre: o.nombre, precioExtra: String(o.precioExtra), disponible: o.disponible, disponibleAlAbrir: o.disponible })),
+      opciones: g.opciones.map((o) => ({ id: o.id, nombre: o.nombre, precioExtra: String(o.precioExtra), disponible: o.disponible, disponibleAlAbrir: o.disponible, porDefecto: Boolean(o.porDefecto) })),
     },
   });
 
@@ -105,6 +105,11 @@ export default function ModificadoresSection() {
   const cambiarOpcion = (i, campo, valor) => setForm((f) => ({
     ...f,
     datos: { ...f.datos, opciones: f.datos.opciones.map((o, j) => (j === i ? { ...o, [campo]: valor } : o)) },
+  }));
+  // 3.7.1 · «Opción por defecto» (solo con máximo 1): una sola opción marcada; "" = ninguna
+  const elegirPorDefecto = (indice) => setForm((f) => ({
+    ...f,
+    datos: { ...f.datos, opciones: f.datos.opciones.map((o, j) => ({ ...o, porDefecto: String(j) === indice })) },
   }));
   const agregarOpcion = () => setForm((f) => ({ ...f, datos: { ...f.datos, opciones: [...f.datos.opciones, { ...OPCION_VACIA }] } }));
   const quitarOpcion = async (i) => {
@@ -139,6 +144,7 @@ export default function ModificadoresSection() {
       });
       if (!confirmado) return;
     }
+    const unica = Number(d.max) === 1;
     const datos = {
       nombre: d.nombre.trim(),
       obligatorio: d.obligatorio,
@@ -152,6 +158,8 @@ export default function ModificadoresSection() {
         // 2.7b · De una opción guardada, «Disponible» solo si el admin lo cambió: así no se pisa lo que la
         // cocina agotó o reactivó con el diálogo abierto (el backend lo registra como en la operación)
         ...(!o.id || o.disponible !== o.disponibleAlAbrir ? { disponible: o.disponible } : {}),
+        // 3.7.1 · Con varias opciones (máximo > 1) no hay opción por defecto
+        porDefecto: unica && Boolean(o.porDefecto),
       })),
     };
     const guardado = original ? await grupos.actualizar(original.id, datos) : await grupos.crear(datos);
@@ -366,6 +374,28 @@ export default function ModificadoresSection() {
                   <span>Agregar opción</span>
                 </button>
               </fieldset>
+
+              {/* 3.7.1 · Solo en grupos de opción única: aparece ya marcada al pedir (Leche → Entera) */}
+              {form.datos.max.trim() === "1" && (
+                <div className="admin-form-group">
+                  <label htmlFor="grupo-por-defecto" className="admin-form-label">Opción por defecto</label>
+                  <select
+                    id="grupo-por-defecto"
+                    className="admin-form-input"
+                    aria-describedby="grupo-por-defecto-ayuda"
+                    value={String(form.datos.opciones.findIndex((o) => o.porDefecto)).replace("-1", "")}
+                    onChange={(e) => elegirPorDefecto(e.target.value)}
+                  >
+                    <option value="">Ninguna</option>
+                    {form.datos.opciones.map((o, i) => (o.nombre.trim()
+                      ? <option key={o.id || `nueva-${i}`} value={String(i)}>{o.nombre.trim()}</option>
+                      : null))}
+                  </select>
+                  <small id="grupo-por-defecto-ayuda" className="admin-form-ayuda">
+                    Aparece ya marcada al pedir y se usa si el pedido llega sin elegir. Si está agotada, se usa la siguiente disponible.
+                  </small>
+                </div>
+              )}
 
               <div className="admin-form-checkbox-row">
                 <label className="admin-checkbox-label">

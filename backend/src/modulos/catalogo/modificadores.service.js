@@ -20,7 +20,7 @@ const modificado = () => new AppError(409, 'GRUPO_MODIFICADO', 'El grupo cambió
 export const grupoNoValido = () => new AppError(400, 'GRUPO_NO_VALIDO', 'Algún grupo de modificadores no existe, está inactivo o está repetido.')
 const esDuplicado = (error) => error?.code === 11000
 
-const formatoOpcion = (o) => ({ id: String(o._id), nombre: o.nombre, precioExtra: o.precioExtra, disponible: o.disponible })
+const formatoOpcion = (o) => ({ id: String(o._id), nombre: o.nombre, precioExtra: o.precioExtra, disponible: o.disponible, porDefecto: Boolean(o.porDefecto) })
 
 /** Grupo tal como lo ve quien toma el pedido (catálogo con ?incluir=modificadores). */
 export const formatoGrupoPublico = (g) => ({
@@ -79,7 +79,7 @@ const fusionarOpciones = (actuales, nuevas) => {
         if (vistos.has(id)) throw opcionNoValida('Hay opciones repetidas.')
         vistos.add(id)
         const actual = porId.get(id)
-        return { _id: actual._id, nombre: actual.nombre, precioExtra: actual.precioExtra, disponible: actual.disponible, ...datos }
+        return { _id: actual._id, nombre: actual.nombre, precioExtra: actual.precioExtra, disponible: actual.disponible, porDefecto: actual.porDefecto, ...datos }
     })
 }
 

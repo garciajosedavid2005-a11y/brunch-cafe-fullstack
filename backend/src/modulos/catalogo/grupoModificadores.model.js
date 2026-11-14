@@ -5,7 +5,8 @@ import mongoose from 'mongoose'
 // esquema, no solo en la API):
 //   - min ≤ max y max ≤ número de opciones (cuenta todas: agotar una opción no invalida el grupo);
 //   - obligatorio ⇔ min ≥ 1 (un grupo «opcional» con mínimo 1 sería obligatorio de hecho);
-//   - recargo entero en COP ≥ 0; nombres de opción únicos dentro del grupo.
+//   - recargo entero en COP ≥ 0; nombres de opción únicos dentro del grupo;
+//   - 3.7.1 · como mucho una opción por defecto, y solo con máximo 1.
 // Cada opción tiene su propio _id estable: la comanda de 1.4 guarda una copia con ese id.
 // Concurrencia optimista (__v): dos ediciones de la misma versión no se pisan.
 export const MAX_OPCIONES = 30
@@ -20,6 +21,8 @@ const opcionSchema = new mongoose.Schema({
     nombre: { type: String, required: true, trim: true, minlength: 1, maxlength: 40 },
     precioExtra: { type: Number, required: true, default: 0, min: 0, max: MAX_RECARGO, validate: entero('El recargo') },
     disponible: { type: Boolean, required: true, default: true },
+    // 3.7.1 · Opción preseleccionada (solo en grupos de opción única): se aplica si la línea llega sin el grupo
+    porDefecto: { type: Boolean, required: true, default: false },
 })
 
 const grupoSchema = new mongoose.Schema({
@@ -49,6 +52,10 @@ grupoSchema.pre('validate', function () {
     }
     if (obligatorio === true && min < 1) this.invalidate('min', 'Un grupo obligatorio exige elegir al menos 1 opción')
     if (obligatorio === false && min >= 1) this.invalidate('obligatorio', 'Con un mínimo de 1 o más, el grupo es obligatorio')
+    // 3.7.1 · Como mucho una opción por defecto, y solo si se elige una sola opción (máximo 1)
+    const porDefecto = Array.isArray(opciones) ? opciones.filter((o) => o.porDefecto).length : 0
+    if (porDefecto > 1) this.invalidate('opciones', 'Solo una opción puede ir por defecto')
+    if (porDefecto === 1 && max !== 1) this.invalidate('opciones', 'La opción por defecto solo aplica a grupos de opción única (máximo 1)')
 })
 
 grupoSchema.index({ nombre: 1 }, { unique: true, collation: COLACION_NOMBRE })

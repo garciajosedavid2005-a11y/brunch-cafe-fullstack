@@ -56,9 +56,9 @@ describe('Grupos de modificadores (CRUD)', () => {
         const grupo = await crearGrupo()
         expect(grupo).toMatchObject({ nombre: 'Leche', obligatorio: false, min: 0, max: 1, activo: true, ejemplo: false, productos: 0 })
         expect(grupo.opciones).toEqual([
-            { id: expect.stringMatching(/^[0-9a-f]{24}$/), nombre: 'Entera', precioExtra: 0, disponible: true },
-            { id: expect.any(String), nombre: 'Deslactosada', precioExtra: 0, disponible: true },
-            { id: expect.any(String), nombre: 'Almendra', precioExtra: 2000, disponible: true },
+            { id: expect.stringMatching(/^[0-9a-f]{24}$/), nombre: 'Entera', precioExtra: 0, disponible: true, porDefecto: false },
+            { id: expect.any(String), nombre: 'Deslactosada', precioExtra: 0, disponible: true, porDefecto: false },
+            { id: expect.any(String), nombre: 'Almendra', precioExtra: 2000, disponible: true, porDefecto: false },
         ])
         await Producto.create({ codigo: 1, nombre: 'Latte', precio: 9000, categoria: categoria._id, gruposModificadores: [grupo.id] })
         const lista = await admin.get(GRUPOS)
@@ -120,7 +120,7 @@ describe('Grupos de modificadores (CRUD)', () => {
             opciones: grupo.opciones.map((o) => (o.id === almendra.id ? { id: o.id, nombre: 'Leche de almendra' } : { id: o.id, nombre: o.nombre })),
         })
         expect(res.status).toBe(200)
-        expect(res.body.opciones[2]).toEqual({ id: almendra.id, nombre: 'Leche de almendra', precioExtra: 2000, disponible: false })
+        expect(res.body.opciones[2]).toEqual({ id: almendra.id, nombre: 'Leche de almendra', precioExtra: 2000, disponible: false, porDefecto: false })
     })
 
     it('un id de opción repetido → 400 OPCION_NO_VALIDA (el id debe seguir siendo único)', async () => {

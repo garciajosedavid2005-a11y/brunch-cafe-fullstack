@@ -798,6 +798,17 @@ const VISTAS = {
       await agregarPlatoConOpciones(p, { nota: "Sin sal" });
     },
   },
+  // 3.7.1 · El mismo latte en el menú del cliente (domicilio): opciones por defecto ya marcadas
+  "menu-latte-opciones": { usuario: "cliente", completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/menu`);
+    await p.waitForLoadState("networkidle");
+    // El menú pagina: primero la categoría
+    await p.getByRole("button", { name: "Bebidas", exact: true }).click();
+    const tarjeta = p.locator("[id^='producto-']", { hasText: "Latte frío artesanal" }).first();
+    await tarjeta.scrollIntoViewIfNeeded();
+    await tarjeta.getByRole("button", { name: "Agregar al carrito" }).click({ force: true });
+    await p.getByRole("dialog", { name: "Latte frío artesanal" }).waitFor();
+  } },
   "carrito-opciones": {
     usuario: "cliente",
     preparar: async (p) => {
@@ -966,6 +977,12 @@ const VISTAS = {
     await abrirPestanaAdmin("Modificadores")(p);
     await p.getByRole("button", { name: "Editar" }).first().click();
     await p.waitForTimeout(400);
+  } },
+  // 3.7.1 · Grupo de opción única con su «Opción por defecto» (Leche → Entera)
+  "admin-modificadores-form-leche": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Modificadores")(p);
+    await p.getByRole("row", { name: /^Leche/ }).getByRole("button", { name: "Editar" }).click();
+    await p.getByLabel("Opción por defecto").scrollIntoViewIfNeeded();
   } },
   "admin-pedidos": { usuario: "admin", preparar: abrirPestanaAdmin("Pedidos") },
   "admin-reservas": { usuario: "admin", preparar: abrirPestanaAdmin("Reservas") },
@@ -1164,6 +1181,13 @@ const VISTAS = {
     await dialogo.getByRole("radio", { name: /Yema media/ }).check();
     await dialogo.getByRole("checkbox").first().check();
     await dialogo.getByRole("textbox", { name: /Nota/ }).fill("Tostadas sin mantequilla");
+  } },
+  // 3.7.1 · Latte recién abierto: Leche → Entera y Tamaño → Normal ya marcados
+  "staff-comanda-latte": { usuario: "mesero", completa: false, preparar: async (p) => {
+    await abrirCuentaDeMesa(p, 1);
+    await p.getByRole("group", { name: "Categorías" }).getByRole("button", { name: "Bebidas" }).click();
+    await p.getByRole("button", { name: /^Latte frío artesanal/ }).click();
+    await p.getByRole("dialog", { name: "Latte frío artesanal" }).waitFor();
   } },
   "staff-comanda-ronda": { usuario: "mesero", preparar: async (p) => {
     await agregarRondaDeEjemplo(p);

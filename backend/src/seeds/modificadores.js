@@ -10,11 +10,11 @@ import Producto from '../modulos/catalogo/producto.model.js'
 export const GRUPOS_EJEMPLO = [
     {
         nombre: 'Leche', obligatorio: false, min: 0, max: 1,
-        opciones: [{ nombre: 'Entera' }, { nombre: 'Deslactosada' }, { nombre: 'Almendra', precioExtra: 2000 }],
+        opciones: [{ nombre: 'Entera', porDefecto: true }, { nombre: 'Deslactosada' }, { nombre: 'Almendra', precioExtra: 2000 }],
     },
     {
         nombre: 'Tamaño', obligatorio: false, min: 0, max: 1,
-        opciones: [{ nombre: 'Normal' }, { nombre: 'Grande', precioExtra: 3000 }],
+        opciones: [{ nombre: 'Normal', porDefecto: true }, { nombre: 'Grande', precioExtra: 3000 }],
     },
     {
         nombre: 'Término del huevo', obligatorio: true, min: 1, max: 1,

@@ -53,3 +53,16 @@ export const reglaGrupo = (g) => {
   if (g.min > 0) return `${tipo}, elige de ${g.min} a ${g.max}`;
   return `${tipo}, hasta ${g.max}`;
 };
+
+// 3.7.1 · Opción por defecto de un grupo de opción única: la marcada por el admin o, si está agotada, la
+// siguiente disponible (en el orden del grupo; el backend aplica la misma regla). Sin ella → null.
+export const opcionPorDefecto = (g) => {
+  if (g.max !== 1) return null;
+  const inicio = g.opciones.findIndex((o) => o.porDefecto);
+  if (inicio === -1) return null;
+  return [...g.opciones.slice(inicio), ...g.opciones.slice(0, inicio)].find((o) => o.disponible !== false)?.id ?? null;
+};
+
+/** Selección inicial del diálogo: cada grupo con opción por defecto ya marcado en ella. */
+export const seleccionInicial = (grupos = []) => Object.fromEntries(grupos
+  .map((g) => [g.id, opcionPorDefecto(g)]).filter(([, o]) => o).map(([g, o]) => [g, [o]]));

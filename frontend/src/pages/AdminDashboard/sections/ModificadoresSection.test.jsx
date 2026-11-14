@@ -71,10 +71,46 @@ describe("Admin › Modificadores", () => {
     await waitFor(() => expect(api.post).toHaveBeenCalledWith("/v1/admin/grupos-modificadores", {
       nombre: "Tamaño", obligatorio: true, min: 1, max: 1, activo: true,
       opciones: [
-        { nombre: "Normal", precioExtra: 0, disponible: true },
-        { nombre: "Grande", precioExtra: 3000, disponible: true },
+        { nombre: "Normal", precioExtra: 0, disponible: true, porDefecto: false },
+        { nombre: "Grande", precioExtra: 3000, disponible: true, porDefecto: false },
       ],
     }));
+  });
+
+  it("3.7.1 · «Opción por defecto»: solo con máximo 1; se guarda en la opción elegida y al editar se ve", async () => {
+    await montar();
+    api.post.mockResolvedValue({ ...LECHE, id: "g9", nombre: "Tamaño" });
+    fireEvent.click(screen.getByRole("button", { name: "Nuevo grupo" }));
+    const dialogo = screen.getByRole("dialog", { name: "Nuevo grupo" });
+    fireEvent.change(within(dialogo).getByLabelText("Nombre *"), { target: { value: "Tamaño" } });
+    fireEvent.change(within(dialogo).getByLabelText("Nombre de la opción 1"), { target: { value: "Normal" } });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Agregar opción" }));
+    fireEvent.change(within(dialogo).getByLabelText("Nombre de la opción 2"), { target: { value: "Grande" } });
+    const select = within(dialogo).getByLabelText("Opción por defecto");
+    expect([...select.options].map((o) => o.textContent)).toEqual(["Ninguna", "Normal", "Grande"]);
+    fireEvent.change(select, { target: { value: "0" } });
+    // Con varias opciones (máximo 2) no aplica: el campo se oculta y no se envía ninguna por defecto
+    fireEvent.change(within(dialogo).getByLabelText("Máximo"), { target: { value: "2" } });
+    expect(within(dialogo).queryByLabelText("Opción por defecto")).not.toBeInTheDocument();
+    fireEvent.change(within(dialogo).getByLabelText("Máximo"), { target: { value: "1" } });
+    expect(within(dialogo).getByLabelText("Opción por defecto")).toHaveValue("0");
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Crear grupo" }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/v1/admin/grupos-modificadores", expect.objectContaining({
+      opciones: [
+        { nombre: "Normal", precioExtra: 0, disponible: true, porDefecto: true },
+        { nombre: "Grande", precioExtra: 0, disponible: true, porDefecto: false },
+      ],
+    })));
+  });
+
+  it("3.7.1 · al editar un grupo con opción por defecto, el campo la muestra elegida", async () => {
+    api.get.mockResolvedValue([{ ...LECHE, opciones: LECHE.opciones.map((o) => ({ ...o, porDefecto: o.id === "o1" })) }, HUEVO]);
+    render(<DialogoProvider><ModificadoresSection /></DialogoProvider>);
+    const tabla = await screen.findByRole("table", { name: "Grupos de modificadores" });
+    fireEvent.click(within(filaDe(tabla, "Leche")).getByRole("button", { name: /Editar/ }));
+    const dialogo = screen.getByRole("dialog");
+    const select = within(dialogo).getByLabelText("Opción por defecto");
+    expect(select.options[select.selectedIndex].textContent).toBe("Entera");
   });
 
   it("muestra las reglas incumplidas y no deja guardar (máximo > opciones, recargo con decimales)", async () => {
@@ -117,8 +153,8 @@ describe("Admin › Modificadores", () => {
     await waitFor(() => expect(api.put).toHaveBeenCalledWith("/v1/admin/grupos-modificadores/g1", {
       nombre: "Leche", obligatorio: false, min: 0, max: 1, activo: true,
       opciones: [
-        { id: "o1", nombre: "Entera", precioExtra: 0 },
-        { id: "o2", nombre: "Leche de almendra", precioExtra: 2000 },
+        { id: "o1", nombre: "Entera", precioExtra: 0, porDefecto: false },
+        { id: "o2", nombre: "Leche de almendra", precioExtra: 2000, porDefecto: false },
       ],
     }));
   });
@@ -134,8 +170,8 @@ describe("Admin › Modificadores", () => {
     fireEvent.click(within(dialogo).getByRole("button", { name: "Guardar cambios" }));
     await waitFor(() => expect(api.put).toHaveBeenCalledWith("/v1/admin/grupos-modificadores/g1", expect.objectContaining({
       opciones: [
-        { id: "o1", nombre: "Entera", precioExtra: 0 },
-        { id: "o2", nombre: "Almendra", precioExtra: 2000, disponible: true },
+        { id: "o1", nombre: "Entera", precioExtra: 0, porDefecto: false },
+        { id: "o2", nombre: "Almendra", precioExtra: 2000, disponible: true, porDefecto: false },
       ],
     })));
   });

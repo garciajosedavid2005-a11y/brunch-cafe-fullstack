@@ -3,12 +3,13 @@ import { Minus, Plus } from "lucide-react";
 import { formatearCOP } from "../../../utils/moneda";
 import { nuevaClave } from "../plano/estadosMesa";
 import ModalComanda from "./ModalComanda";
-import { MAX_CANTIDAD, MAX_NOTA, reglaGrupo } from "./estadosComanda";
+import { MAX_CANTIDAD, MAX_NOTA, opcionPorDefecto, reglaGrupo, seleccionInicial } from "./estadosComanda";
 import "./TomaComanda.css";
 
 // 1.7 · Agregar un producto a la ronda: cantidad, modificadores (F1-4: obligatorios, mínimo y máximo,
 // recargo a la vista) y nota libre (F1-5, máx. 140). El backend valida lo mismo y fija el precio.
 // Un grupo obligatorio de una sola opción va en radios; el resto, en casillas (se pueden desmarcar).
+// 3.7.1 · Un grupo con opción por defecto (Leche, Tamaño) empieza marcado en ella y va en radios: no queda vacío.
 // 1.12 · El carrito del pedido a domicilio usa este mismo diálogo (máximo 20 y su propio texto).
 export default function DialogoProducto({
   producto, onAgregar, onCerrar, maxCantidad = MAX_CANTIDAD, textoAgregar = "Agregar", etiquetaNota = "Nota para cocina o barra (opcional)",
@@ -16,7 +17,7 @@ export default function DialogoProducto({
   const id = useId();
   const grupos = producto.modificadores || [];
   const [cantidad, setCantidad] = useState(1);
-  const [seleccion, setSeleccion] = useState({}); // grupoId → [opcionId]
+  const [seleccion, setSeleccion] = useState(() => seleccionInicial(grupos)); // grupoId → [opcionId]
   const [nota, setNota] = useState("");
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -74,7 +75,7 @@ export default function DialogoProducto({
   return (
     <ModalComanda titulo={producto.nombre} subtitulo={formatearCOP(producto.precio)} onCerrar={onCerrar} pie={pie}>
       {grupos.map((g) => {
-        const radios = g.obligatorio && g.max === 1;
+        const radios = g.max === 1 && (g.obligatorio || opcionPorDefecto(g) !== null);
         return (
           <fieldset key={g.id} className="comanda-grupo">
             <legend>

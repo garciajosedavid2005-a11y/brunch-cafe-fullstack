@@ -60,6 +60,21 @@ describe("TarjetaMenu · opciones del plato (1.12)", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("3.7.1 · en el carrito del cliente la opción por defecto ya viene marcada y se agrega con ella", () => {
+    const LECHE = {
+      id: "g5", nombre: "Leche", obligatorio: false, min: 0, max: 1,
+      opciones: [{ id: "o5", nombre: "Entera", precioExtra: 0, disponible: true, porDefecto: true }, { id: "o6", nombre: "Almendra", precioExtra: 2000, disponible: true, porDefecto: false }],
+    };
+    pintar({ nombre: "Latte", precio: 9000, modificadores: [LECHE] });
+    fireEvent.click(screen.getByRole("button", { name: "Agregar al carrito" }));
+    const dialogo = screen.getByRole("dialog", { name: "Latte" });
+    expect(within(dialogo).getByRole("radio", { name: "Entera" })).toBeChecked();
+    fireEvent.click(within(dialogo).getByRole("button", { name: /^Agregar al carrito ·/ }));
+    expect(estado.agregarProducto).toHaveBeenCalledWith(expect.objectContaining({ id: "p1" }), expect.objectContaining({
+      modificadores: [{ grupoId: "g5", grupo: "Leche", opciones: [{ id: "o5", nombre: "Entera", precioExtra: 0 }] }],
+    }));
+  });
+
   it("la cantidad del diálogo llega hasta 20 (el máximo del pedido a domicilio)", () => {
     pintar({ modificadores: [EXTRAS] });
     fireEvent.click(screen.getByRole("button", { name: "Agregar al carrito" }));

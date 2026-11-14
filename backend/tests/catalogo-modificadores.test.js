@@ -48,8 +48,8 @@ describe('Contrato de /api/v1/catalogo (1.3)', () => {
         expect(porCodigo[1].modificadores).toEqual([{
             id: String(leche._id), nombre: 'Leche', obligatorio: false, min: 0, max: 1,
             opciones: [
-                { id: String(leche.opciones[0]._id), nombre: 'Entera', precioExtra: 0, disponible: true },
-                { id: String(leche.opciones[1]._id), nombre: 'Almendra', precioExtra: 2000, disponible: false },
+                { id: String(leche.opciones[0]._id), nombre: 'Entera', precioExtra: 0, disponible: true, porDefecto: false },
+                { id: String(leche.opciones[1]._id), nombre: 'Almendra', precioExtra: 2000, disponible: false, porDefecto: false },
             ],
         }])
         expect(porCodigo[2].estacion).toEqual({ codigo: 'barra', nombre: 'Barra' })

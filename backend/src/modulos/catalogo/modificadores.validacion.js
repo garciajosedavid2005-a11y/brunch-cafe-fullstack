@@ -40,8 +40,26 @@ export const gruposActivosDeVarios = async (productos, session) => {
 }
 
 /**
+ * 3.7.1 · Opción que se aplica a un grupo de opción única que llegó sin elegir: la marcada por defecto o,
+ * si está agotada, la siguiente disponible (en el orden del grupo). Sin opción por defecto → null; con
+ * todas agotadas → 409 (el producto no se puede pedir así).
+ */
+const opcionPorDefecto = (grupo) => {
+    if (grupo.max !== 1) return null
+    const inicio = grupo.opciones.findIndex((o) => o.porDefecto)
+    if (inicio === -1) return null
+    const enOrden = [...grupo.opciones.slice(inicio), ...grupo.opciones.slice(0, inicio)]
+    const disponible = enOrden.find((o) => o.disponible !== false)
+    if (!disponible) {
+        throw error(409, 'OPCION_NO_DISPONIBLE', `No queda ninguna opción disponible de «${grupo.nombre}».`, { grupoId: String(grupo._id) })
+    }
+    return String(disponible._id)
+}
+
+/**
  * Valida la elección contra los grupos activos del producto y devuelve la copia de los
- * modificadores (orden: el de los grupos en el producto y el de las opciones en el grupo).
+ * modificadores (orden: el de los grupos en el producto y el de las opciones en el grupo). Un grupo de
+ * opción única que llega vacío recibe su opción por defecto (3.7.1): la copia nunca queda sin ella.
  */
 export const validarModificadores = (grupos, pedidos) => {
     const elegidasPorGrupo = new Map()
@@ -57,7 +75,11 @@ export const validarModificadores = (grupos, pedidos) => {
     const snapshot = []
     for (const grupo of grupos) {
         const grupoId = String(grupo._id)
-        const elegidas = elegidasPorGrupo.get(grupoId) || []
+        let elegidas = elegidasPorGrupo.get(grupoId) || []
+        if (elegidas.length === 0) {
+            const porDefecto = opcionPorDefecto(grupo)
+            if (porDefecto) elegidas = [porDefecto]
+        }
         if (elegidas.length === 0 && grupo.min >= 1) {
             throw error(400, 'MODIFICADOR_REQUERIDO', `Elige una opción de «${grupo.nombre}».`, { grupoId, grupo: grupo.nombre })
         }
