@@ -4,7 +4,7 @@
 
 ## Reglas de eficiencia (obligatorias en todas las sesiones)
 
-- Durante el desarrollo, solo los tests del módulo que se toca. Antes de cada commit, UNA vez: suite backend, suite frontend, lint, build y humo.
+- Durante el desarrollo, solo los tests del módulo que se toca. Antes de cada commit, UNA vez: suite backend, suite frontend, lint, build y humo. Excepción: un commit que solo toca documentación (`.md`, `docs/`) no necesita esa verificación.
 - Revisores al final de cada ítem, en paralelo y solo los que apliquen: `revisor-reglas` siempre; `revisor-backend` o `schema-reviewer` + `security-reviewer` si tocó el backend; `revisor-visual` si hubo cambios visuales. Lo bloqueante se corrige; lo menor va a Pendientes.
 - Usar el subagente `explorador` para buscar; no leer archivos enteros; sin refactors ni dependencias nuevas sin justificar.
 - Un commit por ítem, `docs/PROGRESO.md` con una línea por ítem y push a `origin Brayan` (nunca `--force` ni merge a `main`).
@@ -31,6 +31,7 @@ Brunch Café: evolución a un POS de servicio a la mesa. Backend Node 24 + Expre
 ## Antes de cada commit
 
 - `npm test`, `npm run lint` y `npm run build` en backend y frontend, todo en verde. Si aparece el crash conocido de Vitest en Windows (código `3221226505`), repetir una vez. Si algo falla, no hay commit ni push.
+- Si el commit solo toca documentación (`.md`, `docs/`), no hace falta correr tests, lint, build ni humo.
 
 ## Cuándo detenerse y preguntar
 
