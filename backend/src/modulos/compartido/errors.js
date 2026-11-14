@@ -1,7 +1,8 @@
 // Error de dominio con formato único de API: { error: { code, message, details } }
 export class AppError extends Error {
-    constructor(status, code, message, details) {
-        super(message)
+    // `opciones.cause`: el error original (va al log, nunca a la respuesta)
+    constructor(status, code, message, details, opciones) {
+        super(message, opciones)
         this.name = 'AppError'
         this.status = status
         this.code = code

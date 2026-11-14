@@ -89,6 +89,8 @@ export const emitirComprobante = async ({ cuenta, comandas, propina, total, pago
             nombre: i.nombre, cantidad: i.cantidad, opciones: (i.modificadores || []).map((m) => m.opcionNombre),
             nota: i.nota || '', precioUnitario: i.precioUnitario, subtotal: i.subtotal,
         }))
+    // Los montos los calcula el servidor: si el esquema los rechaza es un fallo nuestro (500, queda en el
+    // log y la transacción se deshace), no un dato mal enviado por el cajero (no un 400 de validación)
     const [comprobante] = await Comprobante.create([{
         numero,
         codigo: codigoComprobante(numero),
@@ -103,7 +105,11 @@ export const emitirComprobante = async ({ cuenta, comandas, propina, total, pago
         total, // el mismo con el que se validaron los pagos (consumo + propina)
         pagos,
         cambio: pagos.reduce((n, p) => n + (p.cambio ?? 0), 0),
-    }], { session })
+    }], { session }).catch((error) => {
+        if (error?.name !== 'ValidationError') throw error
+        // El detalle (qué invariante falló) va al log como causa, no a la respuesta
+        throw new AppError(500, 'COMPROBANTE_INCONSISTENTE', 'No se pudo emitir el comprobante. Avisa al administrador.', undefined, { cause: error })
+    })
     return comprobante
 }
 

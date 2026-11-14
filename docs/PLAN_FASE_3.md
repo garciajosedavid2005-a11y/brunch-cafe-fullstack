@@ -1,6 +1,6 @@
 # Plan de la Fase 3 (mínima): cobro en caja
 
-> **Estado:** aprobado por Brayan el 2026-11-14 con las respuestas F3-1 a F3-6 (sección 4, ver `docs/PROGRESO.md`). Implementado el 2026-11-14 (ítems 3.1 a 3.4).
+> **Estado:** aprobado por Brayan el 2026-11-14 con las respuestas F3-1 a F3-6 (sección 4, ver `docs/PROGRESO.md`). Implementado el 2026-11-14 (ítems 3.1 a 3.4); 3.5 (pulido y presentación) añadido por Brayan el mismo día.
 >
 > **Objetivo:** cerrar el ciclo **mesa → cocina → cobro**. Una cuenta en «cuenta pedida» se cobra en caja, se emite un comprobante interno y la mesa queda «por limpiar», con Evento y aviso en vivo. Alcance reducido a propósito: el proyecto es universitario y queda poco tiempo.
 
@@ -38,6 +38,14 @@
 - Tras confirmar la transacción: aviso por `plano`, `cuenta:<id>` y `mesero:<id>`; el plano muestra la mesa «por limpiar» y la cuenta abierta en otra tablet pasa a solo lectura.
 - Tests: permiso (403), cobro simple y mixto, propina, cambio, pagos que no cuadran, doble cobro (idempotencia y `409`), consecutivo sin huecos con cobros simultáneos, Evento y aviso. Capturas de «Caja», del cobro y del comprobante a 1024×768 y 768×1024.
 - README, PROGRESO y PR «Fase 3: cobro».
+
+### 3.5 Pulido y presentación (pedido por Brayan el 2026-11-14; con él se cierra el proyecto)
+1. Errores 500 que deberían ser 400/404 en la Caja y en el resto de la API, con un test por caso.
+2. Caja: «Cobrar» siempre visible (barra fija abajo) y el comprobante con «Consumo + Propina = Total pagado».
+3. `npm run seed:demo`: datos de demostración, idempotente y solo para desarrollo.
+4. `docs/GUIA_DEMO.md`: guion de 5 a 7 minutos con plan B.
+5. `docs/MANUAL_USUARIO.md`: manual corto por rol.
+6. `docs/PR_FASES_0_3.md`: texto final del Pull Request (Fases 0 a 3 y trabajo futuro).
 
 ## 3. Fuera de alcance (trabajo futuro)
 - Turnos de caja, apertura con base y arqueo (`caja:abrir`, `caja:cerrar`).

@@ -12,6 +12,8 @@ import Cuenta from '../src/modulos/salon/cuenta.model.js'
 import Comanda from '../src/modulos/salon/comanda.model.js'
 import Evento from '../src/modulos/compartido/evento.model.js'
 import Comprobante from '../src/modulos/caja/comprobante.model.js'
+import { emitirComprobante } from '../src/modulos/caja/caja.service.js'
+import { traducirError } from '../src/modulos/compartido/errorHandler.js'
 import { suscribir } from '../src/modulos/tiempoReal/bus.js'
 import { validarCanales } from '../src/modulos/tiempoReal/eventos.routes.js'
 import { PERMISOS_SALON } from '../src/modulos/identidad/permisos.js'
@@ -240,5 +242,21 @@ describe('3.3 · Comprobante interno', () => {
         const { sesion } = await crearConSesion('cajero')
         expect((await sesion.get(`${BASE}/comprobantes/${new ObjectId()}`)).status).toBe(404)
         expect((await sesion.get(`${BASE}/comprobantes/abc`)).status).toBe(404)
+    })
+})
+
+describe('3.5 · Un comprobante inconsistente es un error del servidor', () => {
+    it('si los montos no cuadran no responde 400 de validación: 500 COMPROBANTE_INCONSISTENTE y no se guarda', async () => {
+        const cuenta = await cuentaDeMesa(1)
+        const doc = await Cuenta.findById(cuenta.id).lean()
+        const comandas = await Comanda.find({ cuenta: cuenta.id }).lean()
+        const { usuario } = await crearConSesion('cajero')
+        const datos = { cuenta: doc, comandas, propina: 0, total: 99999, pagos: [{ metodo: 'tarjeta', monto: 99999, recibido: null, cambio: null }], sesion: { id: String(usuario._id) } }
+        const fallo = await emitirComprobante(datos).catch((e) => e)
+        expect(fallo).toMatchObject({ status: 500, code: 'COMPROBANTE_INCONSISTENTE' })
+        expect(fallo.cause?.name).toBe('ValidationError') // el detalle, solo para el log
+        // La respuesta: su código y un mensaje propio, sin los detalles del esquema
+        expect(traducirError(fallo)).toEqual({ status: 500, code: 'COMPROBANTE_INCONSISTENTE', message: 'No se pudo emitir el comprobante. Avisa al administrador.', details: undefined })
+        expect(await Comprobante.countDocuments()).toBe(0)
     })
 })
