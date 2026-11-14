@@ -133,7 +133,8 @@
 
 /* Cobro */
 .caja-cobro__sub { margin: -0.5rem 0 0; color: #594742; }
-.caja-cobro__columnas { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; align-items: start; }
+/* 3.7 · Consumo y Pago con el mismo alto y el contenido arriba */
+.caja-cobro__columnas { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; align-items: stretch; }
 
 /* 3.6 · «Pago» como los demás títulos de la tarjeta («Consumo», «Total a cobrar»): tipografía del cuerpo */
 .caja-cobro__bloque .caja__subtitulo {
@@ -145,6 +146,7 @@
 
 .caja-cobro__bloque {
   display: grid;
+  align-content: start;
   gap: 0.75rem;
   padding: 1rem;
   border: 1px solid #e3d2cd;
@@ -172,7 +174,9 @@
 
 .caja-cobro__pesos:focus-within { border-color: #890620; outline: 2px solid #89062033; }
 .caja-cobro__pesos input { width: 100%; min-width: 0; height: 44px; margin: 0; padding: 0; border: 0; box-shadow: none; background: transparent; font: inherit; font-weight: 700; }
-.caja-cobro__pesos input:focus { outline: none; box-shadow: none; }
+/* 3.7 · Una sola caja: Foundation pinta borde y fondo a [type='text']:focus y se veía una caja dentro de
+   otra («Recibido»); el foco se ve en la caja exterior (borde bordó) */
+.caja-cobro__pesos input[type="text"]:focus { border: 0; outline: none; box-shadow: none; background: transparent; }
 /* 3.6 · El «0» de ejemplo se lee (el gris del navegador quedaba muy claro) */
 .caja-cobro__pesos input::placeholder { color: #75645d; opacity: 1; }
 

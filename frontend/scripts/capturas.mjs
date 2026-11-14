@@ -1385,6 +1385,15 @@ const VISTAS = {
     await p.getByRole("button", { name: /^10 %/ }).click();
     await p.getByLabel("Recibido").fill("100000");
   } },
+  // 3.7 · El caso reportado: efectivo, «Sin propina» y 90.000 recibidos tecleados (cambio = 90.000 − total)
+  "staff-caja-sin-propina": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await VISTAS["staff-caja"].preparar(p);
+    await p.getByRole("button", { name: /^Cobrar Mesa 3/ }).click();
+    await p.getByRole("button", { name: "Sin propina" }).click();
+    await p.getByLabel("Recibido").click();
+    await p.keyboard.press("Control+A");
+    await p.keyboard.type("90000");
+  } },
   // 3.6 · El caso reportado: «10 %» y «Transferencia» elegidos, con el puntero encima de «Transferencia»
   // (antes: texto blanco sobre el rosado del hover, 1,2:1)
   "staff-caja-elegida-hover": { usuario: "cajero", completa: false, preparar: async (p) => {

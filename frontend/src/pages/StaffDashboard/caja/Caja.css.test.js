@@ -40,6 +40,23 @@ describe("Barra de cobro (3.5)", () => {
     expect(valor(titulo, "font-weight")).toBe("700");
   });
 
+  it("3.7 · campos con «$»: una sola caja (el campo interior sin borde ni fondo propios, también con foco)", () => {
+    // Foundation pinta borde y fondo a [type='text']:focus: el campo interior los anula con más especificidad
+    const foco = regla('.caja-cobro__pesos input[type="text"]:focus');
+    expect(valor(foco, "border")).toBe("0");
+    expect(valor(foco, "background")).toBe("transparent");
+    expect(valor(foco, "box-shadow")).toBe("none");
+    // El foco se ve en la caja exterior: borde bordó (≥ 3:1 sobre blanco)
+    const exterior = regla(".caja-cobro__pesos:focus-within");
+    expect(contraste(valor(exterior, "border-color"), "#ffffff")).toBeGreaterThanOrEqual(3);
+  });
+
+  it("3.7 · el texto de ejemplo se lee (≥ 4,5:1) y las tarjetas Consumo y Pago quedan alineadas", () => {
+    expect(contraste(valor(regla(".caja-cobro__pesos input::placeholder"), "color"), "#ffffff")).toBeGreaterThanOrEqual(4.5);
+    expect(valor(regla(".caja-cobro__columnas"), "align-items")).toBe("stretch");
+    expect(valor(regla(".caja-cobro__bloque"), "align-content")).toBe("start");
+  });
+
   it("su estado se lee sobre el fondo de la barra (≥ 4,5:1)", () => {
     const fondo = valor(regla(".caja-cobro__barra"), "background");
     for (const selector of [".caja-cobro__estado", ".caja-cobro__estado.is-pendiente"]) {

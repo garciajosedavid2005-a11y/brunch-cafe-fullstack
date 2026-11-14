@@ -18,14 +18,14 @@ const textoEstado = ({ restante, valido, cambio }) => {
   return cambio > 0 ? `Los pagos cuadran · Cambio ${formatearCOP(cambio)}` : "Los pagos cuadran";
 };
 
-function CampoPesos({ id, etiqueta, valor, onCambiar, descripcion }) {
+function CampoPesos({ id, etiqueta, valor, onCambiar, descripcion, onSalir }) {
   return (
     <div className="caja-cobro__campo">
       <label htmlFor={id}>{etiqueta}</label>
       <span className="caja-cobro__pesos">
         <span aria-hidden="true">$</span>
         <input id={id} type="text" inputMode="numeric" autoComplete="off" value={formatearMiles(valor)} placeholder="0"
-          aria-describedby={descripcion} onChange={(e) => onCambiar(pesos(e.target.value))} />
+          aria-describedby={descripcion} onChange={(e) => onCambiar(pesos(e.target.value))} onBlur={onSalir} />
       </span>
     </div>
   );
@@ -70,6 +70,11 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
   const agregarPago = () => {
     setSeguirTotal(false);
     setPagos([...pagosVistos, { metodo: libre.codigo, monto: Math.max(0, estado.restante), recibido: null }]);
+  };
+  // 3.7 · Con un solo pago, un monto borrado (0) vuelve al total pendiente al salir del campo: el cambio del
+  // efectivo nunca se calcula sobre $ 0
+  const salirDelMonto = () => {
+    if (pagosVistos.length === 1 && pagosVistos[0].monto === 0) setSeguirTotal(true);
   };
   const quitarPago = (i) => {
     const quedan = pagosVistos.filter((_, j) => j !== i);
@@ -133,7 +138,7 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
                   ))}
                 </div>
                 <CampoPesos id={`${id}-monto-${i}`} etiqueta={pagosVistos.length > 1 ? "Monto" : "Monto a pagar"} valor={p.monto}
-                  onCambiar={(monto) => cambiarPago(i, { monto })} />
+                  onCambiar={(monto) => cambiarPago(i, { monto })} onSalir={salirDelMonto} />
                 {p.metodo === "efectivo" && (
                   <>
                     <CampoPesos id={`${id}-recibido-${i}`} etiqueta="Recibido" valor={p.recibido ?? p.monto}
