@@ -47,6 +47,51 @@ describe('Recuperación de contraseña: envío del enlace (0.15c)', () => {
         liberar()
     })
 
+    // Pendiente de 2.8: espera mínima de 60 s entre correos a la misma cuenta (también desde varias IP).
+    // La respuesta no cambia (no revela si la cuenta existe) y el enlace ya enviado sigue valiendo.
+    it('dentro de los 60 s no envía otro correo ni cambia el enlace; pasado el minuto, sí', async () => {
+        const { usuario } = await crearConSesion('cliente')
+        expect((await solicitar(usuario.correo)).status).toBe(202)
+        await esperarRecuperacionesPendientes()
+        const primero = (await conToken(usuario._id)).passwordResetTokenHash
+        expect(correoMock.enviar).toHaveBeenCalledOnce()
+
+        expect((await solicitar(usuario.correo)).status).toBe(202)
+        await esperarRecuperacionesPendientes()
+        expect(correoMock.enviar).toHaveBeenCalledOnce()
+        expect((await conToken(usuario._id)).passwordResetTokenHash).toBe(primero)
+
+        // Pasa el minuto (se atrasa la marca de la última solicitud)
+        await Usuario.updateOne({ _id: usuario._id }, { $set: { passwordResetSolicitadoEn: new Date(Date.now() - 61_000) } })
+        expect((await solicitar(usuario.correo)).status).toBe(202)
+        await esperarRecuperacionesPendientes()
+        expect(correoMock.enviar).toHaveBeenCalledTimes(2)
+        expect((await conToken(usuario._id)).passwordResetTokenHash).not.toBe(primero)
+    })
+
+    it('dos solicitudes a la vez: un solo correo y un solo enlace', async () => {
+        const { usuario } = await crearConSesion('cliente')
+        const [r1, r2] = await Promise.all([solicitar(usuario.correo), solicitar(usuario.correo)])
+        expect([r1.status, r2.status]).toEqual([202, 202])
+        await esperarRecuperacionesPendientes()
+        expect(correoMock.enviar).toHaveBeenCalledOnce()
+        expect(tokenDe(correoMock.enviar.mock.calls[0][0].url)).toBeTruthy()
+    })
+
+    it('si el envío falla se puede volver a pedir enseguida; tras restablecer, también', async () => {
+        const { usuario } = await crearConSesion('cliente')
+        correoMock.enviar.mockRejectedValueOnce(Object.assign(new Error('SMTP caído'), { code: 'ECONNECTION' }))
+        await solicitar(usuario.correo)
+        await esperarRecuperacionesPendientes()
+        await solicitar(usuario.correo)
+        await esperarRecuperacionesPendientes()
+        expect(correoMock.enviar).toHaveBeenCalledTimes(2)
+        expect((await restablecer(tokenDe(correoMock.enviar.mock.calls[1][0].url))).status).toBe(200)
+        await solicitar(usuario.correo)
+        await esperarRecuperacionesPendientes()
+        expect(correoMock.enviar).toHaveBeenCalledTimes(3)
+    })
+
     it('si el envío falla, invalida el enlace y la respuesta sigue siendo la genérica', async () => {
         const { usuario } = await crearConSesion('cliente')
         const errorLog = vi.spyOn(logger, 'error')

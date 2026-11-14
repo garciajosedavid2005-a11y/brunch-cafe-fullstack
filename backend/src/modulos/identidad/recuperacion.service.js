@@ -7,6 +7,8 @@ import { AppError } from '../compartido/errors.js'
 import { enviarCorreoRecuperacion, smtpConfigurado } from './recuperacion.email.js'
 
 const DURACION_TOKEN_MS = 30 * 60 * 1000
+// Espera mínima entre correos de recuperación a la misma cuenta (también desde varias IP; pendiente de 2.8)
+export const ESPERA_ENTRE_CORREOS_MS = 60 * 1000
 const MENSAJE_SOLICITUD = 'Si la cuenta existe, recibirás un enlace para restablecer tu contraseña.'
 
 const hashToken = (token) => createHash('sha256').update(token).digest('hex')
@@ -29,9 +31,14 @@ const procesarSolicitud = async (correo) => {
         const url = new URL('/restablecer-contrasena', config.CLIENT_URLS[0])
         url.searchParams.set('token', token)
 
-        usuario.passwordResetTokenHash = tokenHash
-        usuario.passwordResetExpiresAt = expira
-        await usuario.save()
+        // Escritura condicional: dentro del minuto no se regenera el enlace ni se envía otro correo (dos
+        // solicitudes a la vez: solo una gana). La respuesta al cliente es la misma en los dos casos.
+        const ahora = new Date()
+        const { modifiedCount } = await Usuario.updateOne(
+            { _id: usuario._id, $or: [{ passwordResetSolicitadoEn: null }, { passwordResetSolicitadoEn: { $lte: new Date(ahora - ESPERA_ENTRE_CORREOS_MS) } }] },
+            { $set: { passwordResetTokenHash: tokenHash, passwordResetExpiresAt: expira, passwordResetSolicitadoEn: ahora } },
+        )
+        if (modifiedCount === 0) return
 
         // Solo en desarrollo y sin SMTP: el enlace va al log para poder probar el flujo (0.15c).
         // Nunca se registra el correo; en test y producción el enlace no se escribe en ningún log.
@@ -50,7 +57,7 @@ const procesarSolicitud = async (correo) => {
             try {
                 await Usuario.updateOne(
                     { _id: usuario._id, passwordResetTokenHash: tokenHash },
-                    { $unset: { passwordResetTokenHash: 1, passwordResetExpiresAt: 1 } },
+                    { $unset: { passwordResetTokenHash: 1, passwordResetExpiresAt: 1, passwordResetSolicitadoEn: 1 } },
                 )
             } catch (errorLimpieza) {
                 logger.error({
@@ -92,7 +99,7 @@ export const restablecerContrasena = async ({ token, nueva }) => {
         },
         {
             $set: { contraseña: contrasenaHash },
-            $unset: { passwordResetTokenHash: 1, passwordResetExpiresAt: 1, contraseñaPendiente: 1 },
+            $unset: { passwordResetTokenHash: 1, passwordResetExpiresAt: 1, passwordResetSolicitadoEn: 1, contraseñaPendiente: 1 },
             $inc: { tokenVersion: 1 },
         },
         { returnDocument: 'after', runValidators: true },

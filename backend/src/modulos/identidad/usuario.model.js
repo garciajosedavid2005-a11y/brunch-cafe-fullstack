@@ -45,6 +45,12 @@ const usuarioSchema = new mongoose.Schema({
         type: Date,
         select: false,
     },
+    // Última solicitud de recuperación con correo enviado: espera mínima entre correos a la misma cuenta.
+    // Sin el campo (cuentas anteriores) = sin espera; no necesita migración.
+    passwordResetSolicitadoEn: {
+        type: Date,
+        select: false,
+    },
     // Cuenta creada por el admin que todavía no definió su contraseña (1.5b). Sin el campo = ya la tiene.
     // Se quita al usar el enlace (restablecerContrasena).
     contraseñaPendiente: {
