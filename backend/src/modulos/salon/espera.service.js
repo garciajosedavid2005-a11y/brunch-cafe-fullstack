@@ -10,6 +10,7 @@ import { texto, telefono } from '../compartido/comunes.schema.js'
 import { tienePermiso } from '../identidad/permisos.js'
 import { abrirEnTransaccion, prepararApertura } from './cuentas.service.js'
 import { avisarEspera } from './reservas.avisos.js'
+import { logger } from '../compartido/logger.js'
 
 const OBJECT_ID = /^[0-9a-f]{24}$/i
 const agregarSchema = z.object({
@@ -44,9 +45,48 @@ export const formatoEspera = (e, ahora = new Date()) => ({
     cuenta: e.cuenta ? String(e.cuenta) : null,
 })
 
+/**
+ * 4.6 · Las esperas de días anteriores que quedaron «esperando» se cierran como «retirada», cada una con su Evento
+ * (actor «sistema»). Escritura condicional: si dos pasadas coinciden, cada espera se cierra una sola vez. Se llama al
+ * consultar la lista y al arrancar el servidor. Devuelve cuántas cerró.
+ */
+const LIMITE_POR_PASADA = 500
+export const cerrarEsperasAnteriores = async (hoy = fechaLocal()) => {
+    const viejas = await Espera.find({ estado: 'esperando', dia: { $lt: hoy } }).select('_id').limit(LIMITE_POR_PASADA).lean()
+    let cerradas = 0
+    for (const { _id } of viejas) {
+        const cerrada = await conTransaccion(async (session) => {
+            const espera = await Espera.findOneAndUpdate(
+                { _id, estado: 'esperando', dia: { $lt: hoy } }, { $set: { estado: 'retirada', retiradaEn: new Date() } }, { returnDocument: 'after', session },
+            ).lean()
+            if (!espera) return false
+            await registrarEvento({ entidad: 'espera', entidadId: _id, tipo: 'espera_retirada', usuario: null, actor: 'sistema', motivo: 'cerrada al terminar el día', session })
+            return true
+        })
+        if (cerrada) cerradas += 1
+    }
+    return cerradas
+}
+
+// 4.6 · Último día ya limpiado por este proceso: la lista no repite la búsqueda en cada consulta del mismo día
+let diaLimpio = null
+
+/** 4.6 · Cierre de las esperas anteriores desde la lista: una vez por día y sin tumbar la lista si falla. */
+const limpiarAntesDeListar = async () => {
+    const hoy = fechaLocal()
+    if (diaLimpio === hoy) return
+    try {
+        const cerradas = await cerrarEsperasAnteriores(hoy)
+        if (cerradas < LIMITE_POR_PASADA) diaLimpio = hoy
+    } catch (error) {
+        logger.error({ err: error }, 'No se pudieron cerrar las esperas de días anteriores (se reintenta en la próxima consulta).')
+    }
+}
+
 /** GET /staff/espera → { espera[] } de hoy, en orden de llegada */
 export const listarEspera = async (sesion) => {
     exigir(sesion, 'reserva:ver')
+    await limpiarAntesDeListar()
     const ahora = new Date()
     const filas = await Espera.find({ dia: fechaLocal(ahora) }).sort({ createdAt: 1 }).limit(200).populate('mesa', 'numero').lean()
     return { espera: filas.map((e) => formatoEspera(e, ahora)) }

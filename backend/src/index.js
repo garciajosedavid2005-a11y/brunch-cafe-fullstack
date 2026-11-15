@@ -5,6 +5,7 @@ import { logger } from './modulos/compartido/logger.js'
 import { sembrarRoles } from './seeds/base.js'
 import { sembrarEstados, MigracionPendienteError } from './seeds/estados.js'
 import { sembrarHorarios } from './modulos/configuracion/horarios.service.js'
+import { cerrarEsperasAnteriores } from './modulos/salon/espera.service.js'
 import Cuenta from './modulos/salon/cuenta.model.js'
 import Comanda from './modulos/salon/comanda.model.js'
 import Comprobante from './modulos/caja/comprobante.model.js'
@@ -34,6 +35,13 @@ const start = async () => {
     }
     // Horarios por defecto si la BD no los tiene (no pisa los editados en el admin)
     await sembrarHorarios()
+    // 4.6 · Las esperas de días anteriores que quedaron «esperando» se cierran como «retirada» (con su Evento)
+    try {
+        const cerradas = await cerrarEsperasAnteriores()
+        if (cerradas) logger.info(`Lista de espera: ${cerradas} espera(s) de días anteriores cerradas como «retirada».`)
+    } catch (error) {
+        logger.error({ err: error }, 'No se pudieron cerrar las esperas de días anteriores (se reintenta al consultar la lista).')
+    }
     // 1.4 · Índices únicos de cuentas y rondas (una mesa en una sola cuenta abierta, un borrador por
     // cuenta) y (Fase 3) de comprobantes (un número y una cuenta por comprobante) listos antes de atender:
     // crean las colecciones si aún no existen (un cobro no debe crearlas dentro de su transacción)
