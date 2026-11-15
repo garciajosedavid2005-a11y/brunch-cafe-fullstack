@@ -39,7 +39,10 @@ const persona = new mongoose.Schema({
 const comprobanteSchema = new mongoose.Schema({
     numero: { type: Number, required: true, min: 1, validate: entero('El número') },
     codigo: { type: String, required: true },
-    cuenta: { type: mongoose.Schema.Types.ObjectId, ref: 'Cuenta', required: true },
+    // De una cuenta del salón o (3b.4) de un pedido a domicilio cobrado contra entrega: exactamente uno
+    cuenta: { type: mongoose.Schema.Types.ObjectId, ref: 'Cuenta', default: undefined },
+    pedido: { type: mongoose.Schema.Types.ObjectId, ref: 'Pedido', default: undefined },
+    pedidoCodigo: { type: String, trim: true, default: undefined }, // copia: «PED-8B0CA6»
     // 3b.2 · Parte de una cuenta dividida (null = la cuenta entera): «Parte 2 de 3» o la 2.ª por ítems (de: null)
     parte: {
         type: new mongoose.Schema({
@@ -52,7 +55,7 @@ const comprobanteSchema = new mongoose.Schema({
     // 3b.1 · Turno de caja en el que se cobró (los comprobantes anteriores a 3b no lo tienen)
     turno: { type: mongoose.Schema.Types.ObjectId, ref: 'TurnoCaja', default: null },
     mesas: { type: [Number], default: [] },
-    mesero: { type: persona, required: true },
+    mesero: { type: persona, default: null }, // obligatorio en las cuentas (un domicilio no tiene mesero)
     cajero: { type: persona, required: true },
     emitidoEn: { type: Date, required: true },
     lineas: { type: [lineaSchema], validate: { validator: (v) => v.length > 0, message: 'El comprobante necesita al menos una línea' } },
@@ -66,7 +69,9 @@ const comprobanteSchema = new mongoose.Schema({
 // Un consecutivo por comprobante y, por cuenta, uno por parte (3b.2; la cuenta entera es la parte null: no se
 // cobra dos veces la misma). La migración 3b.2 cambia el índice único anterior { cuenta } por este
 comprobanteSchema.index({ numero: 1 }, { unique: true })
-comprobanteSchema.index({ cuenta: 1, 'parte.numero': 1 }, { unique: true, name: 'una_parte_por_cuenta' })
+// 3b.4 · Parciales: solo los comprobantes de cuentas o de pedidos (los demás no chocan por «null»). Migración 3b.4
+comprobanteSchema.index({ cuenta: 1, 'parte.numero': 1 }, { unique: true, name: 'una_parte_por_cuenta', partialFilterExpression: { cuenta: { $type: 'objectId' } } })
+comprobanteSchema.index({ pedido: 1 }, { unique: true, name: 'un_comprobante_por_pedido', partialFilterExpression: { pedido: { $type: 'objectId' } } })
 comprobanteSchema.index({ emitidoEn: -1 }) // «Cobradas hoy»
 comprobanteSchema.index({ turno: 1 }) // 3b.1 · arqueo del turno
 
@@ -77,6 +82,10 @@ export const problemasDeComprobante = (c) => {
     const problemas = []
     const suma = (lista, campo) => lista.reduce((n, x) => n + (x[campo] ?? 0), 0)
     if (c.codigo !== codigoComprobante(c.numero)) problemas.push('El código no corresponde al número')
+    // 3b.4 · De una cuenta (con su mesero) o de un pedido, nunca de los dos ni de ninguno
+    if (Boolean(c.cuenta) === Boolean(c.pedido)) problemas.push('El comprobante es de una cuenta o de un pedido')
+    if (c.cuenta && !c.mesero?.id) problemas.push('El comprobante de una cuenta lleva su mesero')
+    if (c.pedido && c.parte) problemas.push('Un pedido no se divide en partes')
     for (const l of c.lineas || []) if (l.subtotal !== l.precioUnitario * l.cantidad) problemas.push(`La línea «${l.nombre}» no cuadra`)
     if (suma(c.lineas || [], 'subtotal') !== c.subtotal) problemas.push('El subtotal no coincide con las líneas')
     if (c.total !== c.subtotal + c.propina) problemas.push('El total no es subtotal + propina')

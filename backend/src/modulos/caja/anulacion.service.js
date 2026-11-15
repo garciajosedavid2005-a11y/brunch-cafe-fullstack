@@ -70,7 +70,8 @@ export const anularComprobante = async (id, datos, sesion) => {
                 throw new AppError(500, 'NOTA_INCONSISTENTE', 'No se pudo emitir la nota crédito. Avisa al administrador.', undefined, { cause: error })
             })
             await registrarEvento({
-                entidad: 'cuenta', entidadId: comprobante.cuenta, tipo: 'comprobante_anulado', motivo,
+                // 3b.4 · El de un domicilio queda en el historial del pedido
+                entidad: comprobante.pedido ? 'pedido' : 'cuenta', entidadId: comprobante.pedido ?? comprobante.cuenta, tipo: 'comprobante_anulado', motivo,
                 usuario: sesion.id, actor: sesion.rol || 'staff',
                 datos: { comprobante: comprobante.codigo, nota: nota.codigo, total: nota.total, turno: turno?.codigo ?? null }, session,
             })

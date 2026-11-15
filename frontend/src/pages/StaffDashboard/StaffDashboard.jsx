@@ -60,7 +60,8 @@ export default function StaffDashboard() {
   const puedeAgotar = tienePermiso(user, "producto:agotar") || tienePermiso(user, "producto:reactivar");
   // 1.9 · «Cuentas abiertas» (salón con cuenta:ver, domicilio con pedido:ver)
   const puedeVerCuentas = tienePermiso(user, "cuenta:ver") || puedeVerPedidos;
-  const puedeCobrar = tienePermiso(user, "cuenta:cobrar"); // Fase 3 · cajero y admin (F3-1)
+  // Fase 3 · cajero y admin (F3-1); 3b.4 · también el repartidor, que cobra sus domicilios (pedido:cobrar)
+  const puedeCobrar = tienePermiso(user, "cuenta:cobrar") || tienePermiso(user, "pedido:cobrar");
   // Con mesa:ver, el panel abre primero el plano de mesas (decisión 1.6 del 2026-11-07); el cajero, la caja
   const [seccion, setSeccion] = useState(() => (puedeVerMesas ? "mesas" : puedeCobrar ? "caja" : "resumen"));
   // 2.6 · Aviso «Listo para servir» a quien sirve mesas (el de sus cuentas), con sonido apagado por

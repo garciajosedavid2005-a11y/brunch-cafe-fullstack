@@ -196,6 +196,25 @@ const disponibilidad = async (nombre, disponible) => {
   const res = await sesionAdmin.put(`${API}/admin/productos/${producto.id ?? producto._id}`, { data: { disponible } });
   if (!res.ok()) throw new Error(`No se pudo cambiar la disponibilidad de «${nombre}»: ${res.status()}`);
 };
+// 3b.4 · Un domicilio «en camino» (el pedido sembrado de cliente.dev, avanzado por el admin) para cobrarlo
+let domicilioListo = false;
+const domicilioEnCamino = async () => {
+  if (domicilioListo) return;
+  if (!sesionAdmin) {
+    sesionAdmin = await request.newContext();
+    await sesionAdmin.post(`${API}/auth/login`, { data: { correo: USUARIOS.admin, contraseña: CLAVE } });
+  }
+  const lista = await (await sesionAdmin.get(`${API}/staff/pedidos`)).json();
+  const pedidos = Array.isArray(lista) ? lista : lista.pedidos || [];
+  const pedido = pedidos.find((x) => !x.esFinal && x.estadoCodigo !== "en_camino") || pedidos.find((x) => x.estadoCodigo === "en_camino");
+  if (!pedido) throw new Error("No hay un pedido para llevar a «en camino» en la BD de capturas");
+  const orden = ["pendiente", "confirmado", "en_preparacion", "listo", "en_camino"];
+  for (const codigo of orden.slice(orden.indexOf(pedido.estadoCodigo) + 1)) {
+    const res = await sesionAdmin.patch(`${API}/staff/pedidos/${pedido.id ?? pedido._id}/estado`, { data: { codigo } });
+    if (!res.ok()) throw new Error(`No se pudo pasar el pedido a ${codigo}: ${res.status()}`);
+  }
+  domicilioListo = true;
+};
 const abrirCuentaDeMesa = async (p, numero) => {
   await p.goto(`${FRONT}/staff`);
   await p.getByRole("button", { name: new RegExp(`^Mesa ${numero},`) }).click();
@@ -1489,6 +1508,17 @@ const VISTAS = {
   "staff-caja-cobradas": { usuario: "cajero", completa: false, preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);
     await p.getByRole("list", { name: "Cobradas hoy" }).getByRole("button", { name: /^Ver comprobante CI-/ }).first().waitFor();
+  } },
+  // 3b.4 · Domicilios por cobrar (cajero) y la pantalla de cobro de uno (sin cobrar)
+  "staff-caja-domicilios": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await domicilioEnCamino();
+    await VISTAS["staff-caja"].preparar(p);
+    await p.getByRole("button", { name: /^Cobrar domicilio PED-/ }).first().scrollIntoViewIfNeeded();
+  } },
+  "staff-caja-domicilio-cobro": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await VISTAS["staff-caja-domicilios"].preparar(p);
+    await p.getByRole("button", { name: /^Cobrar domicilio PED-/ }).first().click();
+    await p.getByRole("heading", { name: /^Cobrar · Domicilio PED-/ }).waitFor();
   } },
   // 3b.3 · Anular un comprobante (admin): el diálogo con el motivo y, después, el comprobante anulado
   "staff-caja-anular": { usuario: "admin", completa: false, preparar: async (p) => {

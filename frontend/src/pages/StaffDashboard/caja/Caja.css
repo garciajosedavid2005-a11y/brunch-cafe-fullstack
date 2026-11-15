@@ -362,3 +362,6 @@
 .comprobante__anulado strong { font-size: 1.1rem; letter-spacing: 0.08em; }
 .caja__cobrada .caja__cobrada-anulada { text-decoration: line-through; color: #594742; }
 .caja__insignia-anulado { padding: 0.15rem 0.5rem; border: 1px solid #b71c1c; border-radius: 999px; color: #8a1c0c; font-size: 0.85rem; font-weight: 700; white-space: nowrap; }
+/* 3b.4 · Domicilios por cobrar: el icono junto al código; números de forma uniforme en los títulos («PED-79FA24») */
+.caja__cuenta--domicilio .caja__cuenta-mesa { display: inline-flex; align-items: center; gap: 0.4rem; }
+.caja__titulo { font-variant-numeric: lining-nums; }

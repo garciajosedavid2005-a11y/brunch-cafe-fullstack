@@ -6,6 +6,7 @@ import { avisarSalon } from '../salon/salonStaff.routes.js'
 import { listarPorCobrar, listarDeHoy, obtenerComprobante, detalleParaCobro } from './caja.service.js'
 import { turnoActual, historialTurnos, abrirTurno, cerrarTurno } from './turno.service.js'
 import { anularComprobante } from './anulacion.service.js'
+import { listarDomiciliosPorCobrar, cobrarDomicilio } from './domicilios.service.js'
 import { publicar } from '../tiempoReal/bus.js'
 
 // Fase 3 · /api/v1/staff/caja (ya autenticado): cuentas por cobrar, cobro y comprobantes, con
@@ -38,6 +39,16 @@ router.post('/comprobantes/:id/anular', requirePermission('factura:anular'), ide
     const resultado = await anularComprobante(req.params.id, req.body, req.usuario)
     res.status(201).json(resultado)
     publicar(['caja'], { tipo: 'comprobante_anulado', ids: { comprobanteId: req.params.id } })
+})
+
+// 3b.4 · Domicilios contra entrega: el cajero o el repartidor (pedido:cobrar), con Idempotency-Key
+router.get('/domicilios', requirePermission('pedido:cobrar', 'cuenta:cobrar'), async (req, res) => {
+    res.json(await listarDomiciliosPorCobrar(req.usuario))
+})
+router.post('/domicilios/:id/cobrar', requirePermission('pedido:cobrar'), idempotencia, async (req, res) => {
+    const resultado = await cobrarDomicilio(req.params.id, req.body, req.usuario)
+    res.status(201).json(resultado)
+    publicar(['caja'], { tipo: 'pedido_cobrado', ids: { pedidoId: req.params.id } })
 })
 
 router.use(requirePermission('cuenta:cobrar'))

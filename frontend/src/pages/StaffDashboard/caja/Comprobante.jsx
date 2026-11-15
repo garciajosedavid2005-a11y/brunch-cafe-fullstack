@@ -90,8 +90,14 @@ export default function Comprobante({ comprobante, onVolver }) {
           </p>
         )}
         <dl className="comprobante__datos">
-          <div><dt>{c.mesas.length > 1 ? "Mesas" : "Mesa"}</dt><dd>{c.mesas.join(" + ") || "—"}</dd></div>
-          <div><dt>Mesero</dt><dd>{c.mesero || "—"}</dd></div>
+          {c.pedido ? (
+            <div><dt>Domicilio</dt><dd>{c.pedido}</dd></div>
+          ) : (
+            <>
+              <div><dt>{c.mesas.length > 1 ? "Mesas" : "Mesa"}</dt><dd>{c.mesas.join(" + ") || "—"}</dd></div>
+              <div><dt>Mesero</dt><dd>{c.mesero || "—"}</dd></div>
+            </>
+          )}
           <div><dt>Cajero</dt><dd>{c.cajero || "—"}</dd></div>
         </dl>
 

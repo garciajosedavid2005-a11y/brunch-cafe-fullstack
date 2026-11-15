@@ -38,6 +38,8 @@ beforeEach(() => {
   respuestas = { turno: TURNO, cuentas: [CUENTA], hoy: [], cobro: () => Promise.resolve({ cuenta: { id: "c1", estado: "cerrada" }, comprobante: COMPROBANTE }) };
   estado.apiRequest.mockReset().mockImplementation((ruta, opciones = {}) => {
     if (ruta === "/v1/staff/caja/turno") return Promise.resolve({ turno: respuestas.turno });
+    if (ruta === "/v1/staff/caja/domicilios") return Promise.resolve({ domicilios: respuestas.domicilios ?? [] });
+    if (ruta === "/v1/staff/caja/domicilios/p1/cobrar" && opciones.method === "POST") return respuestas.cobro(opciones);
     if (ruta === "/v1/staff/caja/turno/abrir" && opciones.method === "POST") return Promise.resolve({ turno: TURNO });
     if (ruta === "/v1/staff/caja/turno/cerrar" && opciones.method === "POST") return respuestas.cierre(opciones);
     if (ruta === "/v1/staff/caja/cuentas") return Promise.resolve({ cuentas: respuestas.cuentas });
@@ -270,5 +272,34 @@ describe("Anular un comprobante (3b.3)", () => {
     await abrirComprobante();
     expect(screen.queryByRole("button", { name: "Anular comprobante" })).not.toBeInTheDocument();
     expect(screen.getByText(/con la nota crédito NC-000001/)).toBeInTheDocument();
+  });
+});
+
+describe("Domicilios contra entrega (3b.4)", () => {
+  const DOMICILIO = { id: "p1", codigo: "PED-ABC123", estado: "entregado", cliente: "Ana Pérez", direccion: "Cra 36B #30-06 · Centro", metodoPago: "Contra Entrega", total: 9000 };
+
+  it("el cajero ve los domicilios por cobrar y cobra uno por su endpoint (sin versión ni división)", async () => {
+    respuestas.domicilios = [DOMICILIO];
+    render(<DialogoProvider><Caja /></DialogoProvider>);
+    const boton = await screen.findByRole("button", { name: re("Cobrar domicilio PED-ABC123, $ 9.000") });
+    await waitFor(() => expect(boton).toBeEnabled());
+    fireEvent.click(boton);
+    expect(screen.getByRole("heading", { name: "Cobrar · Domicilio PED-ABC123" })).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Cómo se cobra" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: re("Cobrar $ 9.000") }));
+    await waitFor(() => expect(estado.apiRequest).toHaveBeenCalledWith("/v1/staff/caja/domicilios/p1/cobrar", expect.objectContaining({ method: "POST" })));
+    const cuerpo = JSON.parse(estado.apiRequest.mock.calls.find(([r]) => r === "/v1/staff/caja/domicilios/p1/cobrar")[1].body);
+    expect(cuerpo).toEqual({ propina: 0, pagos: [{ metodo: "efectivo", monto: 9000, recibido: 9000 }] });
+  });
+
+  it("el repartidor (solo pedido:cobrar) ve únicamente los domicilios, sin turno ni cuentas", async () => {
+    estado.usuario = { permisos: ["pedido:ver", "pedido:cobrar"] };
+    respuestas.domicilios = [DOMICILIO];
+    render(<DialogoProvider><Caja /></DialogoProvider>);
+    expect(await screen.findByRole("button", { name: re("Cobrar domicilio PED-ABC123, $ 9.000") })).toBeEnabled();
+    expect(screen.queryByRole("region", { name: "Turno de caja" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /^Por cobrar/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /^Cobradas hoy/ })).not.toBeInTheDocument();
+    expect(estado.apiRequest.mock.calls.map(([r]) => r)).not.toContain("/v1/staff/caja/turno");
   });
 });

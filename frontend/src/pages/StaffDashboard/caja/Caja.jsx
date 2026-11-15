@@ -12,6 +12,7 @@ import Comprobante from "./Comprobante";
 import { FranjaTurno, CerrarTurno } from "./TurnoCaja";
 import { useAuth } from "../../../context/useAuth";
 import { tienePermiso } from "../../../utils/permisos";
+import DomiciliosPorCobrar from "./DomiciliosPorCobrar";
 import "./Caja.css";
 
 // Fase 3 · Pestaña «Caja» de /staff (cuenta:cobrar; F3-1): las cuentas en «cuenta pedida» (F3-6) y las
@@ -24,11 +25,16 @@ const minutosDesde = (fecha) => (fecha ? Math.max(0, Math.floor((Date.now() - ne
 export default function Caja() {
   const [vista, setVista] = useState({ tipo: "lista" });
   const enLista = vista.tipo === "lista";
-  const porCobrar = useSondeo("/v1/staff/caja/cuentas", 15_000, { activo: enLista, canales: CANALES, mensajeError: "No se pudo cargar la caja." });
-  const cobradas = useSondeo("/v1/staff/caja/comprobantes", 30_000, { activo: enLista, canales: CANALES, mensajeError: "No se pudieron cargar las cobradas." });
-  // 3b.1 · Turno de caja: sin turno abierto no se cobra
-  const turnoSondeo = useSondeo("/v1/staff/caja/turno", 30_000, { activo: enLista, canales: CANALES, mensajeError: "No se pudo cargar el turno." });
   const { user } = useAuth();
+  // 3b.4 · El repartidor (solo pedido:cobrar) ve únicamente los domicilios por cobrar
+  const cobraCuentas = tienePermiso(user, "cuenta:cobrar");
+  const canales = cobraCuentas ? CANALES : [];
+  const porCobrar = useSondeo("/v1/staff/caja/cuentas", 15_000, { activo: enLista && cobraCuentas, canales, mensajeError: "No se pudo cargar la caja." });
+  const cobradas = useSondeo("/v1/staff/caja/comprobantes", 30_000, { activo: enLista && cobraCuentas, canales, mensajeError: "No se pudieron cargar las cobradas." });
+  // 3b.1 · Turno de caja: sin turno abierto no se cobra
+  const turnoSondeo = useSondeo("/v1/staff/caja/turno", 30_000, { activo: enLista && cobraCuentas, canales, mensajeError: "No se pudo cargar el turno." });
+  const domicilios = useSondeo("/v1/staff/caja/domicilios", 20_000, { activo: enLista, canales, mensajeError: "No se pudieron cargar los domicilios." });
+  const vivo = cobraCuentas ? porCobrar : domicilios;
   const turno = turnoSondeo.datos?.turno || null;
   const turnoCargado = Boolean(turnoSondeo.datos);
   const [errorComprobante, setErrorComprobante] = useState("");
@@ -38,6 +44,7 @@ export default function Caja() {
     porCobrar.recargar();
     cobradas.recargar();
     turnoSondeo.recargar();
+    domicilios.recargar();
   };
   const verComprobante = async (id) => {
     setErrorComprobante("");
@@ -60,9 +67,10 @@ export default function Caja() {
     <section className="caja" aria-label="Caja">
       <div className="caja__barra">
         <h2 className="caja__titulo">Caja</h2>
-        <Actualizado desde={porCobrar.actualizadoEn} error={porCobrar.error} onActualizar={porCobrar.recargar} enVivo={porCobrar.enVivo} />
+        <Actualizado desde={vivo.actualizadoEn} error={vivo.error} onActualizar={volver} enVivo={vivo.enVivo} />
       </div>
 
+      {cobraCuentas && (<>
       <FranjaTurno turno={turno} cargado={turnoCargado} puedeAbrir={tienePermiso(user, "caja:abrir")} puedeCerrar={tienePermiso(user, "caja:cerrar")}
         onAbierto={turnoSondeo.recargar} onCerrar={() => setVista({ tipo: "cerrar-turno" })} />
 
@@ -97,6 +105,12 @@ export default function Caja() {
         })}
       </ul>
 
+      </>)}
+
+      <DomiciliosPorCobrar sondeo={domicilios} sinTurno={cobraCuentas && turnoCargado && !turno}
+        onCobrar={(d) => setVista({ tipo: "cobrar", cuenta: { ...d, esDomicilio: true, mesas: [] } })} />
+
+      {cobraCuentas && (<>
       <h3 className="caja__subtitulo">Cobradas hoy <span className="caja__conteo">{hoy.length}</span></h3>
       {errorComprobante && <p className="caja__aviso" role="alert">{errorComprobante}</p>}
       {cobradas.datos && hoy.length === 0 && <p className="caja__vacio">Todavía no hay cobros hoy.</p>}
@@ -114,6 +128,7 @@ export default function Caja() {
           </li>
         ))}
       </ul>
+      </>)}
     </section>
   );
 }

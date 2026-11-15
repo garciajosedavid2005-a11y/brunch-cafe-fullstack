@@ -25,6 +25,8 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
   const [error, setError] = useState("");
   // 3b.2 · Cómo se cobra: entera, en partes iguales o por ítems (con una parte cobrada, el modo queda fijo)
   const division = cuenta.division || null;
+  // 3b.4 · Domicilio contra entrega: sin división ni versión, con su propio endpoint
+  const esDomicilio = Boolean(cuenta.esDomicilio);
   const [modo, setModo] = useState(division?.modo || "entera");
   const [partes, setPartes] = useState(division?.partes || Math.min(Math.max(cuenta.comensales || 2, 2), 20));
   const [elegidos, setElegidos] = useState([]);
@@ -95,8 +97,9 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
     setError("");
     try {
       const cuerpo = cuerpoCobro({ versionEsperada: cuenta.version, propina, pagos: pagosVistos });
-      const parte = modo === "iguales" ? { modo, partes } : modo === "items" ? { modo, items: elegidos } : null;
-      const resultado = await apiRequest(`/v1/staff/caja/cuentas/${cuenta.id}/${parte ? "cobrar-parte" : "cobrar"}`, {
+      const parte = esDomicilio ? null : modo === "iguales" ? { modo, partes } : modo === "items" ? { modo, items: elegidos } : null;
+      const ruta = esDomicilio ? `/v1/staff/caja/domicilios/${cuenta.id}/cobrar` : `/v1/staff/caja/cuentas/${cuenta.id}/${parte ? "cobrar-parte" : "cobrar"}`;
+      const resultado = await apiRequest(ruta, {
         method: "POST",
         headers: { "Idempotency-Key": clave.current },
         body: JSON.stringify(parte ? { ...cuerpo, division: parte } : cuerpo),
@@ -117,15 +120,17 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
           <ArrowLeft size={18} aria-hidden="true" /> Volver a la caja
         </button>
       </div>
-      <h2 id={`${id}-titulo`} className="caja__titulo">Cobrar · {mesasTexto(cuenta.mesas)}</h2>
-      <p className="caja-cobro__sub">{cuenta.codigo}{cuenta.mesero ? ` · ${cuenta.mesero}` : ""}</p>
+      <h2 id={`${id}-titulo`} className="caja__titulo">Cobrar · {esDomicilio ? `Domicilio ${cuenta.codigo}` : mesasTexto(cuenta.mesas)}</h2>
+      <p className="caja-cobro__sub">
+        {esDomicilio ? [cuenta.cliente, cuenta.direccion].filter(Boolean).join(" · ") : `${cuenta.codigo}${cuenta.mesero ? ` · ${cuenta.mesero}` : ""}`}
+      </p>
 
       <div className="caja-cobro__columnas">
         <div className="caja-cobro__bloque">
-          <DivisionCuenta id={id} total={cuenta.total} division={division} modo={modo}
+          {!esDomicilio && <DivisionCuenta id={id} total={cuenta.total} division={division} modo={modo}
             onModo={(m) => { setModo(m); setError(""); clave.current = nuevaClave(); }}
             partes={partes} onPartes={setPartes} items={items} elegidos={elegidos}
-            onElegir={(itemId) => setElegidos((l) => (l.includes(itemId) ? l.filter((x) => x !== itemId) : [...l, itemId]))} />
+            onElegir={(itemId) => setElegidos((l) => (l.includes(itemId) ? l.filter((x) => x !== itemId) : [...l, itemId]))} />}
           <dl className="caja-cobro__resumen">
             <div><dt>{modo === "entera" ? "Consumo" : "Consumo de esta parte"}</dt><dd>{formatearCOP(consumo)}</dd></div>
           </dl>
