@@ -25,7 +25,7 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
   const [error, setError] = useState("");
   // 3b.2 · Cómo se cobra: entera, en partes iguales o por ítems (con una parte cobrada, el modo queda fijo)
   const division = cuenta.division || null;
-  // 3b.4 · Domicilio contra entrega: sin división ni versión, con su propio endpoint
+  // 3b.4 · Domicilio (se paga al recibir, con cualquier método): sin división ni versión, con su propio endpoint
   const esDomicilio = Boolean(cuenta.esDomicilio);
   const [modo, setModo] = useState(division?.modo || "entera");
   const [partes, setPartes] = useState(division?.partes || Math.min(Math.max(cuenta.comensales || 2, 2), 20));
@@ -48,7 +48,8 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
   const [propina, setPropina] = useState(0);
   const total = consumo + propina;
   // Un solo pago sigue al total mientras el cajero no lo cambie
-  const [pagos, setPagos] = useState([{ metodo: "efectivo", monto: consumo, recibido: null }]);
+  // Un domicilio llega con el método de su pedido (tarjeta con datáfono o efectivo contra entrega)
+  const [pagos, setPagos] = useState([{ metodo: (esDomicilio && cuenta.metodoSugerido) || "efectivo", monto: consumo, recibido: null }]);
   const [seguirTotal, setSeguirTotal] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const clave = useRef(nuevaClave());

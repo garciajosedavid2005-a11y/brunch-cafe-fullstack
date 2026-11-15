@@ -39,7 +39,7 @@ const persona = new mongoose.Schema({
 const comprobanteSchema = new mongoose.Schema({
     numero: { type: Number, required: true, min: 1, validate: entero('El número') },
     codigo: { type: String, required: true },
-    // De una cuenta del salón o (3b.4) de un pedido a domicilio cobrado contra entrega: exactamente uno
+    // De una cuenta del salón o (3b.4) de un pedido a domicilio cobrado al recibirlo: exactamente uno
     cuenta: { type: mongoose.Schema.Types.ObjectId, ref: 'Cuenta', default: undefined },
     pedido: { type: mongoose.Schema.Types.ObjectId, ref: 'Pedido', default: undefined },
     pedidoCodigo: { type: String, trim: true, default: undefined }, // copia: «PED-8B0CA6»

@@ -34,7 +34,7 @@ export const TIPOS_EVENTO = [
     'cuenta_parte_cobrada',
     // 3b.3 · Anulación de un comprobante con nota crédito (entidad 'cuenta' o 'pedido'; datos: comprobante y nota)
     'comprobante_anulado',
-    // 3b.4 · Cobro contra entrega de un domicilio (entidad 'pedido'; datos: comprobante, montos y métodos)
+    // 3b.4 · Cobro de un domicilio al recibirlo (entidad 'pedido'; datos: comprobante, montos y métodos)
     'pedido_cobrado',
 ]
 const eventoSchema = new mongoose.Schema({

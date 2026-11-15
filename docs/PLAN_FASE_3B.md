@@ -1,6 +1,6 @@
 # Plan Fase 3b — Caja completa
 
-Pedido por Brayan el 2026-11-14. Orden: 3b.1 → 3b.4, un commit por ítem. Las decisiones F3b-* son de Claude (a confirmar por Brayan).
+Pedido por Brayan el 2026-11-14. Orden: 3b.1 → 3b.4, un commit por ítem. Las decisiones F3b-* son de Claude (confirmadas por Brayan el 2026-11-15).
 
 ## Ítems
 

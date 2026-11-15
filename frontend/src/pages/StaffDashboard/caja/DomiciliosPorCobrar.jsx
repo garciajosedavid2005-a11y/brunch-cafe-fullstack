@@ -1,8 +1,8 @@
 import { Bike, Wallet } from "lucide-react";
 import { formatearCOP } from "../../../utils/moneda";
 
-// 3b.4 · Domicilios contra entrega por cobrar (en camino o entregados, sin comprobante). Los cobra el cajero o
-// el repartidor (pedido:cobrar); el cobro exige un turno de caja abierto (si no lo hay, el backend responde 409).
+// 3b.4 · Domicilios por cobrar (en camino o entregados, sin comprobante, con cualquier método: todos se pagan al
+// recibir). Los cobra el cajero o el repartidor (pedido:cobrar); el cobro exige un turno de caja abierto (409 si no).
 const ESTADO = { en_camino: "En camino", entregado: "Entregado" };
 
 export default function DomiciliosPorCobrar({ sondeo, sinTurno, onCobrar }) {

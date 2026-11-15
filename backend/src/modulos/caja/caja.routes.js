@@ -41,7 +41,7 @@ router.post('/comprobantes/:id/anular', requirePermission('factura:anular'), ide
     publicar(['caja'], { tipo: 'comprobante_anulado', ids: { comprobanteId: req.params.id } })
 })
 
-// 3b.4 · Domicilios contra entrega: el cajero o el repartidor (pedido:cobrar), con Idempotency-Key
+// 3b.4 · Domicilios (se pagan al recibir, con cualquier método): el cajero o el repartidor (pedido:cobrar), con Idempotency-Key
 router.get('/domicilios', requirePermission('pedido:cobrar', 'cuenta:cobrar'), async (req, res) => {
     res.json(await listarDomiciliosPorCobrar(req.usuario))
 })

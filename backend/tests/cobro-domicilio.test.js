@@ -1,4 +1,4 @@
-// 3b.4 · Cobro contra entrega de un domicilio (PLAN_FASE_3B, F3b-6): el cajero o el repartidor (pedido:cobrar)
+// 3b.4 · Cobro de un domicilio al recibirlo (PLAN_FASE_3B, F3b-6): el cajero o el repartidor (pedido:cobrar)
 // lo registran con el pedido en camino o entregado; exige turno; comprobante del pedido con el mismo
 // consecutivo; una sola vez por pedido; se puede anular (Evento en el pedido).
 import { describe, it, expect, beforeEach } from 'vitest'
@@ -11,7 +11,7 @@ import Pedido from '../src/modulos/pedidos/pedido.model.js'
 import MetodoPago from '../src/modulos/pedidos/metodoPago.model.js'
 import Evento from '../src/modulos/compartido/evento.model.js'
 import { abrirTurno } from '../src/modulos/caja/turno.service.js'
-import { cobrarDomicilio, esContraEntrega } from '../src/modulos/caja/domicilios.service.js'
+import { cobrarDomicilio, esContraEntrega, metodoSugerido } from '../src/modulos/caja/domicilios.service.js'
 import { up, down, PARTES, PEDIDO } from '../src/migraciones/m3b4-indices-domicilio.js'
 
 const { ObjectId } = mongoose.Types
@@ -165,16 +165,25 @@ describe('3b.4 · Ventana, permisos y reintentos', () => {
 describe('3b · Pendientes: método de pago y comprobantes del repartidor', () => {
     const cobro = { propina: 0, pagos: [{ metodo: 'tarjeta', monto: 9000 }] }
 
-    it('un domicilio pagado con otro método (Tarjeta débito) no se lista ni se cobra contra entrega: 409 sin comprobante', async () => {
+    it('un domicilio con Tarjeta débito se lista (tarjeta sugerida) y se cobra una sola vez con su método real; el segundo cobro, 409', async () => {
         const tarjeta = await MetodoPago.findOne({ codigo: 'tarjeta-debito' }).lean()
         const id = await crearPedido(cliente, { metodoPagoId: String(tarjeta._id) })
         await entregarPedido(adminS, id)
-        expect((await adminS.get(`${BASE}/domicilios`)).body.domicilios).toHaveLength(0)
+        const lista = (await adminS.get(`${BASE}/domicilios`)).body.domicilios
+        expect(lista).toEqual([expect.objectContaining({ id, metodoPago: 'Tarjeta débito', metodoSugerido: 'tarjeta' })])
         const r = await adminS.post(`${BASE}/domicilios/${id}/cobrar`).send(cobro)
-        expect(r.status).toBe(409)
-        expect(r.body.error.code).toBe('PEDIDO_NO_CONTRA_ENTREGA')
-        expect(r.body.error.message).toMatch(/Tarjeta débito/)
-        expect(await Comprobante.countDocuments({ pedido: id })).toBe(0)
+        expect(r.status, JSON.stringify(r.body)).toBe(201)
+        expect(r.body.comprobante.pagos).toEqual([expect.objectContaining({ metodo: 'tarjeta', monto: 9000 })])
+        const otra = await adminS.post(`${BASE}/domicilios/${id}/cobrar`).send(cobro)
+        expect(otra.status).toBe(409)
+        expect(otra.body.error.code).toBe('PEDIDO_YA_COBRADO')
+        expect(await Comprobante.countDocuments({ pedido: id })).toBe(1)
+        expect((await adminS.get(`${BASE}/domicilios`)).body.domicilios).toHaveLength(0)
+    })
+
+    it('el contra entrega sugiere efectivo', async () => {
+        const id = await domicilio('entregado')
+        expect((await adminS.get(`${BASE}/domicilios`)).body.domicilios).toEqual([expect.objectContaining({ id, metodoPago: 'Contra Entrega', metodoSugerido: 'efectivo' })])
     })
 
     it('el repartidor vuelve a abrir el comprobante de un domicilio que él cobró, pero no los de otros ni los de mesas', async () => {
@@ -213,5 +222,15 @@ describe('esContraEntrega', () => {
         expect(esContraEntrega({ nombre: 'contra entrega' })).toBe(true)
         expect(esContraEntrega({ nombre: 'Tarjeta débito', codigo: 'tarjeta-debito' })).toBe(false)
         expect(esContraEntrega(null)).toBe(false)
+    })
+})
+
+describe('metodoSugerido', () => {
+    it('contra entrega → efectivo; una tarjeta (por código o por nombre) → tarjeta; lo demás → efectivo', () => {
+        expect(metodoSugerido({ codigo: 'contra-entrega', nombre: 'Contra Entrega' })).toBe('efectivo')
+        expect(metodoSugerido({ codigo: 'tarjeta-credito', nombre: 'Tarjeta crédito' })).toBe('tarjeta')
+        expect(metodoSugerido({ nombre: 'Tarjeta débito' })).toBe('tarjeta')
+        expect(metodoSugerido({ nombre: 'Transferencia' })).toBe('efectivo')
+        expect(metodoSugerido(null)).toBe('efectivo')
     })
 })

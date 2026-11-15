@@ -275,7 +275,7 @@ describe("Anular un comprobante (3b.3)", () => {
   });
 });
 
-describe("Domicilios contra entrega (3b.4)", () => {
+describe("Domicilios por cobrar al recibirlos (3b.4)", () => {
   const DOMICILIO = { id: "p1", codigo: "PED-ABC123", estado: "entregado", cliente: "Ana Pérez", direccion: "Cra 36B #30-06 · Centro", metodoPago: "Contra Entrega", total: 9000 };
 
   it("el cajero ve los domicilios por cobrar y cobra uno por su endpoint (sin versión ni división)", async () => {
@@ -290,6 +290,19 @@ describe("Domicilios contra entrega (3b.4)", () => {
     await waitFor(() => expect(estado.apiRequest).toHaveBeenCalledWith("/v1/staff/caja/domicilios/p1/cobrar", expect.objectContaining({ method: "POST" })));
     const cuerpo = JSON.parse(estado.apiRequest.mock.calls.find(([r]) => r === "/v1/staff/caja/domicilios/p1/cobrar")[1].body);
     expect(cuerpo).toEqual({ propina: 0, pagos: [{ metodo: "efectivo", monto: 9000, recibido: 9000 }] });
+  });
+
+  it("un domicilio con tarjeta se cobra en la caja con la tarjeta ya elegida (método real del pedido)", async () => {
+    respuestas.domicilios = [{ ...DOMICILIO, metodoPago: "Tarjeta débito", metodoSugerido: "tarjeta" }];
+    render(<DialogoProvider><Caja /></DialogoProvider>);
+    const boton = await screen.findByRole("button", { name: re("Cobrar domicilio PED-ABC123, $ 9.000") });
+    await waitFor(() => expect(boton).toBeEnabled());
+    expect(screen.getByText(/Entregado · Tarjeta débito/)).toBeInTheDocument();
+    fireEvent.click(boton);
+    fireEvent.click(screen.getByRole("button", { name: re("Cobrar $ 9.000") }));
+    await waitFor(() => expect(estado.apiRequest).toHaveBeenCalledWith("/v1/staff/caja/domicilios/p1/cobrar", expect.objectContaining({ method: "POST" })));
+    const cuerpo = JSON.parse(estado.apiRequest.mock.calls.find(([r]) => r === "/v1/staff/caja/domicilios/p1/cobrar")[1].body);
+    expect(cuerpo.pagos).toEqual([expect.objectContaining({ metodo: "tarjeta", monto: 9000 })]);
   });
 
   it("el repartidor (solo pedido:cobrar) ve únicamente los domicilios, sin turno ni cuentas", async () => {

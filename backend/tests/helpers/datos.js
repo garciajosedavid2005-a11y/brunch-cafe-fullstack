@@ -34,7 +34,7 @@ export const crearPedido = async (sesionCliente, extra = {}) => {
         direccion: 'Carrera 36B #30-06',
         hora: '10:00',
         barrio: 'Centro',
-        // «Contra Entrega» (el único que se cobra en la caja), no el primero de la lista
+        // «Contra Entrega» por defecto (sugiere efectivo en la caja), no el primero de la lista
         metodoPagoId: (metodos.body.find((m) => m.nombre === 'Contra Entrega') ?? metodos.body[0]).id,
         ...extra,
     })

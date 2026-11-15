@@ -5,7 +5,8 @@ import Estado from '../compartido/estado.model.js'
 import Comprobante, { codigoComprobante } from './comprobante.model.js'
 import Contador from '../compartido/contador.model.js'
 import Usuario from '../identidad/usuario.model.js'
-import MetodoPago from '../pedidos/metodoPago.model.js'
+// Registra el modelo para el populate del método de pago
+import '../pedidos/metodoPago.model.js'
 import { AppError } from '../compartido/errors.js'
 import { conTransaccion } from '../compartido/transacciones.js'
 import { registrarEvento } from '../compartido/estados.service.js'
@@ -16,13 +17,13 @@ import { cobrarSchema } from './caja.schema.js'
 import { asegurarContador, calcularPagos, formatoComprobante } from './caja.service.js'
 import { tomarTurnoAbierto } from './turno.service.js'
 
-// Fase 3b.4 · Cobro contra entrega de un domicilio (PLAN_FASE_3B, F3b-6): lo registra el cajero o el
+// Fase 3b.4 · Cobro de un domicilio al recibirlo (PLAN_FASE_3B, F3b-6): lo registra el cajero o el
 // repartidor (pedido:cobrar) con el pedido «en camino» o «entregado» y sin comprobante. Exige un turno de caja
 // abierto (el dinero entra a esa caja). Emite un comprobante del pedido (sus líneas, propina y pagos) con el
 // mismo consecutivo CI-… de la caja; un pedido se cobra una sola vez (índice único parcial).
 export const ESTADOS_COBRABLES = ['en_camino', 'entregado']
 // Solo los pedidos de las últimas 48 h: los entregados de antes de 3b.4 (o de días atrás) no se cobran en el
-// turno de hoy (descuadrarían el arqueo). Claude (a confirmar por Brayan)
+// turno de hoy (descuadrarían el arqueo). Brayan (confirmada el 2026-11-15)
 export const VENTANA_COBRO_MS = 48 * 60 * 60 * 1000
 const recientes = () => ({ createdAt: { $gte: new Date(Date.now() - VENTANA_COBRO_MS) } })
 const MAXIMO_LISTA = 200
@@ -30,12 +31,12 @@ const cobroSchema = cobrarSchema.omit({ versionEsperada: true })
 // Los pedidos anteriores a 1.9 no tienen canal y son domicilios (pendiente de 1.9)
 const DOMICILIO = { canal: { $in: ['domicilio', null] } }
 
-// Solo se cobra contra entrega un pedido cuyo método es «Contra Entrega» (por código, o por nombre en las BD
-// sin código): uno pagado con otro método no entra a la caja, para no cobrarlo dos veces (pendiente de 3b).
+// Sin pago en línea, todo domicilio se paga al recibir (Contra Entrega, Tarjeta débito o crédito con datáfono):
+// cualquiera se cobra UNA vez en la caja con su método real, para que entre en el arqueo (Brayan, 2026-11-15).
+// El método del pedido solo sugiere cómo se cobra: «Contra Entrega» → efectivo; una tarjeta → tarjeta.
 const normalizar = (texto) => String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[\s_-]+/g, ' ').trim()
 export const esContraEntrega = (metodo) => metodo?.codigo === 'contra-entrega' || normalizar(metodo?.nombre) === 'contra entrega'
-// Ids de los métodos «Contra Entrega» (la colección tiene unos pocos): filtran la consulta antes del límite
-const idsContraEntrega = async () => (await MetodoPago.find({}).select('nombre codigo').lean()).filter(esContraEntrega).map((m) => m._id)
+export const metodoSugerido = (metodo) => (!esContraEntrega(metodo) && /tarjeta/.test(normalizar(`${metodo?.codigo || ''} ${metodo?.nombre || ''}`)) ? 'tarjeta' : 'efectivo')
 
 const exigir = (sesion, ...claves) => {
     if (!claves.some((c) => tienePermiso(sesion?.permisos || [], c))) {
@@ -58,19 +59,21 @@ const lineaDeDetalle = (d) => {
     }
 }
 
-/** GET /staff/caja/domicilios: pedidos en camino o entregados que aún no se cobraron. */
+/** GET /staff/caja/domicilios: pedidos en camino o entregados (cualquier método de pago) que aún no se cobraron. */
 export const listarDomiciliosPorCobrar = async (sesion) => {
     exigir(sesion, 'pedido:cobrar', 'cuenta:cobrar')
     const estados = await idsDeEstados(ESTADOS_COBRABLES)
     const codigoDe = new Map(estados.map((e) => [String(e._id), e.codigo]))
-    const pedidos = await Pedido.find({ ...DOMICILIO, ...recientes(), estado: { $in: estados.map((e) => e._id) }, metodoPago: { $in: await idsContraEntrega() } }).sort({ createdAt: -1 })
-        .limit(MAXIMO_LISTA).populate('metodoPago', 'nombre').lean()
-    const cobrados = new Set((await Comprobante.find({ pedido: { $in: pedidos.map((p) => p._id) } }).select('pedido').lean()).map((c) => String(c.pedido)))
+    // Los ya cobrados se excluyen en la consulta, antes del límite (un pedido de las últimas 48 h solo pudo
+    // cobrarse en ese plazo): así 200 cobrados no tapan a los pendientes
+    const cobrados = await Comprobante.distinct('pedido', { pedido: { $ne: null }, emitidoEn: { $gte: new Date(Date.now() - VENTANA_COBRO_MS) } })
+    const pedidos = await Pedido.find({ ...DOMICILIO, ...recientes(), _id: { $nin: cobrados }, estado: { $in: estados.map((e) => e._id) } }).sort({ createdAt: -1 })
+        .limit(MAXIMO_LISTA).populate('metodoPago', 'nombre codigo').lean()
     return {
-        domicilios: pedidos.filter((p) => !cobrados.has(String(p._id))).map((p) => ({
+        domicilios: pedidos.map((p) => ({
             id: String(p._id), codigo: codigoPedido(p._id), estado: codigoDe.get(String(p.estado)) || '',
             cliente: p.nombreEntrega || '', direccion: [p.direccion, p.barrio].filter(Boolean).join(' · '),
-            horaEntrega: p.horaEntrega || '', metodoPago: p.metodoPago?.nombre || '', total: p.total,
+            horaEntrega: p.horaEntrega || '', metodoPago: p.metodoPago?.nombre || '', metodoSugerido: metodoSugerido(p.metodoPago), total: p.total,
         })),
     }
 }
@@ -102,12 +105,6 @@ export const cobrarDomicilio = async (id, datos, sesion) => {
                 throw new AppError(409, 'PEDIDO_NO_COBRABLE', 'Solo se cobra un domicilio en camino o entregado de las últimas 48 horas.')
             }
             if (await Comprobante.exists({ pedido: pedido._id }).session(session)) throw yaCobrado()
-            const metodo = await MetodoPago.findById(pedido.metodoPago).select('nombre codigo').session(session).lean()
-            if (!esContraEntrega(metodo)) {
-                throw new AppError(409, 'PEDIDO_NO_CONTRA_ENTREGA',
-                    `Este domicilio se pagó con «${metodo?.nombre || 'otro método'}»: en la caja solo se cobran los pedidos contra entrega.`,
-                    { metodoPago: metodo?.nombre || null })
-            }
             const lineas = (await DetallePedido.find({ pedido: pedido._id }).session(session).lean()).map(lineaDeDetalle)
             if (!lineas.length) throw new AppError(409, 'PEDIDO_SIN_LINEAS', 'El pedido no tiene productos para cobrar.')
             const subtotal = lineas.reduce((n, l) => n + l.subtotal, 0)
