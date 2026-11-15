@@ -9,6 +9,7 @@ import { tienePermiso } from '../identidad/permisos.js'
 import { fechaLocal, instanteLocal } from '../compartido/fechas.js'
 import Comprobante, { LEYENDAS_COMPROBANTE, codigoComprobante } from './comprobante.model.js'
 import { nombreCorto, CAMPOS_NOMBRE } from '../compartido/nombres.js'
+import { notasDe } from './anulacion.service.js'
 
 // Fase 3 · Caja (PLAN_FASE_3 §3.1–3.3): lecturas de la caja y emisión del comprobante interno. El cobro
 // (la transacción con la cuenta y las mesas) está en salon/cuentas.service.js (cobrarCuenta), que llama a
@@ -184,11 +185,13 @@ export const listarDeHoy = async (sesion) => {
     exigirCobro(sesion)
     const desde = instanteLocal(fechaLocal(), '00:00')
     const comprobantes = await Comprobante.find({ emitidoEn: { $gte: desde } }).sort({ numero: -1 }).limit(MAXIMO_LISTA).lean()
+    const notas = await notasDe(comprobantes.map((c) => c._id)) // 3b.3 · los anulados
     return {
         comprobantes: comprobantes.map((c) => ({
             id: String(c._id), codigo: c.codigo, mesas: c.mesas, total: c.total, emitidoEn: c.emitidoEn,
             cajero: c.cajero?.nombre || '', metodos: c.pagos.map((p) => p.metodo),
             parte: c.parte ? { modo: c.parte.modo, numero: c.parte.numero, de: c.parte.de ?? null } : null,
+            anulado: notas.get(String(c._id)) || null,
         })),
     }
 }
@@ -199,5 +202,6 @@ export const obtenerComprobante = async (id, sesion) => {
     if (!mongoose.isValidObjectId(id)) throw noExiste()
     const comprobante = await Comprobante.findById(id).lean()
     if (!comprobante) throw noExiste()
-    return formatoComprobante(comprobante)
+    const notas = await notasDe([comprobante._id])
+    return { ...formatoComprobante(comprobante), anulado: notas.get(String(comprobante._id)) || null }
 }

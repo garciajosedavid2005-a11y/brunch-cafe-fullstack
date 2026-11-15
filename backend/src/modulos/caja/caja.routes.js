@@ -5,6 +5,7 @@ import { cobrarCuenta, cobrarParte } from '../salon/cuentas.service.js'
 import { avisarSalon } from '../salon/salonStaff.routes.js'
 import { listarPorCobrar, listarDeHoy, obtenerComprobante, detalleParaCobro } from './caja.service.js'
 import { turnoActual, historialTurnos, abrirTurno, cerrarTurno } from './turno.service.js'
+import { anularComprobante } from './anulacion.service.js'
 import { publicar } from '../tiempoReal/bus.js'
 
 // Fase 3 · /api/v1/staff/caja (ya autenticado): cuentas por cobrar, cobro y comprobantes, con
@@ -30,6 +31,13 @@ router.post('/turno/cerrar', requirePermission('caja:cerrar'), idempotencia, asy
     const resultado = await cerrarTurno(req.body, req.usuario)
     res.json(resultado)
     avisarTurno(resultado)
+})
+
+// 3b.3 · Anular un comprobante con nota crédito: factura:anular (solo el admin), con motivo
+router.post('/comprobantes/:id/anular', requirePermission('factura:anular'), idempotencia, async (req, res) => {
+    const resultado = await anularComprobante(req.params.id, req.body, req.usuario)
+    res.status(201).json(resultado)
+    publicar(['caja'], { tipo: 'comprobante_anulado', ids: { comprobanteId: req.params.id } })
 })
 
 router.use(requirePermission('cuenta:cobrar'))

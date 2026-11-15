@@ -10,6 +10,7 @@ vi.mock("../../../services/api", () => ({ apiRequest: estado.apiRequest, API_URL
 vi.mock("../../../context/useAuth", () => ({ useAuth: () => ({ user: { permisos: ["*"] } }) }));
 
 import Caja from "./Caja";
+import { DialogoProvider } from "../../../context/DialogoContext";
 
 class FakeEventSource {
   static CLOSED = 2;
@@ -30,7 +31,7 @@ beforeEach(() => {
 });
 
 const abrirCobro = async () => {
-  render(<Caja />);
+  render(<DialogoProvider><Caja /></DialogoProvider>);
   const boton = await screen.findByRole("button", { name: /^Cobrar Mesa 4/ });
   await waitFor(() => expect(boton).toBeEnabled()); // 3b.1 · con el turno ya cargado
   fireEvent.click(boton);

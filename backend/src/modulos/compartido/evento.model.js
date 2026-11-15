@@ -32,6 +32,8 @@ export const TIPOS_EVENTO = [
     'turno_abierto', 'turno_cerrado',
     // 3b.2 · Una parte de una cuenta dividida (entidad 'cuenta'; la última deja además cuenta_cobrada)
     'cuenta_parte_cobrada',
+    // 3b.3 · Anulación de un comprobante con nota crédito (entidad 'cuenta' o 'pedido'; datos: comprobante y nota)
+    'comprobante_anulado',
 ]
 const eventoSchema = new mongoose.Schema({
     entidad: {

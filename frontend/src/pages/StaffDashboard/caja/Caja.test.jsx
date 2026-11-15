@@ -9,6 +9,7 @@ vi.mock("../../../services/api", () => ({ apiRequest: estado.apiRequest, API_URL
 vi.mock("../../../context/useAuth", () => ({ useAuth: () => ({ user: estado.usuario }) }));
 
 import Caja from "./Caja";
+import { DialogoProvider } from "../../../context/DialogoContext";
 
 class FakeEventSource {
   static instancias = [];
@@ -41,7 +42,8 @@ beforeEach(() => {
     if (ruta === "/v1/staff/caja/turno/cerrar" && opciones.method === "POST") return respuestas.cierre(opciones);
     if (ruta === "/v1/staff/caja/cuentas") return Promise.resolve({ cuentas: respuestas.cuentas });
     if (ruta === "/v1/staff/caja/comprobantes") return Promise.resolve({ comprobantes: respuestas.hoy });
-    if (ruta === "/v1/staff/caja/comprobantes/k1") return Promise.resolve(COMPROBANTE);
+    if (ruta === "/v1/staff/caja/comprobantes/k1") return Promise.resolve({ ...COMPROBANTE, anulado: respuestas.anulado ?? null });
+    if (ruta === "/v1/staff/caja/comprobantes/k1/anular" && opciones.method === "POST") return Promise.resolve({ nota: { codigo: "NC-000001", motivo: JSON.parse(opciones.body).motivo, emitidaEn: "2026-11-14T16:00:00Z", autor: "Admin P.", total: 33000, pagos: [] } });
     if (ruta === "/v1/staff/caja/cuentas/c1/cobrar" && opciones.method === "POST") return respuestas.cobro(opciones);
     if (ruta === "/v1/staff/caja/cuentas/c1/cobrar-parte" && opciones.method === "POST") return respuestas.cobro(opciones);
     if (ruta === "/v1/staff/caja/cuentas/c1") return Promise.resolve({ items: [
@@ -56,7 +58,7 @@ beforeEach(() => {
 const re = (texto) => new RegExp(`^${texto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s")}$`);
 const cuerpoEnviado = () => JSON.parse(estado.apiRequest.mock.calls.find(([r, o]) => r.endsWith("/cobrar") && o?.method === "POST")[1].body);
 const abrirCobro = async () => {
-  render(<Caja />);
+  render(<DialogoProvider><Caja /></DialogoProvider>);
   const boton = await screen.findByRole("button", { name: re("Cobrar Mesa 3, $ 30.000") });
   await waitFor(() => expect(boton).toBeEnabled()); // con el turno ya cargado
   fireEvent.click(boton);
@@ -76,7 +78,7 @@ describe("Cálculos del cobro", () => {
 
 describe("Caja", () => {
   it("lista las cuentas pedidas con mesa, mesero, espera y total, y escucha el canal «caja»", async () => {
-    render(<Caja />);
+    render(<DialogoProvider><Caja /></DialogoProvider>);
     const lista = await screen.findByRole("list", { name: "Cuentas por cobrar" });
     expect(within(lista).getByText("Mesa 3")).toBeInTheDocument();
     expect(lista).toHaveTextContent("Ana P. · 2 personas");
@@ -160,7 +162,7 @@ describe("Caja", () => {
 
   it("«Cobradas hoy» abre el comprobante de un cobro anterior", async () => {
     respuestas.hoy = [{ id: "k1", codigo: "CI-000001", mesas: [3], total: 33000, emitidoEn: "2026-11-14T15:00:00Z", cajero: "Carla C.", metodos: ["efectivo"] }];
-    render(<Caja />);
+    render(<DialogoProvider><Caja /></DialogoProvider>);
     fireEvent.click(await screen.findByRole("button", { name: "Ver comprobante CI-000001" }));
     expect(await screen.findByRole("article", { name: "Comprobante CI-000001" })).toHaveTextContent("Huevos pericos");
   });
@@ -169,7 +171,7 @@ describe("Caja", () => {
 describe("Turno de caja (3b.1)", () => {
   it("sin turno: «La caja está cerrada», «Cobrar» deshabilitado y se abre con la base", async () => {
     respuestas.turno = null;
-    render(<Caja />);
+    render(<DialogoProvider><Caja /></DialogoProvider>);
     expect(await screen.findByText("La caja está cerrada")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: re("Cobrar Mesa 3, $ 30.000") })).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Base en efectivo"), { target: { value: "150.000" } });
@@ -183,7 +185,7 @@ describe("Turno de caja (3b.1)", () => {
   it("sin caja:abrir no se ofrece abrir el turno", async () => {
     respuestas.turno = null;
     estado.usuario = { permisos: ["cuenta:cobrar"] };
-    render(<Caja />);
+    render(<DialogoProvider><Caja /></DialogoProvider>);
     expect(await screen.findByText(/alguien con permiso debe abrir el turno/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Abrir turno" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Cerrar turno" })).not.toBeInTheDocument();
@@ -195,7 +197,7 @@ describe("Turno de caja (3b.1)", () => {
       { metodo: "tarjeta", esperado: 0, contado: 0, diferencia: 0 },
       { metodo: "transferencia", esperado: 0, contado: 0, diferencia: 0 },
     ] } });
-    render(<Caja />);
+    render(<DialogoProvider><Caja /></DialogoProvider>);
     fireEvent.click(await screen.findByRole("button", { name: "Cerrar turno" }));
     fireEvent.change(screen.getByLabelText("Contado en efectivo"), { target: { value: "98000" } });
     expect(screen.getByText(/^Faltan\s\$\s2\.000$/)).toBeInTheDocument(); // la fila de efectivo, en vivo
@@ -230,7 +232,7 @@ describe("División de la cuenta (3b.2)", () => {
 
   it("con una parte cobrada, el modo queda fijo y sigue la parte siguiente; la lista muestra lo que falta", async () => {
     respuestas.cuentas = [{ ...CUENTA, comensales: 3, division: { modo: "iguales", partes: 3, cobradas: 1, cobrado: 10000 }, porCobrar: 20000 }];
-    render(<Caja />);
+    render(<DialogoProvider><Caja /></DialogoProvider>);
     expect(await screen.findByText(/Parte 1 de 3 cobrada · faltan/)).toBeInTheDocument();
     const boton = screen.getByRole("button", { name: /^Cobrar Mesa 3/ });
     await waitFor(() => expect(boton).toBeEnabled());
@@ -239,5 +241,34 @@ describe("División de la cuenta (3b.2)", () => {
     expect(screen.getByRole("radio", { name: "Partes iguales" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByText(/^Parte 2 de 3:/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Una parte más" })).toBeDisabled();
+  });
+});
+
+describe("Anular un comprobante (3b.3)", () => {
+  const abrirComprobante = async () => {
+    respuestas.hoy = [{ id: "k1", codigo: "CI-000001", mesas: [3], total: 33000, emitidoEn: COMPROBANTE.emitidoEn, cajero: "Carla C.", metodos: ["efectivo"], anulado: respuestas.anulado ?? null }];
+    render(<DialogoProvider><Caja /></DialogoProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: "Ver comprobante CI-000001" }));
+    await screen.findByRole("article", { name: "Comprobante CI-000001" });
+  };
+
+  it("con factura:anular pide el motivo y muestra el comprobante como ANULADO con su nota", async () => {
+    await abrirComprobante();
+    fireEvent.click(screen.getByRole("button", { name: "Anular comprobante" }));
+    const dialogo = screen.getByRole("dialog");
+    fireEvent.change(within(dialogo).getByRole("textbox"), { target: { value: "Se cobró a la mesa equivocada" } });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Anular comprobante" }));
+    await waitFor(() => expect(estado.apiRequest).toHaveBeenCalledWith("/v1/staff/caja/comprobantes/k1/anular",
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ motivo: "Se cobró a la mesa equivocada" }) })));
+    expect(await screen.findByText(/con la nota crédito NC-000001/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Anular comprobante" })).not.toBeInTheDocument();
+  });
+
+  it("sin factura:anular no se ofrece anular; uno anulado se ve en la lista", async () => {
+    estado.usuario = { permisos: ["cuenta:cobrar"] };
+    respuestas.anulado = { codigo: "NC-000001", motivo: "Error", emitidaEn: "2026-11-14T16:00:00Z", autor: "Admin P." };
+    await abrirComprobante();
+    expect(screen.queryByRole("button", { name: "Anular comprobante" })).not.toBeInTheDocument();
+    expect(screen.getByText(/con la nota crédito NC-000001/)).toBeInTheDocument();
   });
 });

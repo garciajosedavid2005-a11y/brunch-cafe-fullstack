@@ -111,6 +111,8 @@ export function CerrarTurno({ turno, onVolver }) {
       <h2 id={`${id}-titulo`} className="caja__titulo">{cerrado ? `Turno ${turno.codigo} cerrado` : `Cerrar turno ${turno.codigo}`}</h2>
       <p className="caja-cobro__sub">
         Base {formatearCOP(turno.base)} · {turno.cobros ?? 0} {turno.cobros === 1 ? "cobro" : "cobros"} · abierto a las {formatearHora(turno.abiertoEn)}
+        {/* 3b.3 · Lo devuelto por notas crédito ya está restado del esperado: se dice para que cuadre a la vista */}
+        {(turno.esperado || []).some((e) => e.devuelto > 0) && ` · devuelto por notas crédito ${formatearCOP((turno.esperado || []).reduce((n, e) => n + (e.devuelto || 0), 0))} (ya restado)`}
       </p>
 
       <table className="caja-cierre__tabla">

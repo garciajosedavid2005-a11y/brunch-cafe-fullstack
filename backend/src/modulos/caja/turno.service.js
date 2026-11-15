@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import TurnoCaja, { codigoTurno } from './turno.model.js'
 import Comprobante, { METODOS_PAGO_CAJA } from './comprobante.model.js'
+import NotaCredito from './notaCredito.model.js'
 import Contador from '../compartido/contador.model.js'
 import Usuario from '../identidad/usuario.model.js'
 import { AppError } from '../compartido/errors.js'
@@ -57,11 +58,10 @@ export const movimientosDelTurno = async (turnoId, session) => {
         { $unwind: '$pagos' },
         { $group: { _id: '$pagos.metodo', total: { $sum: '$pagos.monto' } } },
     ]).session(session ?? null)
-    // 3b.3 · las notas crédito del turno se restan como devuelto
     // En secuencia: dentro de una transacción no se lanzan operaciones en paralelo con la misma sesión
     const cobrado = await sumar(Comprobante)
     const cobros = await Comprobante.countDocuments({ turno: turnoId }).session(session ?? null)
-    const devuelto = []
+    const devuelto = await sumar(NotaCredito) // 3b.3 · lo devuelto por las notas crédito del turno
     return { cobrado: porMetodo(cobrado), devuelto: porMetodo(devuelto), cobros }
 }
 

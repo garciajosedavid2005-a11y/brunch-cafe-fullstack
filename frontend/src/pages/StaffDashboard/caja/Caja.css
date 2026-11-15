@@ -286,6 +286,9 @@
   .imprimiendo-comprobante .comprobante * { visibility: visible; }
   .imprimiendo-comprobante .comprobante { position: absolute; top: 0; left: 0; width: 72mm; padding: 2mm 4mm; border: 0; box-shadow: none; font-size: 11pt; }
   .imprimiendo-comprobante .no-imprimir { display: none; }
+  /* 3b.3 · En la tirilla térmica (monocroma) el recuadro ANULADO va en negro, bien visible */
+  .imprimiendo-comprobante .comprobante__anulado { border-color: #000; color: #000; }
+  .imprimiendo-comprobante .comprobante__anulado strong { font-size: 14pt; }
 }
 
 .comprobante .sr-only {
@@ -351,3 +354,11 @@
 .caja-division__item.is-cobrado .caja-division__item-monto { color: #1d5b2e; }
 .caja-division__modos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .caja-division__modos .caja__boton { padding: 0 0.5rem; white-space: normal; line-height: 1.15; }
+
+/* 3b.3 · Comprobante anulado con nota crédito */
+.caja__boton--peligro { border-color: #b71c1c; color: #b71c1c; background: #fff; }
+.caja__boton--peligro:hover:not(:disabled) { background: #fdecea; }
+.comprobante__anulado { display: grid; gap: 0.15rem; margin: 0.75rem 0 0; padding: 0.6rem 0.75rem; border: 2px solid #b71c1c; border-radius: 8px; color: #8a1c0c; text-align: center; }
+.comprobante__anulado strong { font-size: 1.1rem; letter-spacing: 0.08em; }
+.caja__cobrada .caja__cobrada-anulada { text-decoration: line-through; color: #594742; }
+.caja__insignia-anulado { padding: 0.15rem 0.5rem; border: 1px solid #b71c1c; border-radius: 999px; color: #8a1c0c; font-size: 0.85rem; font-weight: 700; white-space: nowrap; }

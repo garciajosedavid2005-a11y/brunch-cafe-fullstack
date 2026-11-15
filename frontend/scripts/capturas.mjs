@@ -1490,6 +1490,28 @@ const VISTAS = {
     await p.goto(`${FRONT}/staff`);
     await p.getByRole("list", { name: "Cobradas hoy" }).getByRole("button", { name: /^Ver comprobante CI-/ }).first().waitFor();
   } },
+  // 3b.3 · Anular un comprobante (admin): el diálogo con el motivo y, después, el comprobante anulado
+  "staff-caja-anular": { usuario: "admin", completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("navigation", { name: /secciones del panel/i }).getByRole("button", { name: "Caja" }).click();
+    await p.getByRole("button", { name: /^Ver comprobante CI-/ }).first().click();
+    await p.getByRole("article", { name: /^Comprobante CI-/ }).waitFor();
+    if (await p.getByRole("button", { name: "Anular comprobante" }).count()) {
+      await p.getByRole("button", { name: "Anular comprobante" }).click();
+      await p.getByRole("dialog").getByRole("textbox").fill("Se cobró a la mesa equivocada");
+    }
+  } },
+  "staff-caja-anulado": { usuario: "admin", completa: false, preparar: async (p) => {
+    await VISTAS["staff-caja-anular"].preparar(p);
+    const dialogo = p.getByRole("dialog");
+    if (await dialogo.count()) await dialogo.getByRole("button", { name: "Anular comprobante" }).click();
+    await p.getByText(/con la nota crédito NC-/).waitFor();
+  } },
+  // 3b.3 · «Cobradas hoy» con el comprobante ya anulado (va después de staff-caja-anulado)
+  "staff-caja-cobradas-anulada": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByText(/^Anulado · NC-/).first().waitFor();
+  } },
   // 3b.1 · Cierre del turno con arqueo (sin confirmar: el turno sigue abierto para los otros tamaños)
   "staff-caja-cierre": { usuario: "cajero", completa: false, preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);

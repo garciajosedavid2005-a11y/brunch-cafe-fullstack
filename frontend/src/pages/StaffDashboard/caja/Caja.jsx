@@ -106,7 +106,8 @@ export default function Caja() {
             <ReceiptText size={18} aria-hidden="true" />
             <span className="caja__cobrada-codigo">{c.codigo}</span>
             <span>{mesasTexto(c.mesas)}{c.parte ? ` · Parte ${c.parte.numero}${c.parte.de ? ` de ${c.parte.de}` : ""}` : ""} · {formatearHora(c.emitidoEn)} · {c.metodos.map(etiquetaMetodo).join(" + ")}</span>
-            <strong>{formatearCOP(c.total)}</strong>
+            <strong className={c.anulado ? "caja__cobrada-anulada" : undefined}>{formatearCOP(c.total)}</strong>
+            {c.anulado && <span className="caja__insignia-anulado">Anulado · {c.anulado.codigo}</span>}
             <button type="button" className="caja__boton caja__boton--secundario" aria-label={`Ver comprobante ${c.codigo}`} onClick={() => verComprobante(c.id)}>
               <FileText size={18} aria-hidden="true" /> Ver
             </button>

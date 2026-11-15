@@ -12,6 +12,8 @@ import Comprobante from '../caja/comprobante.model.js'
 import Pedido from '../pedidos/pedido.model.js'
 import Comentario from '../catalogo/comentario.model.js'
 import Configuracion from '../configuracion/configuracion.model.js'
+import TurnoCaja from '../caja/turno.model.js'
+import NotaCredito from '../caja/notaCredito.model.js'
 import { conTransaccion } from '../compartido/transacciones.js'
 import { AppError, notFound } from '../compartido/errors.js'
 import { ROL_ADMIN, ROL_CLIENTE, puedeOtorgarRol } from './permisos.js'
@@ -38,9 +40,15 @@ export const tieneHistorial = async (id, session) => {
         Pedido.exists({ usuario: id }),
         Comentario.exists({ usuario: id }),
         Configuracion.exists({ actualizadoPor: id }),
+        // 3b · Turnos de caja que abrió o cerró y notas crédito que emitió
+        TurnoCaja.exists({ $or: [{ 'abiertoPor.id': id }, { 'cerradoPor.id': id }] }),
+        NotaCredito.exists({ 'autor.id': id }),
     ]
-    const resultados = await Promise.all(consultas.map((q) => q.session(session ?? null)))
-    return resultados.some(Boolean)
+    // En secuencia: dentro de una transacción no se lanzan operaciones en paralelo con la misma sesión
+    for (const consulta of consultas) {
+        if (await consulta.session(session ?? null)) return true
+    }
+    return false
 }
 
 /** DELETE /api/v1/admin/usuarios/:id → { id, resultado: 'eliminado' | 'archivado' } */
