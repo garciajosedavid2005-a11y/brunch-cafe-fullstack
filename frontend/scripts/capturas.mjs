@@ -1459,6 +1459,19 @@ const VISTAS = {
     await p.getByLabel("Monto", { exact: true }).last().fill("5000");
     await p.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   } },
+  // 3b.2 · División de la cuenta (sin cobrar: la cuenta de la mesa 3 sigue para las vistas siguientes)
+  "staff-caja-dividir-iguales": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await VISTAS["staff-caja"].preparar(p);
+    await p.getByRole("button", { name: /^Cobrar Mesa 3/ }).click();
+    await p.getByRole("radio", { name: "Partes iguales" }).click();
+    await p.getByRole("button", { name: "Una parte más" }).click();
+  } },
+  "staff-caja-dividir-items": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await VISTAS["staff-caja"].preparar(p);
+    await p.getByRole("button", { name: /^Cobrar Mesa 3/ }).click();
+    await p.getByRole("radio", { name: "Por ítems" }).click();
+    await p.getByRole("checkbox").first().check();
+  } },
   "staff-caja-comprobante": { usuario: "cajero", completa: false, preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);
     // Una lista vacía no siempre se expone como «list»: se espera a «Cobradas hoy», que se carga con ella

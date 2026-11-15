@@ -1,9 +1,9 @@
 import { Router } from 'express'
 import { requirePermission } from '../identidad/requirePermission.js'
 import { idempotencia } from '../compartido/idempotencia.js'
-import { cobrarCuenta } from '../salon/cuentas.service.js'
+import { cobrarCuenta, cobrarParte } from '../salon/cuentas.service.js'
 import { avisarSalon } from '../salon/salonStaff.routes.js'
-import { listarPorCobrar, listarDeHoy, obtenerComprobante } from './caja.service.js'
+import { listarPorCobrar, listarDeHoy, obtenerComprobante, detalleParaCobro } from './caja.service.js'
 import { turnoActual, historialTurnos, abrirTurno, cerrarTurno } from './turno.service.js'
 import { publicar } from '../tiempoReal/bus.js'
 
@@ -36,6 +36,16 @@ router.use(requirePermission('cuenta:cobrar'))
 
 router.get('/cuentas', async (req, res) => {
     res.json(await listarPorCobrar(req.usuario))
+})
+
+// 3b.2 · Detalle para dividir y cobro de una parte (iguales o por ítems), con Idempotency-Key
+router.get('/cuentas/:id', async (req, res) => {
+    res.json(await detalleParaCobro(req.params.id, req.usuario))
+})
+router.post('/cuentas/:id/cobrar-parte', idempotencia, async (req, res) => {
+    const resultado = await cobrarParte(req.params.id, req.body, req.usuario)
+    res.status(201).json(resultado)
+    avisarSalon(resultado.cuenta)
 })
 
 router.post('/cuentas/:id/cobrar', idempotencia, async (req, res) => {

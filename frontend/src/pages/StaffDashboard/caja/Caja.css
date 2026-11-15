@@ -330,3 +330,24 @@
 .caja-cierre__estado { display: block; font-weight: 600; font-size: 0.85rem; }
 .caja-cierre__nota { width: 100%; min-height: 44px; padding: 0.5rem 0.75rem; border: 1px solid #b9a49f; border-radius: 8px; font: inherit; }
 .caja-cierre .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* 3b.2 · División de la cuenta */
+.caja-division { display: grid; gap: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px dashed #d9c6c1; }
+.caja-division__aviso { margin: 0; color: #7a4100; font-weight: 600; }
+.caja-division__partes { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
+.caja-division__etiqueta { font-weight: 600; color: var(--color-oscuro); }
+.caja-division__contador { display: inline-flex; align-items: center; gap: 0.5rem; }
+.caja-division__contador .caja__boton { min-width: 44px; padding: 0 0.6rem; }
+.caja-division__numero { min-width: 2ch; text-align: center; font-size: 1.25rem; font-weight: 800; color: var(--color-oscuro); }
+.caja-division__detalle { margin: 0; color: #594742; }
+.caja-division__items { display: grid; gap: 0.4rem; margin: 0; padding: 0; border: 0; }
+.caja-division__item { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.75rem; min-height: 44px; padding: 0.35rem 0.6rem; border: 1px solid #e3d2cd; border-radius: 10px; background: #fff; cursor: pointer; }
+.caja-division__item input { width: 22px; height: 22px; margin: 0; accent-color: #890620; }
+.caja-division__item-nombre { display: grid; color: var(--color-oscuro); font-weight: 600; }
+.caja-division__item-nombre small { color: #594742; font-weight: 400; }
+.caja-division__item.is-cobrado { background: #f4efed; color: #594742; cursor: default; }
+.caja__cuenta-division { color: #1d5b2e; font-weight: 700; }
+.caja-division__item-monto { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color-oscuro); }
+.caja-division__item.is-cobrado .caja-division__item-monto { color: #1d5b2e; }
+.caja-division__modos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.caja-division__modos .caja__boton { padding: 0 0.5rem; white-space: normal; line-height: 1.15; }

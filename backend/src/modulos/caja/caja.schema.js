@@ -16,6 +16,8 @@ const pago = z.object({
 }).strict()
     .refine((p) => p.metodo === 'efectivo' || p.recibido === undefined, { error: 'Lo recibido solo se indica en efectivo', path: ['recibido'] })
 
+const idValido = z.string({ error: 'Cada ítem debe ser un id' }).regex(/^[0-9a-f]{24}$/, { error: 'Algún ítem no es válido' })
+
 export const cobrarSchema = z.object({
     versionEsperada: z.number().int().min(0).optional(),
     propina: enteroCOP('La propina', 0),
@@ -23,4 +25,22 @@ export const cobrarSchema = z.object({
         .min(1, { error: 'Indica al menos un pago' })
         .max(METODOS_PAGO_CAJA.length, { error: 'Como máximo un pago por método' })
         .refine((ps) => new Set(ps.map((p) => p.metodo)).size === ps.length, { error: 'Como máximo un pago por método' }),
+}).strict()
+
+// 3b.2 · Cobrar una parte: lo mismo que el cobro más cómo se divide (F3b-3, F3b-4)
+export const cobrarParteSchema = cobrarSchema.extend({
+    // Obligatoria: sin ella, un doble envío en partes iguales cobraría dos partes (cada uno toma la siguiente)
+    versionEsperada: z.number({ error: 'Falta la versión de la cuenta: recarga la caja' }).int().min(0),
+    division: z.discriminatedUnion('modo', [
+        z.strictObject({
+            modo: z.literal('iguales'),
+            partes: z.number({ error: 'Indica en cuántas partes' }).int({ error: 'Las partes deben ser un entero' })
+                .min(2, { error: 'Divide en 2 partes o más' }).max(20, { error: 'Como máximo 20 partes' }),
+        }),
+        z.strictObject({
+            modo: z.literal('items'),
+            items: z.array(idValido, { error: 'Elige los ítems' }).min(1, { error: 'Elige al menos un ítem' }).max(200, { error: 'Demasiados ítems' })
+                .refine((ids) => new Set(ids).size === ids.length, { error: 'Un ítem repetido' }),
+        }),
+    ], { error: 'Indica cómo se divide: en partes iguales o por ítems' }),
 }).strict()

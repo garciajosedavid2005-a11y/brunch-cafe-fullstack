@@ -40,6 +40,15 @@ const comprobanteSchema = new mongoose.Schema({
     numero: { type: Number, required: true, min: 1, validate: entero('El número') },
     codigo: { type: String, required: true },
     cuenta: { type: mongoose.Schema.Types.ObjectId, ref: 'Cuenta', required: true },
+    // 3b.2 · Parte de una cuenta dividida (null = la cuenta entera): «Parte 2 de 3» o la 2.ª por ítems (de: null)
+    parte: {
+        type: new mongoose.Schema({
+            modo: { type: String, required: true, enum: ['iguales', 'items'] },
+            numero: { type: Number, required: true, min: 1, validate: entero('El número de parte') },
+            de: { type: Number, default: null, min: 2, max: 20, validate: { validator: (v) => v === null || Number.isInteger(v), message: 'N debe ser entero' } },
+        }, { _id: false }),
+        default: null,
+    },
     // 3b.1 · Turno de caja en el que se cobró (los comprobantes anteriores a 3b no lo tienen)
     turno: { type: mongoose.Schema.Types.ObjectId, ref: 'TurnoCaja', default: null },
     mesas: { type: [Number], default: [] },
@@ -54,9 +63,10 @@ const comprobanteSchema = new mongoose.Schema({
     cambio: monto('El cambio'),
 }, { timestamps: { createdAt: true, updatedAt: false }, collection: 'comprobantes' })
 
-// Un consecutivo por comprobante y un comprobante por cuenta (no se cobra dos veces la misma)
+// Un consecutivo por comprobante y, por cuenta, uno por parte (3b.2; la cuenta entera es la parte null: no se
+// cobra dos veces la misma). La migración 3b.2 cambia el índice único anterior { cuenta } por este
 comprobanteSchema.index({ numero: 1 }, { unique: true })
-comprobanteSchema.index({ cuenta: 1 }, { unique: true })
+comprobanteSchema.index({ cuenta: 1, 'parte.numero': 1 }, { unique: true, name: 'una_parte_por_cuenta' })
 comprobanteSchema.index({ emitidoEn: -1 }) // «Cobradas hoy»
 comprobanteSchema.index({ turno: 1 }) // 3b.1 · arqueo del turno
 
@@ -77,6 +87,11 @@ export const problemasDeComprobante = (c) => {
         }
     }
     if (c.cambio !== suma(c.pagos || [], 'cambio')) problemas.push('El cambio no coincide con los pagos')
+    // 3b.2 · Parte coherente: en partes iguales, 2 ≤ N y número ≤ N; por ítems, sin N
+    if (c.parte) {
+        if (c.parte.modo === 'iguales' && !(c.parte.de >= 2 && c.parte.numero <= c.parte.de)) problemas.push('La parte no corresponde a N partes')
+        if (c.parte.modo === 'items' && c.parte.de !== null && c.parte.de !== undefined) problemas.push('Una parte por ítems no lleva N')
+    }
     if (new Set((c.pagos || []).map((p) => p.metodo)).size !== (c.pagos || []).length) problemas.push('Un método de pago repetido')
     return problemas
 }

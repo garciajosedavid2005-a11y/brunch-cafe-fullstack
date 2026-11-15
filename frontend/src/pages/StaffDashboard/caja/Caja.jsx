@@ -79,9 +79,15 @@ export default function Caja() {
                 <strong className="caja__cuenta-mesa">{mesasTexto(c.mesas)}</strong>
                 <span>{[c.mesero, `${c.comensales} ${c.comensales === 1 ? "persona" : "personas"}`].filter(Boolean).join(" · ")}</span>
                 {espera !== null && <span className="caja__cuenta-espera">Pidió la cuenta hace {formatearMinutos(espera)}</span>}
+                {c.division && (
+                  <span className="caja__cuenta-division">
+                    {c.division.modo === "iguales" ? `Parte ${c.division.cobradas} de ${c.division.partes} cobrada` : `${c.division.cobradas} ${c.division.cobradas === 1 ? "parte cobrada" : "partes cobradas"} por ítems`}
+                    {` · faltan ${formatearCOP(c.porCobrar)}`}
+                  </span>
+                )}
               </div>
-              <strong className="caja__cuenta-total">{formatearCOP(c.total)}</strong>
-              <button type="button" className="caja__boton caja__boton--primario" aria-label={`Cobrar ${mesasTexto(c.mesas)}, ${formatearCOP(c.total)}`}
+              <strong className="caja__cuenta-total">{formatearCOP(c.porCobrar ?? c.total)}</strong>
+              <button type="button" className="caja__boton caja__boton--primario" aria-label={`Cobrar ${mesasTexto(c.mesas)}, ${formatearCOP(c.porCobrar ?? c.total)}`}
                 disabled={!turno} title={turno ? undefined : "Abre el turno de caja para cobrar"}
                 onClick={() => setVista({ tipo: "cobrar", cuenta: c })}>
                 <Wallet size={18} aria-hidden="true" /> Cobrar
@@ -99,7 +105,7 @@ export default function Caja() {
           <li key={c.id} className="caja__cobrada">
             <ReceiptText size={18} aria-hidden="true" />
             <span className="caja__cobrada-codigo">{c.codigo}</span>
-            <span>{mesasTexto(c.mesas)} · {formatearHora(c.emitidoEn)} · {c.metodos.map(etiquetaMetodo).join(" + ")}</span>
+            <span>{mesasTexto(c.mesas)}{c.parte ? ` · Parte ${c.parte.numero}${c.parte.de ? ` de ${c.parte.de}` : ""}` : ""} · {formatearHora(c.emitidoEn)} · {c.metodos.map(etiquetaMetodo).join(" + ")}</span>
             <strong>{formatearCOP(c.total)}</strong>
             <button type="button" className="caja__boton caja__boton--secundario" aria-label={`Ver comprobante ${c.codigo}`} onClick={() => verComprobante(c.id)}>
               <FileText size={18} aria-hidden="true" /> Ver

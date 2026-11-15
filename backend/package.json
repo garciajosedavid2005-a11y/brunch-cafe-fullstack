@@ -26,6 +26,7 @@
     "migrate:3.1": "node scripts/migrar-3.1-permiso-cobro.js",
     "migrate:3.7": "node scripts/migrar-3.7-opcion-por-defecto.js",
     "migrate:3b": "node scripts/migrar-3b-permisos-caja.js",
+    "migrate:3b.2": "node scripts/migrar-3b2-indice-comprobantes.js",
     "seed:dev": "node scripts/seed-dev.js",
     "seed:demo": "node scripts/seed-demo.js",
     "seed:salon": "node scripts/seed-salon.js",

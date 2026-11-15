@@ -27,6 +27,18 @@ const mesaDeCuentaSchema = new mongoose.Schema({
     zonaNombre: { type: String, trim: true, maxlength: 40, default: '' },
 }, { _id: false })
 
+// 3b.2 · División de la cuenta en la caja (F3b-3, F3b-4): se fija al cobrar la primera parte y desde
+// entonces la cuenta no admite cambios (solo cobrar lo que falta o cerrarla sin cobro). Sin el campo = sin dividir
+export const MODOS_DIVISION = ['iguales', 'items']
+export const MAX_PARTES = 20
+const divisionSchema = new mongoose.Schema({
+    modo: { type: String, required: true, enum: MODOS_DIVISION },
+    partes: { type: Number, default: null, min: 2, max: MAX_PARTES, validate: { validator: (v) => v === null || Number.isInteger(v), message: 'Las partes deben ser un número entero' } },
+    cobradas: { type: Number, required: true, min: 0, validate: entero('Las partes cobradas') },
+    cobrado: { type: Number, required: true, min: 0, validate: entero('Lo cobrado') }, // consumo ya cobrado (sin propinas)
+    itemsCobrados: { type: [mongoose.Schema.Types.ObjectId], default: [] },
+}, { _id: false })
+
 const cuentaSchema = new mongoose.Schema({
     // «C-000123» (contador atómico «cuenta»; los huecos son aceptables)
     codigo: { type: String, required: true, immutable: true, match: /^C-\d{6,}$/ },
@@ -61,6 +73,7 @@ const cuentaSchema = new mongoose.Schema({
     // 2.2 · Lo que marcan cocina y barra (y el servir): contador aparte para no invalidar la
     // versionEsperada de la tablet del mesero. Sin el campo (cuentas anteriores) = 0
     versionCocina: { type: Number, default: 0, min: 0, validate: entero('La versión de cocina') },
+    division: { type: divisionSchema, default: null },
 }, { timestamps: true, collection: 'cuentas' })
 
 /** Invariantes entre campos de una cuenta: [{ campo, mensaje }]. Los usa el esquema y el verificador. */
@@ -69,6 +82,14 @@ export const problemasDeCuenta = (cuenta) => {
     const anotar = (campo, mensaje) => problemas.push({ campo, mensaje })
     // total = subtotal mientras impuestos, propina y descuento sean null (Fase 3: subtotal + impuestos + propina − descuento)
     if (Number.isInteger(cuenta.subtotal) && cuenta.total !== cuenta.subtotal) anotar('total', 'El total no coincide con el subtotal')
+    // 3b.2 · División coherente: en partes iguales hay N y ningún ítem; por ítems, sin N; nunca más de lo que hay
+    const d = cuenta.division
+    if (d) {
+        if (d.modo === 'iguales' && (!d.partes || d.itemsCobrados?.length)) anotar('division', 'Las partes iguales llevan N y ningún ítem')
+        if (d.modo === 'items' && d.partes !== null && d.partes !== undefined) anotar('division', 'Por ítems no lleva número de partes')
+        if (d.modo === 'iguales' && d.partes && d.cobradas > d.partes) anotar('division', 'Hay más partes cobradas que partes')
+        if (Number.isInteger(cuenta.total) && d.cobrado > cuenta.total) anotar('division', 'Lo cobrado supera el total de la cuenta')
+    }
     if (!ESTADOS_CUENTA_ABIERTA.includes(cuenta.estado)) {
         if (!cuenta.cerradaEn) anotar('cerradaEn', 'Una cuenta cerrada registra cuándo se cerró')
         if (!cuenta.cerradaPor) anotar('cerradaPor', 'Una cuenta cerrada registra quién la cerró')

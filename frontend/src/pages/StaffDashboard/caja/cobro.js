@@ -40,3 +40,7 @@ export const cuerpoCobro = ({ versionEsperada, propina, pagos }) => ({
     ? { metodo: p.metodo, monto: p.monto, recibido: p.recibido ?? p.monto }
     : { metodo: p.metodo, monto: p.monto })),
 });
+
+// 3b.2 · División en partes iguales (el backend la vuelve a calcular): el residuo va de a $1 en las primeras
+export const MAX_PARTES = 20;
+export const montoParte = (total, partes, k) => Math.floor(total / partes) + (k <= total % partes ? 1 : 0);

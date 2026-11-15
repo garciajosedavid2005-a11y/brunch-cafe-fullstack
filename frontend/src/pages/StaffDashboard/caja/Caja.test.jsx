@@ -43,6 +43,11 @@ beforeEach(() => {
     if (ruta === "/v1/staff/caja/comprobantes") return Promise.resolve({ comprobantes: respuestas.hoy });
     if (ruta === "/v1/staff/caja/comprobantes/k1") return Promise.resolve(COMPROBANTE);
     if (ruta === "/v1/staff/caja/cuentas/c1/cobrar" && opciones.method === "POST") return respuestas.cobro(opciones);
+    if (ruta === "/v1/staff/caja/cuentas/c1/cobrar-parte" && opciones.method === "POST") return respuestas.cobro(opciones);
+    if (ruta === "/v1/staff/caja/cuentas/c1") return Promise.resolve({ items: [
+      { id: "i1", nombre: "Huevos pericos", cantidad: 1, opciones: [], subtotal: 15000, cobrado: false },
+      { id: "i2", nombre: "Jugo de mora", cantidad: 1, opciones: ["Sin azúcar"], subtotal: 15000, cobrado: false },
+    ] });
     return Promise.reject(new Error(`Ruta inesperada ${ruta}`));
   });
 });
@@ -198,5 +203,41 @@ describe("Turno de caja (3b.1)", () => {
     await waitFor(() => expect(estado.apiRequest).toHaveBeenCalledWith("/v1/staff/caja/turno/cerrar",
       expect.objectContaining({ body: JSON.stringify({ contado: { efectivo: 98000, tarjeta: 0, transferencia: 0 } }) })));
     expect(await screen.findByRole("heading", { name: "Turno T-000001 cerrado" })).toBeInTheDocument();
+  });
+});
+
+describe("División de la cuenta (3b.2)", () => {
+  const enviado = (sufijo) => JSON.parse(estado.apiRequest.mock.calls.find(([r, o]) => r.endsWith(sufijo) && o?.method === "POST")[1].body);
+
+  it("partes iguales: N parte de los comensales, «+» la cambia y cobra la parte 1 con su monto", async () => {
+    await abrirCobro();
+    fireEvent.click(screen.getByRole("radio", { name: "Partes iguales" }));
+    expect(screen.getByText(/^Parte 1 de 2:/)).toHaveTextContent(/15\.000/);
+    fireEvent.click(screen.getByRole("button", { name: "Una parte más" }));
+    expect(screen.getByText(/^Parte 1 de 3:/)).toHaveTextContent(/10\.000/);
+    fireEvent.click(screen.getByRole("button", { name: re("Cobrar $ 10.000") }));
+    await waitFor(() => expect(enviado("/cobrar-parte")).toMatchObject({ division: { modo: "iguales", partes: 3 }, pagos: [{ metodo: "efectivo", monto: 10000 }] }));
+  });
+
+  it("por ítems: carga los ítems y cobra solo los elegidos", async () => {
+    await abrirCobro();
+    fireEvent.click(screen.getByRole("radio", { name: "Por ítems" }));
+    expect(screen.getByRole("button", { name: re("Cobrar $ 0") })).toBeDisabled();
+    fireEvent.click(await screen.findByRole("checkbox", { name: /Jugo de mora/ }));
+    fireEvent.click(screen.getByRole("button", { name: re("Cobrar $ 15.000") }));
+    await waitFor(() => expect(enviado("/cobrar-parte")).toMatchObject({ division: { modo: "items", items: ["i2"] } }));
+  });
+
+  it("con una parte cobrada, el modo queda fijo y sigue la parte siguiente; la lista muestra lo que falta", async () => {
+    respuestas.cuentas = [{ ...CUENTA, comensales: 3, division: { modo: "iguales", partes: 3, cobradas: 1, cobrado: 10000 }, porCobrar: 20000 }];
+    render(<Caja />);
+    expect(await screen.findByText(/Parte 1 de 3 cobrada · faltan/)).toBeInTheDocument();
+    const boton = screen.getByRole("button", { name: /^Cobrar Mesa 3/ });
+    await waitFor(() => expect(boton).toBeEnabled());
+    fireEvent.click(boton);
+    expect(screen.getByRole("radio", { name: "Toda la cuenta" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Partes iguales" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByText(/^Parte 2 de 3:/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Una parte más" })).toBeDisabled();
   });
 });

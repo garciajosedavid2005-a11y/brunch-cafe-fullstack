@@ -26,7 +26,7 @@ import {
     transferirSchema, moverSchema, unirSchema,
 } from './cuentas.schema.js'
 import { MAX_MESAS_POR_CUENTA } from './cuenta.model.js'
-import { cobrarSchema } from '../caja/caja.schema.js'
+import { cobrarSchema, cobrarParteSchema } from '../caja/caja.schema.js'
 import { asegurarContador, calcularPagos, emitirComprobante, formatoComprobante } from '../caja/caja.service.js'
 import { tomarTurnoAbierto } from '../caja/turno.service.js'
 
@@ -145,10 +145,15 @@ const detalle = async (cuenta, session) => formatoCuenta(cuenta, await comandasD
  * «Toca» la cuenta dentro de la transacción ($inc version) si está en `estados` y, con
  * versionEsperada, si nadie la cambió desde entonces. Devuelve el documento (para save()).
  */
-const tocarCuenta = async (cuentaId, { versionEsperada, estados = ESTADOS_CUENTA_ABIERTA } = {}, session) => {
+const tocarCuenta = async (cuentaId, { versionEsperada, estados = ESTADOS_CUENTA_ABIERTA, permitirDividida = false } = {}, session) => {
     if (!mongoose.isValidObjectId(cuentaId)) throw cuentaNoEncontrada()
     const filtro = { _id: cuentaId, estado: { $in: estados }, ...(versionEsperada === undefined ? {} : { version: versionEsperada }) }
     const cuenta = await Cuenta.findOneAndUpdate(filtro, { $inc: { version: 1 } }, { returnDocument: 'after', session })
+    // 3b.2 · Con una parte ya cobrada la cuenta queda fija: solo se cobra lo que falta (o se cierra sin cobro)
+    if (cuenta && !permitirDividida && cuenta.division?.cobradas > 0) {
+        throw error(409, 'CUENTA_EN_COBRO', 'La cuenta ya tiene partes cobradas: no admite cambios. Cobra las partes que faltan en la caja.',
+            { division: { modo: cuenta.division.modo, cobradas: cuenta.division.cobradas } })
+    }
     if (cuenta) return cuenta
 
     const actual = await Cuenta.findById(cuentaId).select('estado version').session(session).lean()
@@ -235,10 +240,10 @@ const descartarBorrador = async (cuenta, { sesion, session }) => {
 }
 
 /** Cierre final (cancelada, cerrada_sin_cobro): mesas → por_limpiar y sin cuenta. */
-const cerrarCuenta = async (cuenta, a, { sesion, session, motivo }) => {
+const cerrarCuenta = async (cuenta, a, { sesion, session, motivo, datos }) => {
     await descartarBorrador(cuenta, { sesion, session })
     await moverMesas(cuenta, MESA_SEGUN_CUENTA[cuenta.estado], 'por_limpiar', { sesion, session, liberar: true, motivo })
-    await cambiarEstadoCuenta(cuenta, a, { sesion, session, motivo })
+    await cambiarEstadoCuenta(cuenta, a, { sesion, session, motivo, datos })
     cuenta.set({ cerradaPor: sesion.id, cerradaEn: new Date(), motivoCierre: motivo })
     await guardarCuenta(cuenta, session)
 }
@@ -661,9 +666,12 @@ export const cerrarSinCobro = async (cuentaId, datos, sesion) => {
     const { versionEsperada, motivo } = validar(cambioCuentaSchema, datos)
 
     return conTransaccion(async (session) => {
-        const cuenta = await tocarCuenta(cuentaId, { versionEsperada }, session)
+        // 3b.2 · También una cuenta con partes cobradas (los clientes se fueron sin pagar el resto)
+        const cuenta = await tocarCuenta(cuentaId, { versionEsperada, permitirDividida: true }, session)
         const { motivo: texto } = MAQUINA_CUENTA.validar(cuenta.estado, 'cerrada_sin_cobro', { permisos: permisosDe(sesion), motivo })
-        await cerrarCuenta(cuenta, 'cerrada_sin_cobro', { sesion, session, motivo: texto })
+        // 3b.2 · Si ya se cobraron partes, el Evento dice cuánto (no todo el consumo quedó sin cobrar)
+        const datosDivision = cuenta.division ? { division: { modo: cuenta.division.modo, cobradas: cuenta.division.cobradas, cobrado: cuenta.division.cobrado } } : undefined
+        await cerrarCuenta(cuenta, 'cerrada_sin_cobro', { sesion, session, motivo: texto, datos: datosDivision })
         return detalle(cuenta, session)
     })
 }
@@ -697,6 +705,91 @@ export const cobrarCuenta = async (cuentaId, datos, sesion) => {
             session,
         })
         return { cuenta: await detalle(cuenta, session), comprobante: formatoComprobante(comprobante) }
+    })
+}
+
+/** 3b.2 · Parte k de N en partes iguales: entero en COP; el residuo va de a $1 en las primeras (F3b-3). */
+export const montoParte = (total, partes, k) => Math.floor(total / partes) + (k <= total % partes ? 1 : 0)
+
+// Ítems que se cobran: enviados y no anulados
+const itemsCobrables = (comandas) => comandas.filter((c) => c.estado === 'enviada').flatMap((c) => c.items).filter((i) => i.estado !== 'anulado')
+const lineaDeItem = (i) => ({
+    nombre: i.nombre, cantidad: i.cantidad, opciones: (i.modificadores || []).map((m) => m.opcionNombre),
+    nota: i.nota || '', precioUnitario: i.precioUnitario, subtotal: i.subtotal,
+})
+
+/**
+ * 3b.2 · Cobra una parte de la cuenta (F3b-3, F3b-4): en partes iguales (la siguiente de N) o por ítems
+ * (ítems enteros aún no cobrados). Cada parte con su propina, sus pagos y su comprobante. La primera parte
+ * fija el modo (y N): desde ahí la cuenta no cambia (CUENTA_EN_COBRO). La última cierra la cuenta como el
+ * cobro entero (mesas por limpiar y Evento cuenta_cobrada).
+ */
+export const cobrarParte = async (cuentaId, datos, sesion) => {
+    exigirPermiso(sesion, 'cuenta:cobrar')
+    const { versionEsperada, propina, pagos, division } = validar(cobrarParteSchema, datos)
+    await asegurarContador()
+
+    return conTransaccion(async (session) => {
+        const turno = await tomarTurnoAbierto(session)
+        const cuenta = await tocarCuenta(cuentaId, { versionEsperada, permitirDividida: true }, session)
+        MAQUINA_CUENTA.validar(cuenta.estado, 'cerrada', { permisos: permisosDe(sesion) })
+        const actual = cuenta.division
+        if (actual && actual.modo !== division.modo) {
+            throw error(409, 'DIVISION_EN_CURSO', `La cuenta ya se está cobrando ${actual.modo === 'iguales' ? 'en partes iguales' : 'por ítems'}: sigue igual.`)
+        }
+        if (actual && division.modo === 'iguales' && actual.partes !== division.partes) {
+            throw error(409, 'DIVISION_EN_CURSO', `La cuenta ya se está cobrando en ${actual.partes} partes iguales: sigue igual.`)
+        }
+        const comandas = await comandasDe(cuenta._id, session).lean()
+        const cobrables = itemsCobrables(comandas)
+        const yaCobrados = new Set((actual?.itemsCobrados || []).map(String))
+        const numero = (actual?.cobradas || 0) + 1
+        let lineas
+        let consumo
+        let ultima
+        let elegidos = []
+        if (division.modo === 'iguales') {
+            if (division.partes > cuenta.total) throw error(400, 'PARTES_NO_VALIDAS', 'Hay más partes que pesos por cobrar.')
+            consumo = montoParte(cuenta.total, division.partes, numero)
+            lineas = [{ nombre: `Parte ${numero} de ${division.partes} · ${cuenta.codigo}`, cantidad: 1, opciones: [], nota: '', precioUnitario: consumo, subtotal: consumo }]
+            ultima = numero === division.partes
+        } else {
+            const pedidos = new Set(division.items)
+            elegidos = cobrables.filter((i) => pedidos.has(String(i._id)))
+            if (elegidos.length !== pedidos.size) throw error(400, 'ITEM_NO_COBRABLE', 'Algún ítem elegido no es de esta cuenta, está anulado o no se envió.')
+            if (elegidos.some((i) => yaCobrados.has(String(i._id)))) throw error(409, 'ITEM_YA_COBRADO', 'Algún ítem elegido ya se cobró en otra parte.')
+            lineas = elegidos.map(lineaDeItem)
+            consumo = lineas.reduce((n, l) => n + l.subtotal, 0)
+            // Los ítems de $0 no cuentan para cerrar (una parte de $0 no tendría pagos válidos)
+            ultima = cobrables.every((i) => i.subtotal === 0 || yaCobrados.has(String(i._id)) || pedidos.has(String(i._id)))
+        }
+        const total = consumo + propina
+        const pagosCalculados = calcularPagos(pagos, total)
+        const parte = { modo: division.modo, numero, de: division.modo === 'iguales' ? division.partes : null }
+        cuenta.division = {
+            modo: division.modo,
+            partes: division.modo === 'iguales' ? division.partes : null,
+            cobradas: numero,
+            cobrado: (actual?.cobrado || 0) + consumo,
+            itemsCobrados: [...(actual?.itemsCobrados || []), ...elegidos.map((i) => i._id)],
+        }
+        if (ultima) await cerrarCuenta(cuenta, 'cerrada', { sesion, session, motivo: '' })
+        else await guardarCuenta(cuenta, session)
+        const comprobante = await emitirComprobante({
+            cuenta, comandas, propina, total, pagos: pagosCalculados, sesion, session, turno, lineas, subtotal: consumo, parte,
+        })
+        const resumen = {
+            comprobante: comprobante.codigo, parte, subtotal: consumo, propina, total,
+            pagos: pagosCalculados.map((p) => ({ metodo: p.metodo, monto: p.monto })),
+        }
+        await registrarEvento({ entidad: 'cuenta', entidadId: cuenta._id, tipo: 'cuenta_parte_cobrada', ...quien(sesion), datos: resumen, session })
+        if (ultima) {
+            await registrarEvento({
+                entidad: 'cuenta', entidadId: cuenta._id, tipo: 'cuenta_cobrada', ...quien(sesion),
+                datos: { comprobante: comprobante.codigo, subtotal: cuenta.subtotal, partes: numero, division: division.modo }, session,
+            })
+        }
+        return { cuenta: await detalle(cuenta, session), comprobante: formatoComprobante(comprobante), cerrada: ultima }
     })
 }
 
@@ -737,7 +830,8 @@ export const transferirCuenta = async (cuentaId, datos, sesion) => {
     const { meseroId, motivo, versionEsperada } = validar(transferirSchema, datos)
 
     return conTransaccion(async (session) => {
-        const cuenta = await tocarCuenta(cuentaId, { versionEsperada }, session)
+        // 3b.2 · Transferir no cambia montos: también una cuenta a medio cobrar
+        const cuenta = await tocarCuenta(cuentaId, { versionEsperada, permitirDividida: true }, session)
         if (String(cuenta.mesero) === meseroId) throw error(409, 'MISMO_MESERO', 'La cuenta ya es de ese mesero.')
         await exigirMeseroValido(meseroId, session)
         const anterior = cuenta.mesero

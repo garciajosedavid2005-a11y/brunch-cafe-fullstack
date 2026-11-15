@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import Cuenta from '../salon/cuenta.model.js'
+import Comanda from '../salon/comanda.model.js'
 import Usuario from '../identidad/usuario.model.js'
 import Evento from '../compartido/evento.model.js'
 import Contador from '../compartido/contador.model.js'
@@ -61,6 +62,7 @@ export const formatoComprobante = (c) => ({
     numero: c.numero,
     codigo: c.codigo,
     cuentaId: String(c.cuenta),
+    parte: c.parte ? { modo: c.parte.modo, numero: c.parte.numero, de: c.parte.de ?? null } : null,
     mesas: c.mesas,
     mesero: c.mesero?.nombre || '',
     cajero: c.cajero?.nombre || '',
@@ -79,13 +81,14 @@ export const formatoComprobante = (c) => ({
  * misma transacción: si el cobro falla, el número no se gasta y no quedan huecos) y guarda la copia
  * de lo cobrado: ítems enviados y no anulados, propina y pagos.
  */
-export const emitirComprobante = async ({ cuenta, comandas, propina, total, pagos, sesion, session, turno }) => {
+export const emitirComprobante = async ({ cuenta, comandas, propina, total, pagos, sesion, session, turno, lineas: lineasParte, subtotal, parte = null }) => {
     // 3b.1 · Todo comprobante nuevo es de un turno abierto (lo exige el cobro); sin él es un fallo nuestro
     if (!turno?._id) throw new AppError(500, 'COMPROBANTE_SIN_TURNO', 'No se pudo emitir el comprobante. Avisa al administrador.')
     // upsert por si el contador falta (asegurarContador ya lo crea antes, fuera de la transacción)
     const { seq: numero } = await Contador.findOneAndUpdate({ _id: CONTADOR }, { $inc: { seq: 1 } }, { returnDocument: 'after', upsert: true, session })
     const nombres = await nombresDe([cuenta.mesero, sesion.id], session)
-    const lineas = comandas.filter((c) => c.estado === 'enviada').flatMap((c) => c.items)
+    // 3b.2 · Una parte trae sus líneas y su subtotal; la cuenta entera, todo lo enviado y no anulado
+    const lineas = lineasParte ?? comandas.filter((c) => c.estado === 'enviada').flatMap((c) => c.items)
         .filter((i) => i.estado !== 'anulado')
         .map((i) => ({
             nombre: i.nombre, cantidad: i.cantidad, opciones: (i.modificadores || []).map((m) => m.opcionNombre),
@@ -103,12 +106,17 @@ export const emitirComprobante = async ({ cuenta, comandas, propina, total, pago
         cajero: { id: sesion.id, nombre: nombres.get(String(sesion.id)) || '' },
         emitidoEn: new Date(),
         lineas,
-        subtotal: cuenta.subtotal,
+        subtotal: subtotal ?? cuenta.subtotal,
+        parte,
         propina,
         total, // el mismo con el que se validaron los pagos (consumo + propina)
         pagos,
         cambio: pagos.reduce((n, p) => n + (p.cambio ?? 0), 0),
     }], { session }).catch((error) => {
+        // 3b.2 · Esa parte (o la cuenta entera) ya tiene comprobante: otro cobro llegó antes
+        if (error?.code === 11000 && error?.keyPattern?.cuenta) {
+            throw new AppError(409, 'PARTE_YA_COBRADA', 'Esa parte de la cuenta ya se cobró. Vuelve a la caja para ver lo que falta.')
+        }
         if (error?.name !== 'ValidationError') throw error
         // El detalle (qué invariante falló) va al log como causa, no a la respuesta
         throw new AppError(500, 'COMPROBANTE_INCONSISTENTE', 'No se pudo emitir el comprobante. Avisa al administrador.', undefined, { cause: error })
@@ -121,7 +129,7 @@ export const emitirComprobante = async ({ cuenta, comandas, propina, total, pago
 export const listarPorCobrar = async (sesion) => {
     exigirCobro(sesion)
     const cuentas = await Cuenta.find({ estado: 'cuenta_pedida' }).sort({ updatedAt: 1 }).limit(MAXIMO_LISTA)
-        .select('codigo mesas mesero comensales subtotal total version').lean()
+        .select('codigo mesas mesero comensales subtotal total version division').lean()
     const ids = cuentas.map((c) => c._id)
     const [nombres, pedidas] = await Promise.all([
         nombresDe(cuentas.map((c) => c.mesero)),
@@ -138,6 +146,35 @@ export const listarPorCobrar = async (sesion) => {
             id: String(c._id), codigo: c.codigo, mesas: c.mesas.map((m) => m.numero),
             mesero: nombres.get(String(c.mesero)) || '', comensales: c.comensales,
             subtotal: c.subtotal, total: c.total, version: c.version, pedidaEn: pedidaEn.get(String(c._id)) || null,
+            division: formatoDivision(c.division), porCobrar: c.total - (c.division?.cobrado || 0),
+        })),
+    }
+}
+
+/** 3b.2 · Estado de la división (null si la cuenta no se dividió). */
+const formatoDivision = (d) => (d ? { modo: d.modo, partes: d.partes ?? null, cobradas: d.cobradas, cobrado: d.cobrado } : null)
+
+/**
+ * 3b.2 · GET /staff/caja/cuentas/:id: lo que necesita la pantalla de cobro para dividir, solo de una cuenta
+ * en «cuenta pedida»: sus ítems enviados y no anulados (con si ya se cobraron) y la división en curso.
+ */
+export const detalleParaCobro = async (id, sesion) => {
+    exigirCobro(sesion)
+    const noExiste = () => new AppError(404, 'CUENTA_NO_ENCONTRADA', 'La cuenta no existe.')
+    if (!mongoose.isValidObjectId(id)) throw noExiste()
+    const cuenta = await Cuenta.findById(id).select('codigo estado mesas mesero comensales total version division').lean()
+    if (!cuenta) throw noExiste()
+    if (cuenta.estado !== 'cuenta_pedida') throw new AppError(409, 'CUENTA_NO_EDITABLE', 'La cuenta no está esperando el cobro.', { estado: cuenta.estado })
+    const comandas = await Comanda.find({ cuenta: cuenta._id, estado: 'enviada' }).sort({ numeroRonda: 1 }).lean()
+    const cobrados = new Set((cuenta.division?.itemsCobrados || []).map(String))
+    const nombres = await nombresDe([cuenta.mesero])
+    return {
+        id: String(cuenta._id), codigo: cuenta.codigo, mesas: cuenta.mesas.map((m) => m.numero), mesero: nombres.get(String(cuenta.mesero)) || '',
+        comensales: cuenta.comensales, total: cuenta.total, version: cuenta.version,
+        division: formatoDivision(cuenta.division), porCobrar: cuenta.total - (cuenta.division?.cobrado || 0),
+        items: comandas.flatMap((c) => c.items).filter((i) => i.estado !== 'anulado').map((i) => ({
+            id: String(i._id), nombre: i.nombre, cantidad: i.cantidad, opciones: (i.modificadores || []).map((m) => m.opcionNombre),
+            subtotal: i.subtotal, cobrado: cobrados.has(String(i._id)),
         })),
     }
 }
@@ -151,6 +188,7 @@ export const listarDeHoy = async (sesion) => {
         comprobantes: comprobantes.map((c) => ({
             id: String(c._id), codigo: c.codigo, mesas: c.mesas, total: c.total, emitidoEn: c.emitidoEn,
             cajero: c.cajero?.nombre || '', metodos: c.pagos.map((p) => p.metodo),
+            parte: c.parte ? { modo: c.parte.modo, numero: c.parte.numero, de: c.parte.de ?? null } : null,
         })),
     }
 }

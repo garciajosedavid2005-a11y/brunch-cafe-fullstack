@@ -30,6 +30,8 @@ export const TIPOS_EVENTO = [
     'usuario_eliminado', 'usuario_archivado',
     // 3b.1 · Turno de caja (entidad 'turno'): apertura con base y cierre con el arqueo en datos
     'turno_abierto', 'turno_cerrado',
+    // 3b.2 · Una parte de una cuenta dividida (entidad 'cuenta'; la última deja además cuenta_cobrada)
+    'cuenta_parte_cobrada',
 ]
 const eventoSchema = new mongoose.Schema({
     entidad: {
