@@ -196,6 +196,9 @@ describe('Migración 3b.2 (índice de comprobantes)', () => {
         expect(await nombres()).toContain(VIEJO)
         expect(await nombres()).not.toContain(NUEVO)
         expect((await up(db())).aplicado).toBe(true)
+        // Deja el índice como lo define hoy el esquema (3b.4: parcial), para los tests siguientes
+        await db().collection('comprobantes').dropIndex(NUEVO)
+        await Comprobante.createIndexes()
     })
 
     it('down no revierte si ya hay una cuenta cobrada por partes', async () => {
