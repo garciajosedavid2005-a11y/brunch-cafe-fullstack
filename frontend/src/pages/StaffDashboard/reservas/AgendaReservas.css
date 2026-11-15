@@ -34,3 +34,87 @@
   font-weight: 700;
   color: var(--color-oscuro);
 }
+
+/* 4.3 · Grupos (hoy, próximas, anteriores) y acciones: confirmar, sentar y «No llegó» */
+.agenda {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.agenda__titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  color: var(--color-oscuro);
+  font-size: 1.05rem;
+}
+
+.agenda__conteo {
+  min-width: 1.6rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: #f4e6e0;
+  color: #5b2a1f;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.agenda__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.agenda__acciones:empty {
+  display: none;
+}
+
+.agenda__boton {
+  min-height: 44px;
+  margin: 0;
+  padding: 0.5rem 1rem;
+  border: 1px solid #890620;
+  border-radius: 10px;
+  background: #fff;
+  color: #890620;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.agenda__boton:hover,
+.agenda__boton:focus-visible {
+  background: #fbe9ec;
+  color: #6e0519;
+}
+
+.agenda__boton--primario {
+  background: #890620;
+  color: #fff;
+}
+
+.agenda__boton--primario:hover,
+.agenda__boton--primario:focus-visible {
+  background: #6e0519;
+  color: #fff;
+}
+
+.agenda__boton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.agenda__retraso {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid #9b1c1c;
+  border-radius: 999px;
+  background: #fbe7e6;
+  color: #9b1c1c;
+  font-size: 0.85rem;
+  font-weight: 700;
+}

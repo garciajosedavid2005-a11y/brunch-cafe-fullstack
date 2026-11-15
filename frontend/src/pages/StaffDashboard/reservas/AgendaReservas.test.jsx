@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
-const estado = vi.hoisted(() => ({ apiRequest: vi.fn() }));
+const estado = vi.hoisted(() => ({ apiRequest: vi.fn(), confirmar: vi.fn() }));
 vi.mock("../../../services/api", () => ({ apiRequest: estado.apiRequest }));
+vi.mock("../../../context/useDialogo", () => ({ useDialogo: () => ({ confirmar: estado.confirmar, avisar: vi.fn() }) }));
 
 import AgendaReservas from "./AgendaReservas";
 
@@ -52,5 +53,52 @@ describe("4.1 · Mesa de la reserva en la agenda", () => {
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(screen.getByText("Mesa 1")).toBeInTheDocument();
     expect(estado.apiRequest).not.toHaveBeenCalled();
+  });
+});
+
+describe("4.3 · Agenda: hoy, próximas y acciones", () => {
+  // Hoy es 2026-11-20 a las 8:20 a. m. en Bogotá
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-20T13:20:00Z") });
+    estado.apiRequest.mockReset();
+    estado.confirmar.mockReset();
+    estado.apiRequest.mockImplementation((ruta) => (ruta === "/v1/staff/salon/mesas" ? Promise.resolve(PLANO) : Promise.resolve({})));
+  });
+  afterEach(() => vi.useRealTimers());
+  const hoy = (hora, extra = {}) => ({ ...RESERVA, id: `h${hora}`, codigo: `RES-H${hora.slice(0, 2)}`, hora, inicio: `2026-11-20T${String(Number(hora.slice(0, 2)) + 5).padStart(2, "0")}:00:00Z`, ...extra });
+
+  it("agrupa en Hoy (en orden de hora), Próximas y Anteriores", () => {
+    const reservas = [
+      { ...RESERVA, id: "f", codigo: "RES-FUT", fecha: "2026-11-25T12:00:00Z", inicio: "2026-11-25T14:00:00Z" },
+      hoy("10:00"), hoy("08:00"),
+      { ...RESERVA, id: "p", codigo: "RES-PAS", fecha: "2026-11-10T12:00:00Z", inicio: "2026-11-10T14:00:00Z", estado: "Completada", estadoCodigo: "completada" },
+    ];
+    render(<AgendaReservas reservas={reservas} onCambio={vi.fn()} />);
+    const hoySec = screen.getByRole("region", { name: /^Hoy/ });
+    expect(within(hoySec).getAllByText(/RES-H/).map((n) => n.textContent)).toEqual(["RES-H08", "RES-H10"]);
+    expect(within(screen.getByRole("region", { name: /^Próximas/ })).getByText("RES-FUT")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: /^Anteriores/ })).getByText("RES-PAS")).toBeInTheDocument();
+  });
+
+  it("«Sentar» (hoy, con mesa) y «Confirmar» (pendiente) llaman al backend", async () => {
+    const onCambio = vi.fn();
+    render(<AgendaReservas reservas={[hoy("09:00", { mesa: { id: "m1", numero: 1, capacidad: 4 } }), hoy("10:00", { estado: "Pendiente", estadoCodigo: "pendiente" })]}
+      puedeGestionar puedeSentar onCambio={onCambio} />);
+    fireEvent.click(screen.getByRole("button", { name: "Sentar a Lucía Pérez (RES-H09)" }));
+    await waitFor(() => expect(estado.apiRequest).toHaveBeenCalledWith("/v1/staff/reservas/h09:00/sentar", expect.objectContaining({ method: "POST" })));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar RES-H10" }));
+    await waitFor(() => expect(estado.apiRequest).toHaveBeenCalledWith("/v1/staff/reservas/h10:00/estado", expect.objectContaining({ method: "PATCH", body: JSON.stringify({ codigo: "confirmada" }) })));
+    await waitFor(() => expect(onCambio).toHaveBeenCalledTimes(2));
+    // Sin mesa no se ofrece «Sentar»
+    expect(screen.queryByRole("button", { name: /Sentar a Lucía Pérez \(RES-H10\)/ })).toBeNull();
+  });
+
+  it("a los 15 min de retraso sugiere «No llegó» (texto, no solo color) y lo marca tras confirmar", async () => {
+    estado.confirmar.mockResolvedValue({ confirmado: true });
+    render(<AgendaReservas reservas={[hoy("08:00"), hoy("09:00")]} puedeGestionar onCambio={vi.fn()} />);
+    expect(screen.getByText("Retrasada 20 min")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^No llegó/ })).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "No llegó RES-H08" }));
+    await waitFor(() => expect(estado.apiRequest).toHaveBeenCalledWith("/v1/staff/reservas/h08:00/estado", expect.objectContaining({ method: "PATCH", body: JSON.stringify({ codigo: "no_show" }) })));
   });
 });

@@ -34,6 +34,22 @@ export const buscarChoque = async ({ mesaId, inicio, excepto, session }) => {
     }).select('inicio hora nombre').session(session ?? null).lean()
 }
 
+export const codigoReserva = (id) => `RES-${String(id).slice(-6).toUpperCase()}`
+
+// Reservas que todavía pueden llegar: bloquean su mesa y salen en el plano (una sentada ya tiene su cuenta)
+export const ESTADOS_RESERVA_POR_LLEGAR = ['pendiente', 'confirmada']
+
+/**
+ * 4.3 (F4-c) · Reserva por llegar cuyo bloque contiene `ahora` (desde 15 min antes hasta 90 min después del
+ * inicio): mientras tanto la mesa no se abre para otra persona. null si no hay.
+ */
+export const reservaQueBloquea = async ({ mesaId, ahora = new Date(), excepto = null, session }) => Reserva.findOne({
+    mesa: mesaId,
+    ...(excepto ? { _id: { $ne: excepto } } : {}),
+    estado: { $in: await idsEstadosReserva(ESTADOS_RESERVA_POR_LLEGAR, session) },
+    inicio: { $gt: new Date(ahora.getTime() - DURACION_RESERVA_MIN * MINUTO), $lte: new Date(ahora.getTime() + MARGEN_ANTES_MIN * MINUTO) },
+}).sort({ inicio: 1 }).select('inicio hora nombre').session(session ?? null).lean()
+
 /** Texto para el 409: «La mesa 3 ya está reservada a las 9:00 a. m.» */
 export const textoChoque = (numeroMesa, choque) =>
     `La mesa ${numeroMesa} ya está reservada a las ${hora12(choque.hora || horaLocal(choque.inicio))} (cada reserva la ocupa desde 15 min antes y durante 90 min).`

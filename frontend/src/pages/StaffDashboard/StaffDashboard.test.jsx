@@ -83,7 +83,7 @@ describe("Panel de mesero", () => {
   });
 
   it("muestra primero el resumen con datos reales y permite entrar a las reservas y pedidos", async () => {
-    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    render(<DialogoProvider><MemoryRouter><StaffDashboard /></MemoryRouter></DialogoProvider>);
 
     expect(screen.getByRole("heading", { name: /resumen del turno/i })).toBeInTheDocument();
     expect(state.apiRequest).toHaveBeenCalledWith("/v1/staff/reservas");
@@ -107,7 +107,7 @@ describe("Panel de mesero", () => {
   });
 
   it("la cabecera lleva el logo de Brunch Café (2.0c) y el área «Sala»", () => {
-    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    render(<DialogoProvider><MemoryRouter><StaffDashboard /></MemoryRouter></DialogoProvider>);
     const logo = screen.getByRole("img", { name: "Brunch Café" });
     expect(logo).toHaveTextContent("Brunch Café");
     expect(logo).toHaveClass("logo--bordo");
@@ -117,7 +117,7 @@ describe("Panel de mesero", () => {
   it("oculta los módulos de reservas y pedidos si el rol no tiene esos permisos", () => {
     state.user.permisos = [];
 
-    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    render(<DialogoProvider><MemoryRouter><StaffDashboard /></MemoryRouter></DialogoProvider>);
 
     expect(screen.getByRole("button", { name: /resumen/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /reservas/i })).not.toBeInTheDocument();
@@ -133,7 +133,7 @@ describe("Panel de mesero", () => {
       ? Promise.resolve({ actualizadoEn: new Date().toISOString(), zonas: [], mesas: [] })
       : respuestaBase(path)));
 
-    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    render(<DialogoProvider><MemoryRouter><StaffDashboard /></MemoryRouter></DialogoProvider>);
 
     const navigation = screen.getByRole("navigation", { name: /secciones del panel de personal/i });
     expect(within(navigation).getByRole("button", { name: "Mesas" })).toHaveAttribute("aria-current", "page");
@@ -150,7 +150,7 @@ describe("Panel de mesero", () => {
     state.apiRequest.mockImplementation((path) => (path === "/v1/staff/cuentas-abiertas"
       ? Promise.resolve({ actualizadoEn: new Date().toISOString(), canales: { salon: false, domicilio: true }, truncado: false, cuentas: [] })
       : respuestaBase(path)));
-    const { container } = render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    const { container } = render(<DialogoProvider><MemoryRouter><StaffDashboard /></MemoryRouter></DialogoProvider>);
     const navigation = screen.getByRole("navigation", { name: /secciones del panel de personal/i });
     fireEvent.click(within(navigation).getByRole("button", { name: "Cuentas" }));
     expect(await screen.findByRole("heading", { name: "Cuentas abiertas" })).toBeInTheDocument();
@@ -161,12 +161,12 @@ describe("Panel de mesero", () => {
 
   it("sin cuenta:ver ni pedido:ver no hay pestaña «Cuentas»", () => {
     state.user.permisos = ["reserva:ver"];
-    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    render(<DialogoProvider><MemoryRouter><StaffDashboard /></MemoryRouter></DialogoProvider>);
     expect(screen.queryByRole("button", { name: "Cuentas" })).not.toBeInTheDocument();
   });
 
   it("el personal no ve el enlace al panel de administración", () => {
-    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    render(<DialogoProvider><MemoryRouter><StaffDashboard /></MemoryRouter></DialogoProvider>);
     expect(screen.queryByRole("link", { name: "Panel de administración" })).not.toBeInTheDocument();
   });
 
@@ -176,7 +176,7 @@ describe("Panel de mesero", () => {
       ? Promise.resolve([{ id: "res-2", codigo: "RES-000002", cliente: "Laura Ruiz", correo: "", telefono: "3209876543", personas: 2,
           fecha: new Date().toISOString(), hora: "10:00", estado: "Pendiente", estadoCodigo: "pendiente", registradaPor: { id: "m1", nombre: "Mario Mesa" } }])
       : original(path));
-    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    render(<DialogoProvider><MemoryRouter><StaffDashboard /></MemoryRouter></DialogoProvider>);
     fireEvent.click(await screen.findByRole("button", { name: /^reservas$/i }));
     expect(await screen.findByText("Registrada por Mario Mesa")).toBeInTheDocument();
     expect(screen.getByText(/3209876543/)).toBeInTheDocument();
@@ -188,7 +188,7 @@ describe("Panel de mesero", () => {
     state.apiRequest.mockImplementation((path) => path === "/v1/staff/pedidos?limite=20"
       ? Promise.resolve([pedido("PED-1", "Cancelado", "cancelado"), pedido("PED-2", "Listo", "listo"), pedido("PED-3", "En camino", "en_camino")])
       : original(path));
-    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    render(<DialogoProvider><MemoryRouter><StaffDashboard /></MemoryRouter></DialogoProvider>);
     fireEvent.click(await screen.findByRole("button", { name: /^pedidos$/i }));
     expect(await screen.findByText("Cancelado")).toHaveClass("staff-dashboard__status--danger");
     expect(screen.getByText("Listo")).toHaveClass("staff-dashboard__status--success");
@@ -225,7 +225,7 @@ describe("Panel de mesero", () => {
 
   it("si el cierre de sesión falla, se queda en el panel y lo avisa", async () => {
     state.logout.mockRejectedValue(new Error("No se pudo conectar con el servidor"));
-    render(<MemoryRouter><StaffDashboard /></MemoryRouter>);
+    render(<DialogoProvider><MemoryRouter><StaffDashboard /></MemoryRouter></DialogoProvider>);
     fireEvent.click(screen.getByRole("button", { name: "Cambiar de usuario" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo conectar con el servidor");
   });

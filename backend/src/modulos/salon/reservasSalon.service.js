@@ -4,10 +4,11 @@ import Reserva from './reserva.model.js'
 import Mesa from './mesa.model.js'
 import { AppError, detallesZod } from '../compartido/errors.js'
 import { conTransaccion } from '../compartido/transacciones.js'
-import { codigoActual, registrarEvento } from '../compartido/estados.service.js'
+import { cambiarEstado, codigoActual, registrarEvento } from '../compartido/estados.service.js'
 import { tienePermiso } from '../identidad/permisos.js'
-import { buscarChoque, finBloque, textoChoque } from './reservas.bloque.js'
-import { inicioReserva } from '../compartido/fechas.js'
+import { buscarChoque, codigoReserva, finBloque, textoChoque } from './reservas.bloque.js'
+import { fechaLocal, inicioReserva } from '../compartido/fechas.js'
+import { abrirEnTransaccion, prepararApertura } from './cuentas.service.js'
 
 // Estados en los que la reserva todavía puede cambiar de mesa (aún no llegó)
 export const RESERVA_CON_MESA_EDITABLE = ['pendiente', 'confirmada']
@@ -37,7 +38,7 @@ export const problemaDeMesa = async ({ mesa, reserva, session }) => {
     }
     const choque = await buscarChoque({ mesaId: mesa._id, inicio: reserva.inicio, excepto: reserva._id, session })
     if (choque) {
-        return new AppError(409, 'MESA_OCUPADA_EN_HORARIO', textoChoque(mesa.numero, choque), { reserva: `RES-${String(choque._id).slice(-6).toUpperCase()}` })
+        return new AppError(409, 'MESA_OCUPADA_EN_HORARIO', textoChoque(mesa.numero, choque), { reserva: codigoReserva(choque._id) })
     }
     return null
 }
@@ -94,5 +95,49 @@ export const asignarMesa = async (id, datos, sesion) => {
             datos: { de: anterior?.numero ?? null, a: mesa?.numero ?? null, mesaDe: reserva.mesa ?? null, mesaA: mesa?._id ?? null }, session,
         })
         return { id: String(reserva._id), mesa: mesa ? { id: String(mesa._id), numero: mesa.numero, capacidad: mesa.capacidad } : null }
+    })
+}
+
+const sentarSchema = z.object({
+    // Quien no atiende mesas (el admin) indica el mesero, como al abrir una cuenta desde el plano
+    meseroId: z.string().regex(OBJECT_ID, { error: 'El mesero no es válido.' }).optional(),
+}).strict()
+
+/**
+ * 4.3 (F4-6, F4-f) · POST /staff/reservas/:id/sentar { meseroId? }: la reserva pendiente o confirmada de hoy, con
+ * mesa, pasa a «sentada» y abre la cuenta en su mesa (comensales = personas) en una sola transacción. La mesa
+ * reservada solo la abre esta reserva (abrirEnTransaccion con `reserva`). → 201 { reserva, cuenta }
+ */
+export const sentarReserva = async (id, datos, sesion) => {
+    exigir(sesion, 'reserva:cambiar_estado')
+    exigir(sesion, 'cuenta:abrir') // antes de leer nada ni tomar un código de cuenta
+    const r = sentarSchema.safeParse(datos ?? {})
+    if (!r.success) throw new AppError(400, 'VALIDATION_ERROR', r.error.issues[0]?.message || 'Datos no válidos', detallesZod(r.error))
+    if (!OBJECT_ID.test(String(id))) throw reservaNoEncontrada()
+    const previa = await Reserva.findById(id).select('mesa cantidadPersonas').lean()
+    if (!previa) throw reservaNoEncontrada()
+    const sinMesa = () => new AppError(409, 'RESERVA_SIN_MESA', 'Asigna una mesa a la reserva antes de sentarla.')
+    if (!previa.mesa) throw sinMesa()
+    // Permisos de apertura, mesero y código de la cuenta (fuera de la transacción, como al abrir desde el plano)
+    const apertura = await prepararApertura({ mesaId: String(previa.mesa), comensales: previa.cantidadPersonas, ...(r.data.meseroId ? { meseroId: r.data.meseroId } : {}) }, sesion)
+
+    return conTransaccion(async (session) => {
+        const reserva = await Reserva.findById(id).populate('estado', 'codigo').session(session)
+        if (!reserva) throw reservaNoEncontrada()
+        const codigo = await codigoActual(reserva)
+        if (!RESERVA_CON_MESA_EDITABLE.includes(codigo)) {
+            throw new AppError(409, 'RESERVA_NO_SENTABLE', 'Solo se sienta una reserva pendiente o confirmada.', { estado: codigo })
+        }
+        if (!reserva.mesa) throw sinMesa()
+        if (String(reserva.mesa) !== String(previa.mesa) || reserva.cantidadPersonas !== previa.cantidadPersonas) {
+            throw new AppError(409, 'CONFLICTO_ESTADO', 'La reserva cambió mientras la sentabas. Recarga e intenta de nuevo.')
+        }
+        const inicio = reserva.inicio || inicioReserva(reserva.fecha, reserva.hora)
+        if (fechaLocal(inicio) !== fechaLocal(new Date())) {
+            throw new AppError(409, 'RESERVA_NO_ES_HOY', 'Solo se sientan las reservas de hoy.')
+        }
+        const cuenta = await abrirEnTransaccion(apertura, sesion, session, { reserva })
+        await cambiarEstado({ tipo: 'reserva', Modelo: Reserva, documento: reserva, a: 'sentada', sesion, cambios: { cuenta: cuenta.id }, session })
+        return { reserva: { id: String(reserva._id), codigo: codigoReserva(reserva._id), estadoCodigo: 'sentada', cuenta: cuenta.id }, cuenta }
     })
 }

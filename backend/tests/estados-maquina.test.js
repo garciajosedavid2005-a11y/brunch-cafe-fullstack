@@ -114,9 +114,11 @@ describe('Transiciones de reserva', () => {
         }
     })
 
-    it('no_show solo desde confirmada; cancelar desde pendiente o confirmada', () => {
+    // 4.3 (F4-g) · no_show también desde pendiente; nunca desde sentada
+    it('no_show desde pendiente o confirmada (no desde sentada); cancelar desde pendiente o confirmada', () => {
         expect(() => validarTransicion('reserva', 'confirmada', 'no_show', { permisos: GESTOR_RESERVAS })).not.toThrow()
-        expect(codigoError(() => validarTransicion('reserva', 'pendiente', 'no_show', { permisos: GESTOR_RESERVAS })))
+        expect(() => validarTransicion('reserva', 'pendiente', 'no_show', { permisos: GESTOR_RESERVAS })).not.toThrow()
+        expect(codigoError(() => validarTransicion('reserva', 'sentada', 'no_show', { permisos: GESTOR_RESERVAS })))
             .toEqual({ status: 409, code: 'TRANSICION_INVALIDA' })
         expect(() => validarTransicion('reserva', 'confirmada', 'cancelada', { permisos: GESTOR_RESERVAS, motivo: 'Llamó a cancelar' })).not.toThrow()
         expect(codigoError(() => validarTransicion('reserva', 'sentada', 'cancelada', { permisos: GESTOR_RESERVAS, motivo: 'x' })))

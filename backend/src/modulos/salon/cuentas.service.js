@@ -29,6 +29,8 @@ import { MAX_MESAS_POR_CUENTA } from './cuenta.model.js'
 import { cobrarSchema, cobrarParteSchema } from '../caja/caja.schema.js'
 import { asegurarContador, calcularPagos, emitirComprobante, formatoComprobante } from '../caja/caja.service.js'
 import { tomarTurnoAbierto } from '../caja/turno.service.js'
+import { codigoReserva, reservaQueBloquea } from './reservas.bloque.js'
+import { hora12 } from '../configuracion/horarios.reglas.js'
 
 // 1.4 · Núcleo de cuenta y comanda (sin endpoints: llegan en 1.5 y reciben `sesion` = req.usuario).
 // Reglas:
@@ -412,10 +414,14 @@ export const obtenerCuenta = async (cuentaId, sesion) => {
     return formatoCuenta(cuenta, await Comanda.find({ cuenta: cuenta._id }).lean())
 }
 
-/** Abre la cuenta de una mesa libre (F1-7): mesa → ocupada y apunta a la cuenta. */
-export const abrirCuenta = async (datos, sesion) => {
+/**
+ * Valida la apertura (permisos, mesero) y reserva el código de la cuenta. Fuera de la transacción: un reintento
+ * no consume otro número (los huecos son aceptables). 4.3 · La usa también «Sentar» una reserva.
+ */
+export const prepararApertura = async (datos, sesion) => {
     exigirPermiso(sesion, 'cuenta:abrir')
-    const { mesaId, comensales, notas, meseroId } = validar(abrirCuentaSchema, datos)
+    const entrada = validar(abrirCuentaSchema, datos)
+    const { meseroId } = entrada
     const otroMesero = Boolean(meseroId) && meseroId !== String(sesion.id)
     if (otroMesero) exigirPermiso(sesion, 'cuenta:transferir')
     // El responsable atiende mesas: quien no (un rol sin comanda:tomar o el admin) indica el mesero;
@@ -424,51 +430,72 @@ export const abrirCuenta = async (datos, sesion) => {
         if (meseroId) throw error(400, 'MESERO_NO_VALIDO', 'Ese usuario no puede atender mesas: elige un mesero activo.')
         throw error(400, 'MESERO_REQUERIDO', 'Elige el mesero que atenderá la mesa.')
     }
-    // Fuera de la transacción: un reintento no consume otro número (los huecos son aceptables)
     const codigo = `C-${String(await siguienteValor('cuenta')).padStart(6, '0')}`
+    return { ...entrada, otroMesero, codigo }
+}
 
-    return conTransaccion(async (session) => {
-        const mesa = await Mesa.findById(mesaId).session(session).lean()
-        if (!mesa) throw error(404, 'MESA_NO_ENCONTRADA', 'La mesa no existe.')
-        const noDisponible = (motivo) => error(409, 'MESA_NO_DISPONIBLE', motivo, { estado: mesa.estado })
-        if (!mesa.activa || mesa.estado !== 'libre' || mesa.cuentaActual) throw noDisponible(`La mesa ${mesa.numero} no está libre.`)
-        // Toca la zona: desactivarla a la vez entra en conflicto con esta apertura (pendiente (b) de 1.2)
-        const zona = await Zona.findOneAndUpdate(
-            { _id: mesa.zona, activa: true }, { $currentDate: { updatedAt: true } }, { returnDocument: 'after', session },
-        )
-        if (!zona) throw noDisponible(`La zona de la mesa ${mesa.numero} está inactiva.`)
-        if (otroMesero) await exigirMeseroValido(meseroId, session)
-        else await tocarResponsable(sesion.id, session)
+/** Abre la cuenta de una mesa libre (F1-7): mesa → ocupada y apunta a la cuenta. */
+export const abrirCuenta = async (datos, sesion) => {
+    const apertura = await prepararApertura(datos, sesion)
+    return conTransaccion((session) => abrirEnTransaccion(apertura, sesion, session))
+}
 
-        MAQUINA_MESA.validar('libre', 'ocupada', { via: 'sistema' })
-        const cuentaId = new ObjectId()
-        const ocupada = await Mesa.findOneAndUpdate(
-            { _id: mesa._id, activa: true, estado: 'libre', cuentaActual: null },
-            { $set: { estado: 'ocupada', cuentaActual: cuentaId } },
-            { returnDocument: 'after', session, runValidators: true },
-        )
-        if (!ocupada) throw noDisponible(`La mesa ${mesa.numero} no está libre.`)
+/** 4.3 (F4-c) · 409 MESA_RESERVADA si una reserva por llegar tiene la mesa en su bloque (abrir, mover o unir). */
+const exigirNoReservada = async (mesa, session, excepto = null) => {
+    const bloqueo = await reservaQueBloquea({ mesaId: mesa._id, excepto, session })
+    if (bloqueo) {
+        throw error(409, 'MESA_RESERVADA', `La mesa ${mesa.numero} está reservada para ${bloqueo.nombre || 'un cliente'} a las ${hora12(bloqueo.hora)}. Siéntalo desde su reserva o elige otra mesa.`,
+            { reserva: codigoReserva(bloqueo._id), hora: bloqueo.hora })
+    }
+}
 
-        const [cuenta] = await crearCuentaOConflicto([{
-            _id: cuentaId,
-            codigo,
-            canal: 'salon',
-            mesas: [copiaDeMesa(mesa, zona)],
-            mesero: otroMesero ? meseroId : sesion.id,
-            comensales,
-            estado: 'abierta',
-            abiertaPor: sesion.id,
-            abiertaEn: new Date(),
-            notas: notas || '',
-        }], { session })
-        await registrarEvento({
-            entidad: 'mesa', entidadId: mesa._id, de: 'libre', a: 'ocupada', ...quien(sesion), datos: { cuenta: cuentaId, codigo }, session,
-        })
-        await registrarEvento({
-            entidad: 'cuenta', entidadId: cuentaId, a: 'abierta', ...quien(sesion), datos: { codigo, mesas: [mesa.numero], comensales }, session,
-        })
-        return formatoCuenta(cuenta, [])
+/**
+ * Apertura dentro de la transacción de quien llama. 4.3 (F4-c) · Una mesa reservada (desde 15 min antes de una
+ * reserva pendiente o confirmada y durante su bloque) solo la abre «Sentar» de esa reserva (`reserva`).
+ */
+export const abrirEnTransaccion = async ({ mesaId, comensales, notas, meseroId, otroMesero, codigo }, sesion, session, { reserva = null } = {}) => {
+    const mesa = await Mesa.findById(mesaId).session(session).lean()
+    if (!mesa) throw error(404, 'MESA_NO_ENCONTRADA', 'La mesa no existe.')
+    const noDisponible = (motivo) => error(409, 'MESA_NO_DISPONIBLE', motivo, { estado: mesa.estado })
+    if (!mesa.activa || mesa.estado !== 'libre' || mesa.cuentaActual) throw noDisponible(`La mesa ${mesa.numero} no está libre.`)
+    await exigirNoReservada(mesa, session, reserva?._id)
+    // Toca la zona: desactivarla a la vez entra en conflicto con esta apertura (pendiente (b) de 1.2)
+    const zona = await Zona.findOneAndUpdate(
+        { _id: mesa.zona, activa: true }, { $currentDate: { updatedAt: true } }, { returnDocument: 'after', session },
+    )
+    if (!zona) throw noDisponible(`La zona de la mesa ${mesa.numero} está inactiva.`)
+    if (otroMesero) await exigirMeseroValido(meseroId, session)
+    else await tocarResponsable(sesion.id, session)
+
+    MAQUINA_MESA.validar('libre', 'ocupada', { via: 'sistema' })
+    const cuentaId = new ObjectId()
+    const ocupada = await Mesa.findOneAndUpdate(
+        { _id: mesa._id, activa: true, estado: 'libre', cuentaActual: null },
+        { $set: { estado: 'ocupada', cuentaActual: cuentaId } },
+        { returnDocument: 'after', session, runValidators: true },
+    )
+    if (!ocupada) throw noDisponible(`La mesa ${mesa.numero} no está libre.`)
+
+    const [cuenta] = await crearCuentaOConflicto([{
+        _id: cuentaId,
+        codigo,
+        canal: 'salon',
+        mesas: [copiaDeMesa(mesa, zona)],
+        mesero: otroMesero ? meseroId : sesion.id,
+        comensales,
+        estado: 'abierta',
+        abiertaPor: sesion.id,
+        abiertaEn: new Date(),
+        notas: notas || '',
+    }], { session })
+    await registrarEvento({
+        entidad: 'mesa', entidadId: mesa._id, de: 'libre', a: 'ocupada', ...quien(sesion), datos: { cuenta: cuentaId, codigo }, session,
     })
+    await registrarEvento({
+        entidad: 'cuenta', entidadId: cuentaId, a: 'abierta', ...quien(sesion),
+        datos: { codigo, mesas: [mesa.numero], comensales, ...(reserva ? { reserva: codigoReserva(reserva._id) } : {}) }, session,
+    })
+    return formatoCuenta(cuenta, [])
 }
 
 /** Agrega un ítem a la ronda en borrador (la crea si no hay). Con la cuenta pedida, la reabre (D2). */
@@ -863,6 +890,7 @@ export const moverCuenta = async (mesaOrigenId, datos, sesion) => {
         if (!destino.activa || destino.estado !== 'libre' || destino.cuentaActual) {
             throw error(409, 'MESA_NO_DISPONIBLE', `La mesa ${destino.numero} no está libre.`, { estado: destino.estado })
         }
+        await exigirNoReservada(destino, session) // 4.3 · tampoco se mueve una cuenta a una mesa reservada
         if (cuenta.mesas.length > 1 && (String(destino.zona) !== String(origen.zona) || !destino.combinable)) {
             throw error(409, 'MESA_NO_COMBINABLE', `La cuenta tiene mesas unidas: la mesa ${destino.numero} debe ser de la misma zona y combinable.`)
         }
@@ -926,6 +954,7 @@ export const unirMesas = async (datos, sesion) => {
             throw error(409, 'MESA_NO_DISPONIBLE', `La mesa ${ocupadas.map((m) => m.numero).join(', ')} no está libre.`,
                 { mesas: ocupadas.map((m) => m.numero) })
         }
+        for (const m of nuevas) await exigirNoReservada(m, session) // 4.3 · ni se une una mesa reservada
         const zona = await tocarZonaActiva(principal.zona, session)
         if (!zona) throw error(409, 'MESA_NO_DISPONIBLE', 'La zona de estas mesas está inactiva.')
 

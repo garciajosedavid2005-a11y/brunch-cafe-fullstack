@@ -56,6 +56,10 @@ export default function StaffDashboard() {
   const puedeCrearReservas = tienePermiso(user, "reserva:crear") && !admin;
   // 4.1 · Asignar mesa a una reserva (reserva:cambiar_estado) con el plano a la vista (mesa:ver)
   const puedeAsignarMesa = tienePermiso(user, "reserva:cambiar_estado") && tienePermiso(user, "mesa:ver");
+  // 4.3 · Confirmar, sentar (abre la cuenta: también cuenta:abrir) y marcar «No llegó»
+  const puedeGestionarReservas = tienePermiso(user, "reserva:cambiar_estado");
+  // Desde la agenda sienta quien atiende mesas (queda de responsable); el admin lo hace en el panel de la mesa, que pide el mesero
+  const puedeSentarDesdeAgenda = puedeGestionarReservas && tienePermiso(user, "cuenta:abrir") && tienePermiso(user, "comanda:tomar") && !admin;
   const puedeVerPedidos = tienePermiso(user, "pedido:ver");
   const puedeVerMesas = tienePermiso(user, "mesa:ver");
   const puedeVerKds = tienePermiso(user, "kds:ver"); // 2.5 · enlace a la pantalla de cocina
@@ -412,7 +416,8 @@ export default function StaffDashboard() {
                 <p className="dashboard-empty">No hay reservas registradas.</p>
               )}
               {puedeVerReservas && (
-                <AgendaReservas reservas={reservas} puedeAsignar={puedeAsignarMesa} onCambio={recargarReservas} />
+                <AgendaReservas reservas={reservas} puedeAsignar={puedeAsignarMesa} puedeGestionar={puedeGestionarReservas}
+                  puedeSentar={puedeSentarDesdeAgenda} onCambio={recargarReservas} />
               )}
             </div>
           )}

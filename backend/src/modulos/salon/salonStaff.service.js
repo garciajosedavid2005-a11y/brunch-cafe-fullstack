@@ -19,6 +19,8 @@ import { pedidoComoCuenta } from '../pedidos/pedidoComoCuenta.js'
 import { esEstadoFinal } from '../compartido/estados.js'
 import { estadosDelTipo } from '../compartido/estados.service.js'
 import { nombreCorto, CAMPOS_NOMBRE } from '../compartido/nombres.js'
+import Reserva from './reserva.model.js'
+import { DURACION_RESERVA_MIN, ESTADOS_RESERVA_POR_LLEGAR, MARGEN_ANTES_MIN, codigoReserva, idsEstadosReserva, inicioBloque } from './reservas.bloque.js'
 
 // 1.5 · Lecturas del salón para el staff (/api/v1/staff/salon). Cada lectura hace un número fijo de
 // consultas en lote (sin N+1): el plano son 5 (zonas, mesas, cuentas, meseros y, desde 2.6, los ítems
@@ -58,6 +60,32 @@ const listosParaServirPorCuenta = async (idsCuentas) => {
     return new Map(filas.map((f) => [String(f._id), f.n]))
 }
 
+// 4.3 (F4-e) · El plano muestra la reserva de cada mesa cuyo bloque (desde 15 min antes) empieza en las próximas
+// 2 h y aún no termina; `bloqueada` = ya empezó el bloque (la mesa solo se abre con «Sentar»)
+export const HORIZONTE_PLANO_MIN = 120
+const reservasProximas = async (idsMesas, ahora) => {
+    if (!idsMesas.length) return new Map()
+    const t = ahora.getTime()
+    const reservas = await Reserva.find({
+        mesa: { $in: idsMesas },
+        estado: { $in: await idsEstadosReserva(ESTADOS_RESERVA_POR_LLEGAR) },
+        inicio: { $gt: new Date(t - DURACION_RESERVA_MIN * 60_000), $lte: new Date(t + (HORIZONTE_PLANO_MIN + MARGEN_ANTES_MIN) * 60_000) },
+    }).sort({ inicio: 1 }).select('mesa inicio hora nombre cantidadPersonas estado usuario').populate('estado', 'codigo').populate('usuario', 'nombre apellido').lean()
+    const porMesa = new Map()
+    for (const r of reservas) {
+        const clave = String(r.mesa)
+        if (porMesa.has(clave)) continue
+        porMesa.set(clave, {
+            id: String(r._id), codigo: codigoReserva(r._id),
+            cliente: r.nombre || [r.usuario?.nombre, r.usuario?.apellido].filter(Boolean).join(' ') || 'Cliente',
+            personas: r.cantidadPersonas, hora: r.hora, inicio: r.inicio, estado: r.estado?.codigo || '',
+            bloqueada: inicioBloque(r.inicio) <= ahora,
+            minutosRetraso: Math.max(0, Math.floor((t - new Date(r.inicio).getTime()) / 60_000)),
+        })
+    }
+    return porMesa
+}
+
 /**
  * Plano de mesas: zonas activas y sus mesas activas (más cualquier mesa con cuenta, aunque su zona
  * o la mesa se hubieran desactivado: no se pierde una cuenta abierta). `bloqueada` es un estado
@@ -85,6 +113,7 @@ export const obtenerPlano = async ({ zona } = {}, sesion, ahora = new Date()) =>
     const meseros = await personasPorId(cuentas.map((c) => c.mesero))
     const listos = await listosParaServirPorCuenta(cuentas.map((c) => c._id))
     const cuentaPorId = new Map(cuentas.map((c) => [String(c._id), c]))
+    const reservaPorMesa = await reservasProximas(mesas.map((m) => m._id), ahora)
     const zonaPorId = new Map(zonas.map((z) => [String(z._id), z]))
 
     return {
@@ -105,6 +134,8 @@ export const obtenerPlano = async ({ zona } = {}, sesion, ahora = new Date()) =>
                 estado: m.estado,
                 combinable: m.combinable,
                 posicion: m.posicion || null,
+                // 4.3 · Próxima reserva por llegar de la mesa (bloque en las próximas 2 h) o null
+                reserva: reservaPorMesa.get(String(m._id)) || null,
                 cuenta: c
                     ? {
                         id: String(c._id),

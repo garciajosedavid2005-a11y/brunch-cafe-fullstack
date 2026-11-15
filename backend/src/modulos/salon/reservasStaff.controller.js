@@ -1,6 +1,6 @@
 import Reserva from './reserva.model.js'
 import { crearPorStaff } from './reservas.service.js'
-import { notFound } from '../compartido/errors.js'
+import { AppError, notFound } from '../compartido/errors.js'
 import { esEstadoFinal } from '../compartido/estados.js'
 import {
     cambiarEstado, codigoDestino, estadosDelTipo, opcionesDeCambio,
@@ -24,7 +24,8 @@ const formatoAdmin = (reserva, { permisos, estados }) => {
         estadoId: reserva.estado?._id || reserva.estado,
         estadoCodigo: codigo,
         esFinal: esEstadoFinal('reserva', codigo),
-        transiciones: opcionesDeCambio('reserva', codigo, { permisos }, estados),
+        // 4.3 · Con mesa, «Sentar» va por su propia ruta (abre la cuenta): no se ofrece como cambio de estado
+        transiciones: opcionesDeCambio('reserva', codigo, { permisos }, estados).filter((t) => !(reserva.mesa && t.codigo === 'sentada')),
         observaciones: reserva.observaciones || '',
         // Personal que la registró en nombre del cliente; null si la hizo el cliente (0.15e)
         // Fase 4 · Mesa asignada (null = sin mesa) y cuenta que abrió «Sentar»
@@ -64,6 +65,11 @@ export const cambiarEstadoReserva = async (req, res) => {
     if (!reserva) throw notFound('Reserva no encontrada')
 
     const a = await codigoDestino('reserva', req.validado)
+    // 4.3 · Una reserva con mesa se sienta con «Sentar» (abre su cuenta en la mesa); el cambio de estado directo
+    // queda para las que no tienen mesa (flujo anterior a la Fase 4)
+    if (a === 'sentada' && reserva.mesa) {
+        throw new AppError(409, 'USA_SENTAR', 'Esta reserva tiene mesa: siéntala con «Sentar» para abrir su cuenta.')
+    }
     const actualizada = await cambiarEstado({
         tipo: 'reserva',
         Modelo: Reserva,

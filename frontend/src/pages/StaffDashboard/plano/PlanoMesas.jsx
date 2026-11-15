@@ -1,7 +1,8 @@
 import { createElement, useEffect, useMemo, useState } from "react";
-import { BellRing, Clock, Users } from "lucide-react";
+import { BellRing, CalendarClock, Clock, Users } from "lucide-react";
 import { formatearCOP } from "../../../utils/moneda";
-import { ESTADOS_MESA, datosEstado, formatearMinutos } from "./estadosMesa";
+import { ESTADOS_MESA, datosEstado, formatearMinutos, retrasada } from "./estadosMesa";
+import { formatearHoraTexto } from "../../../utils/fechas";
 import { usePlano } from "./usePlano";
 import Actualizado from "../compartido/Actualizado";
 import PanelMesa from "./PanelMesa";
@@ -30,6 +31,8 @@ const resumenAccesible = (mesa) => {
     if (c.mesas.length > 1) partes.push(`unida con ${c.mesas.filter((m) => m.id !== mesa.id).map((m) => m.numero).join(", ")}`);
   } else {
     partes.push(`${mesa.capacidad} puestos`);
+    // 4.3 · Reserva próxima (también para lector de pantalla)
+    if (mesa.reserva) partes.push(`reservada a las ${formatearHoraTexto(mesa.reserva.hora)} para ${mesa.reserva.cliente}`);
   }
   return partes.join(", ");
 };
@@ -88,6 +91,15 @@ function TarjetaMesa({ pieza, seleccionada, onElegir }) {
           {etiqueta}
         </span>
         {mesa.nombre && <span className="plano__mesa-nombre">{mesa.nombre}</span>}
+        {!c && mesa.reserva && (
+          // 4.3 · Reserva próxima: texto e icono; más marcada si el bloque empezó o va con retraso
+          <span className={`plano__reserva${mesa.reserva.bloqueada ? " plano__reserva--bloqueada" : ""}`} aria-hidden="true">
+            <CalendarClock size={14} />
+            {retrasada(mesa.reserva)
+              ? `Retrasada ${mesa.reserva.minutosRetraso} min · ${formatearHoraTexto(mesa.reserva.hora)}`
+              : `Reservada ${formatearHoraTexto(mesa.reserva.hora)}`}
+          </span>
+        )}
         {c && (
           <span className="plano__mesa-detalle">
             {c.mesero?.nombre && <span className="plano__mesero" aria-hidden="true" title={c.mesero.nombre}>{iniciales(c.mesero.nombre)}</span>}

@@ -172,11 +172,11 @@ describe('Reservas: transiciones', () => {
         expect((await eventosDe(reservaId)).at(-1)).toMatchObject({ a: 'cancelada', motivo: 'Sin cupo' })
     })
 
-    it('no_show solo desde confirmada', async () => {
-        expect((await cambiar(gestor.sesion, 'no_show')).status).toBe(409)
-        await cambiar(gestor.sesion, 'confirmada')
+    // 4.3 (F4-g) · También desde pendiente (antes solo desde confirmada); ya final, no se repite
+    it('no_show desde pendiente (y desde confirmada, en estados-maquina)', async () => {
         const res = await cambiar(gestor.sesion, 'no_show')
         expect(res.status).toBe(200)
+        expect((await cambiar(gestor.sesion, 'no_show')).status).toBe(409)
         expect(res.body.esFinal).toBe(true)
     })
 

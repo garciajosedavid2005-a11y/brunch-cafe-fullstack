@@ -24,3 +24,7 @@ export const formatearMinutos = (minutos) => {
 /** Clave de idempotencia para una acción (0.9): la reutiliza el reintento de la misma acción. */
 export const nuevaClave = () =>
   globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+
+// 4.3 · Reserva próxima de una mesa (F4-e): texto corto de la tarjeta y si ya se sugiere el no-show (15 min)
+export const MINUTOS_NO_SHOW = 15;
+export const retrasada = (reserva) => (reserva?.minutosRetraso || 0) >= MINUTOS_NO_SHOW;

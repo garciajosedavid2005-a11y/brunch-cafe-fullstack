@@ -1144,6 +1144,26 @@ const VISTAS = {
     await tarjeta.getByRole("alert").waitFor();
     await tarjeta.scrollIntoViewIfNeeded();
   } },
+  // 4.3 · Plano a las 6:00: la mesa 2 lleva «Reservada 8:00 a. m.» (Laura, confirmada) y su panel ofrece «Sentar»
+  "staff-plano-reserva": { usuario: "mesero", completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: /^Mesa 2,.*reservada a las/ }).click();
+    await p.getByRole("button", { name: /^Sentar a Laura/ }).waitFor();
+  } },
+  // 4.3 · La misma mesa con el bloque empezado y 20 min de retraso (solo en la respuesta del plano: la BD de
+  // capturas está a las 6:00): sin «Abrir cuenta», con «Sentar» y «No llegó»
+  "staff-plano-reserva-retrasada": { usuario: "mesero", completa: false, preparar: async (p) => {
+    await p.route(/\/staff\/salon\/mesas$/, async (ruta) => {
+      const r = await ruta.fetch();
+      const plano = await r.json();
+      const m2 = plano.mesas.find((m) => m.numero === 2);
+      if (m2?.reserva) Object.assign(m2.reserva, { bloqueada: true, minutosRetraso: 20 });
+      await ruta.fulfill({ response: r, json: plano });
+    });
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: /^Mesa 2,.*reservada a las/ }).click();
+    await p.getByRole("button", { name: "No llegó" }).waitFor();
+  } },
   // 1.6 · Plano de mesas (tablet): /staff abre en el plano para quien tiene mesa:ver
   "staff-plano": { usuario: "mesero", preparar: (p) => p.goto(`${FRONT}/staff`) },
   // 2.4 · Estados del tiempo real sin canal: rechazado por el servidor («Sin tiempo real») o cortado
@@ -1619,6 +1639,17 @@ const VISTAS = {
     await p.goto(`${FRONT}/staff`);
     await p.getByRole("button", { name: "Cerrar turno" }).click();
     await p.getByLabel("Contado en efectivo").fill("180000");
+  } },
+  // 4.3 · «Sentar» desde la agenda: Laura pasa a «Sentada» con su cuenta abierta en la mesa 2 (real, BD de capturas).
+  // Al final de la lista: deja la mesa 2 ocupada. En el segundo ancho Laura ya está sentada
+  "staff-reservas-sentar": { usuario: "mesero", completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("navigation", { name: /secciones del panel/i }).getByRole("button", { name: "Reservas" }).click();
+    const tarjeta = p.locator("article").filter({ hasText: "Laura Gómez" });
+    await tarjeta.waitFor();
+    const sentar = p.getByRole("button", { name: /^Sentar a Laura Gómez/ });
+    if (await sentar.count()) await sentar.click();
+    await tarjeta.getByText("Sentada").waitFor();
   } },
 };
 

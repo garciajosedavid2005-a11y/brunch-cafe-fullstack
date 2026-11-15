@@ -6,13 +6,14 @@ import { cambioEstadoSchema } from '../../modulos/compartido/cambioEstado.schema
 import { listarReservas, cambiarEstadoReserva, crearReserva } from '../../modulos/salon/reservasStaff.controller.js'
 import { reservaStaffSchema } from '../../modulos/salon/reservas.schema.js'
 import pedidoRoutes from '../../modulos/pedidos/pedidosStaff.routes.js'
-import salonRoutes from '../../modulos/salon/salonStaff.routes.js'
+import salonRoutes, { avisarSalon } from '../../modulos/salon/salonStaff.routes.js'
 import cuentasAbiertasRoutes from '../../modulos/salon/cuentasAbiertas.routes.js'
 import cocinaRoutes from '../../modulos/cocina/cocina.routes.js'
 import eventosRoutes from '../../modulos/tiempoReal/eventos.routes.js'
 import agotadosRoutes from '../../modulos/catalogo/agotados.routes.js'
 import cajaRoutes from '../../modulos/caja/caja.routes.js'
-import { asignarMesa } from '../../modulos/salon/reservasSalon.service.js'
+import { asignarMesa, sentarReserva } from '../../modulos/salon/reservasSalon.service.js'
+import { idempotencia } from '../../modulos/compartido/idempotencia.js'
 
 // /api/v1/staff: operación del salón y la cocina, por permiso (no por rol)
 const router = Router()
@@ -24,6 +25,13 @@ router.patch('/reservas/:id/estado', requirePermission('reserva:cambiar_estado')
 // 4.1 · Asignar o quitar la mesa de una reserva (el servicio valida el cuerpo y vuelve a exigir el permiso)
 router.patch('/reservas/:id/mesa', requirePermission('reserva:cambiar_estado'), async (req, res) => {
     res.json(await asignarMesa(req.params.id, req.body, req.usuario))
+})
+// 4.3 · «Sentar»: la reserva pasa a sentada y abre la cuenta en su mesa (Idempotency-Key opcional); el plano,
+// la caja y el mesero se enteran como en cualquier apertura
+router.post('/reservas/:id/sentar', requirePermission('reserva:cambiar_estado'), idempotencia, async (req, res) => {
+    const resultado = await sentarReserva(req.params.id, req.body, req.usuario)
+    res.status(201).json(resultado)
+    avisarSalon(resultado.cuenta)
 })
 
 // Pedidos (0.13): listar con filtros y ver con historial (pedido:ver), cambiar estado

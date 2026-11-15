@@ -79,7 +79,8 @@ export const TRANSICIONES = {
         // Check-in de quien llega sin que su reserva se haya confirmado (único salto permitido)
         staff('pendiente', 'sentada', 'reserva:cambiar_estado', { motivoPorDefecto: 'check-in sin confirmar' }),
         staff('sentada', 'completada', 'reserva:cambiar_estado'),
-        staff('confirmada', 'no_show', 'reserva:cambiar_estado'),
+        // 4.3 (F4-g) · También una pendiente que no llegó (el staff la marca; se sugiere a los 15 min de retraso)
+        staff(['pendiente', 'confirmada'], 'no_show', 'reserva:cambiar_estado'),
         staff(['pendiente', 'confirmada'], 'cancelada', 'reserva:cambiar_estado', { requiereMotivo: true }),
         cliente(['pendiente', 'confirmada'], 'cancelada', { motivoPorDefecto: 'cancelada por cliente' }),
         // Editar una reserva confirmada la devuelve a pendiente de aprobación

@@ -669,3 +669,69 @@
 }
 
 .plano__listos-fin { white-space: nowrap; } /* el número nunca queda solo en otra línea */
+
+/* ── 4.3 · Reserva próxima de una mesa (F4-e): texto e icono, no solo color ── */
+.plano__reserva {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid #c9b2ab;
+  border-radius: 999px;
+  background: #fff;
+  color: #5b2a1f;
+  font-size: 0.8rem;
+  font-weight: 700;
+  /* En una tarjeta estrecha se parte en dos líneas en vez de ensancharla */
+  max-width: 100%;
+  text-align: center;
+}
+
+/* El bloque empezó: la mesa solo se abre con «Sentar» (borde y fondo más marcados) */
+.plano__reserva--bloqueada {
+  border-color: #890620;
+  background: #fbe9ec;
+  color: #6e0519;
+}
+
+.panel-mesa__reserva {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0 0 1rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #e3cfc8;
+  border-radius: 12px;
+  background: #fffaf7;
+}
+
+.panel-mesa__reserva--bloqueada {
+  border-color: #890620;
+  background: #fbe9ec;
+}
+
+.panel-mesa__reserva p {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  color: #3d1f18;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.panel-mesa__reserva p svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: #890620;
+}
+
+.panel-mesa__reserva-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+/* El mesero responsable a todo el ancho, como en el bloque de la mesa libre */
+.panel-mesa__reserva-acciones .panel-mesa__campo {
+  flex-basis: 100%;
+}

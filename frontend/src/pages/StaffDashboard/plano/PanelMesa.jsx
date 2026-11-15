@@ -1,10 +1,11 @@
 import { createElement, useEffect, useId, useRef, useState } from "react";
-import { Minus, Plus, X } from "lucide-react";
+import { CalendarClock, Minus, Plus, X } from "lucide-react";
 import { apiRequest } from "../../../services/api";
 import { useDialogo } from "../../../context/useDialogo";
 import { formatearCOP } from "../../../utils/moneda";
 import { incluyePermiso } from "../../../utils/permisos";
-import { datosEstado, formatearMinutos, nuevaClave } from "./estadosMesa";
+import { datosEstado, formatearMinutos, nuevaClave, retrasada } from "./estadosMesa";
+import { formatearHoraTexto } from "../../../utils/fechas";
 
 // 1.6 · Acciones de una mesa según su estado y los permisos (el backend vuelve a comprobarlos):
 // abrir cuenta (comensales; mesero si quien abre no toma comandas), bloquear y desbloquear con
@@ -45,6 +46,11 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
   const [motivoTransferencia, setMotivoTransferencia] = useState("");
   // Una clave por intento de abrir: un reintento tras un corte de red no abre otra cuenta
   const claveAbrir = useRef(nuevaClave());
+  // 4.3 · Reserva próxima de la mesa libre (F4-e): «Sentar» abre su cuenta (F4-6); con el bloque empezado la
+  // mesa solo se abre así (F4-c) y a los 15 min de retraso se sugiere «No llegó» (F4-5)
+  const reserva = mesa.estado === "libre" && !mesa.cuenta ? mesa.reserva : null;
+  const gestionaReservas = puede(permisos, "reserva:cambiar_estado");
+  const claveSentar = useRef(nuevaClave());
 
   const cuenta = mesa.cuenta;
   const abierta = cuenta?.estado === "abierta";
@@ -87,6 +93,40 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
       // Con éxito o con conflicto (409/404), el plano se recarga para mostrar lo vigente
       onHecho();
     }
+  };
+
+  const llamarReserva = async (ruta, opciones) => {
+    setError("");
+    setEnviando(true);
+    try {
+      await apiRequest(`/v1/staff/reservas/${reserva.id}/${ruta}`, opciones);
+      return true;
+    } catch (e) {
+      setError(e.message);
+      return false;
+    } finally {
+      setEnviando(false);
+      onHecho();
+    }
+  };
+
+  const sentar = async () => {
+    if (eligeMesero && meseros && !meseroAbrir) {
+      setError("Elige el mesero que atenderá la mesa.");
+      return;
+    }
+    const otro = eligeMesero && meseroAbrir !== yoId ? { meseroId: meseroAbrir } : {};
+    const ok = await llamarReserva("sentar", { method: "POST", body: JSON.stringify(otro), headers: { "Idempotency-Key": claveSentar.current } });
+    if (ok) claveSentar.current = nuevaClave();
+  };
+
+  const noLlego = async () => {
+    const { confirmado } = await confirmar({
+      titulo: "Marcar «No llegó»",
+      mensaje: `La reserva de ${reserva.cliente} (${formatearHoraTexto(reserva.hora)}) queda como «No asistió» y la mesa ${mesa.numero} se libera.`,
+      confirmarTexto: "No llegó",
+    });
+    if (confirmado) await llamarReserva("estado", { method: "PATCH", body: JSON.stringify({ codigo: "no_show" }) });
   };
 
   const abrirCuenta = async () => {
@@ -171,8 +211,40 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
         </dl>
       )}
 
-      {/* Mesa libre: abrir cuenta y bloquear */}
-      {mesa.estado === "libre" && !cuenta && puede(permisos, "cuenta:abrir") && (
+      {reserva && (
+        <div className={`panel-mesa__reserva${reserva.bloqueada ? " panel-mesa__reserva--bloqueada" : ""}`}>
+          <p>
+            <CalendarClock size={18} aria-hidden="true" />
+            <span>
+              Reservada para {reserva.cliente} ({reserva.personas} {reserva.personas === 1 ? "persona" : "personas"}) a las {formatearHoraTexto(reserva.hora)}
+              {retrasada(reserva) && ` Lleva ${reserva.minutosRetraso} min de retraso.`}
+              {reserva.bloqueada && " La mesa está reservada: ábrela con «Sentar» o elige otra mesa."}
+            </span>
+          </p>
+          {gestionaReservas && puede(permisos, "cuenta:abrir") && (
+            <div className="panel-mesa__reserva-acciones">
+              {eligeMesero && reserva.bloqueada && (
+                <label className="panel-mesa__campo">
+                  <span>Mesero responsable</span>
+                  <select value={meseroAbrir} onChange={(e) => setMeseroId(e.target.value)} disabled={!meseros}>
+                    {!yoId && <option value="">{meseros ? "Elige un mesero" : "Cargando…"}</option>}
+                    {(opcionesMesero || []).map((m) => <option key={m.id} value={m.id}>{m.etiqueta}</option>)}
+                  </select>
+                </label>
+              )}
+              <button type="button" className="plano__boton plano__boton--primario" disabled={enviando || cargandoMeseros} onClick={sentar}>
+                Sentar a {reserva.cliente}
+              </button>
+              {retrasada(reserva) && (
+                <button type="button" className="plano__boton plano__boton--secundario" disabled={enviando} onClick={noLlego}>No llegó</button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Mesa libre: abrir cuenta y bloquear (4.3: no, si una reserva ya la tiene reservada) */}
+      {mesa.estado === "libre" && !cuenta && !reserva?.bloqueada && puede(permisos, "cuenta:abrir") && (
         <div className="panel-mesa__bloque">
           <span className="panel-mesa__etiqueta" id={`${id}-comensales`}>Comensales</span>
           <div className="panel-mesa__contador" role="group" aria-labelledby={`${id}-comensales`}>
