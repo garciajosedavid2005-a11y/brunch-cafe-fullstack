@@ -1651,6 +1651,28 @@ const VISTAS = {
     if (await sentar.count()) await sentar.click();
     await tarjeta.getByText("Sentada").waitFor();
   } },
+  // 4.4 · Lista de espera (Pedro y Sofía, de la siembra) arriba de la agenda, con mesa, «Sentar» y «Retirar»
+  "staff-espera": { usuario: "mesero", completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("navigation", { name: /secciones del panel/i }).getByRole("button", { name: "Reservas" }).click();
+    await p.getByRole("list", { name: "Esperando mesa" }).getByText("Pedro Gómez").waitFor();
+    await p.getByRole("combobox", { name: "Mesa para Pedro Gómez" }).locator("option", { hasText: "Mesa 5" }).waitFor({ state: "attached" });
+    await p.getByRole("list", { name: "Esperando mesa" }).scrollIntoViewIfNeeded();
+  } },
+  // 4.4 · «Sentar» a Sofía en la mesa 5 (real, BD de capturas; al final: ocupa la mesa 5). En el segundo ancho ya está sentada
+  "staff-espera-sentar": { usuario: "mesero", completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("navigation", { name: /secciones del panel/i }).getByRole("button", { name: "Reservas" }).click();
+    await p.getByRole("list", { name: "Esperando mesa" }).getByText("Pedro Gómez").waitFor();
+    const selector = p.getByRole("combobox", { name: "Mesa para Sofía Vargas" });
+    if (await selector.count()) {
+      await selector.locator("option", { hasText: "Mesa 5" }).waitFor({ state: "attached" });
+      await selector.selectOption({ label: "Mesa 5 · 2 personas" });
+      await p.getByRole("button", { name: "Sentar a Sofía Vargas" }).click();
+    }
+    await p.getByText(/Hoy: 1 sentado/).waitFor();
+    await p.getByRole("list", { name: "Esperando mesa" }).scrollIntoViewIfNeeded();
+  } },
 };
 
 // Sin --hide-scrollbars (Playwright lo pone por defecto): así se ven las barras de desplazamiento

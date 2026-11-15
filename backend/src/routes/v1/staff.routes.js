@@ -13,6 +13,7 @@ import eventosRoutes from '../../modulos/tiempoReal/eventos.routes.js'
 import agotadosRoutes from '../../modulos/catalogo/agotados.routes.js'
 import cajaRoutes from '../../modulos/caja/caja.routes.js'
 import { asignarMesa, sentarReserva } from '../../modulos/salon/reservasSalon.service.js'
+import { agregarEspera, listarEspera, retirarEspera, sentarEspera } from '../../modulos/salon/espera.service.js'
 import { idempotencia } from '../../modulos/compartido/idempotencia.js'
 
 // /api/v1/staff: operación del salón y la cocina, por permiso (no por rol)
@@ -33,6 +34,16 @@ router.post('/reservas/:id/sentar', requirePermission('reserva:cambiar_estado'),
     res.status(201).json(resultado)
     avisarSalon(resultado.cuenta)
 })
+
+// 4.4 · Lista de espera de hoy (el servicio valida el cuerpo y vuelve a exigir los permisos)
+router.get('/espera', requirePermission('reserva:ver'), async (req, res) => res.json(await listarEspera(req.usuario)))
+router.post('/espera', requirePermission('reserva:crear'), idempotencia, async (req, res) => res.status(201).json(await agregarEspera(req.body, req.usuario)))
+router.post('/espera/:id/sentar', requirePermission('reserva:cambiar_estado'), idempotencia, async (req, res) => {
+    const resultado = await sentarEspera(req.params.id, req.body, req.usuario)
+    res.status(201).json(resultado)
+    avisarSalon(resultado.cuenta)
+})
+router.patch('/espera/:id/retirar', requirePermission('reserva:cambiar_estado'), idempotencia, async (req, res) => res.json(await retirarEspera(req.params.id, req.usuario)))
 
 // Pedidos (0.13): listar con filtros y ver con historial (pedido:ver), cambiar estado
 // (permiso de cada transición) y cancelar con motivo (pedido:cancelar)

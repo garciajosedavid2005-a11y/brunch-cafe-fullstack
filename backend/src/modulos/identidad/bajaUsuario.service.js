@@ -14,6 +14,7 @@ import Comentario from '../catalogo/comentario.model.js'
 import Configuracion from '../configuracion/configuracion.model.js'
 import TurnoCaja from '../caja/turno.model.js'
 import NotaCredito from '../caja/notaCredito.model.js'
+import Espera from '../salon/espera.model.js'
 import { conTransaccion } from '../compartido/transacciones.js'
 import { AppError, notFound } from '../compartido/errors.js'
 import { ROL_ADMIN, ROL_CLIENTE, puedeOtorgarRol } from './permisos.js'
@@ -43,6 +44,8 @@ export const tieneHistorial = async (id, session) => {
         // 3b · Turnos de caja que abrió o cerró y notas crédito que emitió
         TurnoCaja.exists({ $or: [{ 'abiertoPor.id': id }, { 'cerradoPor.id': id }] }),
         NotaCredito.exists({ 'autor.id': id }),
+        // 4.4 · Quien agregó a alguien a la lista de espera
+        Espera.exists({ creadaPor: id }),
     ]
     // En secuencia: dentro de una transacción no se lanzan operaciones en paralelo con la misma sesión
     for (const consulta of consultas) {

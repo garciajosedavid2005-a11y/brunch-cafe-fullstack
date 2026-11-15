@@ -2,11 +2,17 @@
 //   - reservas.mesa_inicio { mesa, inicio }, parcial (solo reservas con mesa): choques por horario (4.1) y
 //     reservas próximas del plano (4.3).
 //   - reservas.inicio_estado { inicio, estado }: aforo por franja (4.2).
+//   - esperas.dia_llegada { dia, createdAt }: lista de espera de hoy (4.4; colección nueva).
+//   - esperas.creada_por { creadaPor }: historial en la baja de usuarios (4.4).
+// Nota: Mongoose también crea estos índices al cargar los modelos (autoIndex), así que un `down` se deshace en el
+// siguiente arranque del servidor; y `up` deja creada la colección `esperas` (el `down` no la borra).
 // Idempotente: up crea los que falten; down quita solo los de esta lista. Cada ítem de la fase que necesite
 // otro índice lo agrega aquí y se vuelve a aplicar (up de nuevo crea solo el nuevo).
 export const INDICES = [
     { coleccion: 'reservas', nombre: 'mesa_inicio', clave: { mesa: 1, inicio: 1 }, opciones: { partialFilterExpression: { mesa: { $type: 'objectId' } } } },
     { coleccion: 'reservas', nombre: 'inicio_estado', clave: { inicio: 1, estado: 1 }, opciones: {} },
+    { coleccion: 'esperas', nombre: 'dia_llegada', clave: { dia: 1, createdAt: 1 }, opciones: {} },
+    { coleccion: 'esperas', nombre: 'creada_por', clave: { creadaPor: 1 }, opciones: {} },
 ]
 
 const existentes = async (db, coleccion) => {

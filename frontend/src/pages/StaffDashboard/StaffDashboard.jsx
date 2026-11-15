@@ -28,6 +28,7 @@ import { textoModificadores } from "../../utils/modificadores";
 import { claseEstado } from "../AdminDashboard/components/estadoUtils";
 import ProfileSection from "../CustomerDashboard/sections/ProfileSection";
 import AgendaReservas from "./reservas/AgendaReservas";
+import ListaEspera from "./reservas/ListaEspera";
 import SecuritySection from "../CustomerDashboard/sections/SecuritySection";
 import PlanoMesas from "./plano/PlanoMesas";
 import AvisoListos from "./plano/AvisoListos";
@@ -414,6 +415,10 @@ export default function StaffDashboard() {
               {cargandoReservas && <p className="dashboard-empty">Cargando reservas...</p>}
               {puedeVerReservas && !cargandoReservas && !errorReservas && reservas.length === 0 && (
                 <p className="dashboard-empty">No hay reservas registradas.</p>
+              )}
+              {/* 4.4 · Lista de espera de hoy (clientes sin reserva) */}
+              {puedeVerReservas && (
+                <ListaEspera puedeAgregar={tienePermiso(user, "reserva:crear")} puedeSentar={puedeSentarDesdeAgenda} />
               )}
               {puedeVerReservas && (
                 <AgendaReservas reservas={reservas} puedeAsignar={puedeAsignarMesa} puedeGestionar={puedeGestionarReservas}

@@ -6,6 +6,7 @@ import { sembrarSalonEjemplo } from './salon.js'
 import { sembrarUsuariosDev } from './dev.js'
 import Usuario from '../modulos/identidad/usuario.model.js'
 import Reserva from '../modulos/salon/reserva.model.js'
+import Espera from '../modulos/salon/espera.model.js'
 import { fechaLocal, instanteLocal } from '../modulos/compartido/fechas.js'
 import { estadoPorCodigo, registrarEvento } from '../modulos/compartido/estados.service.js'
 import Mesa from '../modulos/salon/mesa.model.js'
@@ -89,6 +90,12 @@ const sembrarReservasDeHoy = async () => {
             fecha: new Date(`${hoy}T12:00:00Z`), hora, inicio: instanteLocal(hoy, hora),
         })
         await registrarEvento({ entidad: 'reserva', entidadId: reserva._id, a: estado, actor: 'sistema', motivo: 'capturas' })
+    }
+    // 4.4 · Lista de espera de hoy: Pedro (3, llegó hace 12 min) y Sofía (2, hace 5 min)
+    for (const [nombre, personas, telefono, minutos] of [['Pedro Gómez', 3, '3105556677', 12], ['Sofía Vargas', 2, '3157778899', 5]]) {
+        const llegada = new Date(Date.now() - minutos * 60_000)
+        const [espera] = await Espera.create([{ nombre, personas, telefono, estado: 'esperando', dia: hoy, creadaPor: mesero._id, createdAt: llegada, updatedAt: llegada }], { timestamps: false })
+        await registrarEvento({ entidad: 'espera', entidadId: espera._id, tipo: 'espera_agregada', actor: 'sistema', motivo: 'capturas', datos: { personas } })
     }
 }
 

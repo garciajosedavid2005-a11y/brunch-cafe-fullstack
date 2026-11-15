@@ -118,3 +118,135 @@
   font-size: 0.85rem;
   font-weight: 700;
 }
+
+/* 4.4 · Lista de espera: formulario corto, una fila por persona con mesa, «Sentar» y «Retirar» */
+.espera {
+  margin-bottom: 1.75rem;
+  padding: 1rem;
+  border: 1px solid #eadbd5;
+  border-radius: 14px;
+  background: #fffaf7;
+}
+
+.espera .agenda__titulo svg {
+  color: #890620;
+}
+
+.espera__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.espera__campo {
+  display: flex;
+  flex: 1 1 11rem;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.espera__campo--corto {
+  flex: 0 0 6.5rem;
+}
+
+.espera__campo label {
+  margin: 0;
+  color: #594742;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.espera__campo input,
+.espera__campo select,
+.espera__acciones select {
+  min-height: 44px;
+  margin: 0;
+}
+
+.espera__form .agenda__boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.espera__lista {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.espera__fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #eadbd5;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.espera__datos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.espera__datos strong {
+  color: var(--color-oscuro);
+}
+
+.espera__datos span {
+  color: #594742;
+  font-size: 0.85rem;
+}
+
+.espera__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.espera__acciones select {
+  width: 14rem;
+  max-width: 100%;
+}
+
+.espera__requerido {
+  font-weight: 400;
+}
+
+/* Teléfono: Personas y Teléfono en la misma fila para que el formulario no llene la pantalla */
+@media (max-width: 480px) {
+  .espera__campo--corto {
+    flex: 0 0 5.5rem;
+  }
+
+  .espera__campo--corto + .espera__campo {
+    flex: 1 1 8rem;
+  }
+}
+
+.espera__fila .agenda__error {
+  flex-basis: 100%;
+}
+
+.espera__vacia,
+.espera__resumen,
+.espera__ok {
+  margin: 0.5rem 0 0;
+  color: #594742;
+  font-size: 0.88rem;
+}
+
+.espera__ok {
+  color: #2f632f;
+  font-weight: 600;
+}
