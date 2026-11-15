@@ -35,7 +35,7 @@ export const CATALOGO_ESTADOS = {
         estado('sentada', 'Sentada', 'Los comensales llegaron y están en su mesa.', ...AZUL),
         estado('completada', 'Completada', 'La visita terminó.', ...GRIS, true),
         estado('cancelada', 'Cancelada', 'La reserva fue cancelada.', ...ROJO, true),
-        estado('no_show', 'No asistió', 'Los comensales no llegaron a la reserva confirmada.', ...GRIS, true),
+        estado('no_show', 'No asistió', 'Los comensales no llegaron a la reserva.', ...GRIS, true),
     ],
 }
 
