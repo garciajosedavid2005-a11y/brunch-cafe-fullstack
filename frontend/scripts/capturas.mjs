@@ -1520,6 +1520,18 @@ const VISTAS = {
     await p.getByRole("button", { name: /^Cobrar domicilio PED-/ }).first().click();
     await p.getByRole("heading", { name: /^Cobrar · Domicilio PED-/ }).waitFor();
   } },
+  // Pendiente de 3b · Un domicilio cobrado aparece en «Cobradas hoy» como «Domicilio PED-…» (no «Mesa —»)
+  "staff-caja-cobradas-domicilio": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await VISTAS["staff-caja"].preparar(p);
+    const cobrar = p.getByRole("button", { name: /^Cobrar domicilio PED-/ }).first();
+    if (await cobrar.count()) {
+      await cobrar.click();
+      await p.locator(".caja-cobro__cobrar").click();
+      await p.getByRole("article", { name: /^Comprobante CI-/ }).waitFor();
+      await p.goto(`${FRONT}/staff`);
+    }
+    await p.getByRole("list", { name: "Cobradas hoy" }).getByText(/Domicilio PED-/).first().scrollIntoViewIfNeeded();
+  } },
   // 3b.3 · Anular un comprobante (admin): el diálogo con el motivo y, después, el comprobante anulado
   "staff-caja-anular": { usuario: "admin", completa: false, preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);

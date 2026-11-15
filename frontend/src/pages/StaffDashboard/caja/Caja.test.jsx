@@ -302,4 +302,16 @@ describe("Domicilios contra entrega (3b.4)", () => {
     expect(screen.queryByRole("heading", { name: /^Cobradas hoy/ })).not.toBeInTheDocument();
     expect(estado.apiRequest.mock.calls.map(([r]) => r)).not.toContain("/v1/staff/caja/turno");
   });
+
+  it("pendiente de 3b · el repartidor ve sus cobros de hoy y vuelve a abrir el comprobante de un domicilio", async () => {
+    estado.usuario = { permisos: ["pedido:ver", "pedido:cobrar"] };
+    respuestas.hoy = [{ id: "k1", codigo: "CI-000001", mesas: [], pedido: "PED-ABC123", total: 9000, emitidoEn: "2026-11-14T15:00:00Z", cajero: "Rita R.", metodos: ["efectivo"], parte: null, anulado: null }];
+    render(<DialogoProvider><Caja /></DialogoProvider>);
+    const lista = await screen.findByRole("list", { name: "Mis cobros de hoy" });
+    expect(within(lista).getByText(/Domicilio PED-ABC123/)).toBeInTheDocument();
+    expect(within(lista).queryByText(/Mesa/)).not.toBeInTheDocument();
+    fireEvent.click(within(lista).getByRole("button", { name: "Ver comprobante CI-000001" }));
+    expect(await screen.findByRole("button", { name: /Imprimir/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Anular comprobante/ })).not.toBeInTheDocument();
+  });
 });

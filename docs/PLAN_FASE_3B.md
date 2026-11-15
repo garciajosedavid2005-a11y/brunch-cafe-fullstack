@@ -11,7 +11,7 @@ Pedido por Brayan el 2026-11-14. Orden: 3b.1 → 3b.4, un commit por ítem. Las 
 | 3b.3 | Anular comprobante | Solo con `factura:anular` (admin), con motivo. Nota crédito interna `NC-000001`, inmutable, que descuenta en el arqueo. |
 | 3b.4 | Cobro de domicilios contra entrega | Lo registra el cajero o el repartidor (`pedido:cobrar`). Genera un comprobante del pedido dentro del turno abierto. |
 
-## Decisiones (Claude, a confirmar por Brayan)
+## Decisiones (de Claude; confirmadas por Brayan el 2026-11-15)
 
 - **F3b-1 · Una sola caja.** Hay como mucho un turno abierto a la vez en todo el local (índice único parcial). Mientras está abierto, cualquiera con `cuenta:cobrar` cobra en él. Lo abre quien tenga `caja:abrir` y lo cierra quien tenga `caja:cerrar`; el cajero recibe ambos (migración 3b, que solo agrega permisos).
 - **F3b-2 · Esperado del arqueo por método.**

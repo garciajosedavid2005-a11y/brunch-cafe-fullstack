@@ -20,6 +20,8 @@ import "./Caja.css";
 // al terminar, el comprobante (imprimible).
 const CANALES = ["caja"];
 const mesasTexto = (mesas = []) => (mesas.length > 1 ? `Mesas ${mesas.join(" + ")}` : `Mesa ${mesas[0] ?? "—"}`);
+// Un comprobante es de una cuenta (mesas) o de un domicilio (pedido)
+const origenTexto = (c) => (c.pedido ? `Domicilio ${c.pedido}` : mesasTexto(c.mesas));
 const minutosDesde = (fecha) => (fecha ? Math.max(0, Math.floor((Date.now() - new Date(fecha).getTime()) / 60000)) : null);
 
 export default function Caja() {
@@ -30,7 +32,9 @@ export default function Caja() {
   const cobraCuentas = tienePermiso(user, "cuenta:cobrar");
   const canales = cobraCuentas ? CANALES : [];
   const porCobrar = useSondeo("/v1/staff/caja/cuentas", 15_000, { activo: enLista && cobraCuentas, canales, mensajeError: "No se pudo cargar la caja." });
-  const cobradas = useSondeo("/v1/staff/caja/comprobantes", 30_000, { activo: enLista && cobraCuentas, canales, mensajeError: "No se pudieron cargar las cobradas." });
+  // El repartidor ve solo los comprobantes de los domicilios que él cobró hoy (para volver a abrirlos o reimprimirlos)
+  const cobradas = useSondeo("/v1/staff/caja/comprobantes", 30_000, { activo: enLista, canales, mensajeError: "No se pudieron cargar las cobradas." });
+  const tituloCobradas = cobraCuentas ? "Cobradas hoy" : "Mis cobros de hoy";
   // 3b.1 · Turno de caja: sin turno abierto no se cobra
   const turnoSondeo = useSondeo("/v1/staff/caja/turno", 30_000, { activo: enLista && cobraCuentas, canales, mensajeError: "No se pudo cargar el turno." });
   const domicilios = useSondeo("/v1/staff/caja/domicilios", 20_000, { activo: enLista, canales, mensajeError: "No se pudieron cargar los domicilios." });
@@ -110,16 +114,15 @@ export default function Caja() {
       <DomiciliosPorCobrar sondeo={domicilios} sinTurno={cobraCuentas && turnoCargado && !turno}
         onCobrar={(d) => setVista({ tipo: "cobrar", cuenta: { ...d, esDomicilio: true, mesas: [] } })} />
 
-      {cobraCuentas && (<>
-      <h3 className="caja__subtitulo">Cobradas hoy <span className="caja__conteo">{hoy.length}</span></h3>
+      <h3 className="caja__subtitulo">{tituloCobradas} <span className="caja__conteo">{hoy.length}</span></h3>
       {errorComprobante && <p className="caja__aviso" role="alert">{errorComprobante}</p>}
       {cobradas.datos && hoy.length === 0 && <p className="caja__vacio">Todavía no hay cobros hoy.</p>}
-      <ul className="caja__cobradas" aria-label="Cobradas hoy">
+      <ul className="caja__cobradas" aria-label={tituloCobradas}>
         {hoy.map((c) => (
           <li key={c.id} className="caja__cobrada">
             <ReceiptText size={18} aria-hidden="true" />
             <span className="caja__cobrada-codigo">{c.codigo}</span>
-            <span>{mesasTexto(c.mesas)}{c.parte ? ` · Parte ${c.parte.numero}${c.parte.de ? ` de ${c.parte.de}` : ""}` : ""} · {formatearHora(c.emitidoEn)} · {c.metodos.map(etiquetaMetodo).join(" + ")}</span>
+            <span>{origenTexto(c)}{c.parte ? ` · Parte ${c.parte.numero}${c.parte.de ? ` de ${c.parte.de}` : ""}` : ""} · {formatearHora(c.emitidoEn)} · {c.metodos.map(etiquetaMetodo).join(" + ")}</span>
             <strong className={c.anulado ? "caja__cobrada-anulada" : undefined}>{formatearCOP(c.total)}</strong>
             {c.anulado && <span className="caja__insignia-anulado">Anulado · {c.anulado.codigo}</span>}
             <button type="button" className="caja__boton caja__boton--secundario" aria-label={`Ver comprobante ${c.codigo}`} onClick={() => verComprobante(c.id)}>
@@ -128,7 +131,6 @@ export default function Caja() {
           </li>
         ))}
       </ul>
-      </>)}
     </section>
   );
 }

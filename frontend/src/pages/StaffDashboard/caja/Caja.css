@@ -181,7 +181,13 @@
 .caja-cobro__pesos input::placeholder { color: #75645d; opacity: 1; }
 
 .caja-cobro__atajos,
-.caja-cobro__metodos { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+/* Tres columnas iguales: «Transferencia» no baja sola a otra línea (a 768 px quedaba 2 + 1). Si el recuadro
+   del pago es angosto (768 px en dos columnas, o un teléfono), una columna: los tres a todo el ancho, con aire */
+.caja-cobro__metodos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.caja-cobro__metodos .caja__boton { padding-inline: 0.5rem; }
+@container pago (max-width: 22rem) {
+  .caja-cobro__metodos { grid-template-columns: 1fr; }
+}
 
 .caja-cobro__total {
   display: flex;
@@ -196,7 +202,7 @@
 .caja-cobro__total strong { font-size: 1.6rem; color: #890620; }
 
 .caja-cobro__pagos { display: grid; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
-.caja-cobro__pago { display: grid; gap: 0.6rem; padding-bottom: 0.75rem; border-bottom: 1px dashed #d9c6c1; }
+.caja-cobro__pago { container: pago / inline-size; display: grid; gap: 0.6rem; padding-bottom: 0.75rem; border-bottom: 1px dashed #d9c6c1; }
 .caja-cobro__cambio { margin: 0; font-size: 1.15rem; font-weight: 700; color: #1d5b2e; }
 .caja-cobro__cambio.is-falta { color: #a3211a; }
 .caja-cobro__cobrar { min-height: 56px; font-size: 1.15rem; }

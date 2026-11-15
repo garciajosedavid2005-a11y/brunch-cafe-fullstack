@@ -8,9 +8,10 @@ import { crearPedido, entregarPedido } from './helpers/datos.js'
 import Comprobante from '../src/modulos/caja/comprobante.model.js'
 import TurnoCaja from '../src/modulos/caja/turno.model.js'
 import Pedido from '../src/modulos/pedidos/pedido.model.js'
+import MetodoPago from '../src/modulos/pedidos/metodoPago.model.js'
 import Evento from '../src/modulos/compartido/evento.model.js'
 import { abrirTurno } from '../src/modulos/caja/turno.service.js'
-import { cobrarDomicilio } from '../src/modulos/caja/domicilios.service.js'
+import { cobrarDomicilio, esContraEntrega } from '../src/modulos/caja/domicilios.service.js'
 import { up, down, PARTES, PEDIDO } from '../src/migraciones/m3b4-indices-domicilio.js'
 
 const { ObjectId } = mongoose.Types
@@ -158,5 +159,59 @@ describe('3b.4 · Ventana, permisos y reintentos', () => {
         expect([a.status, b.status]).toEqual([201, 201])
         expect(b.body.comprobante.codigo).toBe(a.body.comprobante.codigo)
         expect(await Comprobante.countDocuments({ pedido: id })).toBe(1)
+    })
+})
+
+describe('3b · Pendientes: método de pago y comprobantes del repartidor', () => {
+    const cobro = { propina: 0, pagos: [{ metodo: 'tarjeta', monto: 9000 }] }
+
+    it('un domicilio pagado con otro método (Tarjeta débito) no se lista ni se cobra contra entrega: 409 sin comprobante', async () => {
+        const tarjeta = await MetodoPago.findOne({ codigo: 'tarjeta-debito' }).lean()
+        const id = await crearPedido(cliente, { metodoPagoId: String(tarjeta._id) })
+        await entregarPedido(adminS, id)
+        expect((await adminS.get(`${BASE}/domicilios`)).body.domicilios).toHaveLength(0)
+        const r = await adminS.post(`${BASE}/domicilios/${id}/cobrar`).send(cobro)
+        expect(r.status).toBe(409)
+        expect(r.body.error.code).toBe('PEDIDO_NO_CONTRA_ENTREGA')
+        expect(r.body.error.message).toMatch(/Tarjeta débito/)
+        expect(await Comprobante.countDocuments({ pedido: id })).toBe(0)
+    })
+
+    it('el repartidor vuelve a abrir el comprobante de un domicilio que él cobró, pero no los de otros ni los de mesas', async () => {
+        const { sesion: repartidor, usuario: yo } = await crearConSesion('repartidor')
+        const { sesion: otro } = await crearConSesion('repartidor')
+        // Un comprobante de mesa (sin pedido) con el repartidor como cajero: tampoco lo ve (atajo de prueba)
+        const deMesa = new ObjectId()
+        await Comprobante.collection.insertOne({ _id: deMesa, numero: 999, codigo: 'CI-000999', cuenta: new ObjectId(), mesas: [1], cajero: { id: yo._id, nombre: 'R' }, emitidoEn: new Date(), lineas: [], pagos: [], subtotal: 0, propina: 0, total: 0 })
+        const [mio, ajeno] = [await domicilio('entregado'), await domicilio('entregado')]
+        const a = await repartidor.post(`${BASE}/domicilios/${mio}/cobrar`).send(cobro)
+        const b = await otro.post(`${BASE}/domicilios/${ajeno}/cobrar`).send(cobro)
+        expect([a.status, b.status]).toEqual([201, 201])
+
+        const lista = await repartidor.get(`${BASE}/comprobantes`)
+        expect(lista.status, JSON.stringify(lista.body)).toBe(200)
+        expect(lista.body.comprobantes).toEqual([expect.objectContaining({ id: a.body.comprobante.id, pedido: expect.stringMatching(/^PED-/) })])
+        const detalle = await repartidor.get(`${BASE}/comprobantes/${a.body.comprobante.id}`)
+        expect(detalle.status).toBe(200)
+        expect(detalle.body).toMatchObject({ codigo: a.body.comprobante.codigo, pedidoId: mio })
+        expect((await repartidor.get(`${BASE}/comprobantes/${b.body.comprobante.id}`)).status).toBe(404)
+        expect((await repartidor.get(`${BASE}/comprobantes/${deMesa}`)).status).toBe(404)
+
+        // El cajero sigue viendo todos
+        const { sesion: cajero } = await crearConSesion('cajero')
+        expect((await cajero.get(`${BASE}/comprobantes`)).body.comprobantes).toHaveLength(3)
+        // El mesero no ve ninguno
+        const { sesion: mesero } = await crearConSesion('mesero')
+        expect((await mesero.get(`${BASE}/comprobantes`)).status).toBe(403)
+    })
+})
+
+describe('esContraEntrega', () => {
+    it('reconoce el método por código o, en las BD sin código, por nombre (sin tildes, guiones ni mayúsculas)', () => {
+        expect(esContraEntrega({ codigo: 'contra-entrega', nombre: 'Otro nombre' })).toBe(true)
+        expect(esContraEntrega({ nombre: ' Contra-Entrega ' })).toBe(true)
+        expect(esContraEntrega({ nombre: 'contra entrega' })).toBe(true)
+        expect(esContraEntrega({ nombre: 'Tarjeta débito', codigo: 'tarjeta-debito' })).toBe(false)
+        expect(esContraEntrega(null)).toBe(false)
     })
 })

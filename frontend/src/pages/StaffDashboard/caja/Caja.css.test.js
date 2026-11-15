@@ -12,6 +12,14 @@ const regla = (selector) => {
 };
 const valor = (bloque, propiedad) => bloque?.match(new RegExp(`(?:^|;|\\s)${propiedad}\\s*:\\s*([^;]+);`))?.[1].trim();
 
+describe("Métodos de pago (pendiente de 3b)", () => {
+  it("los tres métodos van en una cuadrícula de tres columnas iguales («Transferencia» no baja sola de línea a 768 px)", () => {
+    const metodos = regla(".caja-cobro__metodos");
+    expect(valor(metodos, "display")).toBe("grid");
+    expect(valor(metodos, "grid-template-columns")).toBe("repeat(3, minmax(0, 1fr))");
+  });
+});
+
 describe("Barra de cobro (3.5)", () => {
   it("queda fija abajo al desplazarse, por encima del contenido y opaca, sin tapar el final del cobro", () => {
     // fixed (no sticky): el overflow-x: hidden de html, body y .main-content anula los sticky

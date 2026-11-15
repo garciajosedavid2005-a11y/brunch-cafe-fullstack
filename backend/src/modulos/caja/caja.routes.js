@@ -51,6 +51,14 @@ router.post('/domicilios/:id/cobrar', requirePermission('pedido:cobrar'), idempo
     publicar(['caja'], { tipo: 'pedido_cobrado', ids: { pedidoId: req.params.id } })
 })
 
+// Comprobantes: el cajero todos; el repartidor solo los de domicilios que él cobró (lo filtra el servicio)
+router.get('/comprobantes', requirePermission('cuenta:cobrar', 'pedido:cobrar'), async (req, res) => {
+    res.json(await listarDeHoy(req.usuario))
+})
+router.get('/comprobantes/:id', requirePermission('cuenta:cobrar', 'pedido:cobrar'), async (req, res) => {
+    res.json(await obtenerComprobante(req.params.id, req.usuario))
+})
+
 router.use(requirePermission('cuenta:cobrar'))
 
 router.get('/cuentas', async (req, res) => {
@@ -71,14 +79,6 @@ router.post('/cuentas/:id/cobrar', idempotencia, async (req, res) => {
     const resultado = await cobrarCuenta(req.params.id, req.body, req.usuario)
     res.status(201).json(resultado)
     avisarSalon(resultado.cuenta) // ya confirmada: plano, caja, la cuenta, su mesero y sus estaciones
-})
-
-router.get('/comprobantes', async (req, res) => {
-    res.json(await listarDeHoy(req.usuario))
-})
-
-router.get('/comprobantes/:id', async (req, res) => {
-    res.json(await obtenerComprobante(req.params.id, req.usuario))
 })
 
 export default router

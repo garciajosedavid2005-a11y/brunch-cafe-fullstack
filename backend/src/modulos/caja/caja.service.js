@@ -183,14 +183,28 @@ export const detalleParaCobro = async (id, sesion) => {
 }
 
 /** «Cobradas hoy»: comprobantes del día en Bogotá, el más reciente primero. */
+/**
+ * Quién puede leer comprobantes: el cajero (cuenta:cobrar) todos; el repartidor (solo pedido:cobrar) únicamente
+ * los de domicilios que él mismo cobró, para volver a abrirlos o reimprimirlos (pendiente de 3b).
+ * Devuelve el filtro extra para la consulta.
+ */
+const alcanceLectura = (sesion) => {
+    const permisos = sesion?.permisos || []
+    if (tienePermiso(permisos, 'cuenta:cobrar')) return {}
+    if (tienePermiso(permisos, 'pedido:cobrar') && mongoose.isValidObjectId(sesion?.id)) {
+        return { 'cajero.id': new mongoose.Types.ObjectId(String(sesion.id)), pedido: { $type: 'objectId' } }
+    }
+    throw new AppError(403, 'FORBIDDEN', 'No tienes permiso para realizar esta acción.', { requiere: ['cuenta:cobrar', 'pedido:cobrar'] })
+}
+
 export const listarDeHoy = async (sesion) => {
-    exigirCobro(sesion)
+    const alcance = alcanceLectura(sesion)
     const desde = instanteLocal(fechaLocal(), '00:00')
-    const comprobantes = await Comprobante.find({ emitidoEn: { $gte: desde } }).sort({ numero: -1 }).limit(MAXIMO_LISTA).lean()
+    const comprobantes = await Comprobante.find({ ...alcance, emitidoEn: { $gte: desde } }).sort({ numero: -1 }).limit(MAXIMO_LISTA).lean()
     const notas = await notasDe(comprobantes.map((c) => c._id)) // 3b.3 · los anulados
     return {
         comprobantes: comprobantes.map((c) => ({
-            id: String(c._id), codigo: c.codigo, mesas: c.mesas, total: c.total, emitidoEn: c.emitidoEn,
+            id: String(c._id), codigo: c.codigo, mesas: c.mesas, pedido: c.pedidoCodigo || null, total: c.total, emitidoEn: c.emitidoEn,
             cajero: c.cajero?.nombre || '', metodos: c.pagos.map((p) => p.metodo),
             parte: c.parte ? { modo: c.parte.modo, numero: c.parte.numero, de: c.parte.de ?? null } : null,
             anulado: notas.get(String(c._id)) || null,
@@ -199,10 +213,11 @@ export const listarDeHoy = async (sesion) => {
 }
 
 export const obtenerComprobante = async (id, sesion) => {
-    exigirCobro(sesion)
+    const alcance = alcanceLectura(sesion)
     const noExiste = () => new AppError(404, 'COMPROBANTE_NO_ENCONTRADO', 'El comprobante no existe.')
     if (!mongoose.isValidObjectId(id)) throw noExiste()
-    const comprobante = await Comprobante.findById(id).lean()
+    // Uno ajeno al alcance responde 404, igual que uno que no existe (no revela cuáles hay)
+    const comprobante = await Comprobante.findOne({ ...alcance, _id: id }).lean()
     if (!comprobante) throw noExiste()
     const notas = await notasDe([comprobante._id])
     return { ...formatoComprobante(comprobante), anulado: notas.get(String(comprobante._id)) || null }
