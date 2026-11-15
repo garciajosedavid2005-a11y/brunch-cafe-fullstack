@@ -14,6 +14,8 @@ const ESTILOS = {
   medium: { dateStyle: "medium" },
   long: { dateStyle: "long" },
   full: { dateStyle: "full" },
+  // 4.5 · «20 de noviembre» (aviso de una reserva editada)
+  diaMes: { day: "numeric", month: "long" },
 };
 
 /** Instante → fecha en Bogotá ("5 nov 2026"). */

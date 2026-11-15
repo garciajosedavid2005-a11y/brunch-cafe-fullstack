@@ -1,6 +1,6 @@
 # Plan Fase 4 — Reservas conectadas al salón
 
-Pedido por Brayan el 2026-11-15. Orden: 4.1 → 4.5, un commit por ítem y una sola pausa al final de la fase.
+Pedido por Brayan el 2026-11-15. Orden: 4.1 → 4.5, un commit por ítem y una sola pausa al final de la fase. **Cerrada el 2026-11-15** (estado y commits en [PROGRESO.md](PROGRESO.md)).
 
 ## Ítems
 

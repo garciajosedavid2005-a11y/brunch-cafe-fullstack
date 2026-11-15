@@ -43,7 +43,12 @@ function FilaEspera({ persona, mesas, puedeSentar, onCambio, onHecho }) {
     <li className="espera__fila">
       <div className="espera__datos">
         <strong>{persona.nombre}</strong>
-        <span>{[personasTexto(persona.personas), persona.telefono, `espera ${persona.minutosEsperando} min`].join(" · ")}</span>
+        {/* Cada dato entero en su línea (a 390 px «min» no queda solo) */}
+        <span className="espera__detalle">
+          {[personasTexto(persona.personas), persona.telefono, `espera ${persona.minutosEsperando} min`].map((parte, i) => (
+            <span key={parte}>{i > 0 && " · "}<span className="espera__dato">{parte}</span></span>
+          ))}
+        </span>
       </div>
       {puedeSentar && (
         <div className="espera__acciones">

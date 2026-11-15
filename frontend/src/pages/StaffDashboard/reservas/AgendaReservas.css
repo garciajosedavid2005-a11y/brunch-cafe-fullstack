@@ -207,6 +207,10 @@
   font-size: 0.85rem;
 }
 
+.espera__dato {
+  white-space: nowrap;
+}
+
 .espera__acciones {
   display: flex;
   flex-wrap: wrap;

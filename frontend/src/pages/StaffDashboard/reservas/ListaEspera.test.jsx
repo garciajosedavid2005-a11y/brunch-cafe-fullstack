@@ -34,7 +34,7 @@ describe("4.4 · Lista de espera", () => {
     render(<ListaEspera puedeAgregar puedeSentar />);
     const lista = await screen.findByRole("list", { name: "Esperando mesa" });
     expect(within(lista).getByText("Pedro Gómez")).toBeInTheDocument();
-    expect(within(lista).getByText(/3 personas · 3105556677 · espera 12 min/)).toBeInTheDocument();
+    expect(lista.querySelector(".espera__detalle")).toHaveTextContent("3 personas · 3105556677 · espera 12 min");
     expect(within(lista).queryByText("Lina Ruiz")).toBeNull();
     expect(screen.getByText(/Hoy: 1 sentado/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/^Nombre/), { target: { value: "Ana Torres" } });

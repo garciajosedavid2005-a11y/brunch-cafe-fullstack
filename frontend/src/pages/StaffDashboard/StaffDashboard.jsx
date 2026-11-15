@@ -1,4 +1,4 @@
-import { createElement, useEffect, useMemo, useState } from "react";
+import { createElement, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Ban,
@@ -29,6 +29,8 @@ import { claseEstado } from "../AdminDashboard/components/estadoUtils";
 import ProfileSection from "../CustomerDashboard/sections/ProfileSection";
 import AgendaReservas from "./reservas/AgendaReservas";
 import ListaEspera from "./reservas/ListaEspera";
+import { textoCambioReserva } from "./reservas/avisoReserva";
+import { useEnVivo } from "./compartido/useEnVivo";
 import SecuritySection from "../CustomerDashboard/sections/SecuritySection";
 import PlanoMesas from "./plano/PlanoMesas";
 import AvisoListos from "./plano/AvisoListos";
@@ -42,6 +44,8 @@ import "./StaffDashboard.css";
 import "../CustomerDashboard/CustomerDashboard.css";
 
 // Mismo color por tipo de estado que en el admin (0.15f): pendiente, en curso, listo, cancelado…
+// 4.5 · Canal en vivo de la agenda y la lista de espera (lo escucha quien tiene reserva:ver)
+const CANALES_RESERVAS = ["reservas"];
 const claseDeEstado = (codigo) => `staff-dashboard__status staff-dashboard__status--${claseEstado(codigo).replace("admin-badge--", "")}`;
 
 const AVISO_CAMBIO_DE_USUARIO = "La sesión anterior se cerró. Ingresa con tu usuario.";
@@ -107,13 +111,33 @@ export default function StaffDashboard() {
   // 4.1 · Tras asignar una mesa se vuelve a leer la agenda
   const [versionReservas, setVersionReservas] = useState(0);
   const recargarReservas = () => setVersionReservas((v) => v + 1);
+  // 4.5 (F4-7) · Canal «reservas»: cada aviso vuelve a leer la agenda; si un cliente editó su reserva confirmada
+  // («reserva_editada», solo trae el id), al llegar la agenda nueva se compara con la anterior y se avisa qué cambió
+  const ultimasReservas = useRef([]);
+  const editadasPendientes = useRef(new Set()); // varias ediciones casi a la vez: un aviso con todas
+  const [avisoReserva, setAvisoReserva] = useState(null);
+  useEnVivo(puedeVerReservas ? ["reservas"] : [], (aviso) => {
+    if (aviso?.tipo === "reserva_editada" && aviso.ids?.reserva) editadasPendientes.current.add(String(aviso.ids.reserva));
+    recargarReservas();
+  });
   useEffect(() => {
     if (!puedeVerReservas) return undefined;
 
     let activa = true;
     apiRequest("/v1/staff/reservas")
       .then((resultado) => {
-        if (activa) setEstadoReservas({ permiso: true, datos: resultado, cargando: false, error: "" });
+        if (!activa) return;
+        const editadas = [...editadasPendientes.current];
+        if (editadas.length) {
+          editadasPendientes.current.clear();
+          const textos = editadas.map((id) => {
+            const despues = resultado.find((r) => String(r.id) === id);
+            return despues ? textoCambioReserva(ultimasReservas.current.find((r) => String(r.id) === id) || null, despues) : null;
+          }).filter(Boolean);
+          if (textos.length) setAvisoReserva({ texto: textos.join(" ") });
+        }
+        ultimasReservas.current = resultado;
+        setEstadoReservas({ permiso: true, datos: resultado, cargando: false, error: "" });
       })
       .catch((error) => {
         if (activa) setEstadoReservas({ permiso: true, datos: [], cargando: false, error: error.message });
@@ -276,6 +300,20 @@ export default function StaffDashboard() {
       </nav>
 
       {errorPanel && <p className="dashboard-notice is-error staff-tablet__aviso" role="alert">{errorPanel}</p>}
+      {/* 4.5 · Aviso en vivo: una reserva confirmada cambió (texto, no solo color; se cierra a mano). La región
+          viva está siempre en la página para que el lector de pantalla anuncie también el primer aviso */}
+      <div aria-live="polite" className="aviso-reserva__region">
+        {avisoReserva && (
+          <div className="staff-tablet__aviso aviso-reserva">
+            <CalendarDays size={20} aria-hidden="true" />
+            <p><strong>Reserva editada.</strong> {avisoReserva.texto}</p>
+            <div className="aviso-reserva__acciones">
+              <button type="button" className="agenda__boton" onClick={() => { setSeccion("reservas"); setAvisoReserva(null); }}>Ver en reservas</button>
+              <button type="button" className="agenda__boton" aria-label="Cerrar aviso" onClick={() => setAvisoReserva(null)}>Cerrar</button>
+            </div>
+          </div>
+        )}
+      </div>
       {/* 2.6b · Límites de errores: si el aviso o la sección fallan, el resto de /staff sigue en pie */}
       {avisaListos && (
         <LimiteErrores seccion="Listo para servir">
@@ -418,7 +456,7 @@ export default function StaffDashboard() {
               )}
               {/* 4.4 · Lista de espera de hoy (clientes sin reserva) */}
               {puedeVerReservas && (
-                <ListaEspera puedeAgregar={tienePermiso(user, "reserva:crear")} puedeSentar={puedeSentarDesdeAgenda} />
+                <ListaEspera puedeAgregar={tienePermiso(user, "reserva:crear")} puedeSentar={puedeSentarDesdeAgenda} canales={CANALES_RESERVAS} />
               )}
               {puedeVerReservas && (
                 <AgendaReservas reservas={reservas} puedeAsignar={puedeAsignarMesa} puedeGestionar={puedeGestionarReservas}

@@ -7,6 +7,7 @@ import { conTransaccion } from '../compartido/transacciones.js'
 import { cambiarEstado, codigoActual, registrarEvento } from '../compartido/estados.service.js'
 import { tienePermiso } from '../identidad/permisos.js'
 import { buscarChoque, codigoReserva, finBloque, textoChoque } from './reservas.bloque.js'
+import { avisarReserva } from './reservas.avisos.js'
 import { fechaLocal, inicioReserva } from '../compartido/fechas.js'
 import { abrirEnTransaccion, prepararApertura } from './cuentas.service.js'
 
@@ -58,7 +59,7 @@ export const asignarMesa = async (id, datos, sesion) => {
     if (!OBJECT_ID.test(String(id))) throw reservaNoEncontrada()
     const { mesaId } = r.data
 
-    return conTransaccion(async (session) => {
+    const resultado = await conTransaccion(async (session) => {
         const reserva = await Reserva.findById(id).populate('estado', 'codigo').session(session)
         if (!reserva) throw reservaNoEncontrada()
         const codigo = await codigoActual(reserva)
@@ -68,7 +69,7 @@ export const asignarMesa = async (id, datos, sesion) => {
         const anterior = reserva.mesa ? await Mesa.findById(reserva.mesa).select('numero capacidad').session(session).lean() : null
         // La misma mesa (o quitar sin tener): no escribe ni deja Evento (doble clic, reintento)
         if (String(reserva.mesa ?? '') === String(mesaId ?? '').toLowerCase()) {
-            return { id: String(reserva._id), mesa: anterior ? { id: String(anterior._id), numero: anterior.numero, capacidad: anterior.capacidad } : null }
+            return { id: String(reserva._id), mesa: anterior ? { id: String(anterior._id), numero: anterior.numero, capacidad: anterior.capacidad } : null, cambio: false }
         }
         // Las reservas anteriores a 0.10 no guardan `inicio`: se calcula de la fecha y la hora
         const inicio = reserva.inicio || inicioReserva(reserva.fecha, reserva.hora)
@@ -94,8 +95,12 @@ export const asignarMesa = async (id, datos, sesion) => {
             // Número (para leer) e id (el número de una mesa se puede cambiar)
             datos: { de: anterior?.numero ?? null, a: mesa?.numero ?? null, mesaDe: reserva.mesa ?? null, mesaA: mesa?._id ?? null }, session,
         })
-        return { id: String(reserva._id), mesa: mesa ? { id: String(mesa._id), numero: mesa.numero, capacidad: mesa.capacidad } : null }
+        return { id: String(reserva._id), mesa: mesa ? { id: String(mesa._id), numero: mesa.numero, capacidad: mesa.capacidad } : null, cambio: true }
     })
+    // Sin cambio (la misma mesa) no se avisa
+    const { cambio, ...respuesta } = resultado
+    if (cambio) avisarReserva(respuesta.id)
+    return respuesta
 }
 
 const sentarSchema = z.object({
@@ -121,7 +126,7 @@ export const sentarReserva = async (id, datos, sesion) => {
     // Permisos de apertura, mesero y código de la cuenta (fuera de la transacción, como al abrir desde el plano)
     const apertura = await prepararApertura({ mesaId: String(previa.mesa), comensales: previa.cantidadPersonas, ...(r.data.meseroId ? { meseroId: r.data.meseroId } : {}) }, sesion)
 
-    return conTransaccion(async (session) => {
+    const resultado = await conTransaccion(async (session) => {
         const reserva = await Reserva.findById(id).populate('estado', 'codigo').session(session)
         if (!reserva) throw reservaNoEncontrada()
         const codigo = await codigoActual(reserva)
@@ -140,4 +145,6 @@ export const sentarReserva = async (id, datos, sesion) => {
         await cambiarEstado({ tipo: 'reserva', Modelo: Reserva, documento: reserva, a: 'sentada', sesion, cambios: { cuenta: cuenta.id }, session })
         return { reserva: { id: String(reserva._id), codigo: codigoReserva(reserva._id), estadoCodigo: 'sentada', cuenta: cuenta.id }, cuenta }
     })
+    avisarReserva(resultado.reserva.id)
+    return resultado
 }

@@ -9,6 +9,7 @@ import { fechaLocal } from '../compartido/fechas.js'
 import { texto, telefono } from '../compartido/comunes.schema.js'
 import { tienePermiso } from '../identidad/permisos.js'
 import { abrirEnTransaccion, prepararApertura } from './cuentas.service.js'
+import { avisarEspera } from './reservas.avisos.js'
 
 const OBJECT_ID = /^[0-9a-f]{24}$/i
 const agregarSchema = z.object({
@@ -63,6 +64,7 @@ export const agregarEspera = async (datos, sesion) => {
         })
         return creada
     })
+    avisarEspera(espera._id)
     return formatoEspera(espera.toObject())
 }
 
@@ -81,7 +83,7 @@ export const sentarEspera = async (id, datos, sesion) => {
     if (previa.estado !== 'esperando') throw noActiva(previa.estado)
     const apertura = await prepararApertura({ mesaId, comensales: previa.personas, ...(meseroId ? { meseroId } : {}) }, sesion)
 
-    return conTransaccion(async (session) => {
+    const resultado = await conTransaccion(async (session) => {
         const cuenta = await abrirEnTransaccion(apertura, sesion, session)
         const espera = await Espera.findOneAndUpdate(
             { _id: id, estado: 'esperando' },
@@ -99,13 +101,15 @@ export const sentarEspera = async (id, datos, sesion) => {
         })
         return { espera: formatoEspera(espera), cuenta }
     })
+    avisarEspera(resultado.espera.id)
+    return resultado
 }
 
 /** PATCH /staff/espera/:id/retirar → la persona se fue sin sentarse */
 export const retirarEspera = async (id, sesion) => {
     exigir(sesion, 'reserva:cambiar_estado')
     if (!OBJECT_ID.test(String(id))) throw noEncontrada()
-    return conTransaccion(async (session) => {
+    const retirada = await conTransaccion(async (session) => {
         const espera = await Espera.findOneAndUpdate(
             { _id: id, dia: fechaLocal(), estado: 'esperando' }, { $set: { estado: 'retirada', retiradaEn: new Date() } }, { returnDocument: 'after', session },
         ).lean()
@@ -117,4 +121,6 @@ export const retirarEspera = async (id, sesion) => {
         await registrarEvento({ entidad: 'espera', entidadId: espera._id, tipo: 'espera_retirada', usuario: sesion.id, actor: sesion.rol || 'staff', session })
         return formatoEspera(espera)
     })
+    avisarEspera(retirada.id)
+    return retirada
 }

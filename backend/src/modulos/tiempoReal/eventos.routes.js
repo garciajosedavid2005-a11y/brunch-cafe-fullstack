@@ -23,7 +23,7 @@ export const MAX_CONEXIONES_POR_USUARIO = 5
 export const MAX_CANALES = 10
 // El código de estación sigue el formato del modelo (si cambia allí, cambia aquí)
 const CODIGO = FORMATO_CODIGO.source.slice(1, -1) // sin ^ ni $
-const FORMATO_CANAL = new RegExp(`^(plano|catalogo|caja|estacion:${CODIGO}|cuenta:[0-9a-f]{24}|mesero:[0-9a-f]{24})$`)
+const FORMATO_CANAL = new RegExp(`^(plano|catalogo|caja|reservas|estacion:${CODIGO}|cuenta:[0-9a-f]{24}|mesero:[0-9a-f]{24})$`)
 
 const conexiones = new Map() // usuarioId → número de conexiones abiertas
 
@@ -38,6 +38,8 @@ export const validarCanales = (texto, sesion) => {
         const [tipo, id] = canal.split(':')
         const permitido = {
             plano: () => tienePermiso(sesion.permisos, 'mesa:ver'),
+            // 4.5 · `reservas` → reserva:ver: la agenda y la lista de espera (solo tipo e id)
+            reservas: () => tienePermiso(sesion.permisos, 'reserva:ver'),
             // Fase 3 · La caja (cuentas por cobrar y cobradas): solo quien cobra
             caja: () => ['cuenta:cobrar', 'caja:abrir', 'caja:cerrar'].some((c) => tienePermiso(sesion.permisos, c)), // 3b (no el repartidor)
             // 2.7 · Agotados y reactivados: quien toma comanda, el KDS y quien agota o reactiva

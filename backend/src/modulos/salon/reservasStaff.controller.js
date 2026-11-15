@@ -1,5 +1,6 @@
 import Reserva from './reserva.model.js'
 import { crearPorStaff } from './reservas.service.js'
+import { avisarReserva } from './reservas.avisos.js'
 import { AppError, notFound } from '../compartido/errors.js'
 import { esEstadoFinal } from '../compartido/estados.js'
 import {
@@ -78,6 +79,7 @@ export const cambiarEstadoReserva = async (req, res) => {
         sesion: req.usuario,
         motivo: req.validado.motivo,
     })
+    avisarReserva(actualizada._id)
     const [poblada, estados] = await Promise.all([
         POBLAR_ADMIN(Reserva.findById(actualizada._id)),
         estadosDelTipo('reserva'),

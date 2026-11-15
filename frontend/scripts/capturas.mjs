@@ -1673,6 +1673,34 @@ const VISTAS = {
     await p.getByText(/Hoy: 1 sentado/).waitFor();
     await p.getByRole("list", { name: "Esperando mesa" }).scrollIntoViewIfNeeded();
   } },
+  // 4.5 · Aviso en vivo (real): con /staff abierto, el admin confirma la reserva del cliente de prueba y el cliente
+  // la edita (otra hora) por la API de la BD de capturas → el mesero ve «Reserva editada» con qué cambió
+  "staff-aviso-reserva": { usuario: "mesero", completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.waitForLoadState("networkidle");
+    const admin = await request.newContext();
+    const cliente = await request.newContext();
+    try {
+      await admin.post(`${API}/auth/login`, { data: { correo: USUARIOS.admin, contraseña: CLAVE } });
+      await cliente.post(`${API}/auth/login`, { data: { correo: USUARIOS.cliente, contraseña: CLAVE } });
+      const mias = await (await cliente.get(`${API}/cliente/reservas`)).json();
+      const lista = Array.isArray(mias) ? mias : (mias.reservations || mias.reservas || []);
+      const reserva = lista.find((r) => (r.motivo || "").includes("prueba"));
+      if (!reserva) throw new Error("No está la reserva del cliente de prueba en la BD de capturas");
+      const id = reserva._id || reserva.id;
+      await admin.patch(`${API}/staff/reservas/${id}/estado`, { data: { codigo: "confirmada" } });
+      const fecha = new Date(reserva.fecha).toISOString().slice(0, 10);
+      const hora = reserva.hora === "10:00" ? "11:00" : "10:00";
+      const res = await cliente.patch(`${API}/cliente/reservas/${id}`, { data: {
+        nombre: "Cliente Prueba", correo: USUARIOS.cliente, telefono: "3000000000", motivo: "Desayuno de prueba", personas: 2, fecha, hora,
+      } });
+      if (!res.ok()) throw new Error(`El cliente no pudo editar la reserva: ${res.status()} ${await res.text()}`);
+    } finally {
+      await admin.dispose();
+      await cliente.dispose();
+    }
+    await p.getByText("Reserva editada.").waitFor();
+  } },
 };
 
 // Sin --hide-scrollbars (Playwright lo pone por defecto): así se ven las barras de desplazamiento

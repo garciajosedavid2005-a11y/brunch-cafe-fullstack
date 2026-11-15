@@ -11,6 +11,7 @@ import { conTransaccion } from '../compartido/transacciones.js'
 import { notificarReservaCreada } from './reservas.correo.js'
 import { problemaDeMesa, tocarMesa } from './reservasSalon.service.js'
 import { verificarAforo } from './reservas.aforo.js'
+import { avisarReserva } from './reservas.avisos.js'
 
 // Estados en los que el cliente todavía puede editar o cancelar su reserva
 export const RESERVA_EDITABLE = ['pendiente', 'confirmada']
@@ -66,6 +67,7 @@ export const crear = async (sesion, cuerpo) => {
         return creada
     })
     notificarReservaCreada(reserva) // después de guardar y sin bloquear la respuesta (0.16)
+    avisarReserva(reserva._id)
     return obtenerMia(sesion.id, reserva._id)
 }
 
@@ -82,12 +84,13 @@ export const crearPorStaff = async (sesion, cuerpo) => {
         return creada
     })
     notificarReservaCreada(reserva)
+    avisarReserva(reserva._id)
     return reserva._id
 }
 
 export const editar = async (sesion, id, cuerpo) => {
     const { datos, horarios } = await validarReserva(cuerpo)
-    await conTransaccion(async (session) => {
+    const eraConfirmada = await conTransaccion(async (session) => {
         const reserva = await Reserva.findOne({ _id: id, usuario: sesion.id }).populate('estado', 'codigo').session(session)
         if (!reserva || !RESERVA_EDITABLE.includes(reserva.estado?.codigo)) {
             throw notFound('No se encontró una reserva activa que puedas editar.')
@@ -124,7 +127,10 @@ export const editar = async (sesion, id, cuerpo) => {
             reserva.set(cambios)
             await reserva.save({ session })
         }
+        return reserva.estado.codigo === 'confirmada'
     })
+    // 4.5 (F4-7) · Editar una confirmada avisa en vivo al staff (la agenda muestra qué cambió)
+    avisarReserva(id, eraConfirmada ? 'reserva_editada' : 'reserva_cambio')
     return obtenerMia(sesion.id, id)
 }
 
@@ -138,5 +144,6 @@ export const cancelar = async (sesion, id) => {
         tipo: 'reserva', Modelo: Reserva, documento: reserva, a: 'cancelada', actor: 'cliente',
         sesion, filtro: { usuario: sesion.id },
     })
+    avisarReserva(reserva._id)
     return obtenerMia(sesion.id, reserva._id)
 }

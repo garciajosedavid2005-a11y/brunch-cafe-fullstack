@@ -546,3 +546,34 @@ a.staff-tablet__boton:visited {
     white-space: nowrap;
   }
 }
+
+/* 4.5 · Aviso en vivo de una reserva editada (texto e icono; se cierra a mano) */
+.aviso-reserva {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid #890620;
+  border-radius: 12px;
+  background: #fff7f3;
+  color: #3d1f18;
+}
+
+.aviso-reserva > svg {
+  flex-shrink: 0;
+  color: #890620;
+}
+
+.aviso-reserva p {
+  flex: 1 1 18rem;
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.aviso-reserva__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
