@@ -68,6 +68,9 @@ const cuentaSchema = new mongoose.Schema({
     cerradaEn: { type: Date, default: null },
     motivoCierre: { type: String, trim: true, maxlength: 300, default: '' },
     notas: { type: String, trim: true, maxlength: 300, default: '' },
+    // 4.6 · Reserva sentada con esta cuenta (null = sin reserva; sin el campo, las anteriores a 4.6): al cerrar
+    // la cuenta, la reserva pasa a «completada»
+    reserva: { type: mongoose.Schema.Types.ObjectId, ref: 'Reserva', default: null },
     // Se incrementa con cada cambio: serializa operaciones concurrentes y permite el 409 CUENTA_MODIFICADA
     version: { type: Number, required: true, default: 0, min: 0, validate: entero('La versión') },
     // 2.2 · Lo que marcan cocina y barra (y el servir): contador aparte para no invalidar la

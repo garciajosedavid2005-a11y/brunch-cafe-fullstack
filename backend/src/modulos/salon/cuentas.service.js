@@ -14,7 +14,7 @@ import { estacionEfectiva } from '../catalogo/estaciones.js'
 import { AppError } from '../compartido/errors.js'
 import { conTransaccion } from '../compartido/transacciones.js'
 import { siguienteValor } from '../compartido/contadores.js'
-import { registrarEvento } from '../compartido/estados.service.js'
+import { cambiarEstado, registrarEvento } from '../compartido/estados.service.js'
 import {
     MAQUINA_MESA, MAQUINA_CUENTA, MAQUINA_ITEM, ESTADOS_CUENTA_ABIERTA, MESA_SEGUN_CUENTA,
 } from '../compartido/estadosSalon.js'
@@ -29,7 +29,9 @@ import { MAX_MESAS_POR_CUENTA } from './cuenta.model.js'
 import { cobrarSchema, cobrarParteSchema } from '../caja/caja.schema.js'
 import { asegurarContador, calcularPagos, emitirComprobante, formatoComprobante } from '../caja/caja.service.js'
 import { tomarTurnoAbierto } from '../caja/turno.service.js'
-import { codigoReserva, minutosApartado, reservaQueBloquea } from './reservas.bloque.js'
+import { codigoReserva, idsEstadosReserva, minutosApartado, reservaQueBloquea } from './reservas.bloque.js'
+import Reserva from './reserva.model.js'
+import { avisarReserva } from './reservas.avisos.js'
 import { hora12 } from '../configuracion/horarios.reglas.js'
 import { horaLocal } from '../compartido/fechas.js'
 
@@ -242,11 +244,45 @@ const descartarBorrador = async (cuenta, { sesion, session }) => {
     }
 }
 
-/** Cierre final (cancelada, cerrada_sin_cobro): mesas → por_limpiar y sin cuenta. */
-const cerrarCuenta = async (cuenta, a, { sesion, session, motivo, datos }) => {
+// 4.6 · Cómo se cerró la cuenta, para el motivo del Evento de la reserva
+const CIERRE_PARA_RESERVA = { cerrada: 'cobrada', cerrada_sin_cobro: 'cerrada sin cobro', cancelada: 'cancelada' }
+
+/**
+ * 4.6 · La reserva sentada con esta cuenta (si la hay) pasa a «completada», en la misma transacción. Devuelve su id
+ * si cambió (null si no había reserva o ya no estaba sentada, p. ej. completada a mano antes).
+ */
+const completarReservaDeCuenta = async (cuenta, a, { sesion, session }) => {
+    if (!cuenta.reserva) return null
+    const reserva = await Reserva.findOne({ _id: cuenta.reserva, estado: { $in: await idsEstadosReserva(['sentada'], session) } }).session(session)
+    if (!reserva) return null
+    await cambiarEstado({
+        tipo: 'reserva', Modelo: Reserva, documento: reserva, a: 'completada', actor: 'sistema', sesion,
+        motivo: `cuenta ${cuenta.codigo} ${CIERRE_PARA_RESERVA[a]}`, session,
+    })
+    return reserva._id
+}
+
+/**
+ * 4.6 · Transacción de un cierre de cuenta: `fn(session, cierre)`; si cerró la cuenta de una reserva, `cierre.reserva`
+ * queda con su id y, ya confirmada, se avisa a la agenda (sin volver a leer: un error aquí no cambia la respuesta).
+ */
+const conCierre = async (fn) => {
+    const cierre = { reserva: null }
+    const resultado = await conTransaccion(async (session) => {
+        cierre.reserva = null // un reintento de la transacción empieza de cero
+        return fn(session, cierre)
+    })
+    if (cierre.reserva) avisarReserva(cierre.reserva)
+    return resultado
+}
+
+/** Cierre final (cancelada, cerrada_sin_cobro, cerrada): mesas → por_limpiar y sin cuenta; 4.6 · su reserva, completada. */
+const cerrarCuenta = async (cuenta, a, { sesion, session, motivo, datos, cierre }) => {
     await descartarBorrador(cuenta, { sesion, session })
     await moverMesas(cuenta, MESA_SEGUN_CUENTA[cuenta.estado], 'por_limpiar', { sesion, session, liberar: true, motivo })
     await cambiarEstadoCuenta(cuenta, a, { sesion, session, motivo, datos })
+    const reservaCompletada = await completarReservaDeCuenta(cuenta, a, { sesion, session })
+    if (cierre && reservaCompletada) cierre.reserva = reservaCompletada
     cuenta.set({ cerradaPor: sesion.id, cerradaEn: new Date(), motivoCierre: motivo })
     await guardarCuenta(cuenta, session)
 }
@@ -496,6 +532,7 @@ export const abrirEnTransaccion = async ({ mesaId, comensales, notas, meseroId, 
         abiertaPor: sesion.id,
         abiertaEn: new Date(),
         notas: notas || '',
+        reserva: reserva?._id ?? null, // 4.6 · al cerrar la cuenta, la reserva pasa a «completada»
     }], { session })
     await registrarEvento({
         entidad: 'mesa', entidadId: mesa._id, de: 'libre', a: 'ocupada', ...quien(sesion), datos: { cuenta: cuentaId, codigo }, session,
@@ -683,7 +720,7 @@ export const cancelarCuenta = async (cuentaId, datos, sesion) => {
     exigirPermiso(sesion, 'cuenta:abrir')
     const { versionEsperada, motivo } = validar(cambioCuentaSchema, datos)
 
-    return conTransaccion(async (session) => {
+    return conCierre(async (session, cierre) => {
         const cuenta = await tocarCuenta(cuentaId, { versionEsperada }, session)
         const { motivo: texto } = MAQUINA_CUENTA.validar(cuenta.estado, 'cancelada', { permisos: permisosDe(sesion), motivo })
         // Cuenta también un ítem enviado y luego anulado: ya llegó a cocina o barra (mermas)
@@ -691,7 +728,7 @@ export const cancelarCuenta = async (cuentaId, datos, sesion) => {
             throw error(409, 'CUENTA_CON_ITEMS_ENVIADOS',
                 'La cuenta tiene ítems enviados a cocina o barra: no se puede cancelar. Un administrador puede cerrarla sin cobro.')
         }
-        await cerrarCuenta(cuenta, 'cancelada', { sesion, session, motivo: texto })
+        await cerrarCuenta(cuenta, 'cancelada', { sesion, session, motivo: texto, cierre })
         return detalle(cuenta, session)
     })
 }
@@ -701,13 +738,13 @@ export const cerrarSinCobro = async (cuentaId, datos, sesion) => {
     exigirPermiso(sesion, 'cuenta:cerrar_sin_cobro')
     const { versionEsperada, motivo } = validar(cambioCuentaSchema, datos)
 
-    return conTransaccion(async (session) => {
+    return conCierre(async (session, cierre) => {
         // 3b.2 · También una cuenta con partes cobradas (los clientes se fueron sin pagar el resto)
         const cuenta = await tocarCuenta(cuentaId, { versionEsperada, permitirDividida: true }, session)
         const { motivo: texto } = MAQUINA_CUENTA.validar(cuenta.estado, 'cerrada_sin_cobro', { permisos: permisosDe(sesion), motivo })
         // 3b.2 · Si ya se cobraron partes, el Evento dice cuánto (no todo el consumo quedó sin cobrar)
         const datosDivision = cuenta.division ? { division: { modo: cuenta.division.modo, cobradas: cuenta.division.cobradas, cobrado: cuenta.division.cobrado } } : undefined
-        await cerrarCuenta(cuenta, 'cerrada_sin_cobro', { sesion, session, motivo: texto, datos: datosDivision })
+        await cerrarCuenta(cuenta, 'cerrada_sin_cobro', { sesion, session, motivo: texto, datos: datosDivision, cierre })
         return detalle(cuenta, session)
     })
 }
@@ -723,14 +760,14 @@ export const cobrarCuenta = async (cuentaId, datos, sesion) => {
     const { versionEsperada, propina, pagos } = validar(cobrarSchema, datos)
     await asegurarContador()
 
-    return conTransaccion(async (session) => {
+    return conCierre(async (session, cierre) => {
         const turno = await tomarTurnoAbierto(session) // 3b.1 · sin turno abierto no se cobra
         const cuenta = await tocarCuenta(cuentaId, { versionEsperada }, session)
         MAQUINA_CUENTA.validar(cuenta.estado, 'cerrada', { permisos: permisosDe(sesion) })
         const total = cuenta.total + propina
         const pagosCalculados = calcularPagos(pagos, total)
         const comandas = await comandasDe(cuenta._id, session).lean()
-        await cerrarCuenta(cuenta, 'cerrada', { sesion, session, motivo: '' })
+        await cerrarCuenta(cuenta, 'cerrada', { sesion, session, motivo: '', cierre })
         const comprobante = await emitirComprobante({ cuenta, comandas, propina, total, pagos: pagosCalculados, sesion, session, turno })
         await registrarEvento({
             entidad: 'cuenta', entidadId: cuenta._id, tipo: 'cuenta_cobrada', ...quien(sesion),
@@ -765,7 +802,7 @@ export const cobrarParte = async (cuentaId, datos, sesion) => {
     const { versionEsperada, propina, pagos, division } = validar(cobrarParteSchema, datos)
     await asegurarContador()
 
-    return conTransaccion(async (session) => {
+    return conCierre(async (session, cierre) => {
         const turno = await tomarTurnoAbierto(session)
         const cuenta = await tocarCuenta(cuentaId, { versionEsperada, permitirDividida: true }, session)
         MAQUINA_CUENTA.validar(cuenta.estado, 'cerrada', { permisos: permisosDe(sesion) })
@@ -809,7 +846,7 @@ export const cobrarParte = async (cuentaId, datos, sesion) => {
             cobrado: (actual?.cobrado || 0) + consumo,
             itemsCobrados: [...(actual?.itemsCobrados || []), ...elegidos.map((i) => i._id)],
         }
-        if (ultima) await cerrarCuenta(cuenta, 'cerrada', { sesion, session, motivo: '' })
+        if (ultima) await cerrarCuenta(cuenta, 'cerrada', { sesion, session, motivo: '', cierre })
         else await guardarCuenta(cuenta, session)
         const comprobante = await emitirComprobante({
             cuenta, comandas, propina, total, pagos: pagosCalculados, sesion, session, turno, lineas, subtotal: consumo, parte,

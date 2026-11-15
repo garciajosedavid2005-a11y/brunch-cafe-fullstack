@@ -55,6 +55,8 @@ const modalidad = (contexto) => contexto?.modalidad || 'domicilio'
 
 const staff = (de, a, permiso, extra = {}) => ({ actor: 'staff', de: [].concat(de), a, permiso, ...extra })
 const cliente = (de, a, extra = {}) => ({ actor: 'cliente', de: [].concat(de), a, ...extra })
+// 4.6 · Cambios que hace el sistema como efecto de otra operación (sin permiso propio)
+const sistema = (de, a, extra = {}) => ({ actor: 'sistema', de: [].concat(de), a, ...extra })
 // 2.3 · La cocina y la barra preparan el domicilio (F2-3): solo confirmado → en_preparacion → listo
 const cocina = (de, a, permiso) => ({ actor: 'cocina', de: [].concat(de), a, permiso })
 // Actores que piden la transición con un permiso propio
@@ -79,6 +81,8 @@ export const TRANSICIONES = {
         // Check-in de quien llega sin que su reserva se haya confirmado (único salto permitido)
         staff('pendiente', 'sentada', 'reserva:cambiar_estado', { motivoPorDefecto: 'check-in sin confirmar' }),
         staff('sentada', 'completada', 'reserva:cambiar_estado'),
+        // 4.6 · Al cerrar (cobrar, cerrar sin cobro o cancelar) la cuenta de una reserva sentada
+        sistema('sentada', 'completada', { motivoPorDefecto: 'cuenta cerrada' }),
         // 4.3 (F4-g) · También una pendiente que no llegó (el staff la marca; se sugiere a los 15 min de retraso)
         staff(['pendiente', 'confirmada'], 'no_show', 'reserva:cambiar_estado'),
         staff(['pendiente', 'confirmada'], 'cancelada', 'reserva:cambiar_estado', { requiereMotivo: true }),
@@ -101,7 +105,7 @@ for (const tipo of TIPOS_ESTADO) {
 
 const aplica = (t, de, contexto) => t.de.includes(de) && (!t.condicion || t.condicion(contexto))
 
-/** Transiciones que `actor` ('staff' | 'cliente') puede hacer desde `de`. Para staff filtra por permisos. */
+/** Transiciones que `actor` ('staff' | 'cliente' | 'cocina' | 'sistema') puede hacer desde `de`. Para staff y cocina filtra por permisos. */
 export const transicionesDisponibles = (tipo, de, { actor = 'staff', permisos = [], contexto } = {}) =>
     (TRANSICIONES[tipo] || []).filter((t) =>
         t.actor === actor && aplica(t, de, contexto) && (!CON_PERMISO.includes(actor) || tienePermiso(permisos, t.permiso))

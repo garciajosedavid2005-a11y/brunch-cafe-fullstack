@@ -86,7 +86,8 @@ export const cambiarEstado = async ({
             a,
             motivo: motivoFinal,
             usuario: sesion?.id || null,
-            actor: sesion?.rol || actor,
+            // 4.6 · Un cambio del sistema (efecto de otra operación) queda como «sistema»; usuario = quien lo causó
+            actor: actor === 'sistema' ? 'sistema' : sesion?.rol || actor,
             session,
         })
         return actualizado
