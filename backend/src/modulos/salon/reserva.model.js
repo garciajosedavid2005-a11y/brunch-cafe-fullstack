@@ -93,5 +93,7 @@ reservaSchema.pre('validate', function () {
 
 // Fase 4 · Choques de una mesa por horario y reservas próximas del plano (solo las que tienen mesa)
 reservaSchema.index({ mesa: 1, inicio: 1 }, { name: 'mesa_inicio', partialFilterExpression: { mesa: { $type: 'objectId' } } })
+// 4.2 · Aforo: reservas que empiezan a una hora, por estado
+reservaSchema.index({ inicio: 1, estado: 1 }, { name: 'inicio_estado' })
 
 export default mongoose.model('Reserva', reservaSchema)

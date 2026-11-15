@@ -10,13 +10,14 @@ import { reservaSchema, reservaStaffSchema } from './reservas.schema.js'
 import { conTransaccion } from '../compartido/transacciones.js'
 import { notificarReservaCreada } from './reservas.correo.js'
 import { problemaDeMesa, tocarMesa } from './reservasSalon.service.js'
+import { verificarAforo } from './reservas.aforo.js'
 
 // Estados en los que el cliente todavía puede editar o cancelar su reserva
 export const RESERVA_EDITABLE = ['pendiente', 'confirmada']
 
 /**
  * Valida el cuerpo completo (formato, teléfono, fecha futura y horario configurado en BD).
- * Devuelve los datos normalizados.
+ * Devuelve los datos normalizados y los horarios leídos (4.2: el aforo se comprueba en la transacción).
  */
 export const validarReserva = async (cuerpo, esquema = reservaSchema) => {
     const datos = esquema.parse(cuerpo)
@@ -28,8 +29,12 @@ export const validarReserva = async (cuerpo, esquema = reservaSchema) => {
         const { entreSemana, finDeSemana } = horarios.reservas
         throw badRequest(`La hora debe respetar el horario de reservas: lunes a viernes ${textoRango(entreSemana)} y sábados y domingos ${textoRango(finDeSemana)}.`)
     }
-    return datos
+    return { datos, horarios }
 }
+
+// 4.2 · Aforo de la franja, dentro de la transacción de quien crea o edita
+const aforoDe = (datos, horarios, session, excepto) =>
+    verificarAforo({ horarios, fecha: datos.fecha, hora: datos.hora, personas: datos.personas, excepto, session })
 
 const aDocumento = (datos) => ({
     cantidadPersonas: datos.personas,
@@ -51,10 +56,11 @@ export const listarMias = (usuarioId) =>
 export const obtenerMia = (usuarioId, id) => POBLAR(Reserva.findOne({ _id: id, usuario: usuarioId })).lean()
 
 export const crear = async (sesion, cuerpo) => {
-    const datos = await validarReserva(cuerpo)
+    const { datos, horarios } = await validarReserva(cuerpo)
     const pendiente = await estadoPorCodigo('reserva', 'pendiente')
     // Reserva y su Evento inicial: los dos o ninguno (0.9)
     const reserva = await conTransaccion(async (session) => {
+        await aforoDe(datos, horarios, session)
         const [creada] = await Reserva.create([{ usuario: sesion.id, estado: pendiente._id, ...aDocumento(datos) }], { session })
         await registrarEvento({ entidad: 'reserva', entidadId: creada._id, a: 'pendiente', usuario: sesion.id, actor: sesion.rol || 'cliente', session })
         return creada
@@ -65,9 +71,10 @@ export const crear = async (sesion, cuerpo) => {
 
 /** El personal registra la reserva de un cliente: sin usuario dueño y con registradaPor (0.15e). */
 export const crearPorStaff = async (sesion, cuerpo) => {
-    const datos = await validarReserva(cuerpo, reservaStaffSchema)
+    const { datos, horarios } = await validarReserva(cuerpo, reservaStaffSchema)
     const pendiente = await estadoPorCodigo('reserva', 'pendiente')
     const reserva = await conTransaccion(async (session) => {
+        await aforoDe(datos, horarios, session)
         const [creada] = await Reserva.create([{
             usuario: null, registradaPor: sesion.id, estado: pendiente._id, ...aDocumento(datos),
         }], { session })
@@ -79,11 +86,17 @@ export const crearPorStaff = async (sesion, cuerpo) => {
 }
 
 export const editar = async (sesion, id, cuerpo) => {
-    const datos = await validarReserva(cuerpo)
+    const { datos, horarios } = await validarReserva(cuerpo)
     await conTransaccion(async (session) => {
         const reserva = await Reserva.findOne({ _id: id, usuario: sesion.id }).populate('estado', 'codigo').session(session)
         if (!reserva || !RESERVA_EDITABLE.includes(reserva.estado?.codigo)) {
             throw notFound('No se encontró una reserva activa que puedas editar.')
+        }
+        // 4.2 · Solo si la edición ocupa más en una franja: otra fecha u hora, o más personas (sin contarse a sí
+        // misma). Así, si el admin bajó el aforo, cambiar las observaciones o reducir personas no da 409
+        const inicioActual = reserva.inicio || inicioReserva(reserva.fecha, reserva.hora)
+        if (instanteLocal(datos.fecha, datos.hora).getTime() !== inicioActual.getTime() || datos.personas > reserva.cantidadPersonas) {
+            await aforoDe(datos, horarios, session, reserva._id)
         }
         const cambios = aDocumento(datos)
         // Fase 4 (F4-i) · Con mesa asignada, la nueva hora o el nuevo número de personas deben seguir cabiendo

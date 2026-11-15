@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle, Clock } from "lucide-react";
+import { CheckCircle, Clock, Users } from "lucide-react";
 import { api } from "../../../services/api";
 import AdminStatus from "../components/AdminStatus";
 import { formatearFecha, formatearHora, formatearHoraTexto } from "../../../utils/fechas";
@@ -15,6 +15,28 @@ const RANGOS = [
 ];
 
 const leer = (horarios, ruta) => ruta.reduce((obj, clave) => obj[clave], horarios);
+
+// 4.2 · Aforo de reservas (personas por hora). En el formulario son textos: vacío = sin límite (general) o
+// «usa el general» (hora). Las horas son las del rango de reservas más amplio (lunes a viernes o fin de semana).
+const aforoAFormulario = (aforo) => ({
+  general: aforo?.general == null ? "" : String(aforo.general),
+  horas: Object.fromEntries((aforo?.porHora || []).map((h) => [h.hora, String(h.maximo)])),
+});
+const horasDeReserva = ({ entreSemana, finDeSemana }) => {
+  const desde = [entreSemana.desde, finDeSemana.desde].sort()[0];
+  const hasta = [entreSemana.hasta, finDeSemana.hasta].sort()[1];
+  return HORAS.filter((h) => h >= desde && h <= hasta);
+};
+const entero = (texto, min, max) => /^\d+$/.test(texto.trim()) && Number(texto) >= min && Number(texto) <= max;
+const validarAforo = (aforo, horas) => {
+  if (aforo.general.trim() && !entero(aforo.general, 1, 500)) return "El aforo general debe ser un número entero entre 1 y 500 (vacío = sin límite).";
+  const mala = horas.find((h) => (aforo.horas[h] || "").trim() && !entero(aforo.horas[h], 0, 500));
+  return mala ? `El aforo de las ${formatearHoraTexto(mala)} debe ser un número entero entre 0 y 500 (vacío = usa el general).` : "";
+};
+const aforoAEnviar = (aforo, horas) => ({
+  general: aforo.general.trim() ? Number(aforo.general) : null,
+  porHora: horas.filter((h) => (aforo.horas[h] || "").trim()).map((h) => ({ hora: h, maximo: Number(aforo.horas[h]) })),
+});
 
 const conCambio = (horarios, ruta, campo, valor) => {
   const copia = structuredClone(horarios);
@@ -42,6 +64,7 @@ export default function HorariosSection() {
   const [aviso, setAviso] = useState({ texto: "", error: false, recargar: false });
   const [guardando, setGuardando] = useState(false);
   const [intento, setIntento] = useState(0);
+  const [aforo, setAforo] = useState(() => aforoAFormulario(null));
 
   useEffect(() => {
     let activo = true;
@@ -49,6 +72,7 @@ export default function HorariosSection() {
       .then((datos) => {
         if (!activo) return;
         setHorarios(datos.horarios);
+        setAforo(aforoAFormulario(datos.horarios.reservas.aforo));
         setActualizadoEn(datos.actualizadoEn);
         setVersion(datos.version ?? 0);
         setErrorCarga("");
@@ -73,15 +97,18 @@ export default function HorariosSection() {
   const guardar = async (event) => {
     event.preventDefault();
     const datos = conCambio(horarios, ["domicilio"], "anticipacionMinutos", Number(horarios.domicilio.anticipacionMinutos));
-    const error = validar(datos);
+    const horasAforo = horasDeReserva(datos.reservas);
+    const error = validar(datos) || validarAforo(aforo, horasAforo);
     if (error) {
       setAviso({ texto: error, error: true, recargar: false });
       return;
     }
     setGuardando(true);
     try {
-      const respuesta = await api.put("/v1/admin/horarios", { ...datos, versionEsperada: version });
+      const cuerpo = { ...datos, reservas: { ...datos.reservas, aforo: aforoAEnviar(aforo, horasAforo) } };
+      const respuesta = await api.put("/v1/admin/horarios", { ...cuerpo, versionEsperada: version });
       setHorarios(respuesta.horarios);
+      setAforo(aforoAFormulario(respuesta.horarios.reservas.aforo));
       setActualizadoEn(respuesta.actualizadoEn);
       setVersion(respuesta.version);
       setAviso({ texto: "Horarios guardados. Los formularios de pedido y reserva ya usan los nuevos horarios.", error: false, recargar: false });
@@ -150,6 +177,29 @@ export default function HorariosSection() {
               </fieldset>
             );
           })}
+
+          <fieldset className="admin-horarios__grupo">
+            <legend className="admin-horarios__titulo"><Users size={16} aria-hidden="true" /> Aforo de reservas (personas por hora)</legend>
+            <p className="admin-horarios__ayuda admin-horarios__nota">
+              Máximo de personas que pueden reservar para una misma hora. Vacío = sin límite; en cada hora, vacío = usa el general y 0 = sin reservas a esa hora.
+            </p>
+            <div className="admin-form-group admin-horarios__campo">
+              <label className="admin-form-label" htmlFor="aforo-general">Aforo general</label>
+              <input id="aforo-general" className="admin-form-input" aria-label="Aforo general (personas por hora)" type="number" min="1" max="500" step="1" inputMode="numeric"
+                placeholder="Sin límite" value={aforo.general}
+                onChange={(e) => { setAforo((a) => ({ ...a, general: e.target.value })); setAviso({ texto: "", error: false, recargar: false }); }} />
+            </div>
+            <div className="admin-horarios__aforo-horas">
+              {horasDeReserva(horarios.reservas).map((hora) => (
+                <div key={hora} className="admin-form-group admin-horarios__aforo-hora">
+                  <label className="admin-form-label" htmlFor={`aforo-${hora}`}>{formatearHoraTexto(hora)}</label>
+                  <input id={`aforo-${hora}`} className="admin-form-input" type="number" min="0" max="500" step="1" inputMode="numeric"
+                    aria-label={`Aforo de las ${formatearHoraTexto(hora)}`} placeholder={aforo.general.trim() ? `General: ${aforo.general.trim()}` : "Sin límite"} value={aforo.horas[hora] ?? ""}
+                    onChange={(e) => { const valor = e.target.value; setAforo((a) => ({ ...a, horas: { ...a.horas, [hora]: valor } })); setAviso({ texto: "", error: false, recargar: false }); }} />
+                </div>
+              ))}
+            </div>
+          </fieldset>
 
           {aviso.texto && (
             <div className={aviso.error ? "admin-alert-error" : "admin-alert-success"} role={aviso.error ? "alert" : "status"}>

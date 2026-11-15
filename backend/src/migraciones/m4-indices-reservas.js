@@ -1,10 +1,12 @@
 // Migración 4 (Fase 4 · reservas conectadas al salón): solo AGREGA índices; no toca documentos.
 //   - reservas.mesa_inicio { mesa, inicio }, parcial (solo reservas con mesa): choques por horario (4.1) y
 //     reservas próximas del plano (4.3).
+//   - reservas.inicio_estado { inicio, estado }: aforo por franja (4.2).
 // Idempotente: up crea los que falten; down quita solo los de esta lista. Cada ítem de la fase que necesite
 // otro índice lo agrega aquí y se vuelve a aplicar (up de nuevo crea solo el nuevo).
 export const INDICES = [
     { coleccion: 'reservas', nombre: 'mesa_inicio', clave: { mesa: 1, inicio: 1 }, opciones: { partialFilterExpression: { mesa: { $type: 'objectId' } } } },
+    { coleccion: 'reservas', nombre: 'inicio_estado', clave: { inicio: 1, estado: 1 }, opciones: {} },
 ]
 
 const existentes = async (db, coleccion) => {

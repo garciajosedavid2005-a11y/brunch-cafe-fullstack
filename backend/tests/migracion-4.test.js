@@ -26,13 +26,13 @@ describe('Migración 4 (índices de reservas en el salón)', () => {
     })
 
     it('dry-run no escribe; up → down → up; up repetido no hace nada', async () => {
-        expect(await up(db(), { dryRun: true })).toEqual({ crear: ['reservas.mesa_inicio'], aplicado: false })
+        expect(await up(db(), { dryRun: true })).toEqual({ crear: ['reservas.mesa_inicio', 'reservas.inicio_estado'], aplicado: false })
         expect(await nombres('reservas')).not.toContain('mesa_inicio')
         expect((await up(db())).aplicado).toBe(true)
         const indice = (await db().collection('reservas').indexes()).find((i) => i.name === 'mesa_inicio')
         expect(indice.partialFilterExpression).toEqual({ mesa: { $type: 'objectId' } })
         expect(await up(db())).toEqual({ crear: [], aplicado: false })
-        expect(await down(db(), { dryRun: true })).toEqual({ quitar: ['reservas.mesa_inicio'], aplicado: false })
+        expect(await down(db(), { dryRun: true })).toEqual({ quitar: ['reservas.mesa_inicio', 'reservas.inicio_estado'], aplicado: false })
         expect((await down(db())).aplicado).toBe(true)
         expect(await nombres('reservas')).not.toContain('mesa_inicio')
         expect((await up(db())).aplicado).toBe(true)

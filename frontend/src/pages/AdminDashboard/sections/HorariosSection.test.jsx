@@ -26,7 +26,8 @@ describe("Admin: horarios de domicilio y reservas", () => {
     fireEvent.change(ultima, { target: { value: "15:00" } });
     fireEvent.click(screen.getByRole("button", { name: /guardar horarios/i }));
     await waitFor(() => expect(api.put).toHaveBeenCalledWith("/v1/admin/horarios", {
-      ...HORARIOS, reservas: { ...HORARIOS.reservas, entreSemana: { desde: "08:00", hasta: "15:00" } }, versionEsperada: 3,
+      // 4.2 · Sin aforo guardado se envía «sin límite»
+      ...HORARIOS, reservas: { ...HORARIOS.reservas, entreSemana: { desde: "08:00", hasta: "15:00" }, aforo: { general: null, porHora: [] } }, versionEsperada: 3,
     }));
     expect(await screen.findByText(/horarios guardados/i)).toBeInTheDocument();
     // El siguiente guardado usa la versión nueva
@@ -84,5 +85,36 @@ describe("Admin: horarios de domicilio y reservas", () => {
     expect(campo).toHaveValue(60);
     expect(campo).toHaveAccessibleDescription("Tiempo mínimo entre el pedido y la entrega");
     expect(screen.queryByText("Anticipación mínima (minutos)")).toBeNull();
+  });
+
+  // 4.2 · Aforo por franja: general (vacío = sin límite) y uno por hora (vacío = usa el general)
+  it("aforo: muestra el general y el de cada hora de reservas, y guarda los cambios", async () => {
+    api.get.mockResolvedValue({ horarios: { ...HORARIOS, reservas: { ...HORARIOS.reservas, aforo: { general: 10, porHora: [{ hora: "09:00", maximo: 4 }] } } }, version: 3, actualizadoEn: null });
+    render(<HorariosSection />);
+    const general = await screen.findByLabelText("Aforo general (personas por hora)");
+    expect(general).toHaveValue(10);
+    // Horas del rango de reservas más amplio: 8:00 a. m. a 7:00 p. m.
+    expect(screen.getByLabelText("Aforo de las 8:00 a. m.")).toHaveValue(null);
+    expect(screen.getByLabelText("Aforo de las 7:00 p. m.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Aforo de las 8:00 p. m.")).toBeNull();
+    expect(screen.getByLabelText("Aforo de las 9:00 a. m.")).toHaveValue(4);
+    fireEvent.change(general, { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Aforo de las 10:00 a. m."), { target: { value: "6" } });
+    fireEvent.click(screen.getByRole("button", { name: /guardar horarios/i }));
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith("/v1/admin/horarios", expect.objectContaining({
+      reservas: expect.objectContaining({ aforo: { general: null, porHora: [{ hora: "09:00", maximo: 4 }, { hora: "10:00", maximo: 6 }] } }),
+    })));
+  });
+
+  it("aforo: no guarda un general de 0 ni números con decimales", async () => {
+    render(<HorariosSection />);
+    fireEvent.change(await screen.findByLabelText("Aforo general (personas por hora)"), { target: { value: "0" } });
+    fireEvent.click(screen.getByRole("button", { name: /guardar horarios/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("El aforo general debe ser un número entero entre 1 y 500");
+    fireEvent.change(screen.getByLabelText("Aforo general (personas por hora)"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Aforo de las 9:00 a. m."), { target: { value: "2.5" } });
+    fireEvent.click(screen.getByRole("button", { name: /guardar horarios/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("El aforo de las 9:00 a. m. debe ser un número entero entre 0 y 500");
+    expect(api.put).not.toHaveBeenCalled();
   });
 });

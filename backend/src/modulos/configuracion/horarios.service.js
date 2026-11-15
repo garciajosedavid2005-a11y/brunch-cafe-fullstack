@@ -13,6 +13,7 @@ export const HORARIOS_POR_DEFECTO = {
     reservas: {
         entreSemana: { desde: '08:00', hasta: '19:00' },
         finDeSemana: { desde: '08:00', hasta: '17:00' },
+        aforo: { general: null, porHora: [] }, // 4.2 · sin límite
     },
 }
 
@@ -26,6 +27,11 @@ const aHorarios = (doc) => ({
     reservas: {
         entreSemana: { desde: doc.reservas.entreSemana.desde, hasta: doc.reservas.entreSemana.hasta },
         finDeSemana: { desde: doc.reservas.finDeSemana.desde, hasta: doc.reservas.finDeSemana.hasta },
+        // 4.2 · Sin el campo (antes de la Fase 4) = sin límite; las horas, en orden
+        aforo: {
+            general: doc.reservas.aforo?.general ?? null,
+            porHora: [...(doc.reservas.aforo?.porHora || [])].map((h) => ({ hora: h.hora, maximo: h.maximo })).sort((a, b) => a.hora.localeCompare(b.hora)),
+        },
     },
 })
 
@@ -78,9 +84,13 @@ const respuestaAdmin = async (doc) => {
 /** Para el admin: los horarios, su versión y quién/cuándo los cambió de verdad por última vez. */
 export const obtenerHorariosAdmin = async () => respuestaAdmin(await leer())
 
-// Rutas de los campos que cambian entre dos horarios («domicilio.hasta»); todos los valores son hojas
+// Rutas de los campos que cambian entre dos horarios («domicilio.hasta»)
 const camposCambiados = (antes, despues, prefijo = '') => Object.keys(despues).flatMap((clave) => {
     const ruta = `${prefijo}${clave}`
+    // 4.2 · Un arreglo (las horas del aforo) se compara entero: quitar una hora también es un cambio
+    if (Array.isArray(despues[clave])) {
+        return JSON.stringify(antes?.[clave] ?? []) === JSON.stringify(despues[clave]) ? [] : [ruta]
+    }
     if (despues[clave] !== null && typeof despues[clave] === 'object') {
         return camposCambiados(antes?.[clave] ?? {}, despues[clave], `${ruta}.`)
     }
@@ -105,12 +115,16 @@ const horariosModificados = (version) => new AppError(
  * Guardar sin cambios no escribe nada: ni Evento, ni «actualizado por», ni versión.
  * Si la configuración no existe (sin seed), el PUT la crea con «antes» null (versión esperada 0).
  */
-export const actualizarHorarios = async ({ versionEsperada, ...datos }, sesion) => {
+export const actualizarHorarios = async ({ versionEsperada, ...enviados }, sesion) => {
     const doc = await conTransaccion(async (session) => {
         const anterior = await Configuracion.findOne({ clave: CLAVE_HORARIOS }).session(session).lean()
         const versionActual = anterior?.version ?? 0
         if (versionEsperada !== versionActual) throw horariosModificados(versionActual)
         const antes = anterior ? aHorarios(anterior) : null
+        // 4.2 · Sin aforo en el cuerpo se conserva el guardado (un cliente anterior a la Fase 4 no lo borra).
+        // Copia local: un reintento de la transacción vuelve a partir de lo enviado
+        const datos = enviados.reservas.aforo ? enviados
+            : { ...enviados, reservas: { ...enviados.reservas, aforo: antes?.reservas.aforo ?? HORARIOS_POR_DEFECTO.reservas.aforo } }
         const cambios = camposCambiados(antes, aHorarios(datos))
         if (anterior && !cambios.length) return anterior
         // Sin el campo o en null (documentos anteriores a 1.15) la versión es 0: $in con null cubre los dos

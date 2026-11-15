@@ -28,6 +28,18 @@ export const horariosSchema = z.object({
     reservas: z.object({
         entreSemana: rango('Reservas de lunes a viernes'),
         finDeSemana: rango('Reservas de sábado y domingo'),
+        // 4.2 · Aforo (personas por hora). Ausente = se conserva el guardado (clientes anteriores a la Fase 4)
+        aforo: z.object({
+            general: z.number({ error: 'El aforo general debe ser un número.' }).int({ error: 'El aforo general debe ser un número entero.' })
+                .min(1, { error: 'El aforo general debe ser al menos 1 persona (vacío = sin límite).' })
+                .max(500, { error: 'El aforo general no puede superar 500 personas.' }).nullable(),
+            porHora: z.array(z.object({
+                hora: horaEnPunto('La hora del aforo'),
+                maximo: z.number({ error: 'El aforo de la hora debe ser un número.' }).int({ error: 'El aforo de la hora debe ser un número entero.' })
+                    .min(0, { error: 'El aforo de una hora no puede ser negativo.' })
+                    .max(500, { error: 'El aforo de una hora no puede superar 500 personas.' }),
+            }).strict()).max(24).refine((horas) => new Set(horas.map((h) => h.hora)).size === horas.length, { error: 'Cada hora del aforo aparece una sola vez.' }),
+        }).strict().optional(),
     }),
     // 1.15 · La versión que leyó el admin (GET /admin/horarios): si otro guardó antes → 409
     versionEsperada: z.number({ error: 'Falta la versión de los horarios; recarga la página.' }).int().min(0),

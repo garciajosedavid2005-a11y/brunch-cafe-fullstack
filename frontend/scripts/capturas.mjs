@@ -916,6 +916,38 @@ const VISTAS = {
       await p.locator("#hora").selectOption(ultima);
     },
   },
+  // 4.2 · La franja está llena: el admin (por la API, BD de capturas) fija 2 personas para la hora elegida y el
+  // cliente pide 4 → 409 AFORO_COMPLETO real; después se deja el aforo como estaba (la pantalla ya lo muestra)
+  "reservas-aforo-completo": { usuario: "cliente", completa: false, preparar: async (p) => {
+    await VISTAS.reservas.preparar(p);
+    const hora = await p.locator("#hora").inputValue();
+    const admin = await request.newContext();
+    const fijar = async (aforo) => {
+      const { horarios, version } = await (await admin.get(`${API}/admin/horarios`)).json();
+      const res = await admin.put(`${API}/admin/horarios`, { data: { ...horarios, reservas: { ...horarios.reservas, aforo }, versionEsperada: version } });
+      if (!res.ok()) throw new Error(`No se pudo fijar el aforo: ${res.status()}`);
+      return horarios.reservas.aforo;
+    };
+    try {
+      await admin.post(`${API}/auth/login`, { data: { correo: USUARIOS.admin, contraseña: CLAVE } });
+      const anterior = await fijar({ general: null, porHora: [{ hora, maximo: 2 }] });
+      try {
+        await p.locator("#nombre").fill("Cliente Prueba");
+        await p.locator("#correo").fill("cliente.dev@brunchcafe.test");
+        await p.locator("#telefono").fill("3000000000");
+        await p.locator("#motivo").fill("Cena familiar");
+        await p.locator("#personas").selectOption("4");
+        await p.getByRole("button", { name: "Enviar reserva" }).click();
+        await p.locator(".resumen-botones__confirmar").click(); // resumen antes de enviar
+        await p.getByRole("alert").filter({ hasText: "cupos" }).waitFor();
+      } finally {
+        await fijar(anterior);
+      }
+    } finally {
+      await admin.dispose();
+    }
+    await p.getByRole("alert").filter({ hasText: "cupos" }).scrollIntoViewIfNeeded();
+  } },
   // Checkout a las 07:30 de Bogotá (reloj del navegador): horas de 9:00 a 16:00
   "carrito-manana": {
     usuario: "cliente",
@@ -931,6 +963,14 @@ const VISTAS = {
     },
   },
   "admin-horarios": { usuario: "admin", preparar: abrirPestanaAdmin("Horarios") },
+  // 4.2 · Aforo de reservas: general 12 y, a las 9:00, 6; a la 1:00 p. m., 0 (sin reservas). Sin guardar
+  "admin-horarios-aforo": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Horarios")(p);
+    await p.getByLabel("Aforo general (personas por hora)").fill("12");
+    await p.getByLabel("Aforo de las 9:00 a. m.").fill("6");
+    await p.getByLabel("Aforo de las 1:00 p. m.").fill("0");
+    await p.getByText("Aforo de reservas (personas por hora)").scrollIntoViewIfNeeded();
+  } },
   // 1.15 · Otro admin guarda (por la API, BD de capturas) mientras la pantalla está abierta: 409 real
   "admin-horarios-conflicto": { usuario: "admin", completa: false, preparar: async (p) => {
     await abrirPestanaAdmin("Horarios")(p);

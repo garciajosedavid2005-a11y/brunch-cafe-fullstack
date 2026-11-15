@@ -7,6 +7,18 @@ const HORA_EN_PUNTO = /^([01]\d|2[0-3]):00$/
 
 const hora = { type: String, required: true, match: HORA_EN_PUNTO }
 const rango = new mongoose.Schema({ desde: hora, hasta: hora }, { _id: false })
+const entero = (min, max) => ({ type: Number, min, max, validate: { validator: (v) => v == null || Number.isInteger(v), message: 'Debe ser un número entero' } })
+// 4.2 · Aforo de reservas (personas por hora): general (null = sin límite) y uno distinto por hora (0 = sin
+// reservas a esa hora). Sin el campo (documentos anteriores a la Fase 4) = sin límite, sin migración
+const aforoHora = new mongoose.Schema({ hora, maximo: { ...entero(0, 500), required: true } }, { _id: false })
+const aforo = new mongoose.Schema({
+    general: { ...entero(1, 500), default: null },
+    porHora: {
+        type: [aforoHora],
+        default: [],
+        validate: { validator: (horas) => horas.length <= 24 && new Set(horas.map((h) => h.hora)).size === horas.length, message: 'Cada hora del aforo aparece una sola vez (máximo 24).' },
+    },
+}, { _id: false })
 
 const configuracionSchema = new mongoose.Schema({
     clave: {
@@ -23,6 +35,7 @@ const configuracionSchema = new mongoose.Schema({
     reservas: {
         entreSemana: { type: rango, required: true }, // lunes a viernes
         finDeSemana: { type: rango, required: true }, // sábado y domingo
+        aforo: { type: aforo, default: () => ({ general: null, porHora: [] }) },
     },
     actualizadoPor: {
         type: mongoose.Schema.Types.ObjectId,
