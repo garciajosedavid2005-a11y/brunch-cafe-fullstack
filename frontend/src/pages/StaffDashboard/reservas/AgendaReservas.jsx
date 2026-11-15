@@ -4,7 +4,7 @@ import { apiRequest } from "../../../services/api";
 import { useDialogo } from "../../../context/useDialogo";
 import { fechaLocal, formatearFechaCalendario, formatearHoraTexto, hoyLocal } from "../../../utils/fechas";
 import { claseEstado } from "../../AdminDashboard/components/estadoUtils";
-import { nuevaClave } from "../plano/estadosMesa";
+import { horaSinCorte, horarioSentar, nuevaClave } from "../plano/estadosMesa";
 import "./AgendaReservas.css";
 
 // Fase 4 · Agenda de reservas de /staff. 4.1: cada reserva pendiente o confirmada lleva su mesa; quien tiene
@@ -68,6 +68,7 @@ function AccionesReserva({ reserva, esHoy, puedeGestionar, puedeSentar, onCambio
   const claveSentar = useRef(nuevaClave());
   if (!puedeGestionar || !RESERVA_CON_MESA_EDITABLE.includes(reserva.estadoCodigo)) return null;
   const retraso = esHoy ? minutosDeRetraso(reserva) : 0;
+  const horario = horarioSentar(reserva);
   const llamar = (ruta, opciones) => {
     setEnviando(true);
     setError("");
@@ -98,10 +99,18 @@ function AccionesReserva({ reserva, esHoy, puedeGestionar, puedeSentar, onCambio
           Confirmar
         </button>
       )}
-      {esHoy && puedeSentar && reserva.mesa && (
+      {/* 4.6.2 · «Sentar» solo en el horario de la reserva (desde 10 min antes y durante sus 90 min): antes,
+          deshabilitado con desde cuándo; terminado, no se ofrece (queda «No llegó») */}
+      {esHoy && puedeSentar && reserva.mesa && horario.estado === "abierto" && (
         <button type="button" className="agenda__boton agenda__boton--primario" disabled={enviando}
           aria-label={`Sentar a ${reserva.cliente} (${reserva.codigo})`} onClick={sentar}>
           Sentar en la mesa {reserva.mesa.numero}
+        </button>
+      )}
+      {esHoy && puedeSentar && reserva.mesa && horario.estado === "antes" && (
+        <button type="button" className="agenda__boton agenda__boton--primario" disabled
+          aria-label={`Podrás sentar a ${reserva.cliente} (${reserva.codigo}) desde las ${formatearHoraTexto(horario.desdeHora)}`}>
+          Podrás sentar esta reserva desde las {horaSinCorte(formatearHoraTexto(horario.desdeHora))}
         </button>
       )}
       {retraso >= MINUTOS_NO_SHOW && (

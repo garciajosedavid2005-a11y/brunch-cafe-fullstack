@@ -1,7 +1,7 @@
 // 4.5 · Aviso en vivo de reservas (PLAN_FASE_4, F4-7): canal SSE `reservas` (reserva:ver). Editar una reserva
 // confirmada avisa con `reserva_editada`; los demás cambios de reservas y de la lista de espera, con su tipo. Los
 // avisos solo llevan tipo e ids (sin datos personales): cada pantalla vuelve a leer con su permiso.
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { crearConSesion } from './helpers/usuarios.js'
 import { crearReserva, datosReserva, fechaFutura } from './helpers/datos.js'
 import Zona from '../src/modulos/salon/zona.model.js'
@@ -81,6 +81,7 @@ describe('4.5 · Avisos (F4-7)', () => {
         expect(porStaff.filter((a) => a.canal === 'reservas').map((a) => a.tipo)).toEqual(['reserva_cambio'])
         const hoy = await crearReserva(cliente, { fecha: '2026-11-05', hora: '09:00' })
         await mesero.patch(`${BASE}/${hoy}/mesa`).send({ mesaId: String(mesa1._id) })
+        vi.setSystemTime(new Date('2026-11-05T08:50:00-05:00')) // 4.6.2 · en el horario de «Sentar»
         const sentada = await escuchar(async () => expect((await mesero.post(`${BASE}/${hoy}/sentar`).send({})).status).toBe(201))
         expect(sentada.filter((a) => a.canal === 'reservas')).toEqual([expect.objectContaining({ tipo: 'reserva_cambio', ids: { reserva: hoy } })])
         const { body: e1 } = await mesero.post('/api/v1/staff/espera').send({ nombre: 'Lina Ruiz', personas: 2, telefono: '3001112233' })
@@ -97,9 +98,11 @@ describe('4.5 · Avisos (F4-7)', () => {
         const id = await crearReserva(cliente, { fecha: '2026-11-05', hora: '09:00' })
         await mesero.patch(`${BASE}/${id}/mesa`).send({ mesaId: String(mesa1._id) })
         expect((await mesero.post(`/api/v1/staff/salon/mesas/${mesa1._id}/abrir`).send({ comensales: 2 })).status).toBe(201)
+        vi.setSystemTime(new Date('2026-11-05T08:50:00-05:00')) // 4.6.2 · en el horario de «Sentar»
         const avisos = await escuchar(async () => {
             const r = await mesero.post(`${BASE}/${id}/sentar`).send({})
             expect(r.status).toBe(409)
+            expect(r.body.error.code).toBe('MESA_NO_DISPONIBLE')
         })
         expect(avisos).toEqual([])
     })

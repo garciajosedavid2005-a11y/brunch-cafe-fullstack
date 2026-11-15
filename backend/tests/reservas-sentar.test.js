@@ -103,17 +103,18 @@ describe('4.3 · «Sentar» abre la cuenta en la mesa asignada (F4-6, F4-f)', ()
         expect((await sentar(id)).body.error.code).toBe('RESERVA_NO_SENTABLE')
     })
 
-    it('también una pendiente que llega (check-in sin confirmar) y con antelación', async () => {
+    it('también una pendiente que llega (check-in sin confirmar), desde 10 min antes (4.6.2)', async () => {
         const id = await reservaDeHoy({ hora: '09:00', estado: 'pendiente' })
+        a('08:50')
         expect((await sentar(id)).status).toBe(201)
     })
 
-    it('sin mesa → 409 RESERVA_SIN_MESA; otro día → 409 RESERVA_NO_ES_HOY; sin permiso → 403', async () => {
+    it('sin mesa → 409 RESERVA_SIN_MESA; otro día → 409 RESERVA_FUERA_DE_HORARIO; sin permiso → 403', async () => {
         const sinMesa = await reservaDeHoy({ hora: '08:00', mesa: null })
         expect((await sentar(sinMesa)).body.error.code).toBe('RESERVA_SIN_MESA')
         const otroDia = await crearReserva(cliente, { fecha: fechaFutura() })
-        await mesero.patch(`${BASE}/${otroDia}/mesa`).send({ mesaId: String(mesa2._id) })
-        expect((await sentar(otroDia)).body.error.code).toBe('RESERVA_NO_ES_HOY')
+        expect((await mesero.patch(`${BASE}/${otroDia}/mesa`).send({ mesaId: String(mesa2._id) })).status).toBe(200)
+        expect((await sentar(otroDia)).body.error.code).toBe('RESERVA_FUERA_DE_HORARIO')
         expect((await cliente.post(`${BASE}/${sinMesa}/sentar`).send({})).status).toBe(403)
         expect((await sentar('0123456789abcdef01234567')).status).toBe(404)
     })
@@ -121,6 +122,7 @@ describe('4.3 · «Sentar» abre la cuenta en la mesa asignada (F4-6, F4-f)', ()
     it('si la mesa está ocupada no se sienta y la reserva sigue confirmada (todo o nada)', async () => {
         const id = await reservaDeHoy({ hora: '09:00' })
         expect((await abrir(mesa1)).status).toBe(201) // 7:30: aún no está reservada
+        a('08:50')
         const r = await sentar(id)
         expect(r.status).toBe(409)
         expect(r.body.error.code).toBe('MESA_NO_DISPONIBLE')
@@ -130,6 +132,7 @@ describe('4.3 · «Sentar» abre la cuenta en la mesa asignada (F4-6, F4-f)', ()
 
     it('dos «Sentar» a la vez: una sola cuenta', async () => {
         const id = await reservaDeHoy({ hora: '08:00' })
+        a('07:50')
         const res = await Promise.all([sentar(id), sentar(id)])
         expect(res.map((r) => r.status).sort()).toEqual([201, 409])
         expect(await Cuenta.countDocuments()).toBe(1)
@@ -140,10 +143,11 @@ describe('4.3 · «Sentar» abre la cuenta en la mesa asignada (F4-6, F4-f)', ()
 
     it('con la misma Idempotency-Key el reintento devuelve la misma cuenta', async () => {
         const id = await reservaDeHoy({ hora: '08:00' })
+        a('07:50')
         const enviar = () => mesero.post(`${BASE}/${id}/sentar`).set('Idempotency-Key', 'sentar-1').send({})
-        const [a, b] = [await enviar(), await enviar()]
-        expect([a.status, b.status]).toEqual([201, 201])
-        expect(b.body.cuenta.id).toBe(a.body.cuenta.id)
+        const [primero, segundo] = [await enviar(), await enviar()]
+        expect([primero.status, segundo.status]).toEqual([201, 201])
+        expect(segundo.body.cuenta.id).toBe(primero.body.cuenta.id)
         expect(await Cuenta.countDocuments()).toBe(1)
     })
 
@@ -151,6 +155,7 @@ describe('4.3 · «Sentar» abre la cuenta en la mesa asignada (F4-6, F4-f)', ()
         const { sesion: admin } = await crearConSesion('admin')
         const { usuario: otro } = await crearConSesion('mesero')
         const id = await reservaDeHoy({ hora: '08:00' })
+        a('07:50')
         const sin = await admin.post(`${BASE}/${id}/sentar`).send({})
         expect(sin.status).toBe(400)
         expect(sin.body.error.code).toBe('MESERO_REQUERIDO')
@@ -169,10 +174,12 @@ describe('4.3 · «Sentar» abre la cuenta en la mesa asignada (F4-6, F4-f)', ()
         expect((await Reserva.findById(id).populate('estado', 'codigo')).estado.codigo).toBe('confirmada')
     })
 
-    it('no se sienta la reserva A en una mesa que otra reserva B ya tiene reservada', async () => {
+    it('defensa: no se sienta la reserva A en una mesa que otra reserva B tiene en su bloque', async () => {
+        // 4.6.2 · Con reservas válidas no ocurre (el horario de «Sentar» no se cruza con el bloque de otra reserva de la
+        // mesa, F4-1): se fuerza el dato en la BD para probar la comprobación dentro de la transacción
         const b = await reservaDeHoy({ hora: '08:00' })
-        // A es de las 10:00 en la mesa 2 y luego se pasa a la mesa 1 (no choca: 08:00 y 10:00 están a 2 h)
-        const aId = await reservaDeHoy({ hora: '10:00', mesa: mesa1 })
+        const aId = await reservaDeHoy({ hora: '08:00', mesa: mesa2 })
+        await Reserva.updateOne({ _id: aId }, { $set: { mesa: mesa1._id } })
         a('07:50')
         const r = await sentar(aId)
         expect(r.status).toBe(409)

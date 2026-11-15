@@ -1144,23 +1144,31 @@ const VISTAS = {
     await tarjeta.getByRole("alert").waitFor();
     await tarjeta.scrollIntoViewIfNeeded();
   } },
-  // 4.3 · Plano a las 6:00: la mesa 2 lleva «Reservada 8:00 a. m.» (Laura, confirmada) y su panel ofrece «Sentar»
+  // 4.3 · Plano a las 6:00: la mesa 2 lleva la reserva de las 8:00 (Laura, confirmada). 4.6 · A las 6:00 la mesa
+  // sigue libre con «disponible por» y «Sentar» deshabilitado hasta las 7:50; con CAPTURAS_HORA=07:05, «Reservada»
   "staff-plano-reserva": { usuario: "mesero", completa: false, preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);
     await p.getByRole("button", { name: /^Mesa 2,.*reservada a las/ }).click();
-    await p.getByRole("button", { name: /^Sentar a Laura/ }).waitFor();
+    await p.getByRole("button", { name: /^(Sentar a|Podrás sentar a) Laura/ }).waitFor();
   } },
   // 4.3 · La misma mesa con el bloque empezado y 20 min de retraso (solo en la respuesta del plano: la BD de
   // capturas está a las 6:00): sin «Abrir cuenta», con «Sentar» y «No llegó»
   "staff-plano-reserva-retrasada": { usuario: "mesero", completa: false, preparar: async (p) => {
+    let inicio = null;
     await p.route(/\/staff\/salon\/mesas$/, async (ruta) => {
       const r = await ruta.fetch();
       const plano = await r.json();
       const m2 = plano.mesas.find((m) => m.numero === 2);
-      if (m2?.reserva) Object.assign(m2.reserva, { bloqueada: true, minutosRetraso: 20 });
+      if (m2?.reserva) {
+        Object.assign(m2.reserva, { bloqueada: true, minutosRetraso: 20 });
+        inicio = m2.reserva.inicio;
+      }
       await ruta.fulfill({ response: r, json: plano });
     });
     await p.goto(`${FRONT}/staff`);
+    // 4.6.2 · El reloj del navegador también a los 20 min de retraso: «Sentar» se calcula con la hora de la reserva
+    await p.getByRole("button", { name: /^Mesa 2,.*reservada a las/ }).waitFor();
+    if (inicio) await p.clock.setSystemTime(new Date(inicio).getTime() + 20 * 60_000);
     await p.getByRole("button", { name: /^Mesa 2,.*reservada a las/ }).click();
     await p.getByRole("button", { name: "No llegó" }).waitFor();
   } },
@@ -1647,9 +1655,16 @@ const VISTAS = {
     await p.getByRole("navigation", { name: /secciones del panel/i }).getByRole("button", { name: "Reservas" }).click();
     const tarjeta = p.locator("article").filter({ hasText: "Laura Gómez" });
     await tarjeta.waitFor();
+    // 4.6.2 · En su horario (CAPTURAS_HORA desde 07:50) la sienta; antes, «Sentar» sale deshabilitado con desde cuándo
     const sentar = p.getByRole("button", { name: /^Sentar a Laura Gómez/ });
-    if (await sentar.count()) await sentar.click();
-    await tarjeta.getByText("Sentada").waitFor();
+    if (await sentar.count()) {
+      await sentar.click();
+      await tarjeta.getByText("Sentada").waitFor();
+    } else {
+      // Fuera de horario, o ya sentada por el ancho anterior
+      await tarjeta.getByRole("button", { name: /^Podrás sentar a Laura Gómez/ }).or(tarjeta.getByText("Sentada")).waitFor();
+    }
+    await tarjeta.scrollIntoViewIfNeeded();
   } },
   // 4.4 · Lista de espera (Pedro y Sofía, de la siembra) arriba de la agenda, con mesa, «Sentar» y «Retirar»
   "staff-espera": { usuario: "mesero", completa: false, preparar: async (p) => {

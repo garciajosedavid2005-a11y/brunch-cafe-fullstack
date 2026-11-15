@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const estado = vi.hoisted(() => ({ apiRequest: vi.fn(), confirmar: vi.fn() }));
@@ -19,7 +19,10 @@ const mesa = (numero, extra = {}) => ({
 const MESERO = ["mesa:ver", "mesa:operar", "cuenta:abrir", "cuenta:ver", "comanda:tomar", "reserva:ver", "reserva:cambiar_estado"];
 
 let plano;
+// 4.6.2 · Hoy es 2026-11-15 a las 7:55 a. m. en Bogotá: la reserva de las 8:00 ya se puede sentar (desde las 7:50)
+afterEach(() => vi.useRealTimers());
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-15T12:55:00Z") });
   plano = { actualizadoEn: "2026-11-15T12:50:00Z", zonas: [{ id: "z1", nombre: "Interior", orden: 1 }], mesas: [mesa(1), mesa(2, { reserva: reserva() })] };
   estado.confirmar.mockReset();
   estado.apiRequest.mockReset();
@@ -60,6 +63,19 @@ describe("4.6 · Mesa apartada con anticipación", () => {
     fireEvent.click(screen.getByRole("button", { name: "Unir mesas" }));
     expect(screen.getByRole("checkbox", { name: /Mesa 2/ })).toBeDisabled();
     expect(screen.getByText("(reservada)")).toBeInTheDocument();
+  });
+});
+
+describe("4.6.2 · «Sentar» solo en el horario de la reserva", () => {
+  it("antes de los 10 min previos, «Sentar» sale deshabilitado con desde cuándo se puede", async () => {
+    vi.setSystemTime(new Date("2026-11-15T12:00:00Z")); // 7:00 a. m.
+    plano.mesas[1].reserva = reserva({ bloqueada: true, minutosDisponible: 0 });
+    render(<PlanoMesas permisos={MESERO} />);
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 2,/ }));
+    const boton = screen.getByRole("button", { name: "Podrás sentar a Laura Gómez desde las 7:50 a. m." });
+    expect(boton).toBeDisabled();
+    expect(boton).toHaveTextContent("Podrás sentar esta reserva desde las 7:50 a. m.");
+    expect(screen.queryByRole("button", { name: "Sentar a Laura Gómez" })).toBeNull();
   });
 });
 

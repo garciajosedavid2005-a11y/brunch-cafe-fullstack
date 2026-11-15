@@ -4,7 +4,7 @@ import { apiRequest } from "../../../services/api";
 import { useDialogo } from "../../../context/useDialogo";
 import { formatearCOP } from "../../../utils/moneda";
 import { incluyePermiso } from "../../../utils/permisos";
-import { datosEstado, estadoVisible, formatearMinutos, nuevaClave, retrasada } from "./estadosMesa";
+import { datosEstado, estadoVisible, formatearMinutos, horaSinCorte, horarioSentar, nuevaClave, retrasada } from "./estadosMesa";
 import { formatearHoraTexto } from "../../../utils/fechas";
 
 // 1.6 · Acciones de una mesa según su estado y los permisos (el backend vuelve a comprobarlos):
@@ -51,6 +51,7 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
   // mesa solo se abre así (F4-c) y a los 15 min de retraso se sugiere «No llegó» (F4-5)
   const reserva = mesa.estado === "libre" && !mesa.cuenta ? mesa.reserva : null;
   const gestionaReservas = puede(permisos, "reserva:cambiar_estado");
+  const horario = reserva ? horarioSentar(reserva) : null; // 4.6.2
   const claveSentar = useRef(nuevaClave());
 
   const cuenta = mesa.cuenta;
@@ -224,7 +225,7 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
           </p>
           {gestionaReservas && puede(permisos, "cuenta:abrir") && (
             <div className="panel-mesa__reserva-acciones">
-              {eligeMesero && reserva.bloqueada && (
+              {eligeMesero && reserva.bloqueada && horario.estado === "abierto" && (
                 <label className="panel-mesa__campo">
                   <span>Mesero responsable</span>
                   <select value={meseroAbrir} onChange={(e) => setMeseroId(e.target.value)} disabled={!meseros}>
@@ -233,9 +234,18 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
                   </select>
                 </label>
               )}
-              <button type="button" className="plano__boton plano__boton--primario" disabled={enviando || cargandoMeseros} onClick={sentar}>
-                Sentar a {reserva.cliente}
-              </button>
+              {/* 4.6.2 · Fuera del horario de la reserva, deshabilitado con desde cuándo; terminado, solo «No llegó» */}
+              {horario.estado === "abierto" && (
+                <button type="button" className="plano__boton plano__boton--primario" disabled={enviando || cargandoMeseros} onClick={sentar}>
+                  Sentar a {reserva.cliente}
+                </button>
+              )}
+              {horario.estado === "antes" && (
+                <button type="button" className="plano__boton plano__boton--primario" disabled
+                  aria-label={`Podrás sentar a ${reserva.cliente} desde las ${formatearHoraTexto(horario.desdeHora)}`}>
+                  Podrás sentar esta reserva desde las {horaSinCorte(formatearHoraTexto(horario.desdeHora))}
+                </button>
+              )}
               {retrasada(reserva) && (
                 <button type="button" className="plano__boton plano__boton--secundario" disabled={enviando} onClick={noLlego}>No llegó</button>
               )}

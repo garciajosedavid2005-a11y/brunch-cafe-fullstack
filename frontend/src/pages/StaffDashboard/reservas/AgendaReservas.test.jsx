@@ -82,15 +82,27 @@ describe("4.3 · Agenda: hoy, próximas y acciones", () => {
 
   it("«Sentar» (hoy, con mesa) y «Confirmar» (pendiente) llaman al backend", async () => {
     const onCambio = vi.fn();
-    render(<AgendaReservas reservas={[hoy("09:00", { mesa: { id: "m1", numero: 1, capacidad: 4 } }), hoy("10:00", { estado: "Pendiente", estadoCodigo: "pendiente" })]}
+    render(<AgendaReservas reservas={[hoy("08:00", { mesa: { id: "m1", numero: 1, capacidad: 4 } }), hoy("10:00", { estado: "Pendiente", estadoCodigo: "pendiente" })]}
       puedeGestionar puedeSentar onCambio={onCambio} />);
-    fireEvent.click(screen.getByRole("button", { name: "Sentar a Lucía Pérez (RES-H09)" }));
-    await waitFor(() => expect(estado.apiRequest).toHaveBeenCalledWith("/v1/staff/reservas/h09:00/sentar", expect.objectContaining({ method: "POST" })));
+    fireEvent.click(screen.getByRole("button", { name: "Sentar a Lucía Pérez (RES-H08)" }));
+    await waitFor(() => expect(estado.apiRequest).toHaveBeenCalledWith("/v1/staff/reservas/h08:00/sentar", expect.objectContaining({ method: "POST" })));
     fireEvent.click(screen.getByRole("button", { name: "Confirmar RES-H10" }));
     await waitFor(() => expect(estado.apiRequest).toHaveBeenCalledWith("/v1/staff/reservas/h10:00/estado", expect.objectContaining({ method: "PATCH", body: JSON.stringify({ codigo: "confirmada" }) })));
     await waitFor(() => expect(onCambio).toHaveBeenCalledTimes(2));
     // Sin mesa no se ofrece «Sentar»
     expect(screen.queryByRole("button", { name: /Sentar a Lucía Pérez \(RES-H10\)/ })).toBeNull();
+  });
+
+  // 4.6.2 · «Sentar» solo en el horario de la reserva: desde 10 min antes y durante sus 90 min
+  it("antes del horario, «Sentar» sale deshabilitado con desde cuándo; pasados los 90 min solo queda «No llegó»", () => {
+    const mesa = { id: "m1", numero: 1, capacidad: 4 };
+    render(<AgendaReservas reservas={[hoy("09:00", { mesa }), hoy("06:00", { mesa })]} puedeGestionar puedeSentar onCambio={vi.fn()} />);
+    const pronto = screen.getByRole("button", { name: "Podrás sentar a Lucía Pérez (RES-H09) desde las 8:50 a. m." });
+    expect(pronto).toBeDisabled();
+    expect(pronto).toHaveTextContent("Podrás sentar esta reserva desde las 8:50 a. m.");
+    // La de las 6:00 terminó a las 7:30: sin «Sentar», con «No llegó»
+    expect(screen.queryByRole("button", { name: /RES-H06\) desde|Sentar a Lucía Pérez \(RES-H06\)/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "No llegó RES-H06" })).toBeEnabled();
   });
 
   it("a los 15 min de retraso sugiere «No llegó» (texto, no solo color) y lo marca tras confirmar", async () => {

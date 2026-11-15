@@ -40,6 +40,13 @@ export const codigoReserva = (id) => `RES-${String(id).slice(-6).toUpperCase()}`
 // Reservas que todavía pueden llegar: bloquean su mesa y salen en el plano (una sentada ya tiene su cuenta)
 export const ESTADOS_RESERVA_POR_LLEGAR = ['pendiente', 'confirmada']
 
+// 4.6.2 · «Sentar» solo en el horario de la reserva: desde 10 min antes de la hora y durante sus 90 min
+export const TOLERANCIA_SENTAR_MIN = 10
+export const ventanaSentar = (inicio) => ({
+    desde: new Date(new Date(inicio).getTime() - TOLERANCIA_SENTAR_MIN * MINUTO),
+    hasta: finBloque(inicio),
+})
+
 // 4.6 · «Apartar la mesa desde … min antes» (Admin › Horarios); sin el campo, 60
 export const APARTAR_MESA_POR_DEFECTO_MIN = 60
 

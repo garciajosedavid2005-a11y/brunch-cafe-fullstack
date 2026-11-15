@@ -101,8 +101,13 @@
   color: #fff;
 }
 
-.agenda__boton:disabled {
-  opacity: 0.6;
+/* 4.6.2 · Deshabilitado como en el plano (1.6r): fondo, texto legible y borde discontinuo, sin opacidad */
+.agenda__boton:disabled,
+.agenda__boton--primario:disabled {
+  border-color: #b9a29b;
+  border-style: dashed;
+  background: #efe4e1;
+  color: #6a5752;
   cursor: not-allowed;
 }
 

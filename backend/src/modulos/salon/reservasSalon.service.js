@@ -6,9 +6,10 @@ import { AppError, detallesZod } from '../compartido/errors.js'
 import { conTransaccion } from '../compartido/transacciones.js'
 import { cambiarEstado, codigoActual, registrarEvento } from '../compartido/estados.service.js'
 import { tienePermiso } from '../identidad/permisos.js'
-import { buscarChoque, codigoReserva, finBloque, textoChoque } from './reservas.bloque.js'
+import { buscarChoque, codigoReserva, finBloque, textoChoque, ventanaSentar } from './reservas.bloque.js'
 import { avisarReserva } from './reservas.avisos.js'
-import { fechaLocal, inicioReserva } from '../compartido/fechas.js'
+import { fechaLocal, horaLocal, inicioReserva } from '../compartido/fechas.js'
+import { hora12 } from '../configuracion/horarios.reglas.js'
 import { abrirEnTransaccion, prepararApertura } from './cuentas.service.js'
 
 // Estados en los que la reserva todavía puede cambiar de mesa (aún no llegó)
@@ -103,14 +104,31 @@ export const asignarMesa = async (id, datos, sesion) => {
     return respuesta
 }
 
+/**
+ * 4.6.2 · 409 RESERVA_FUERA_DE_HORARIO si `ahora` no está en el horario de «Sentar» de la reserva: desde 10 min antes
+ * de su hora y durante sus 90 min. Antes, dice desde cuándo; después, que solo queda «No llegó».
+ */
+const exigirHorarioDeSentar = (inicio, ahora = new Date()) => {
+    const { desde, hasta } = ventanaSentar(inicio)
+    if (ahora < desde) {
+        const dia = fechaLocal(desde) === fechaLocal(ahora) ? '' : ' el día de la reserva,'
+        throw new AppError(409, 'RESERVA_FUERA_DE_HORARIO', `Podrás sentar esta reserva${dia} desde las ${hora12(horaLocal(desde))}`,
+            { desde: desde.toISOString(), hasta: hasta.toISOString() })
+    }
+    if (ahora >= hasta) {
+        throw new AppError(409, 'RESERVA_FUERA_DE_HORARIO', `El horario de esta reserva terminó a las ${hora12(horaLocal(hasta))}: márcala como «No llegó».`,
+            { desde: desde.toISOString(), hasta: hasta.toISOString() })
+    }
+}
+
 const sentarSchema = z.object({
     // Quien no atiende mesas (el admin) indica el mesero, como al abrir una cuenta desde el plano
     meseroId: z.string().regex(OBJECT_ID, { error: 'El mesero no es válido.' }).optional(),
 }).strict()
 
 /**
- * 4.3 (F4-6, F4-f) · POST /staff/reservas/:id/sentar { meseroId? }: la reserva pendiente o confirmada de hoy, con
- * mesa, pasa a «sentada» y abre la cuenta en su mesa (comensales = personas) en una sola transacción. La mesa
+ * 4.3 (F4-6, F4-f) · POST /staff/reservas/:id/sentar { meseroId? }: la reserva pendiente o confirmada, con mesa y
+ * en su horario (4.6.2: desde 10 min antes y durante sus 90 min), pasa a «sentada» y abre la cuenta en su mesa (comensales = personas) en una sola transacción. La mesa
  * reservada solo la abre esta reserva (abrirEnTransaccion con `reserva`). → 201 { reserva, cuenta }
  */
 export const sentarReserva = async (id, datos, sesion) => {
@@ -119,10 +137,16 @@ export const sentarReserva = async (id, datos, sesion) => {
     const r = sentarSchema.safeParse(datos ?? {})
     if (!r.success) throw new AppError(400, 'VALIDATION_ERROR', r.error.issues[0]?.message || 'Datos no válidos', detallesZod(r.error))
     if (!OBJECT_ID.test(String(id))) throw reservaNoEncontrada()
-    const previa = await Reserva.findById(id).select('mesa cantidadPersonas').lean()
+    const previa = await Reserva.findById(id).select('mesa cantidadPersonas inicio fecha hora estado').populate('estado', 'codigo').lean()
     if (!previa) throw reservaNoEncontrada()
+    const noSentable = (codigo) => new AppError(409, 'RESERVA_NO_SENTABLE', 'Solo se sienta una reserva pendiente o confirmada.', { estado: codigo })
     const sinMesa = () => new AppError(409, 'RESERVA_SIN_MESA', 'Asigna una mesa a la reserva antes de sentarla.')
+    // Primero el estado: una ya sentada o cerrada no recibe el mensaje del horario
+    const codigoPrevio = await codigoActual(previa)
+    if (!RESERVA_CON_MESA_EDITABLE.includes(codigoPrevio)) throw noSentable(codigoPrevio)
     if (!previa.mesa) throw sinMesa()
+    // Fuera de horario no se toma un código de cuenta (se vuelve a comprobar en la transacción)
+    exigirHorarioDeSentar(previa.inicio || inicioReserva(previa.fecha, previa.hora))
     // Permisos de apertura, mesero y código de la cuenta (fuera de la transacción, como al abrir desde el plano)
     const apertura = await prepararApertura({ mesaId: String(previa.mesa), comensales: previa.cantidadPersonas, ...(r.data.meseroId ? { meseroId: r.data.meseroId } : {}) }, sesion)
 
@@ -130,17 +154,12 @@ export const sentarReserva = async (id, datos, sesion) => {
         const reserva = await Reserva.findById(id).populate('estado', 'codigo').session(session)
         if (!reserva) throw reservaNoEncontrada()
         const codigo = await codigoActual(reserva)
-        if (!RESERVA_CON_MESA_EDITABLE.includes(codigo)) {
-            throw new AppError(409, 'RESERVA_NO_SENTABLE', 'Solo se sienta una reserva pendiente o confirmada.', { estado: codigo })
-        }
+        if (!RESERVA_CON_MESA_EDITABLE.includes(codigo)) throw noSentable(codigo)
         if (!reserva.mesa) throw sinMesa()
         if (String(reserva.mesa) !== String(previa.mesa) || reserva.cantidadPersonas !== previa.cantidadPersonas) {
             throw new AppError(409, 'CONFLICTO_ESTADO', 'La reserva cambió mientras la sentabas. Recarga e intenta de nuevo.')
         }
-        const inicio = reserva.inicio || inicioReserva(reserva.fecha, reserva.hora)
-        if (fechaLocal(inicio) !== fechaLocal(new Date())) {
-            throw new AppError(409, 'RESERVA_NO_ES_HOY', 'Solo se sientan las reservas de hoy.')
-        }
+        exigirHorarioDeSentar(reserva.inicio || inicioReserva(reserva.fecha, reserva.hora))
         const cuenta = await abrirEnTransaccion(apertura, sesion, session, { reserva })
         await cambiarEstado({ tipo: 'reserva', Modelo: Reserva, documento: reserva, a: 'sentada', sesion, cambios: { cuenta: cuenta.id }, session })
         return { reserva: { id: String(reserva._id), codigo: codigoReserva(reserva._id), estadoCodigo: 'sentada', cuenta: cuenta.id }, cuenta }
