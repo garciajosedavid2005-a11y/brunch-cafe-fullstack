@@ -1084,6 +1084,26 @@ const VISTAS = {
     await p.goto(`${FRONT}/staff`);
     await p.getByRole("navigation", { name: /secciones del panel/i }).getByRole("button", { name: "Resumen" }).click();
   } },
+  // 4.1 · Agenda con la mesa de cada reserva: Laura (8:00) en la mesa 2 y Martín (9:00, 3 personas) sin mesa;
+  // en el selector de Martín las mesas de 2 salen como «(pequeña)»
+  "staff-reservas": { usuario: "mesero", preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("navigation", { name: /secciones del panel/i }).getByRole("button", { name: "Reservas" }).click();
+    await p.getByRole("combobox", { name: /Mesa de la reserva/ }).first().waitFor();
+  } },
+  // 4.1 · Choque de horario: Martín (9:00) en la mesa 2, que Laura ocupa a las 8:00 → 409 junto a la reserva
+  "staff-reservas-choque": { usuario: "mesero", completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("navigation", { name: /secciones del panel/i }).getByRole("button", { name: "Reservas" }).click();
+    const tarjeta = p.locator("article").filter({ hasText: "Martín Ruiz" });
+    await p.route(/\/staff\/reservas\/[0-9a-f]+\/mesa$/, (r) => r.fulfill({ status: 409, contentType: "application/json",
+      json: { error: { code: "MESA_OCUPADA_EN_HORARIO", message: "La mesa 2 ya está reservada a las 8:00 a. m. (cada reserva la ocupa desde 15 min antes y durante 90 min)." } } }));
+    const selector = tarjeta.getByRole("combobox", { name: /Mesa de la reserva/ });
+    await selector.locator("option", { hasText: "Mesa 3" }).waitFor({ state: "attached" });
+    await selector.selectOption({ label: "Mesa 3 · 4 personas" });
+    await tarjeta.getByRole("alert").waitFor();
+    await tarjeta.scrollIntoViewIfNeeded();
+  } },
   // 1.6 · Plano de mesas (tablet): /staff abre en el plano para quien tiene mesa:ver
   "staff-plano": { usuario: "mesero", preparar: (p) => p.goto(`${FRONT}/staff`) },
   // 2.4 · Estados del tiempo real sin canal: rechazado por el servidor («Sin tiempo real») o cortado

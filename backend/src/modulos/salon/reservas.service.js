@@ -9,6 +9,7 @@ import { cambiarEstado, estadoPorCodigo, registrarEvento } from '../compartido/e
 import { reservaSchema, reservaStaffSchema } from './reservas.schema.js'
 import { conTransaccion } from '../compartido/transacciones.js'
 import { notificarReservaCreada } from './reservas.correo.js'
+import { problemaDeMesa, tocarMesa } from './reservasSalon.service.js'
 
 // Estados en los que el cliente todavía puede editar o cancelar su reserva
 export const RESERVA_EDITABLE = ['pendiente', 'confirmada']
@@ -79,22 +80,39 @@ export const crearPorStaff = async (sesion, cuerpo) => {
 
 export const editar = async (sesion, id, cuerpo) => {
     const datos = await validarReserva(cuerpo)
-    const reserva = await Reserva.findOne({ _id: id, usuario: sesion.id }).populate('estado', 'codigo')
-    if (!reserva || !RESERVA_EDITABLE.includes(reserva.estado?.codigo)) {
-        throw notFound('No se encontró una reserva activa que puedas editar.')
-    }
-    const cambios = aDocumento(datos)
-    if (reserva.estado.codigo === 'confirmada') {
-        // Una reserva confirmada vuelve a pendiente de aprobación (queda en Evento)
-        await cambiarEstado({
-            tipo: 'reserva', Modelo: Reserva, documento: reserva, a: 'pendiente', actor: 'cliente',
-            sesion, cambios, filtro: { usuario: sesion.id },
-        })
-    } else {
-        reserva.set(cambios)
-        await reserva.save()
-    }
-    return obtenerMia(sesion.id, reserva._id)
+    await conTransaccion(async (session) => {
+        const reserva = await Reserva.findOne({ _id: id, usuario: sesion.id }).populate('estado', 'codigo').session(session)
+        if (!reserva || !RESERVA_EDITABLE.includes(reserva.estado?.codigo)) {
+            throw notFound('No se encontró una reserva activa que puedas editar.')
+        }
+        const cambios = aDocumento(datos)
+        // Fase 4 (F4-i) · Con mesa asignada, la nueva hora o el nuevo número de personas deben seguir cabiendo
+        // en ella (sin choques con otras reservas de la mesa); si no, la mesa se quita y queda un Evento
+        if (reserva.mesa) {
+            const mesa = await tocarMesa(reserva.mesa, session)
+            const problema = !mesa || await problemaDeMesa({
+                mesa, reserva: { _id: reserva._id, inicio: cambios.inicio, cantidadPersonas: cambios.cantidadPersonas }, session,
+            })
+            if (problema) {
+                cambios.mesa = null
+                await registrarEvento({
+                    entidad: 'reserva', entidadId: reserva._id, tipo: 'mesa_asignada', usuario: sesion.id, actor: sesion.rol || 'cliente',
+                    motivo: 'la reserva editada ya no cabe en la mesa', datos: { de: mesa?.numero ?? null, a: null, mesaDe: reserva.mesa, mesaA: null }, session,
+                })
+            }
+        }
+        if (reserva.estado.codigo === 'confirmada') {
+            // Una reserva confirmada vuelve a pendiente de aprobación (queda en Evento)
+            await cambiarEstado({
+                tipo: 'reserva', Modelo: Reserva, documento: reserva, a: 'pendiente', actor: 'cliente',
+                sesion, cambios, filtro: { usuario: sesion.id }, session,
+            })
+        } else {
+            reserva.set(cambios)
+            await reserva.save({ session })
+        }
+    })
+    return obtenerMia(sesion.id, id)
 }
 
 export const cancelar = async (sesion, id) => {

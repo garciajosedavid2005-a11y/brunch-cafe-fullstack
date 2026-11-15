@@ -27,6 +27,7 @@ import { esAdministrador, tienePermiso } from "../../utils/permisos";
 import { textoModificadores } from "../../utils/modificadores";
 import { claseEstado } from "../AdminDashboard/components/estadoUtils";
 import ProfileSection from "../CustomerDashboard/sections/ProfileSection";
+import AgendaReservas from "./reservas/AgendaReservas";
 import SecuritySection from "../CustomerDashboard/sections/SecuritySection";
 import PlanoMesas from "./plano/PlanoMesas";
 import AvisoListos from "./plano/AvisoListos";
@@ -53,6 +54,8 @@ export default function StaffDashboard() {
   const admin = esAdministrador(user);
   const puedeVerReservas = tienePermiso(user, "reserva:ver");
   const puedeCrearReservas = tienePermiso(user, "reserva:crear") && !admin;
+  // 4.1 · Asignar mesa a una reserva (reserva:cambiar_estado) con el plano a la vista (mesa:ver)
+  const puedeAsignarMesa = tienePermiso(user, "reserva:cambiar_estado") && tienePermiso(user, "mesa:ver");
   const puedeVerPedidos = tienePermiso(user, "pedido:ver");
   const puedeVerMesas = tienePermiso(user, "mesa:ver");
   const puedeVerKds = tienePermiso(user, "kds:ver"); // 2.5 · enlace a la pantalla de cocina
@@ -96,6 +99,9 @@ export default function StaffDashboard() {
   const [pedidoActualizando, setPedidoActualizando] = useState("");
   const [errorPedido, setErrorPedido] = useState("");
 
+  // 4.1 · Tras asignar una mesa se vuelve a leer la agenda
+  const [versionReservas, setVersionReservas] = useState(0);
+  const recargarReservas = () => setVersionReservas((v) => v + 1);
   useEffect(() => {
     if (!puedeVerReservas) return undefined;
 
@@ -111,7 +117,7 @@ export default function StaffDashboard() {
     return () => {
       activa = false;
     };
-  }, [puedeVerReservas]);
+  }, [puedeVerReservas, versionReservas]);
 
   useEffect(() => {
     if (!puedeVerPedidos) return undefined;
@@ -406,31 +412,7 @@ export default function StaffDashboard() {
                 <p className="dashboard-empty">No hay reservas registradas.</p>
               )}
               {puedeVerReservas && (
-                <div className="staff-dashboard__reservations">
-                  {reservas.map((reserva) => (
-                    <article className="staff-dashboard__reservation" key={reserva.id}>
-                      <div className="staff-dashboard__reservation-time">
-                        <Clock3 size={17} />
-                        <strong>{formatearHoraTexto(reserva.hora)}</strong>
-                      </div>
-                      <div className="staff-dashboard__reservation-info">
-                        <div className="staff-dashboard__reservation-title">
-                          <h3>{reserva.cliente}</h3>
-                          <span className={claseDeEstado(reserva.estadoCodigo)}>
-                            {reserva.estado}
-                          </span>
-                        </div>
-                        <p>{[formatearFechaCalendario(reserva.fecha, "long"), reserva.telefono, reserva.correo].filter(Boolean).join(" · ")}</p>
-                        {reserva.registradaPor && <p className="staff-dashboard__registrada">Registrada por {reserva.registradaPor.nombre}</p>}
-                        <div className="staff-dashboard__reservation-meta">
-                          <span><Users size={15} />{reserva.personas} {reserva.personas === 1 ? "persona" : "personas"}</span>
-                          <span>{reserva.motivo}</span>
-                          <span>{reserva.codigo}</span>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
+                <AgendaReservas reservas={reservas} puedeAsignar={puedeAsignarMesa} onCambio={recargarReservas} />
               )}
             </div>
           )}

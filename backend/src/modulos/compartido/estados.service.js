@@ -59,9 +59,10 @@ export const registrarEvento = async ({
  * - `cambios` permite guardar otros campos en la misma escritura (p. ej. editar una reserva).
  * - Registra el Evento con el usuario y su rol como actor.
  * - Cambio y Evento van en una transacción (0.9): o quedan los dos o ninguno.
+ * - Fase 4 · Con `session`, se hace dentro de la transacción de quien llama (p. ej. «Sentar» + abrir la cuenta).
  */
 export const cambiarEstado = async ({
-    tipo, Modelo, documento, a, actor = 'staff', sesion, motivo, contexto, cambios = {}, filtro = {},
+    tipo, Modelo, documento, a, actor = 'staff', sesion, motivo, contexto, cambios = {}, filtro = {}, session: sesionExterna,
 }) => {
     const de = await codigoActual(documento)
     const { motivo: motivoFinal } = validarTransicion(tipo, de, a, {
@@ -69,7 +70,7 @@ export const cambiarEstado = async ({
     })
     const [actual, destino] = await Promise.all([estadoPorCodigo(tipo, de), estadoPorCodigo(tipo, a)])
 
-    return conTransaccion(async (session) => {
+    const escribir = async (session) => {
         const actualizado = await Modelo.findOneAndUpdate(
             { _id: documento._id, estado: actual._id, ...filtro },
             { $set: { ...cambios, estado: destino._id } },
@@ -89,7 +90,8 @@ export const cambiarEstado = async ({
             session,
         })
         return actualizado
-    })
+    }
+    return sesionExterna ? escribir(sesionExterna) : conTransaccion(escribir)
 }
 
 /** Opciones de cambio que el dashboard puede ofrecer para un documento. */

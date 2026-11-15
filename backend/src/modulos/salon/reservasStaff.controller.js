@@ -27,6 +27,9 @@ const formatoAdmin = (reserva, { permisos, estados }) => {
         transiciones: opcionesDeCambio('reserva', codigo, { permisos }, estados),
         observaciones: reserva.observaciones || '',
         // Personal que la registró en nombre del cliente; null si la hizo el cliente (0.15e)
+        // Fase 4 · Mesa asignada (null = sin mesa) y cuenta que abrió «Sentar»
+        mesa: reserva.mesa?._id ? { id: String(reserva.mesa._id), numero: reserva.mesa.numero, capacidad: reserva.mesa.capacidad } : null,
+        cuenta: reserva.cuenta ? String(reserva.cuenta) : null,
         registradaPor: reserva.registradaPor?._id
             ? { id: String(reserva.registradaPor._id), nombre: [reserva.registradaPor.nombre, reserva.registradaPor.apellido].filter(Boolean).join(' ') }
             : null,
@@ -38,6 +41,7 @@ const formatoAdmin = (reserva, { permisos, estados }) => {
 // Acciones del staff
 
 const POBLAR_ADMIN = (consulta) => consulta.populate('usuario', '-contraseña').populate('registradaPor', 'nombre apellido').populate('estado')
+    .populate('mesa', 'numero capacidad')
 
 export const listarReservas = async (req, res) => {
     const [reservas, estados] = await Promise.all([

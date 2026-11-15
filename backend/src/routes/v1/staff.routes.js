@@ -12,6 +12,7 @@ import cocinaRoutes from '../../modulos/cocina/cocina.routes.js'
 import eventosRoutes from '../../modulos/tiempoReal/eventos.routes.js'
 import agotadosRoutes from '../../modulos/catalogo/agotados.routes.js'
 import cajaRoutes from '../../modulos/caja/caja.routes.js'
+import { asignarMesa } from '../../modulos/salon/reservasSalon.service.js'
 
 // /api/v1/staff: operación del salón y la cocina, por permiso (no por rol)
 const router = Router()
@@ -20,6 +21,10 @@ router.use(validateToken)
 router.get('/reservas', requirePermission('reserva:ver'), listarReservas)
 router.post('/reservas', requirePermission('reserva:crear'), validateSchema(reservaStaffSchema), crearReserva)
 router.patch('/reservas/:id/estado', requirePermission('reserva:cambiar_estado'), validateSchema(cambioEstadoSchema), cambiarEstadoReserva)
+// 4.1 · Asignar o quitar la mesa de una reserva (el servicio valida el cuerpo y vuelve a exigir el permiso)
+router.patch('/reservas/:id/mesa', requirePermission('reserva:cambiar_estado'), async (req, res) => {
+    res.json(await asignarMesa(req.params.id, req.body, req.usuario))
+})
 
 // Pedidos (0.13): listar con filtros y ver con historial (pedido:ver), cambiar estado
 // (permiso de cada transición) y cancelar con motivo (pedido:cancelar)

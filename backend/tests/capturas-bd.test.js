@@ -83,7 +83,9 @@ describe('Preparar la BD de capturas', () => {
         expect(await verificarConsistenciaSalon()).toMatchObject({ ok: true })
         // Un pedido y una reserva del cliente de prueba (las vistas de detalle los necesitan)
         expect(await Pedido.countDocuments()).toBe(1)
-        expect(await Reserva.countDocuments()).toBe(1)
+        // y (Fase 4) dos de hoy para la agenda: una confirmada en la mesa 2 y una pendiente sin mesa
+        expect(await Reserva.countDocuments()).toBe(3)
+        expect(await Reserva.countDocuments({ mesa: { $type: 'objectId' } })).toBe(1)
         expect(r.usuarios).toBe(5)
     })
 

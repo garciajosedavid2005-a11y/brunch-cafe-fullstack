@@ -6,7 +6,7 @@ import { sembrarSalonEjemplo } from './salon.js'
 import { sembrarUsuariosDev } from './dev.js'
 import Usuario from '../modulos/identidad/usuario.model.js'
 import Reserva from '../modulos/salon/reserva.model.js'
-import { instanteLocal } from '../modulos/compartido/fechas.js'
+import { fechaLocal, instanteLocal } from '../modulos/compartido/fechas.js'
 import { estadoPorCodigo, registrarEvento } from '../modulos/compartido/estados.service.js'
 import Mesa from '../modulos/salon/mesa.model.js'
 import Cuenta from '../modulos/salon/cuenta.model.js'
@@ -67,7 +67,29 @@ export const sembrarDatosCapturas = async ({ password }) => {
     })
     await registrarEvento({ entidad: 'reserva', entidadId: reserva._id, a: 'pendiente', actor: 'sistema', motivo: 'capturas' })
     await sembrarSalonEnServicio()
+    await sembrarReservasDeHoy()
     return { usuarios }
+}
+
+/**
+ * Fase 4 · Agenda de hoy (las capturas corren a las 6:00 a. m.): Laura (8:00, 2 personas, confirmada, en la
+ * mesa 2, libre) y Martín (9:00, 3 personas, pendiente y sin mesa). Registradas por el mesero (sin correo).
+ */
+const sembrarReservasDeHoy = async () => {
+    const mesero = await Usuario.findOne({ correo: 'mesero.dev@brunchcafe.test' }).select('_id').lean()
+    const hoy = fechaLocal()
+    const mesa2 = await Mesa.findOne({ numero: 2 }).select('_id').lean()
+    const datos = [
+        { nombre: 'Laura Gómez', telefono: '3001112233', cantidadPersonas: 2, hora: '08:00', estado: 'confirmada', mesa: mesa2?._id ?? null, motivo: 'Desayuno de trabajo' },
+        { nombre: 'Martín Ruiz', telefono: '3004445566', cantidadPersonas: 3, hora: '09:00', estado: 'pendiente', mesa: null, motivo: 'Cumpleaños' },
+    ]
+    for (const { estado, hora, ...resto } of datos) {
+        const reserva = await Reserva.create({
+            ...resto, usuario: null, registradaPor: mesero._id, estado: (await estadoPorCodigo('reserva', estado))._id,
+            fecha: new Date(`${hoy}T12:00:00Z`), hora, inicio: instanteLocal(hoy, hora),
+        })
+        await registrarEvento({ entidad: 'reserva', entidadId: reserva._id, a: estado, actor: 'sistema', motivo: 'capturas' })
+    }
 }
 
 /**

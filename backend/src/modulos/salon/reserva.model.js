@@ -66,6 +66,19 @@ const reservaSchema = new mongoose.Schema({
         type: String,
         trim: true,
         maxlength: 200
+    },
+    // Fase 4 · Mesa asignada por el personal (null = sin mesa; las anteriores a la Fase 4 no tienen el campo).
+    // Dos reservas activas de una mesa no se solapan (reservas.bloque.js, verificado en la transacción)
+    mesa: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Mesa',
+        default: null
+    },
+    // Fase 4 · Cuenta que abrió «Sentar» (null hasta entonces)
+    cuenta: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Cuenta',
+        default: null
     }
 }, {
     timestamps: true
@@ -77,5 +90,8 @@ reservaSchema.pre('validate', function () {
         this.inicio = inicioReserva(this.fecha, this.hora)
     }
 })
+
+// Fase 4 · Choques de una mesa por horario y reservas próximas del plano (solo las que tienen mesa)
+reservaSchema.index({ mesa: 1, inicio: 1 }, { name: 'mesa_inicio', partialFilterExpression: { mesa: { $type: 'objectId' } } })
 
 export default mongoose.model('Reserva', reservaSchema)

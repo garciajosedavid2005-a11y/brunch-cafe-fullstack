@@ -1,0 +1,36 @@
+/* Fase 4 · Agenda de reservas: mesa asignada (4.1) */
+.agenda__mesa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.agenda__mesa label {
+  margin: 0;
+  color: #594742;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.agenda__mesa select {
+  /* Mismo ancho en todas las tarjetas (no según la opción más larga) */
+  width: 17rem;
+  max-width: 100%;
+  min-height: 44px;
+  margin: 0;
+}
+
+.agenda__error {
+  flex-basis: 100%;
+  margin: 0;
+  color: #9b1c1c;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.agenda__mesa-fija {
+  font-weight: 700;
+  color: var(--color-oscuro);
+}

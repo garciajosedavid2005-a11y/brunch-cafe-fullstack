@@ -36,6 +36,8 @@ export const TIPOS_EVENTO = [
     'comprobante_anulado',
     // 3b.4 · Cobro de un domicilio al recibirlo (entidad 'pedido'; datos: comprobante, montos y métodos)
     'pedido_cobrado',
+    // 4.1 · Mesa asignada o quitada a una reserva (entidad 'reserva'; datos: de y a, números de mesa o null)
+    'mesa_asignada',
 ]
 const eventoSchema = new mongoose.Schema({
     entidad: {
