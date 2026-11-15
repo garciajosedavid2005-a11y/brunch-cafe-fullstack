@@ -272,7 +272,7 @@ describe('Protecciones de roles', () => {
 
     it('"*" y los permisos reservados no se pueden asignar; claves desconocidas tampoco', async () => {
         const { sesion } = await crearConSesion('admin')
-        for (const permisos of [['*'], ['caja:cerrar'], ['hacer:todo']]) {
+        for (const permisos of [['*'], ['inventario:gestionar'], ['hacer:todo']]) {
             const res = await sesion.post('/api/v1/admin/roles').send({ nombre: 'Prueba', permisos })
             expect(res.status, JSON.stringify(permisos)).toBe(400)
             expect(res.body.error.code).toBe('VALIDATION_ERROR')
@@ -342,7 +342,8 @@ describe('Protecciones de roles', () => {
             modulo: 'reservas',
             reservado: false,
         })
-        expect(porClave['caja:cerrar'].reservado).toBe(true)
+        expect(porClave['inventario:gestionar'].reservado).toBe(true)
+        expect(porClave['caja:cerrar'].reservado).toBe(false) // 3b
         expect(porClave['*']).toBeUndefined()
     })
 })

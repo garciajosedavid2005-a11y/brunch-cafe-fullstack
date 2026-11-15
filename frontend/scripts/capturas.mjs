@@ -1405,8 +1405,21 @@ const VISTAS = {
   } },
   // Fase 3 · Caja (cajero.dev): la cuenta pedida de la mesa 3 del salón sembrado. Van al final: el cobro
   // cierra esa cuenta en la BD de capturas (la mesa 3 queda por limpiar)
+  // 3b.1 · Caja cerrada (sin turno): «Cobrar» deshabilitado y el formulario de la base. Va antes de staff-caja
+  "staff-caja-cerrada": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByText("La caja está cerrada").waitFor();
+    await p.getByLabel("Base en efectivo").fill("150000");
+  } },
   "staff-caja": { usuario: "cajero", completa: false, preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);
+    // 3b.1 · Sin turno no se cobra: la primera vista que llega aquí lo abre con la base
+    await p.getByRole("region", { name: "Turno de caja" }).waitFor();
+    if (await p.getByRole("button", { name: "Abrir turno" }).count()) {
+      await p.getByLabel("Base en efectivo").fill("150000");
+      await p.getByRole("button", { name: "Abrir turno" }).click();
+      await p.getByText(/^Turno T-\d+ abierto$/).waitFor();
+    }
     await p.getByRole("list", { name: "Cuentas por cobrar" }).getByRole("button", { name: /^Cobrar Mesa 3/ }).waitFor();
   } },
   "staff-caja-cobro": { usuario: "cajero", completa: false, preparar: async (p) => {
@@ -1463,6 +1476,12 @@ const VISTAS = {
   "staff-caja-cobradas": { usuario: "cajero", completa: false, preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);
     await p.getByRole("list", { name: "Cobradas hoy" }).getByRole("button", { name: /^Ver comprobante CI-/ }).first().waitFor();
+  } },
+  // 3b.1 · Cierre del turno con arqueo (sin confirmar: el turno sigue abierto para los otros tamaños)
+  "staff-caja-cierre": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: "Cerrar turno" }).click();
+    await p.getByLabel("Contado en efectivo").fill("180000");
   } },
 };
 

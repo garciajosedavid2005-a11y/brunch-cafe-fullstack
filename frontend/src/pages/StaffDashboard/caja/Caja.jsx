@@ -9,6 +9,9 @@ import { formatearMinutos } from "../plano/estadosMesa";
 import { etiquetaMetodo } from "./cobro";
 import CobrarCuenta from "./CobrarCuenta";
 import Comprobante from "./Comprobante";
+import { FranjaTurno, CerrarTurno } from "./TurnoCaja";
+import { useAuth } from "../../../context/useAuth";
+import { tienePermiso } from "../../../utils/permisos";
 import "./Caja.css";
 
 // Fase 3 · Pestaña «Caja» de /staff (cuenta:cobrar; F3-1): las cuentas en «cuenta pedida» (F3-6) y las
@@ -23,12 +26,18 @@ export default function Caja() {
   const enLista = vista.tipo === "lista";
   const porCobrar = useSondeo("/v1/staff/caja/cuentas", 15_000, { activo: enLista, canales: CANALES, mensajeError: "No se pudo cargar la caja." });
   const cobradas = useSondeo("/v1/staff/caja/comprobantes", 30_000, { activo: enLista, canales: CANALES, mensajeError: "No se pudieron cargar las cobradas." });
+  // 3b.1 · Turno de caja: sin turno abierto no se cobra
+  const turnoSondeo = useSondeo("/v1/staff/caja/turno", 30_000, { activo: enLista, canales: CANALES, mensajeError: "No se pudo cargar el turno." });
+  const { user } = useAuth();
+  const turno = turnoSondeo.datos?.turno || null;
+  const turnoCargado = Boolean(turnoSondeo.datos);
   const [errorComprobante, setErrorComprobante] = useState("");
 
   const volver = () => {
     setVista({ tipo: "lista" });
     porCobrar.recargar();
     cobradas.recargar();
+    turnoSondeo.recargar();
   };
   const verComprobante = async (id) => {
     setErrorComprobante("");
@@ -43,6 +52,7 @@ export default function Caja() {
     return <CobrarCuenta cuenta={vista.cuenta} onVolver={volver} onCobrada={(comprobante) => setVista({ tipo: "comprobante", comprobante })} />;
   }
   if (vista.tipo === "comprobante") return <Comprobante comprobante={vista.comprobante} onVolver={volver} />;
+  if (vista.tipo === "cerrar-turno" && turno) return <CerrarTurno turno={turno} onVolver={volver} />;
 
   const cuentas = porCobrar.datos?.cuentas || [];
   const hoy = cobradas.datos?.comprobantes || [];
@@ -52,6 +62,9 @@ export default function Caja() {
         <h2 className="caja__titulo">Caja</h2>
         <Actualizado desde={porCobrar.actualizadoEn} error={porCobrar.error} onActualizar={porCobrar.recargar} enVivo={porCobrar.enVivo} />
       </div>
+
+      <FranjaTurno turno={turno} cargado={turnoCargado} puedeAbrir={tienePermiso(user, "caja:abrir")} puedeCerrar={tienePermiso(user, "caja:cerrar")}
+        onAbierto={turnoSondeo.recargar} onCerrar={() => setVista({ tipo: "cerrar-turno" })} />
 
       <h3 className="caja__subtitulo">Por cobrar <span className="caja__conteo">{cuentas.length}</span></h3>
       {!porCobrar.datos && !porCobrar.error && <p className="caja__vacio">Cargando…</p>}
@@ -69,6 +82,7 @@ export default function Caja() {
               </div>
               <strong className="caja__cuenta-total">{formatearCOP(c.total)}</strong>
               <button type="button" className="caja__boton caja__boton--primario" aria-label={`Cobrar ${mesasTexto(c.mesas)}, ${formatearCOP(c.total)}`}
+                disabled={!turno} title={turno ? undefined : "Abre el turno de caja para cobrar"}
                 onClick={() => setVista({ tipo: "cobrar", cuenta: c })}>
                 <Wallet size={18} aria-hidden="true" /> Cobrar
               </button>

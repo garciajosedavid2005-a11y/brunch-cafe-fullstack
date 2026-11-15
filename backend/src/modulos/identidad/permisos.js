@@ -41,10 +41,12 @@ export const PERMISOS = [
     { clave: 'producto:reactivar', modulo: 'catalogo', descripcion: 'Volver a ofrecer un producto u opción agotado' },
     // Fase 3 · cobro en caja (F3-1): cajero y admin (por «*»)
     { clave: 'cuenta:cobrar', modulo: 'caja', descripcion: 'Cobrar cuentas en caja y emitir el comprobante interno' },
+    // Fase 3b · caja completa (PLAN_FASE_3B): turno y arqueo (cajero), anulación (solo admin) y domicilios
+    { clave: 'caja:abrir', modulo: 'caja', descripcion: 'Abrir el turno de caja con la base' },
+    { clave: 'caja:cerrar', modulo: 'caja', descripcion: 'Cerrar el turno de caja con el arqueo' },
+    { clave: 'factura:anular', modulo: 'caja', descripcion: 'Anular comprobantes con nota crédito' },
+    { clave: 'pedido:cobrar', modulo: 'caja', descripcion: 'Registrar el cobro contra entrega de un domicilio' },
     // Fases futuras (reservados)
-    { clave: 'caja:abrir', modulo: 'caja', descripcion: 'Abrir turno de caja', reservado: true },
-    { clave: 'caja:cerrar', modulo: 'caja', descripcion: 'Cerrar turno de caja y arqueo', reservado: true },
-    { clave: 'factura:anular', modulo: 'caja', descripcion: 'Anular comprobantes / emitir nota crédito', reservado: true },
     { clave: 'inventario:gestionar', modulo: 'inventario', descripcion: 'Gestionar insumos, recetas y movimientos', reservado: true },
     { clave: 'reporte:ver', modulo: 'reportes', descripcion: 'Ver reportes de ventas y operación', reservado: true },
 ]
@@ -86,7 +88,12 @@ export const PERMISOS_COCINA = {
 
 // Permiso de cobro de la Fase 3 (F3-1). La migración 3.1 usa una copia fija; un cambio aquí necesita su
 // propia migración. El admin cobra por "*"; el mesero no cobra.
-export const PERMISOS_CAJA = { cajero: ['cuenta:cobrar'] }
+// 3b · El cajero abre y cierra el turno y cobra domicilios; el repartidor cobra los suyos contra entrega.
+// factura:anular solo el admin ("*"). La migración 3b usa una copia fija de lo que agrega.
+export const PERMISOS_CAJA = {
+    cajero: ['cuenta:cobrar', 'caja:abrir', 'caja:cerrar', 'pedido:cobrar'],
+    repartidor: ['pedido:cobrar'],
+}
 
 // 2.5b · Estaciones del KDS de cada rol al crearlo (Brayan, 2026-11-13): cocina → Cocina, barista → Barra.
 // Las edita el admin en Admin › Roles; los roles existentes las reciben con la migración 2.5b.
@@ -104,7 +111,7 @@ export const ROLES_STAFF = [
     { nombre: 'cocina', etiqueta: 'Cocina', descripcion: 'Prepara los platos.', permisos: ['pedido:ver', ...PERMISOS_COCINA.cocina], estaciones: ESTACIONES_POR_ROL.cocina },
     { nombre: 'barista', etiqueta: 'Barista', descripcion: 'Prepara las bebidas.', permisos: ['pedido:ver', ...PERMISOS_COCINA.barista], estaciones: ESTACIONES_POR_ROL.barista },
     { nombre: 'cajero', etiqueta: 'Cajero', descripcion: 'Cobra cuentas y gestiona la caja.', permisos: ['pedido:ver', ...PERMISOS_CAJA.cajero] },
-    { nombre: 'repartidor', etiqueta: 'Repartidor', descripcion: 'Entrega pedidos a domicilio.', permisos: ['pedido:ver'] },
+    { nombre: 'repartidor', etiqueta: 'Repartidor', descripcion: 'Entrega pedidos a domicilio.', permisos: ['pedido:ver', ...PERMISOS_CAJA.repartidor] },
 ]
 
 // 1.7b · Atiende mesas quien tiene comanda:tomar en su rol, sin contar el comodín: el administrador

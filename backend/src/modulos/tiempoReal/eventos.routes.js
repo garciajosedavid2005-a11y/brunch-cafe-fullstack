@@ -39,7 +39,7 @@ export const validarCanales = (texto, sesion) => {
         const permitido = {
             plano: () => tienePermiso(sesion.permisos, 'mesa:ver'),
             // Fase 3 · La caja (cuentas por cobrar y cobradas): solo quien cobra
-            caja: () => tienePermiso(sesion.permisos, 'cuenta:cobrar'),
+            caja: () => ['cuenta:cobrar', 'caja:abrir', 'caja:cerrar'].some((c) => tienePermiso(sesion.permisos, c)), // 3b (no el repartidor)
             // 2.7 · Agotados y reactivados: quien toma comanda, el KDS y quien agota o reactiva
             catalogo: () => ['comanda:tomar', 'kds:ver', 'producto:agotar', 'producto:reactivar'].some((p) => tienePermiso(sesion.permisos, p)),
             // 2.5b · y que la estación sea de su rol (el comodín, todas)

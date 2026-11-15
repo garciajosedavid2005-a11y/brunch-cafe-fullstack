@@ -4,8 +4,9 @@ import { estadoPagos, pesos, propinaSugerida, cuerpoCobro } from "./cobro";
 
 // Fase 3 · Caja (F3-1 a F3-6): cuentas por cobrar, cobro con propina, efectivo y cambio, pago mixto y
 // comprobante con sus leyendas; en vivo por el canal «caja».
-const estado = vi.hoisted(() => ({ apiRequest: vi.fn() }));
+const estado = vi.hoisted(() => ({ apiRequest: vi.fn(), usuario: { permisos: ["*"] } }));
 vi.mock("../../../services/api", () => ({ apiRequest: estado.apiRequest, API_URL: "http://api.test" }));
+vi.mock("../../../context/useAuth", () => ({ useAuth: () => ({ user: estado.usuario }) }));
 
 import Caja from "./Caja";
 
@@ -25,12 +26,19 @@ const COMPROBANTE = {
   leyendas: ["Precios con impuestos incluidos", "Documento no válido como factura electrónica"],
 };
 
+// 3b.1 · Turno abierto (sin turno, «Cobrar» queda deshabilitado)
+const TURNO = { id: "t1", codigo: "T-000001", estado: "abierto", base: 100000, abiertoPor: "Carla C.", abiertoEn: "2026-11-14T12:00:00Z", cobros: 0,
+  esperado: [{ metodo: "efectivo", esperado: 100000 }, { metodo: "tarjeta", esperado: 0 }, { metodo: "transferencia", esperado: 0 }], arqueo: [] };
 let respuestas;
 beforeEach(() => {
   FakeEventSource.instancias = [];
   globalThis.EventSource = FakeEventSource;
-  respuestas = { cuentas: [CUENTA], hoy: [], cobro: () => Promise.resolve({ cuenta: { id: "c1", estado: "cerrada" }, comprobante: COMPROBANTE }) };
+  estado.usuario = { permisos: ["*"] };
+  respuestas = { turno: TURNO, cuentas: [CUENTA], hoy: [], cobro: () => Promise.resolve({ cuenta: { id: "c1", estado: "cerrada" }, comprobante: COMPROBANTE }) };
   estado.apiRequest.mockReset().mockImplementation((ruta, opciones = {}) => {
+    if (ruta === "/v1/staff/caja/turno") return Promise.resolve({ turno: respuestas.turno });
+    if (ruta === "/v1/staff/caja/turno/abrir" && opciones.method === "POST") return Promise.resolve({ turno: TURNO });
+    if (ruta === "/v1/staff/caja/turno/cerrar" && opciones.method === "POST") return respuestas.cierre(opciones);
     if (ruta === "/v1/staff/caja/cuentas") return Promise.resolve({ cuentas: respuestas.cuentas });
     if (ruta === "/v1/staff/caja/comprobantes") return Promise.resolve({ comprobantes: respuestas.hoy });
     if (ruta === "/v1/staff/caja/comprobantes/k1") return Promise.resolve(COMPROBANTE);
@@ -44,7 +52,9 @@ const re = (texto) => new RegExp(`^${texto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"
 const cuerpoEnviado = () => JSON.parse(estado.apiRequest.mock.calls.find(([r, o]) => r.endsWith("/cobrar") && o?.method === "POST")[1].body);
 const abrirCobro = async () => {
   render(<Caja />);
-  fireEvent.click(await screen.findByRole("button", { name: re("Cobrar Mesa 3, $ 30.000") }));
+  const boton = await screen.findByRole("button", { name: re("Cobrar Mesa 3, $ 30.000") });
+  await waitFor(() => expect(boton).toBeEnabled()); // con el turno ya cargado
+  fireEvent.click(boton);
 };
 
 describe("Cálculos del cobro", () => {
@@ -148,5 +158,45 @@ describe("Caja", () => {
     render(<Caja />);
     fireEvent.click(await screen.findByRole("button", { name: "Ver comprobante CI-000001" }));
     expect(await screen.findByRole("article", { name: "Comprobante CI-000001" })).toHaveTextContent("Huevos pericos");
+  });
+});
+
+describe("Turno de caja (3b.1)", () => {
+  it("sin turno: «La caja está cerrada», «Cobrar» deshabilitado y se abre con la base", async () => {
+    respuestas.turno = null;
+    render(<Caja />);
+    expect(await screen.findByText("La caja está cerrada")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: re("Cobrar Mesa 3, $ 30.000") })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Base en efectivo"), { target: { value: "150.000" } });
+    respuestas.turno = TURNO;
+    fireEvent.click(screen.getByRole("button", { name: "Abrir turno" }));
+    await waitFor(() => expect(estado.apiRequest).toHaveBeenCalledWith("/v1/staff/caja/turno/abrir", expect.objectContaining({ method: "POST", body: JSON.stringify({ base: 150000 }) })));
+    expect(await screen.findByText("Turno T-000001 abierto")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: re("Cobrar Mesa 3, $ 30.000") })).toBeEnabled());
+  });
+
+  it("sin caja:abrir no se ofrece abrir el turno", async () => {
+    respuestas.turno = null;
+    estado.usuario = { permisos: ["cuenta:cobrar"] };
+    render(<Caja />);
+    expect(await screen.findByText(/alguien con permiso debe abrir el turno/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Abrir turno" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cerrar turno" })).not.toBeInTheDocument();
+  });
+
+  it("cerrar: muestra esperado, contado y diferencia en vivo y envía lo contado", async () => {
+    respuestas.cierre = () => Promise.resolve({ turno: { ...TURNO, estado: "cerrado", arqueo: [
+      { metodo: "efectivo", esperado: 100000, contado: 98000, diferencia: -2000 },
+      { metodo: "tarjeta", esperado: 0, contado: 0, diferencia: 0 },
+      { metodo: "transferencia", esperado: 0, contado: 0, diferencia: 0 },
+    ] } });
+    render(<Caja />);
+    fireEvent.click(await screen.findByRole("button", { name: "Cerrar turno" }));
+    fireEvent.change(screen.getByLabelText("Contado en efectivo"), { target: { value: "98000" } });
+    expect(screen.getByText(/^Faltan\s\$\s2\.000$/)).toBeInTheDocument(); // la fila de efectivo, en vivo
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar turno" }));
+    await waitFor(() => expect(estado.apiRequest).toHaveBeenCalledWith("/v1/staff/caja/turno/cerrar",
+      expect.objectContaining({ body: JSON.stringify({ contado: { efectivo: 98000, tarjeta: 0, transferencia: 0 } }) })));
+    expect(await screen.findByRole("heading", { name: "Turno T-000001 cerrado" })).toBeInTheDocument();
   });
 });

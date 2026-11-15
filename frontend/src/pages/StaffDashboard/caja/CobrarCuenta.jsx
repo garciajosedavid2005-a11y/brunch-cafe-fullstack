@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { apiRequest } from "../../../services/api";
-import { formatearCOP, formatearMiles } from "../../../utils/moneda";
+import { formatearCOP } from "../../../utils/moneda";
 import { nuevaClave } from "../plano/estadosMesa";
-import { METODOS, cuerpoCobro, estadoPagos, pesos, propinaSugerida } from "./cobro";
+import { METODOS, cuerpoCobro, estadoPagos, propinaSugerida } from "./cobro";
+import CampoPesos from "./CampoPesos";
 
 // Fase 3 · Cobrar una cuenta (F3-2, F3-3): propina voluntaria (atajos «10 %» y «Sin propina»), uno o varios
 // pagos (uno por método) y, en efectivo, lo recibido y el cambio. «Cobrar» solo se habilita cuando los pagos
@@ -17,19 +18,6 @@ const textoEstado = ({ restante, valido, cambio }) => {
   if (!valido) return "Revisa los montos y el efectivo recibido";
   return cambio > 0 ? `Los pagos cuadran · Cambio ${formatearCOP(cambio)}` : "Los pagos cuadran";
 };
-
-function CampoPesos({ id, etiqueta, valor, onCambiar, descripcion, onSalir }) {
-  return (
-    <div className="caja-cobro__campo">
-      <label htmlFor={id}>{etiqueta}</label>
-      <span className="caja-cobro__pesos">
-        <span aria-hidden="true">$</span>
-        <input id={id} type="text" inputMode="numeric" autoComplete="off" value={formatearMiles(valor)} placeholder="0"
-          aria-describedby={descripcion} onChange={(e) => onCambiar(pesos(e.target.value))} onBlur={onSalir} />
-      </span>
-    </div>
-  );
-}
 
 export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
   const id = useId();

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 // 3.7 · Caso real de la caja: cuenta de $ 20.000, efectivo y «Sin propina». «Monto a pagar» quedó en $ 0
 // y con $ 90.000 recibidos mostró «Cambio: $ 90.000» (debía ser $ 70.000). El monto a pagar se prellena con
@@ -7,6 +7,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 // calcula sobre él.
 const estado = vi.hoisted(() => ({ apiRequest: vi.fn() }));
 vi.mock("../../../services/api", () => ({ apiRequest: estado.apiRequest, API_URL: "http://api.test" }));
+vi.mock("../../../context/useAuth", () => ({ useAuth: () => ({ user: { permisos: ["*"] } }) }));
 
 import Caja from "./Caja";
 
@@ -21,6 +22,7 @@ const CUENTA = { id: "c1", codigo: "C-000009", mesas: [4], mesero: "Ana P.", com
 beforeEach(() => {
   globalThis.EventSource = FakeEventSource;
   estado.apiRequest.mockReset().mockImplementation((ruta) => {
+    if (ruta === "/v1/staff/caja/turno") return Promise.resolve({ turno: { id: "t1", codigo: "T-000001", base: 0, abiertoEn: "2026-11-14T12:00:00Z" } });
     if (ruta === "/v1/staff/caja/cuentas") return Promise.resolve({ cuentas: [CUENTA] });
     if (ruta === "/v1/staff/caja/comprobantes") return Promise.resolve({ comprobantes: [] });
     return Promise.reject(new Error(`Ruta inesperada ${ruta}`));
@@ -29,7 +31,9 @@ beforeEach(() => {
 
 const abrirCobro = async () => {
   render(<Caja />);
-  fireEvent.click(await screen.findByRole("button", { name: /^Cobrar Mesa 4/ }));
+  const boton = await screen.findByRole("button", { name: /^Cobrar Mesa 4/ });
+  await waitFor(() => expect(boton).toBeEnabled()); // 3b.1 · con el turno ya cargado
+  fireEvent.click(boton);
 };
 const monto = () => screen.getByLabelText("Monto a pagar");
 const textoCambio = () => screen.getByText(/^Cambio:/).textContent.replace(/\s/g, " ");

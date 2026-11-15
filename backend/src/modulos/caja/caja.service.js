@@ -79,7 +79,9 @@ export const formatoComprobante = (c) => ({
  * misma transacción: si el cobro falla, el número no se gasta y no quedan huecos) y guarda la copia
  * de lo cobrado: ítems enviados y no anulados, propina y pagos.
  */
-export const emitirComprobante = async ({ cuenta, comandas, propina, total, pagos, sesion, session }) => {
+export const emitirComprobante = async ({ cuenta, comandas, propina, total, pagos, sesion, session, turno }) => {
+    // 3b.1 · Todo comprobante nuevo es de un turno abierto (lo exige el cobro); sin él es un fallo nuestro
+    if (!turno?._id) throw new AppError(500, 'COMPROBANTE_SIN_TURNO', 'No se pudo emitir el comprobante. Avisa al administrador.')
     // upsert por si el contador falta (asegurarContador ya lo crea antes, fuera de la transacción)
     const { seq: numero } = await Contador.findOneAndUpdate({ _id: CONTADOR }, { $inc: { seq: 1 } }, { returnDocument: 'after', upsert: true, session })
     const nombres = await nombresDe([cuenta.mesero, sesion.id], session)
@@ -95,6 +97,7 @@ export const emitirComprobante = async ({ cuenta, comandas, propina, total, pago
         numero,
         codigo: codigoComprobante(numero),
         cuenta: cuenta._id,
+        turno: turno._id,
         mesas: cuenta.mesas.map((m) => m.numero),
         mesero: { id: cuenta.mesero, nombre: nombres.get(String(cuenta.mesero)) || '' },
         cajero: { id: sesion.id, nombre: nombres.get(String(sesion.id)) || '' },

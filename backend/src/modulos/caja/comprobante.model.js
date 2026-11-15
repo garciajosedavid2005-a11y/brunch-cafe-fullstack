@@ -40,6 +40,8 @@ const comprobanteSchema = new mongoose.Schema({
     numero: { type: Number, required: true, min: 1, validate: entero('El número') },
     codigo: { type: String, required: true },
     cuenta: { type: mongoose.Schema.Types.ObjectId, ref: 'Cuenta', required: true },
+    // 3b.1 · Turno de caja en el que se cobró (los comprobantes anteriores a 3b no lo tienen)
+    turno: { type: mongoose.Schema.Types.ObjectId, ref: 'TurnoCaja', default: null },
     mesas: { type: [Number], default: [] },
     mesero: { type: persona, required: true },
     cajero: { type: persona, required: true },
@@ -56,6 +58,7 @@ const comprobanteSchema = new mongoose.Schema({
 comprobanteSchema.index({ numero: 1 }, { unique: true })
 comprobanteSchema.index({ cuenta: 1 }, { unique: true })
 comprobanteSchema.index({ emitidoEn: -1 }) // «Cobradas hoy»
+comprobanteSchema.index({ turno: 1 }) // 3b.1 · arqueo del turno
 
 const inmutable = () => new AppError(500, 'COMPROBANTE_INMUTABLE', 'Los comprobantes no se pueden modificar ni borrar.')
 

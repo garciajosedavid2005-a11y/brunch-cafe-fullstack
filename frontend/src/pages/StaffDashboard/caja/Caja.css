@@ -296,3 +296,37 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* 3b.1 · Turno de caja: franja con el estado (abierto o cerrado) y el cierre con arqueo */
+.caja-turno {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #d9c6c1;
+  border-left-width: 5px;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--color-oscuro);
+}
+.caja-turno--abierto { border-left-color: #1d5b2e; }
+.caja-turno--cerrado { border-left-color: #890620; background: #fbf3f1; }
+.caja-turno__texto { display: grid; gap: 0.15rem; flex: 1 1 260px; min-width: 0; margin: 0; color: #594742; }
+.caja-turno__texto strong { color: var(--color-oscuro); font-size: 1.05rem; }
+.caja-turno__abrir { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.6rem; }
+.caja-turno__abrir .caja-cobro__campo { min-width: 200px; }
+
+.caja-cierre { display: grid; gap: 1rem; }
+.caja-cierre .caja__titulo { font-variant-numeric: lining-nums; } /* «T-000001» legible con la tipografía de títulos */
+.caja-cierre__tabla tbody tr { background: #fff; }
+.caja-cierre .caja-cobro__total { justify-content: flex-start; gap: 0.5rem; }
+.caja-cierre__tabla { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #d9c6c1; border-radius: 12px; }
+.caja-cierre__tabla th, .caja-cierre__tabla td { padding: 0.6rem 0.75rem; text-align: left; vertical-align: middle; border-bottom: 1px solid #eee2de; }
+.caja-cierre__tabla thead th { color: #594742; font-size: 0.85rem; text-transform: none; }
+.caja-cierre__tabla .caja-cobro__campo label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.caja-cierre__cuadra { color: #1d5b2e; font-weight: 700; }
+.caja-cierre__descuadre { color: #8a1c0c; font-weight: 700; }
+.caja-cierre__estado { display: block; font-weight: 600; font-size: 0.85rem; }
+.caja-cierre__nota { width: 100%; min-height: 44px; padding: 0.5rem 0.75rem; border: 1px solid #b9a49f; border-radius: 8px; font: inherit; }
+.caja-cierre .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

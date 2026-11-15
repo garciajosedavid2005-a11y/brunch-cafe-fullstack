@@ -28,6 +28,7 @@ import {
 import { MAX_MESAS_POR_CUENTA } from './cuenta.model.js'
 import { cobrarSchema } from '../caja/caja.schema.js'
 import { asegurarContador, calcularPagos, emitirComprobante, formatoComprobante } from '../caja/caja.service.js'
+import { tomarTurnoAbierto } from '../caja/turno.service.js'
 
 // 1.4 · Núcleo de cuenta y comanda (sin endpoints: llegan en 1.5 y reciben `sesion` = req.usuario).
 // Reglas:
@@ -679,13 +680,14 @@ export const cobrarCuenta = async (cuentaId, datos, sesion) => {
     await asegurarContador()
 
     return conTransaccion(async (session) => {
+        const turno = await tomarTurnoAbierto(session) // 3b.1 · sin turno abierto no se cobra
         const cuenta = await tocarCuenta(cuentaId, { versionEsperada }, session)
         MAQUINA_CUENTA.validar(cuenta.estado, 'cerrada', { permisos: permisosDe(sesion) })
         const total = cuenta.total + propina
         const pagosCalculados = calcularPagos(pagos, total)
         const comandas = await comandasDe(cuenta._id, session).lean()
         await cerrarCuenta(cuenta, 'cerrada', { sesion, session, motivo: '' })
-        const comprobante = await emitirComprobante({ cuenta, comandas, propina, total, pagos: pagosCalculados, sesion, session })
+        const comprobante = await emitirComprobante({ cuenta, comandas, propina, total, pagos: pagosCalculados, sesion, session, turno })
         await registrarEvento({
             entidad: 'cuenta', entidadId: cuenta._id, tipo: 'cuenta_cobrada', ...quien(sesion),
             datos: {

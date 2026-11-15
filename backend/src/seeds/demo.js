@@ -35,6 +35,8 @@ import { fechaLocal, instanteLocal } from '../modulos/compartido/fechas.js'
 import {
     abrirCuenta, agregarItem, enviarRonda, solicitarCuenta, cobrarCuenta, cambiarEstadoMesa, unirMesas,
 } from '../modulos/salon/cuentas.service.js'
+import { abrirTurno } from '../modulos/caja/turno.service.js'
+import TurnoCaja from '../modulos/caja/turno.model.js'
 import { cambiarEstadoItem } from '../modulos/cocina/cocina.service.js'
 import { cambiarDisponibilidadProducto } from '../modulos/catalogo/agotados.service.js'
 
@@ -85,6 +87,9 @@ const sembrarSalon = async ({ admin, mesero, cajero }, productos, { alEmpezar, a
         const { total } = await Cuenta.findById(cuenta.id).select('total').lean()
         await cobrarCuenta(cuenta.id, { versionEsperada: await version(cuenta.id), propina, pagos: pagos(total + propina) }, cajero)
     }
+
+    // 3b.1 · Turno de caja abierto con base (sin turno no se cobra)
+    if (!(await TurnoCaja.exists({ estado: 'abierto' }))) await abrirTurno({ base: 200000 }, admin) // reutiliza el abierto
 
     // Comprobante 1 (tarjeta, sin propina) y la mesa 2 ya limpia
     await cobrada(2, 2, [a, b], (total) => [{ metodo: 'tarjeta', monto: total }], 0)

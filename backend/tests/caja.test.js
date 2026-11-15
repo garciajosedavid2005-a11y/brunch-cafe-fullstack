@@ -13,6 +13,7 @@ import Comanda from '../src/modulos/salon/comanda.model.js'
 import Evento from '../src/modulos/compartido/evento.model.js'
 import Comprobante from '../src/modulos/caja/comprobante.model.js'
 import { emitirComprobante } from '../src/modulos/caja/caja.service.js'
+import { abrirTurno } from '../src/modulos/caja/turno.service.js'
 import { traducirError } from '../src/modulos/compartido/errorHandler.js'
 import { suscribir } from '../src/modulos/tiempoReal/bus.js'
 import { validarCanales } from '../src/modulos/tiempoReal/eventos.routes.js'
@@ -30,6 +31,8 @@ beforeEach(async () => {
     huevos = await Producto.create({ codigo: 1, nombre: 'Huevos pericos', precio: 15000, categoria: platos._id })
     zona = await Zona.create({ nombre: 'Interior' })
     await Promise.all([Cuenta.createIndexes(), Comanda.createIndexes(), Mesa.createIndexes(), Comprobante.createIndexes()])
+    // 3b.1 · Sin turno abierto no se cobra: estos tests cobran dentro de uno
+    await abrirTurno({ base: 0 }, { id: String(new ObjectId()), rol: 'admin', permisos: ['*'] })
 })
 
 /** Cuenta de la mesa `numero` con 2 × Huevos enviados (30.000); `pedir` la deja en «cuenta pedida». */
@@ -251,7 +254,7 @@ describe('3.5 · Un comprobante inconsistente es un error del servidor', () => {
         const doc = await Cuenta.findById(cuenta.id).lean()
         const comandas = await Comanda.find({ cuenta: cuenta.id }).lean()
         const { usuario } = await crearConSesion('cajero')
-        const datos = { cuenta: doc, comandas, propina: 0, total: 99999, pagos: [{ metodo: 'tarjeta', monto: 99999, recibido: null, cambio: null }], sesion: { id: String(usuario._id) } }
+        const datos = { cuenta: doc, comandas, propina: 0, total: 99999, pagos: [{ metodo: 'tarjeta', monto: 99999, recibido: null, cambio: null }], sesion: { id: String(usuario._id) }, turno: { _id: new ObjectId() } }
         const fallo = await emitirComprobante(datos).catch((e) => e)
         expect(fallo).toMatchObject({ status: 500, code: 'COMPROBANTE_INCONSISTENTE' })
         expect(fallo.cause?.name).toBe('ValidationError') // el detalle, solo para el log

@@ -9,7 +9,7 @@ import { AppError } from './errors.js'
 // 1.14 · 'configuracion': cambios de los horarios (quién y datos.antes / datos.despues)
 // 2.7 · 'producto' (F2-5) y 'modificador' (grupo de modificadores; datos.opcion y datos.nombre): agotar y
 // reactivar desde la operación, con quién lo hizo
-export const ENTIDADES_EVENTO = ['pedido', 'reserva', 'mesa', 'cuenta', 'usuario', 'configuracion', 'producto', 'modificador']
+export const ENTIDADES_EVENTO = ['pedido', 'reserva', 'mesa', 'cuenta', 'usuario', 'configuracion', 'producto', 'modificador', 'turno']
 // Los Eventos anteriores a 1.4 no guardan `tipo` (se leen como 'cambio_estado' por el default): un filtro
 // por tipo debe usar { tipo: { $in: ['cambio_estado', null] } } para incluirlos.
 export const TIPOS_EVENTO = [
@@ -28,6 +28,8 @@ export const TIPOS_EVENTO = [
     'cuenta_cobrada',
     // 3.8 · Baja de una cuenta del personal (entidad 'usuario'): borrado real o archivado
     'usuario_eliminado', 'usuario_archivado',
+    // 3b.1 · Turno de caja (entidad 'turno'): apertura con base y cierre con el arqueo en datos
+    'turno_abierto', 'turno_cerrado',
 ]
 const eventoSchema = new mongoose.Schema({
     entidad: {
