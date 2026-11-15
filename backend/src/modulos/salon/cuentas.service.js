@@ -29,8 +29,9 @@ import { MAX_MESAS_POR_CUENTA } from './cuenta.model.js'
 import { cobrarSchema, cobrarParteSchema } from '../caja/caja.schema.js'
 import { asegurarContador, calcularPagos, emitirComprobante, formatoComprobante } from '../caja/caja.service.js'
 import { tomarTurnoAbierto } from '../caja/turno.service.js'
-import { codigoReserva, reservaQueBloquea } from './reservas.bloque.js'
+import { codigoReserva, minutosApartado, reservaQueBloquea } from './reservas.bloque.js'
 import { hora12 } from '../configuracion/horarios.reglas.js'
+import { horaLocal } from '../compartido/fechas.js'
 
 // 1.4 · Núcleo de cuenta y comanda (sin endpoints: llegan en 1.5 y reciben `sesion` = req.usuario).
 // Reglas:
@@ -440,18 +441,26 @@ export const abrirCuenta = async (datos, sesion) => {
     return conTransaccion((session) => abrirEnTransaccion(apertura, sesion, session))
 }
 
-/** 4.3 (F4-c) · 409 MESA_RESERVADA si una reserva por llegar tiene la mesa en su bloque (abrir, mover o unir). */
+/**
+ * 4.3 (F4-c) y 4.6 · 409 MESA_RESERVADA si una reserva por llegar tiene la mesa apartada: al abrir, mover o unir,
+ * desde los minutos configurados en Admin › Horarios; al sentar una reserva (`excepto`), solo si otra la tiene en
+ * su bloque (15 min antes). Solo lee: una asignación de mesa o un cambio del apartado simultáneos a la apertura
+ * no chocan con ella (carrera aceptada, como en 4.3; en Pendientes).
+ */
 const exigirNoReservada = async (mesa, session, excepto = null) => {
-    const bloqueo = await reservaQueBloquea({ mesaId: mesa._id, excepto, session })
+    const antesMin = excepto ? undefined : await minutosApartado(session)
+    const bloqueo = await reservaQueBloquea({ mesaId: mesa._id, excepto, antesMin, session })
     if (bloqueo) {
-        throw error(409, 'MESA_RESERVADA', `La mesa ${mesa.numero} está reservada para ${bloqueo.nombre || 'un cliente'} a las ${hora12(bloqueo.hora)}. Siéntalo desde su reserva o elige otra mesa.`,
-            { reserva: codigoReserva(bloqueo._id), hora: bloqueo.hora })
+        const hora = bloqueo.hora || horaLocal(bloqueo.inicio)
+        throw error(409, 'MESA_RESERVADA', `La mesa ${mesa.numero} está apartada para ${bloqueo.nombre || 'un cliente'}, que reservó a las ${hora12(hora)}. Siéntalo desde su reserva o elige otra mesa.`,
+            { reserva: codigoReserva(bloqueo._id), hora })
     }
 }
 
 /**
- * Apertura dentro de la transacción de quien llama. 4.3 (F4-c) · Una mesa reservada (desde 15 min antes de una
- * reserva pendiente o confirmada y durante su bloque) solo la abre «Sentar» de esa reserva (`reserva`).
+ * Apertura dentro de la transacción de quien llama. 4.3 (F4-c) y 4.6 · Una mesa apartada (desde los minutos de
+ * Admin › Horarios antes de una reserva pendiente o confirmada y durante sus 90 min) solo la abre «Sentar» de esa
+ * reserva (`reserva`); ver exigirNoReservada.
  */
 export const abrirEnTransaccion = async ({ mesaId, comensales, notas, meseroId, otroMesero, codigo }, sesion, session, { reserva = null } = {}) => {
     const mesa = await Mesa.findById(mesaId).session(session).lean()

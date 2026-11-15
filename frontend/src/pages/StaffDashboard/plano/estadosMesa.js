@@ -1,14 +1,19 @@
-import { CircleCheck, Lock, ReceiptText, Sparkles, UtensilsCrossed } from "lucide-react";
+import { CalendarCheck, CircleCheck, Lock, ReceiptText, Sparkles, UtensilsCrossed } from "lucide-react";
 
 // 1.6 · Estados de mesa (F1-2) con texto e icono: el color nunca es la única señal.
 // Orden de la leyenda = orden del ciclo de la mesa.
 export const ESTADOS_MESA = {
   libre: { etiqueta: "Libre", icono: CircleCheck },
+  // 4.6 · No es un estado de la mesa en la BD: una mesa libre apartada para una reserva próxima (estadoVisible)
+  reservada: { etiqueta: "Reservada", icono: CalendarCheck },
   ocupada: { etiqueta: "Ocupada", icono: UtensilsCrossed },
   cuenta_pedida: { etiqueta: "Cuenta pedida", icono: ReceiptText },
   por_limpiar: { etiqueta: "Por limpiar", icono: Sparkles },
   bloqueada: { etiqueta: "Bloqueada", icono: Lock },
 };
+
+/** 4.6 · Estado que se muestra: «reservada» si está libre y apartada para su reserva próxima. */
+export const estadoVisible = (mesa) => (mesa.estado === "libre" && !mesa.cuenta && mesa.reserva?.bloqueada ? "reservada" : mesa.estado);
 
 export const datosEstado = (codigo) => ESTADOS_MESA[codigo] || { etiqueta: codigo, icono: CircleCheck };
 

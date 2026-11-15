@@ -4,7 +4,7 @@ import { apiRequest } from "../../../services/api";
 import { useDialogo } from "../../../context/useDialogo";
 import { formatearCOP } from "../../../utils/moneda";
 import { incluyePermiso } from "../../../utils/permisos";
-import { datosEstado, formatearMinutos, nuevaClave, retrasada } from "./estadosMesa";
+import { datosEstado, estadoVisible, formatearMinutos, nuevaClave, retrasada } from "./estadosMesa";
 import { formatearHoraTexto } from "../../../utils/fechas";
 
 // 1.6 · Acciones de una mesa según su estado y los permisos (el backend vuelve a comprobarlos):
@@ -21,6 +21,7 @@ const motivoNoUnible = (m, cuenta) => {
   if (cuenta && m.cuenta?.id === cuenta.id) return "ya está en esta cuenta";
   if (!m.combinable) return "no combinable";
   if (m.estado !== "libre" || m.cuenta) return datosEstado(m.estado).etiqueta.toLowerCase();
+  if (m.reserva?.bloqueada) return "reservada"; // 4.6 · apartada para su reserva (el backend da 409)
   return null;
 };
 
@@ -57,7 +58,7 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
   const tomaComandas = puede(permisos, "comanda:tomar");
   const eligeMesero = puede(permisos, "cuenta:transferir") || !tomaComandas;
   const necesitaMeseros = (mesa.estado === "libre" && !cuenta && puede(permisos, "cuenta:abrir") && eligeMesero) || modo === "transferir";
-  const { etiqueta, icono } = datosEstado(mesa.estado);
+  const { etiqueta, icono } = datosEstado(estadoVisible(mesa));
   const opcionesMesero = meseros ? ordenarMeseros(meseros) : null;
   const yoId = opcionesMesero?.find((m) => m.yo)?.id || "";
   // Al abrir, el usuario conectado queda elegido por defecto si atiende mesas
@@ -171,7 +172,7 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
   };
 
   // Destinos posibles: libres y, con mesas unidas, de la misma zona y combinables (como valida el backend)
-  const libres = mesas.filter((m) => m.estado === "libre" && !m.cuenta && m.id !== mesa.id);
+  const libres = mesas.filter((m) => m.estado === "libre" && !m.cuenta && !m.reserva?.bloqueada && m.id !== mesa.id);
   const destinos = cuenta?.mesas.length > 1 ? libres.filter((m) => m.zona.id === mesa.zona.id && m.combinable) : libres;
   // Revisión de 1.6 · Unir: todas las mesas de la zona; las que no se pueden unir van deshabilitadas con su motivo
   const deLaZona = mesas.filter((m) => m.zona.id === mesa.zona.id && m.id !== mesa.id);
@@ -192,7 +193,7 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
         </button>
       </div>
 
-      <p className={`plano__estado plano__estado--${mesa.estado} panel-mesa__estado`}>
+      <p className={`plano__estado plano__estado--${estadoVisible(mesa)} panel-mesa__estado`}>
         {createElement(icono, { size: 18, "aria-hidden": true })}
         {etiqueta}
       </p>
@@ -218,7 +219,7 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
             <span>
               Reservada para {reserva.cliente} ({reserva.personas} {reserva.personas === 1 ? "persona" : "personas"}) a las {formatearHoraTexto(reserva.hora)}
               {retrasada(reserva) && ` Lleva ${reserva.minutosRetraso} min de retraso.`}
-              {reserva.bloqueada && " La mesa está reservada: ábrela con «Sentar» o elige otra mesa."}
+              {reserva.bloqueada && " Ábrela con «Sentar» o elige otra mesa."}
             </span>
           </p>
           {gestionaReservas && puede(permisos, "cuenta:abrir") && (
@@ -258,6 +259,12 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
               <Plus size={22} aria-hidden="true" />
             </button>
           </div>
+          {reserva && Number.isFinite(reserva.minutosDisponible) && (
+            // 4.6 · Antes del apartado la mesa se usa, pero se avisa hasta cuándo
+            <p className="panel-mesa__nota panel-mesa__nota--recuadro">
+              Reservada a las {formatearHoraTexto(reserva.hora)}: disponible por {formatearMinutos(reserva.minutosDisponible)}.
+            </p>
+          )}
           {comensales > mesa.capacidad && (
             <p className="panel-mesa__nota">Son más que los {mesa.capacidad} puestos de la mesa: puedes unir otra mesa después.</p>
           )}

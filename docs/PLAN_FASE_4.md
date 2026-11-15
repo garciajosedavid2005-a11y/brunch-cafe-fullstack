@@ -22,17 +22,23 @@ Pedido por Brayan el 2026-11-15. Orden: 4.1 → 4.5, un commit por ítem y una s
 - **F4-6 · «Sentar».** Abre la cuenta en la mesa asignada.
 - **F4-7 · Avisos.** Al editar una reserva confirmada, el staff recibe un aviso en vivo.
 
-## Decisiones técnicas: Claude (a confirmar por Brayan)
+## Decisiones técnicas: Claude (confirmadas por Brayan el 2026-11-15)
 
 - **F4-a · Serialización.** Asignar una mesa «toca» la mesa (`updatedAt`) dentro de la transacción. Así, dos asignaciones simultáneas chocan y la segunda ve la primera. El aforo «toca» un contador por franja (`aforo:<fecha> <hora>`) con el mismo fin.
 - **F4-b · Capacidad.** Solo se asigna una mesa activa con capacidad ≥ personas. Si no, responde 409 `MESA_PEQUENA`. Los grupos grandes se sientan uniendo mesas después de «Sentar».
-- **F4-c · Mesa reservada.** Entre `inicio − 15 min` y el final del bloque, la mesa de una reserva pendiente o confirmada no se abre para nadie más, ni desde el plano ni desde la lista de espera (409 `MESA_RESERVADA`). La libera «Sentar», cancelar o el no-show. Antes de esos 15 min la mesa se usa con normalidad.
+- **F4-c · Mesa reservada.** Entre `inicio − 15 min` y el final del bloque, la mesa de una reserva pendiente o confirmada no se abre para nadie más, ni desde el plano ni desde la lista de espera (409 `MESA_RESERVADA`). La libera «Sentar», cancelar o el no-show. Antes de esos 15 min la mesa se usa con normalidad. *(Reemplazada en 4.6: la mesa queda apartada desde los minutos de Admin › Horarios, 60 por defecto; ver abajo.)*
 - **F4-d · Aforo.** Suma las personas de las reservas activas que empiezan en esa hora. Vacío = sin límite (así queda hoy, sin migración de datos). Se aplica a las reservas del cliente y a las del personal. La lista de espera no cuenta.
 - **F4-e · Reservas próximas en el plano.** Se muestra la siguiente reserva activa de cada mesa cuyo bloque empiece en las próximas 2 h. La tarjeta dice «Reservada · 7:00 p. m.».
 - **F4-f · «Sentar».** Se puede sentar una reserva pendiente o confirmada, de hoy y con mesa asignada y libre. Pasa a `sentada` y abre la cuenta (comensales = personas) en la misma transacción. La reserva guarda `cuenta`. Sin mesa responde 409 `RESERVA_SIN_MESA`.
 - **F4-g · No-show.** También una reserva pendiente que no llegó se puede marcar como no-show (transición nueva `pendiente → no_show`, solo en el código). La sugerencia aparece desde `inicio + 15 min`.
 - **F4-h · Lista de espera.** Colección nueva `esperas` (estado `esperando | sentada | retirada`). Se agrega con `reserva:crear` y se sienta o retira con `reserva:cambiar_estado`. Solo muestra la lista de hoy.
 - **F4-i · Edición y mesa.** Si al editar una reserva su nueva hora choca con la mesa asignada (o la mesa queda pequeña), la mesa se quita. El aviso lo dice.
+
+## Correcciones de Brayan tras la revisión (ítem 4.6, 2026-11-15)
+
+- **4.6.1 · Mesa apartada con anticipación.** Desde «Apartar la mesa desde … min antes» (Admin › Horarios, 60 por defecto, de 15 a 240) una reserva con mesa la deja «Reservada» en el plano y no se abre, mueve ni une para otros (409 `MESA_RESERVADA`, en la transacción). Antes, la mesa se usa con el aviso «Reservada a las HH:MM: disponible por N min». «Sentar» sigue usando el bloque de 15 min de F4-1.
+- **4.6.2 · «Sentar» solo en el horario de la reserva.** Desde 10 min antes de la hora y durante sus 90 min; fuera de ese horario responde 409 y el botón se muestra deshabilitado con «Podrás sentar esta reserva desde las HH:MM». Pasados los 90 min solo queda «No llegó».
+- **Pendientes:** la reserva sentada pasa sola a «completada» al cerrar su cuenta; las esperas de días anteriores se cierran solas como «retirada»; la descripción de «No asistió» se corrige con una migración que solo cambia ese texto.
 
 ## Migraciones
 

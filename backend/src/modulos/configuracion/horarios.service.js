@@ -14,6 +14,7 @@ export const HORARIOS_POR_DEFECTO = {
         entreSemana: { desde: '08:00', hasta: '19:00' },
         finDeSemana: { desde: '08:00', hasta: '17:00' },
         aforo: { general: null, porHora: [] }, // 4.2 · sin límite
+        apartarMesaMin: 60, // 4.6
     },
 }
 
@@ -32,6 +33,8 @@ const aHorarios = (doc) => ({
             general: doc.reservas.aforo?.general ?? null,
             porHora: [...(doc.reservas.aforo?.porHora || [])].map((h) => ({ hora: h.hora, maximo: h.maximo })).sort((a, b) => a.hora.localeCompare(b.hora)),
         },
+        // 4.6 · Sin el campo (antes de 4.6) = 60
+        apartarMesaMin: doc.reservas.apartarMesaMin ?? HORARIOS_POR_DEFECTO.reservas.apartarMesaMin,
     },
 })
 
@@ -123,8 +126,16 @@ export const actualizarHorarios = async ({ versionEsperada, ...enviados }, sesio
         const antes = anterior ? aHorarios(anterior) : null
         // 4.2 · Sin aforo en el cuerpo se conserva el guardado (un cliente anterior a la Fase 4 no lo borra).
         // Copia local: un reintento de la transacción vuelve a partir de lo enviado
-        const datos = enviados.reservas.aforo ? enviados
-            : { ...enviados, reservas: { ...enviados.reservas, aforo: antes?.reservas.aforo ?? HORARIOS_POR_DEFECTO.reservas.aforo } }
+        // 4.6 · Igual con los minutos para apartar la mesa
+        const guardado = antes?.reservas ?? HORARIOS_POR_DEFECTO.reservas
+        const datos = {
+            ...enviados,
+            reservas: {
+                ...enviados.reservas,
+                aforo: enviados.reservas.aforo ?? guardado.aforo,
+                apartarMesaMin: enviados.reservas.apartarMesaMin ?? guardado.apartarMesaMin,
+            },
+        }
         const cambios = camposCambiados(antes, aHorarios(datos))
         if (anterior && !cambios.length) return anterior
         // Sin el campo o en null (documentos anteriores a 1.15) la versión es 0: $in con null cubre los dos

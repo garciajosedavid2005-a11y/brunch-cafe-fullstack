@@ -36,7 +36,7 @@ const abrir = (mesa) => mesero.post(`${PLANO}/${mesa._id}/abrir`).send({ comensa
 const sentar = (id, cuerpo = {}) => mesero.post(`${BASE}/${id}/sentar`).send(cuerpo)
 
 describe('4.3 · Plano con reservas próximas (F4-e)', () => {
-    it('la mesa muestra su próxima reserva de las próximas 2 h; antes de los 15 min no está bloqueada', async () => {
+    it('la mesa muestra su próxima reserva; antes del apartado (4.6: 60 min) no está bloqueada', async () => {
         const id = await reservaDeHoy({ hora: '09:00' })
         const m = await mesaDelPlano(mesa1)
         expect(m.reserva).toMatchObject({ id, cliente: 'Ana Pérez', personas: 3, hora: '09:00', estado: 'confirmada', bloqueada: false })
@@ -44,8 +44,8 @@ describe('4.3 · Plano con reservas próximas (F4-e)', () => {
         expect((await mesaDelPlano(mesa2)).reserva).toBeNull()
     })
 
-    it('una reserva a más de 2 h no sale; una sentada, cancelada o no-show tampoco', async () => {
-        await reservaDeHoy({ hora: '10:00' })
+    it('una reserva cuyo apartado empieza en más de 2 h no sale; una sentada, cancelada o no-show tampoco', async () => {
+        await reservaDeHoy({ hora: '11:00' })
         expect((await mesaDelPlano(mesa1)).reserva).toBeNull()
         const id = await reservaDeHoy({ hora: '08:00', mesa: mesa2 })
         expect((await mesero.patch(`${BASE}/${id}/estado`).send({ codigo: 'no_show' })).status).toBe(200)
@@ -54,11 +54,11 @@ describe('4.3 · Plano con reservas próximas (F4-e)', () => {
 })
 
 describe('4.3 · Mesa reservada (F4-c)', () => {
-    it('desde 15 min antes la mesa no se abre para otra persona (409 MESA_RESERVADA); antes, sí', async () => {
+    it('desde el apartado (4.6: 60 min antes) la mesa no se abre para otra persona (409 MESA_RESERVADA); antes, sí', async () => {
         await reservaDeHoy({ hora: '08:00' })
-        a('07:40')
+        a('06:55')
         expect((await mesaDelPlano(mesa1)).reserva.bloqueada).toBe(false)
-        a('07:46')
+        a('07:01')
         expect((await mesaDelPlano(mesa1)).reserva.bloqueada).toBe(true)
         const r = await abrir(mesa1)
         expect(r.status).toBe(409)
@@ -69,9 +69,9 @@ describe('4.3 · Mesa reservada (F4-c)', () => {
         expect((await abrir(mesa2)).status).toBe(201)
     })
 
-    it('antes de los 15 min la mesa se abre normalmente', async () => {
+    it('antes del apartado la mesa se abre normalmente', async () => {
         await reservaDeHoy({ hora: '08:00' })
-        a('07:40')
+        a('06:50')
         expect((await abrir(mesa1)).status).toBe(201)
     })
 

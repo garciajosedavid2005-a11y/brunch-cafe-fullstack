@@ -20,7 +20,7 @@ import { esEstadoFinal } from '../compartido/estados.js'
 import { estadosDelTipo } from '../compartido/estados.service.js'
 import { nombreCorto, CAMPOS_NOMBRE } from '../compartido/nombres.js'
 import Reserva from './reserva.model.js'
-import { DURACION_RESERVA_MIN, ESTADOS_RESERVA_POR_LLEGAR, MARGEN_ANTES_MIN, codigoReserva, idsEstadosReserva, inicioBloque } from './reservas.bloque.js'
+import { DURACION_RESERVA_MIN, ESTADOS_RESERVA_POR_LLEGAR, codigoReserva, idsEstadosReserva, minutosApartado } from './reservas.bloque.js'
 
 // 1.5 · Lecturas del salón para el staff (/api/v1/staff/salon). Cada lectura hace un número fijo de
 // consultas en lote (sin N+1): el plano son 5 (zonas, mesas, cuentas, meseros y, desde 2.6, los ítems
@@ -60,16 +60,22 @@ const listosParaServirPorCuenta = async (idsCuentas) => {
     return new Map(filas.map((f) => [String(f._id), f.n]))
 }
 
-// 4.3 (F4-e) · El plano muestra la reserva de cada mesa cuyo bloque (desde 15 min antes) empieza en las próximas
-// 2 h y aún no termina; `bloqueada` = ya empezó el bloque (la mesa solo se abre con «Sentar»)
+// 4.3 (F4-e) y 4.6 · El plano muestra la reserva de cada mesa cuyo apartado (desde los minutos de Admin › Horarios,
+// 60 por defecto) empieza en las próximas 2 h y que aún no termina. `bloqueada` = la mesa ya está apartada (solo
+// se abre con «Sentar»); antes, `minutosDisponible` dice cuánto se puede usar todavía
 export const HORIZONTE_PLANO_MIN = 120
+const apartado = (inicio, apartarMin, t) => {
+    const desde = new Date(new Date(inicio).getTime() - apartarMin * 60_000)
+    return { apartadaDesde: desde, bloqueada: desde.getTime() <= t, minutosDisponible: Math.max(0, Math.ceil((desde.getTime() - t) / 60_000)) }
+}
 const reservasProximas = async (idsMesas, ahora) => {
     if (!idsMesas.length) return new Map()
     const t = ahora.getTime()
+    const apartarMin = await minutosApartado()
     const reservas = await Reserva.find({
         mesa: { $in: idsMesas },
         estado: { $in: await idsEstadosReserva(ESTADOS_RESERVA_POR_LLEGAR) },
-        inicio: { $gt: new Date(t - DURACION_RESERVA_MIN * 60_000), $lte: new Date(t + (HORIZONTE_PLANO_MIN + MARGEN_ANTES_MIN) * 60_000) },
+        inicio: { $gt: new Date(t - DURACION_RESERVA_MIN * 60_000), $lte: new Date(t + (HORIZONTE_PLANO_MIN + apartarMin) * 60_000) },
     }).sort({ inicio: 1 }).select('mesa inicio hora nombre cantidadPersonas estado usuario').populate('estado', 'codigo').populate('usuario', 'nombre apellido').lean()
     const porMesa = new Map()
     for (const r of reservas) {
@@ -79,7 +85,7 @@ const reservasProximas = async (idsMesas, ahora) => {
             id: String(r._id), codigo: codigoReserva(r._id),
             cliente: r.nombre || [r.usuario?.nombre, r.usuario?.apellido].filter(Boolean).join(' ') || 'Cliente',
             personas: r.cantidadPersonas, hora: r.hora, inicio: r.inicio, estado: r.estado?.codigo || '',
-            bloqueada: inicioBloque(r.inicio) <= ahora,
+            ...apartado(r.inicio, apartarMin, t),
             minutosRetraso: Math.max(0, Math.floor((t - new Date(r.inicio).getTime()) / 60_000)),
         })
     }

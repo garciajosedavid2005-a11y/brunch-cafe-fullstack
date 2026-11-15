@@ -40,6 +40,11 @@ export const horariosSchema = z.object({
                     .max(500, { error: 'El aforo de una hora no puede superar 500 personas.' }),
             }).strict()).max(24).refine((horas) => new Set(horas.map((h) => h.hora)).size === horas.length, { error: 'Cada hora del aforo aparece una sola vez.' }),
         }).strict().optional(),
+        // 4.6 · Minutos antes de una reserva con mesa desde los que la mesa queda apartada. Ausente = se conserva
+        apartarMesaMin: z.number({ error: 'Los minutos para apartar la mesa deben ser un número.' })
+            .int({ error: 'Los minutos para apartar la mesa deben ser un número entero.' })
+            .min(15, { error: 'La mesa se aparta al menos 15 minutos antes de la reserva.' })
+            .max(240, { error: 'La mesa se aparta como máximo 240 minutos (4 horas) antes de la reserva.' }).optional(),
     }),
     // 1.15 · La versión que leyó el admin (GET /admin/horarios): si otro guardó antes → 409
     versionEsperada: z.number({ error: 'Falta la versión de los horarios; recarga la página.' }).int().min(0),

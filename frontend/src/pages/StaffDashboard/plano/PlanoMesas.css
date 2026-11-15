@@ -1,7 +1,8 @@
 /* 1.6 · Plano de mesas (tablet: 1024×768 horizontal y 768×1024 vertical).
    Objetivos táctiles ≥ 44 px. Cada estado lleva texto e icono además del color.
    Contrastes (texto sobre su fondo): libre #1d5b2e/#e6f4ea ~7:1, ocupada #890620/#fbe9ec ~8:1,
-   cuenta pedida #7a4100/#fff0d4 ~7:1, por limpiar #24466e/#e5eef8 ~8:1, bloqueada #424242/#ececec ~8:1. */
+   cuenta pedida #7a4100/#fff0d4 ~7:1, por limpiar #24466e/#e5eef8 ~8:1, bloqueada #424242/#ececec ~8:1,
+   reservada (4.6, mesa apartada para una reserva) #4a2470/#efe6f7 ~10:1. */
 .plano {
   --libre-texto: #1d5b2e;
   --libre-fondo: #e6f4ea;
@@ -13,6 +14,8 @@
   --limpiar-fondo: #e5eef8;
   --bloqueada-texto: #424242;
   --bloqueada-fondo: #ececec;
+  --reservada-texto: #4a2470;
+  --reservada-fondo: #efe6f7;
   display: grid;
   gap: 1rem;
   align-items: start;
@@ -215,6 +218,8 @@
 .plano__estado--cuenta_pedida { background: var(--pedida-fondo); color: var(--pedida-texto); }
 .plano__leyenda-item--por_limpiar,
 .plano__estado--por_limpiar { background: var(--limpiar-fondo); color: var(--limpiar-texto); }
+.plano__leyenda-item--reservada,
+.plano__estado--reservada { background: var(--reservada-fondo); color: var(--reservada-texto); }
 .plano__leyenda-item--bloqueada,
 .plano__estado--bloqueada { background: var(--bloqueada-fondo); color: var(--bloqueada-texto); }
 
@@ -313,6 +318,7 @@
 .plano__mesa--ocupada { --tablero: #890620; --tablero-borde: #5e0416; --numero: #fff; --silla-llena: #890620; }
 .plano__mesa--cuenta_pedida { --tablero: #f2b544; --tablero-borde: #7a4100; --silla-llena: #7a4100; }
 .plano__mesa--por_limpiar { --tablero: #e5eef8; --tablero-borde: #24466e; --numero: #24466e; --silla-llena: #24466e; }
+.plano__mesa--reservada { --tablero: #efe6f7; --tablero-borde: #4a2470; --numero: #4a2470; --silla-llena: #4a2470; }
 .plano__mesa--bloqueada { --tablero: #ececec; --tablero-borde: #424242; --numero: #424242; --silla-llena: #424242; }
 
 .plano__mesa.is-seleccionada {
@@ -340,6 +346,7 @@
 
 /* Libre y bloqueada: borde discontinuo (además del texto de la píldora) */
 .plano__mesa--libre .dibujo-mesa__tablero,
+.plano__mesa--reservada .dibujo-mesa__tablero,
 .plano__mesa--bloqueada .dibujo-mesa__tablero {
   stroke-dasharray: 7 5;
 }
@@ -390,6 +397,7 @@
 .plano__mesa--cuenta_pedida .plano__estado { background: var(--pedida-fondo); color: var(--pedida-texto); }
 .plano__mesa--por_limpiar .plano__estado { background: var(--limpiar-fondo); color: var(--limpiar-texto); }
 .plano__mesa--bloqueada .plano__estado { background: var(--bloqueada-fondo); color: var(--bloqueada-texto); }
+.plano__mesa--reservada .plano__estado { background: var(--reservada-fondo); color: var(--reservada-texto); }
 
 .plano__mesa-nombre {
   font-size: 0.85rem;
@@ -687,11 +695,11 @@
   text-align: center;
 }
 
-/* El bloque empezó: la mesa solo se abre con «Sentar» (borde y fondo más marcados) */
+/* 4.6 · Mesa apartada: solo se abre con «Sentar» (el color de «Reservada») */
 .plano__reserva--bloqueada {
-  border-color: #890620;
-  background: #fbe9ec;
-  color: #6e0519;
+  border-color: #4a2470;
+  background: #efe6f7;
+  color: #4a2470;
 }
 
 .panel-mesa__reserva {
@@ -705,8 +713,8 @@
 }
 
 .panel-mesa__reserva--bloqueada {
-  border-color: #890620;
-  background: #fbe9ec;
+  border-color: #4a2470;
+  background: #efe6f7;
 }
 
 .panel-mesa__reserva p {

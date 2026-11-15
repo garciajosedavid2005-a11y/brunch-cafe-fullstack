@@ -10,7 +10,7 @@ import PlanoMesas from "./PlanoMesas";
 // 4.3 · Reservas en el plano (F4-e), mesa reservada (F4-c), «Sentar» (F4-6) y no-show sugerido (F4-5)
 const reserva = (extra = {}) => ({
   id: "r1", codigo: "RES-00000A", cliente: "Laura Gómez", personas: 2, hora: "08:00", inicio: "2026-11-15T13:00:00Z",
-  estado: "confirmada", bloqueada: false, minutosRetraso: 0, ...extra,
+  estado: "confirmada", bloqueada: false, minutosRetraso: 0, apartadaDesde: "2026-11-15T12:00:00Z", minutosDisponible: 30, ...extra,
 });
 const mesa = (numero, extra = {}) => ({
   id: `m${numero}`, numero, nombre: "", zona: { id: "z1", nombre: "Interior" }, capacidad: 4,
@@ -33,11 +33,45 @@ beforeEach(() => {
 
 const tarjeta = (numero) => screen.getByRole("button", { name: new RegExp(`^Mesa ${numero}\\b`) });
 
+describe("4.6 · Mesa apartada con anticipación", () => {
+  it("apartada: la tarjeta pasa a «Reservada» con su clase, icono y texto, cuenta en la leyenda y no se ofrece abrir", async () => {
+    plano.mesas[1].reserva = reserva({ bloqueada: true, minutosDisponible: 0 });
+    render(<PlanoMesas permisos={MESERO} />);
+    await screen.findByRole("button", { name: /^Mesa 2\b/ });
+    expect(tarjeta(2)).toHaveClass("plano__mesa--reservada");
+    expect(within(tarjeta(2)).getByText("Reservada")).toBeInTheDocument();
+    expect(within(tarjeta(2)).getByText("8:00 a. m. · Laura Gómez")).toBeInTheDocument();
+    expect(tarjeta(2)).toHaveAccessibleName(expect.stringMatching(/^Mesa 2, Reservada,/));
+    const leyenda = screen.getByRole("list", { name: "Leyenda de estados" });
+    expect(within(leyenda).getByText("Reservada").closest("li")).toHaveTextContent("Reservada1");
+    expect(within(leyenda).getByText("Libre").closest("li")).toHaveTextContent("Libre1");
+    fireEvent.click(tarjeta(2));
+    expect(screen.queryByRole("button", { name: "Abrir cuenta" })).toBeNull();
+    expect(screen.queryByText(/disponible por/)).toBeNull();
+  });
+
+  it("una mesa apartada no se ofrece para mover ni para unir", async () => {
+    plano.mesas[0] = mesa(1, { estado: "ocupada", cuenta: { id: "c1", estado: "abierta", comensales: 2, minutosOcupada: 5, total: 0, pendiente: 0, mesas: [{ id: "m1", numero: 1 }], mesero: null, listosParaServir: 0 } });
+    plano.mesas[1].reserva = reserva({ bloqueada: true, minutosDisponible: 0 });
+    render(<PlanoMesas permisos={[...MESERO, "mesa:unir"]} />);
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 1\b/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Mover a otra mesa" }));
+    expect(screen.getByText("No hay mesas libres.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Unir mesas" }));
+    expect(screen.getByRole("checkbox", { name: /Mesa 2/ })).toBeDisabled();
+    expect(screen.getByText("(reservada)")).toBeInTheDocument();
+  });
+});
+
 describe("4.3 · Reservas en el plano", () => {
   it("la mesa con reserva próxima lo dice en texto (no solo color) y en su nombre accesible", async () => {
     render(<PlanoMesas permisos={MESERO} />);
     await screen.findByRole("button", { name: /^Mesa 2\b/ });
-    expect(within(tarjeta(2)).getByText("Reservada 8:00 a. m.")).toBeInTheDocument();
+    expect(within(tarjeta(2)).getByText("Reserva a las 8:00 a. m.")).toBeInTheDocument();
+    // 4.6 · Antes del apartado la mesa sigue «Libre»
+    expect(within(tarjeta(2)).getByText("Libre")).toBeInTheDocument();
+    // Sin mesas apartadas, «Reservada» no sale en la leyenda
+    expect(within(screen.getByRole("list", { name: "Leyenda de estados" })).queryByText("Reservada")).toBeNull();
     expect(tarjeta(2)).toHaveAccessibleName(expect.stringMatching(/reservada a las 8:00 a\. m\. para Laura Gómez/));
     expect(within(tarjeta(1)).queryByText(/Reservada/)).toBeNull();
   });
@@ -47,6 +81,8 @@ describe("4.3 · Reservas en el plano", () => {
     fireEvent.click(await screen.findByRole("button", { name: /^Mesa 2\b/ }));
     expect(screen.getByText(/Reservada para Laura Gómez \(2 personas\) a las 8:00 a\. m\./)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Abrir cuenta" })).toBeEnabled();
+    // 4.6 · Al abrirla se avisa hasta cuándo se puede usar
+    expect(screen.getByText("Reservada a las 8:00 a. m.: disponible por 30 min.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Sentar a Laura Gómez" }));
     await waitFor(() => expect(estado.apiRequest).toHaveBeenCalledWith("/v1/staff/reservas/r1/sentar",
       expect.objectContaining({ method: "POST", body: "{}", headers: expect.objectContaining({ "Idempotency-Key": expect.any(String) }) })));
@@ -60,7 +96,7 @@ describe("4.3 · Reservas en el plano", () => {
     expect(within(tarjeta(2)).getByText("Retrasada 20 min · 8:00 a. m.")).toBeInTheDocument();
     fireEvent.click(tarjeta(2));
     expect(screen.queryByRole("button", { name: "Abrir cuenta" })).toBeNull();
-    expect(screen.getByText(/La mesa está reservada/)).toBeInTheDocument();
+    expect(screen.getByText(/Ábrela con «Sentar» o elige otra mesa/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "No llegó" }));
     await waitFor(() => expect(estado.apiRequest).toHaveBeenCalledWith("/v1/staff/reservas/r1/estado",
       expect.objectContaining({ method: "PATCH", body: JSON.stringify({ codigo: "no_show" }) })));

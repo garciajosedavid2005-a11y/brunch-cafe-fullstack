@@ -1,7 +1,7 @@
 import { createElement, useEffect, useMemo, useState } from "react";
 import { BellRing, CalendarClock, Clock, Users } from "lucide-react";
 import { formatearCOP } from "../../../utils/moneda";
-import { ESTADOS_MESA, datosEstado, formatearMinutos, retrasada } from "./estadosMesa";
+import { ESTADOS_MESA, datosEstado, estadoVisible, formatearMinutos, retrasada } from "./estadosMesa";
 import { formatearHoraTexto } from "../../../utils/fechas";
 import { usePlano } from "./usePlano";
 import Actualizado from "../compartido/Actualizado";
@@ -19,7 +19,7 @@ import "./PlanoMesas.css";
 // configuración del admin y no sale.
 
 const resumenAccesible = (mesa) => {
-  const partes = [`Mesa ${mesa.numero}`, datosEstado(mesa.estado).etiqueta];
+  const partes = [`Mesa ${mesa.numero}`, datosEstado(estadoVisible(mesa)).etiqueta];
   if (mesa.nombre) partes.splice(1, 0, mesa.nombre);
   const c = mesa.cuenta;
   if (c) {
@@ -65,14 +65,15 @@ const piezasDe = (visibles, todas) => {
 
 function TarjetaMesa({ pieza, seleccionada, onElegir }) {
   const { mesa } = pieza;
-  const { etiqueta, icono } = datosEstado(mesa.estado);
+  const vista = estadoVisible(mesa); // 4.6 · «reservada» si la mesa ya está apartada
+  const { etiqueta, icono } = datosEstado(vista);
   const c = mesa.cuenta;
   return (
     <li>
       <button
         type="button"
         id={`mesa-${mesa.id}`}
-        className={`plano__mesa plano__mesa--${mesa.estado}${pieza.mesas > 1 ? " plano__mesa--unida" : ""}${seleccionada ? " is-seleccionada" : ""}`}
+        className={`plano__mesa plano__mesa--${vista}${pieza.mesas > 1 ? " plano__mesa--unida" : ""}${seleccionada ? " is-seleccionada" : ""}`}
         aria-label={resumenAccesible(mesa)}
         aria-pressed={seleccionada}
         onClick={() => onElegir(mesa.id)}
@@ -92,12 +93,14 @@ function TarjetaMesa({ pieza, seleccionada, onElegir }) {
         </span>
         {mesa.nombre && <span className="plano__mesa-nombre">{mesa.nombre}</span>}
         {!c && mesa.reserva && (
-          // 4.3 · Reserva próxima: texto e icono; más marcada si el bloque empezó o va con retraso
+          // 4.3 · Reserva próxima: texto e icono. 4.6 · Apartada, la tarjeta ya dice «Reservada»: aquí la hora y quién
           <span className={`plano__reserva${mesa.reserva.bloqueada ? " plano__reserva--bloqueada" : ""}`} aria-hidden="true">
             <CalendarClock size={14} />
             {retrasada(mesa.reserva)
               ? `Retrasada ${mesa.reserva.minutosRetraso} min · ${formatearHoraTexto(mesa.reserva.hora)}`
-              : `Reservada ${formatearHoraTexto(mesa.reserva.hora)}`}
+              : mesa.reserva.bloqueada
+                ? `${formatearHoraTexto(mesa.reserva.hora)} · ${mesa.reserva.cliente}`
+                : `Reserva a las ${formatearHoraTexto(mesa.reserva.hora)}`}
           </span>
         )}
         {c && (
@@ -152,7 +155,7 @@ export default function PlanoMesas({ permisos = [], cuentaVista: cuentaExterna, 
 
   const conteo = useMemo(() => {
     const c = Object.fromEntries(Object.keys(ESTADOS_MESA).map((k) => [k, 0]));
-    for (const m of visibles) c[m.estado] = (c[m.estado] || 0) + 1;
+    for (const m of visibles) c[estadoVisible(m)] = (c[estadoVisible(m)] || 0) + 1;
     return c;
   }, [visibles]);
 
@@ -182,7 +185,8 @@ export default function PlanoMesas({ permisos = [], cuentaVista: cuentaExterna, 
         )}
 
         <ul className="plano__leyenda" aria-label="Leyenda de estados">
-          {Object.entries(ESTADOS_MESA).map(([codigo, { etiqueta, icono }]) => (
+          {/* 4.6 · «Reservada» (solo de pantalla) sale cuando hay alguna: así la leyenda no crece sin necesidad */}
+          {Object.entries(ESTADOS_MESA).filter(([codigo]) => codigo !== "reservada" || conteo.reservada > 0).map(([codigo, { etiqueta, icono }]) => (
             <li key={codigo} className={`plano__leyenda-item plano__leyenda-item--${codigo}`}>
               {createElement(icono, { size: 16, "aria-hidden": true })}
               <span>{etiqueta}</span>

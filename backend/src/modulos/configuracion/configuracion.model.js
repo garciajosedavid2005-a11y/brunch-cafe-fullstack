@@ -36,6 +36,8 @@ const configuracionSchema = new mongoose.Schema({
         entreSemana: { type: rango, required: true }, // lunes a viernes
         finDeSemana: { type: rango, required: true }, // sábado y domingo
         aforo: { type: aforo, default: () => ({ general: null, porHora: [] }) },
+        // 4.6 · «Apartar la mesa desde … min antes» de una reserva con mesa (sin el campo = 60)
+        apartarMesaMin: { ...entero(15, 240), default: 60 },
     },
     actualizadoPor: {
         type: mongoose.Schema.Types.ObjectId,

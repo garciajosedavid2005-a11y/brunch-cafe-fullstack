@@ -3,6 +3,7 @@
 // inicios están a menos de 105 min.
 import Reserva from './reserva.model.js'
 import Estado from '../compartido/estado.model.js'
+import Configuracion from '../configuracion/configuracion.model.js'
 import { hora12 } from '../configuracion/horarios.reglas.js'
 import { horaLocal } from '../compartido/fechas.js'
 
@@ -39,15 +40,26 @@ export const codigoReserva = (id) => `RES-${String(id).slice(-6).toUpperCase()}`
 // Reservas que todavía pueden llegar: bloquean su mesa y salen en el plano (una sentada ya tiene su cuenta)
 export const ESTADOS_RESERVA_POR_LLEGAR = ['pendiente', 'confirmada']
 
+// 4.6 · «Apartar la mesa desde … min antes» (Admin › Horarios); sin el campo, 60
+export const APARTAR_MESA_POR_DEFECTO_MIN = 60
+
+/** Minutos antes de una reserva con mesa desde los que la mesa queda apartada (leído en la transacción). */
+export const minutosApartado = async (session) => {
+    const doc = await Configuracion.findOne({ clave: 'horarios' }).select('reservas.apartarMesaMin').session(session ?? null).lean()
+    return doc?.reservas?.apartarMesaMin ?? APARTAR_MESA_POR_DEFECTO_MIN
+}
+
 /**
- * 4.3 (F4-c) · Reserva por llegar cuyo bloque contiene `ahora` (desde 15 min antes hasta 90 min después del
- * inicio): mientras tanto la mesa no se abre para otra persona. null si no hay.
+ * 4.3 (F4-c) y 4.6 · Reserva por llegar que tiene la mesa apartada en `ahora`: desde `antesMin` antes del inicio
+ * hasta que terminan sus 90 min. Mientras tanto la mesa no se abre, mueve ni une para otra persona. null si no
+ * hay. Al abrir, mover o unir, `antesMin` es el apartado configurado; al sentar otra reserva de la mesa, el
+ * margen de su bloque (15 min), porque las reservas de una misma mesa ya no se cruzan (F4-1).
  */
-export const reservaQueBloquea = async ({ mesaId, ahora = new Date(), excepto = null, session }) => Reserva.findOne({
+export const reservaQueBloquea = async ({ mesaId, ahora = new Date(), excepto = null, antesMin = MARGEN_ANTES_MIN, session }) => Reserva.findOne({
     mesa: mesaId,
     ...(excepto ? { _id: { $ne: excepto } } : {}),
     estado: { $in: await idsEstadosReserva(ESTADOS_RESERVA_POR_LLEGAR, session) },
-    inicio: { $gt: new Date(ahora.getTime() - DURACION_RESERVA_MIN * MINUTO), $lte: new Date(ahora.getTime() + MARGEN_ANTES_MIN * MINUTO) },
+    inicio: { $gt: new Date(ahora.getTime() - DURACION_RESERVA_MIN * MINUTO), $lte: new Date(ahora.getTime() + antesMin * MINUTO) },
 }).sort({ inicio: 1 }).select('inicio hora nombre').session(session ?? null).lean()
 
 /** Texto para el 409: «La mesa 3 ya está reservada a las 9:00 a. m.» */

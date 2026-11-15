@@ -29,6 +29,7 @@
     "migrate:3b.2": "node scripts/migrar-3b2-indice-comprobantes.js",
     "migrate:3b.4": "node scripts/migrar-3b4-indices-domicilio.js",
     "migrate:4": "node scripts/migrar-4-indices-reservas.js",
+    "migrate:4.6": "node scripts/migrar-4.6-apartar-mesa.js",
     "seed:dev": "node scripts/seed-dev.js",
     "seed:demo": "node scripts/seed-demo.js",
     "seed:salon": "node scripts/seed-salon.js",

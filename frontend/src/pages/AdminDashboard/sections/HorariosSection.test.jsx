@@ -27,7 +27,7 @@ describe("Admin: horarios de domicilio y reservas", () => {
     fireEvent.click(screen.getByRole("button", { name: /guardar horarios/i }));
     await waitFor(() => expect(api.put).toHaveBeenCalledWith("/v1/admin/horarios", {
       // 4.2 · Sin aforo guardado se envía «sin límite»
-      ...HORARIOS, reservas: { ...HORARIOS.reservas, entreSemana: { desde: "08:00", hasta: "15:00" }, aforo: { general: null, porHora: [] } }, versionEsperada: 3,
+      ...HORARIOS, reservas: { ...HORARIOS.reservas, entreSemana: { desde: "08:00", hasta: "15:00" }, aforo: { general: null, porHora: [] }, apartarMesaMin: 60 }, versionEsperada: 3,
     }));
     expect(await screen.findByText(/horarios guardados/i)).toBeInTheDocument();
     // El siguiente guardado usa la versión nueva
@@ -116,5 +116,22 @@ describe("Admin: horarios de domicilio y reservas", () => {
     fireEvent.click(screen.getByRole("button", { name: /guardar horarios/i }));
     expect(await screen.findByRole("alert")).toHaveTextContent("El aforo de las 9:00 a. m. debe ser un número entero entre 0 y 500");
     expect(api.put).not.toHaveBeenCalled();
+  });
+
+  // 4.6 · Mesa apartada con anticipación: minutos antes de una reserva con mesa (60 por defecto, de 15 a 240)
+  it("apartar la mesa: muestra el guardado, lo envía como número y no acepta menos de 15 ni más de 240", async () => {
+    api.get.mockResolvedValue({ horarios: { ...HORARIOS, reservas: { ...HORARIOS.reservas, apartarMesaMin: 60 } }, version: 3, actualizadoEn: null });
+    render(<HorariosSection />);
+    const campo = await screen.findByLabelText("Apartar la mesa desde (min antes de la reserva)");
+    expect(campo).toHaveValue(60);
+    fireEvent.change(campo, { target: { value: "10" } });
+    fireEvent.click(screen.getByRole("button", { name: /guardar horarios/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("La mesa se aparta entre 15 y 240 minutos antes de la reserva.");
+    expect(api.put).not.toHaveBeenCalled();
+    fireEvent.change(campo, { target: { value: "45" } });
+    fireEvent.click(screen.getByRole("button", { name: /guardar horarios/i }));
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith("/v1/admin/horarios", expect.objectContaining({
+      reservas: expect.objectContaining({ apartarMesaMin: 45 }),
+    })));
   });
 });

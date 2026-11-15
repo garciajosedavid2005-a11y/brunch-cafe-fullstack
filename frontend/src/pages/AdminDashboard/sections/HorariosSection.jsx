@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle, Clock, Users } from "lucide-react";
+import { CalendarClock, CheckCircle, Clock, Users } from "lucide-react";
 import { api } from "../../../services/api";
 import AdminStatus from "../components/AdminStatus";
 import { formatearFecha, formatearHora, formatearHoraTexto } from "../../../utils/fechas";
@@ -13,6 +13,9 @@ const RANGOS = [
   { ruta: ["reservas", "entreSemana"], nombre: "reservas de lunes a viernes", titulo: "Reservas de lunes a viernes" },
   { ruta: ["reservas", "finDeSemana"], nombre: "reservas de sábado y domingo", titulo: "Reservas de sábado y domingo" },
 ];
+
+// 4.6 · Minutos antes de una reserva con mesa desde los que la mesa queda apartada en el plano
+const APARTAR_POR_DEFECTO = 60;
 
 const leer = (horarios, ruta) => ruta.reduce((obj, clave) => obj[clave], horarios);
 
@@ -51,6 +54,9 @@ const validar = (horarios) => {
   }
   const minutos = Number(horarios.domicilio.anticipacionMinutos);
   if (!Number.isInteger(minutos) || minutos < 0 || minutos > 480) return "La anticipación debe estar entre 0 y 480 minutos.";
+  // 4.6 · Mesa apartada con anticipación
+  const apartar = Number(horarios.reservas.apartarMesaMin);
+  if (!Number.isInteger(apartar) || apartar < 15 || apartar > 240) return "La mesa se aparta entre 15 y 240 minutos antes de la reserva.";
   return "";
 };
 
@@ -96,7 +102,11 @@ export default function HorariosSection() {
 
   const guardar = async (event) => {
     event.preventDefault();
-    const datos = conCambio(horarios, ["domicilio"], "anticipacionMinutos", Number(horarios.domicilio.anticipacionMinutos));
+    const datos = conCambio(
+      conCambio(horarios, ["domicilio"], "anticipacionMinutos", Number(horarios.domicilio.anticipacionMinutos)),
+      // 4.6 · Sin el campo (servidor anterior) se envía el valor por defecto
+      ["reservas"], "apartarMesaMin", Number(horarios.reservas.apartarMesaMin ?? APARTAR_POR_DEFECTO),
+    );
     const horasAforo = horasDeReserva(datos.reservas);
     const error = validar(datos) || validarAforo(aforo, horasAforo);
     if (error) {
@@ -198,6 +208,19 @@ export default function HorariosSection() {
                     onChange={(e) => { const valor = e.target.value; setAforo((a) => ({ ...a, horas: { ...a.horas, [hora]: valor } })); setAviso({ texto: "", error: false, recargar: false }); }} />
                 </div>
               ))}
+            </div>
+          </fieldset>
+
+          <fieldset className="admin-horarios__grupo">
+            <legend className="admin-horarios__titulo"><CalendarClock size={16} aria-hidden="true" /> Mesa reservada</legend>
+            <div className="admin-form-group admin-horarios__campo">
+              <label className="admin-form-label" htmlFor="apartar-mesa">Apartar la mesa desde (min antes de la reserva)</label>
+              <input id="apartar-mesa" className="admin-form-input" type="number" min="15" max="240" step="5" inputMode="numeric"
+                value={horarios.reservas.apartarMesaMin ?? APARTAR_POR_DEFECTO}
+                onChange={cambiar(["reservas"], "apartarMesaMin")} aria-describedby="apartar-mesa-ayuda" />
+              <small id="apartar-mesa-ayuda" className="admin-horarios__ayuda">
+                Desde ese momento la mesa asignada a una reserva sale como «Reservada» y solo se abre al sentar esa reserva
+              </small>
             </div>
           </fieldset>
 
