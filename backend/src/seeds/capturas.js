@@ -16,7 +16,9 @@ import Comanda from '../modulos/salon/comanda.model.js'
 import Evento from '../modulos/compartido/evento.model.js'
 import { conTransaccion } from '../modulos/compartido/transacciones.js'
 import Producto from '../modulos/catalogo/producto.model.js'
-import { abrirCuenta, agregarItem, enviarRonda, solicitarCuenta, cancelarCuenta, cambiarEstadoMesa } from '../modulos/salon/cuentas.service.js'
+import { abrirCuenta, agregarItem, enviarRonda, solicitarCuenta, cancelarCuenta, cambiarEstadoMesa, cobrarCuenta } from '../modulos/salon/cuentas.service.js'
+import Comprobante from '../modulos/caja/comprobante.model.js'
+import { abrirTurno, cerrarTurno } from '../modulos/caja/turno.service.js'
 
 // 1.3b · BD propia de `npm run capturas` (decisión de Brayan, 2026-11-07): se prepara desde cero en
 // cada ejecución con los seeds y los usuarios *.dev, sin datos personales. Nunca toca la BD de
@@ -71,8 +73,9 @@ export const sembrarDatosCapturas = async ({ password }) => {
     await registrarEvento({ entidad: 'reserva', entidadId: reserva._id, a: 'pendiente', actor: 'sistema', motivo: 'capturas' })
     await sembrarSalonEnServicio()
     await sembrarReservasDeHoy()
-    // Fase 5 · Compras con lotes por vencer (alertas)
+    // Fase 5 · Compras con lotes por vencer (alertas) y ventas de la última semana (reportes)
     await sembrarComprasEjemplo(await Usuario.findOne({ correo: 'admin.dev@brunchcafe.test' }).select('_id').lean())
+    await sembrarVentasDeEjemplo()
     return { usuarios }
 }
 
@@ -153,6 +156,57 @@ const sembrarSalonEnServicio = async () => {
     await cambiarEstadoMesa(await mesa(4), { a: 'bloqueada', motivo: 'Mantenimiento' }, sesionAdmin)
     const cancelada = await abrirCuenta({ mesaId: await mesa(7), comensales: 2 }, sesion)
     await cancelarCuenta(cancelada.id, { motivo: 'Se fueron sin pedir', versionEsperada: cancelada.version }, sesion)
+}
+
+/**
+ * Fase 5 · Ventas de los últimos 7 días para las capturas de Admin › Reportes (solo la BD de capturas): un turno
+ * que se abre y se cierra, y 9 cuentas en la mesa 5 cobradas con el servicio de la caja (efectivo y tarjeta, con
+ * propina), con ítems listos para los tiempos de preparación. Después se «atrasan» días y horas con el driver
+ * directo (los comprobantes son inmutables: esto solo existe en la BD de capturas).
+ */
+const sembrarVentasDeEjemplo = async () => {
+    const mesero = await Usuario.findOne({ correo: 'mesero.dev@brunchcafe.test' }).populate('rol', 'nombre permisos').lean()
+    const cajero = await Usuario.findOne({ correo: 'cajero.dev@brunchcafe.test' }).populate('rol', 'nombre permisos').lean()
+    const sesion = { id: String(mesero._id), rol: mesero.rol.nombre, permisos: mesero.rol.permisos }
+    const caja = { id: String(cajero._id), rol: cajero.rol.nombre, permisos: cajero.rol.permisos }
+    const mesa5 = String((await Mesa.findOne({ numero: 5 }).select('_id').lean())._id)
+    const productos = await Producto.find({ disponible: { $ne: false }, 'gruposModificadores.0': { $exists: false } }).sort({ codigo: 1 }).limit(4).lean()
+    // [días atrás, hora de Bogotá, ítems (índice de producto × cantidad), método, propina, minutos de preparación]
+    const ventas = [
+        [6, '08:15', [[0, 2], [1, 1]], 'efectivo', 3000, 9], [5, '09:40', [[2, 1]], 'tarjeta', 0, 14], [4, '10:30', [[0, 1], [3, 2]], 'tarjeta', 2000, 11],
+        [3, '08:50', [[1, 2]], 'efectivo', 0, 7], [2, '11:20', [[0, 3], [2, 1]], 'tarjeta', 5000, 18], [2, '12:45', [[3, 1]], 'efectivo', 0, 6],
+        [1, '09:05', [[1, 1], [2, 2]], 'efectivo', 2500, 12], [1, '10:10', [[0, 2]], 'tarjeta', 0, 10], [0, '07:30', [[3, 2], [1, 1]], 'efectivo', 1000, 8],
+    ]
+    const contado = { efectivo: 100000, tarjeta: 0, transferencia: 0 }
+    await abrirTurno({ base: 100000 }, caja)
+    for (const [dias, hora, items, metodo, propina, prep] of ventas) {
+        const cuenta = await abrirCuenta({ mesaId: mesa5, comensales: 2 }, sesion)
+        for (const [i, cantidad] of items) await agregarItem(cuenta.id, { productoId: String(productos[i]._id), cantidad }, sesion)
+        await enviarRonda(cuenta.id, { numeroRonda: 1, versionEsperada: (await Cuenta.findById(cuenta.id).lean()).version }, sesion)
+        await solicitarCuenta(cuenta.id, { versionEsperada: (await Cuenta.findById(cuenta.id).lean()).version }, sesion)
+        const { version, total } = await Cuenta.findById(cuenta.id).lean()
+        const monto = total + propina
+        const { comprobante } = await cobrarCuenta(cuenta.id, { versionEsperada: version, propina, pagos: [{ metodo, monto, ...(metodo === 'efectivo' ? { recibido: monto } : {}) }] }, caja)
+        contado[metodo] += monto
+        await cambiarEstadoMesa(mesa5, { a: 'libre' }, sesion)
+
+        // Llevar la cuenta a ese día y hora: abierta 50 min antes del cobro; ronda enviada 5 min después de abrir
+        const cobro = instanteLocal(fechaLocal(new Date(Date.now() - dias * 86_400_000)), hora)
+        const abierta = new Date(cobro.getTime() - 50 * 60_000)
+        const enviada = new Date(abierta.getTime() + 5 * 60_000)
+        const listo = new Date(enviada.getTime() + (prep + 3) * 60_000)
+        const id = new mongoose.Types.ObjectId(cuenta.id)
+        await Cuenta.collection.updateOne({ _id: id }, { $set: { abiertaEn: abierta, cerradaEn: cobro } })
+        const comanda = await Comanda.findOne({ cuenta: id }).lean()
+        const tiempos = {}
+        comanda.items.forEach((_, n) => Object.assign(tiempos, {
+            [`items.${n}.estado`]: 'servido', [`items.${n}.iniciadoEn`]: new Date(listo.getTime() - prep * 60_000), [`items.${n}.iniciadoPor`]: mesero._id,
+            [`items.${n}.listoEn`]: listo, [`items.${n}.listoPor`]: mesero._id, [`items.${n}.servidoEn`]: new Date(listo.getTime() + 2 * 60_000), [`items.${n}.servidoPor`]: mesero._id,
+        }))
+        await Comanda.collection.updateOne({ _id: comanda._id }, { $set: { enviadaEn: enviada, ...tiempos } })
+        await Comprobante.collection.updateOne({ _id: new mongoose.Types.ObjectId(comprobante.id) }, { $set: { emitidoEn: cobro } })
+    }
+    await cerrarTurno({ contado, nota: 'Turno de ejemplo de las capturas' }, caja)
 }
 
 /** Vacía la BD de capturas (solo esa) y la vuelve a sembrar. */

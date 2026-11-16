@@ -38,6 +38,9 @@ export const INDICES = [
     { coleccion: 'recepciones', nombre: 'orden_1_createdAt_1', clave: { orden: 1, createdAt: 1 }, opciones: {} },
     { coleccion: 'lotes', nombre: 'descartado_1_vencimiento_1', clave: { descartado: 1, vencimiento: 1 }, opciones: {} },
     { coleccion: 'lotes', nombre: 'insumo_1_createdAt_-1', clave: { insumo: 1, createdAt: -1 }, opciones: {} },
+    // 5.6 y 5.7 · Reportes por rango de fechas (en colecciones existentes: solo se agrega el índice)
+    { coleccion: 'comandas', nombre: 'enviadas_por_fecha', clave: { enviadaEn: 1 }, opciones: { partialFilterExpression: { estado: 'enviada' } } },
+    { coleccion: 'notasCredito', nombre: 'emitidaEn_-1', clave: { emitidaEn: -1 }, opciones: {} },
 ]
 
 const existentes = async (db, coleccion) => {

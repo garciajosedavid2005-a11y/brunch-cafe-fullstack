@@ -39,6 +39,7 @@ const notaCreditoSchema = new mongoose.Schema({
 notaCreditoSchema.index({ numero: 1 }, { unique: true })
 notaCreditoSchema.index({ comprobante: 1 }, { unique: true }) // un comprobante se anula una sola vez
 notaCreditoSchema.index({ turno: 1 }) // arqueo del turno
+notaCreditoSchema.index({ emitidaEn: -1 }) // Fase 5 · reportes por rango de fechas
 notaCreditoSchema.index({ 'autor.id': 1 }) // historial de quien la emitió (baja de usuarios, 3.8)
 
 const inmutable = () => new AppError(500, 'NOTA_INMUTABLE', 'Las notas crédito no se pueden modificar ni borrar.')

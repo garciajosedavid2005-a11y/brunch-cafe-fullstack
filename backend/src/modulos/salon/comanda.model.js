@@ -156,6 +156,8 @@ comandaSchema.index(
     { 'items.estacion.codigo': 1, 'items.estado': 1, enviadaEn: 1 },
     { partialFilterExpression: { estado: 'enviada' }, name: 'cola_por_estacion' },
 )
+// Fase 5 · 5.7 · Tiempos de preparación del reporte: rondas enviadas en un rango de fechas
+comandaSchema.index({ enviadaEn: 1 }, { partialFilterExpression: { estado: 'enviada' }, name: 'enviadas_por_fecha' })
 // Una sola ronda en borrador por cuenta
 comandaSchema.index({ cuenta: 1 }, { unique: true, partialFilterExpression: { estado: 'borrador' }, name: 'un_borrador_por_cuenta' })
 

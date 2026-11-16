@@ -14,7 +14,7 @@ const archivos = (dir, extension) => readdirSync(dir).flatMap((n) => {
 // ★ y ☆ (U+2605, U+2606) son las estrellas de calificación: tipografía, no emoji
 const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{2604}\u{2607}-\u{26FF}]/u;
 // Nombres propios y siglas que sí van con mayúscula
-const PROPIOS = /^(Brunch|Café|Cafe|Bogotá|Neiva|Huila|Google|Colombia|DIAN|COP|KDS|Facebook|Instagram|TikTok|TripAdvisor|Gourmet|Mesa|Mesas)$/;
+const PROPIOS = /^(Brunch|Café|Cafe|Bogotá|Neiva|Huila|Google|Colombia|DIAN|COP|KDS|Facebook|Instagram|TikTok|TripAdvisor|Gourmet|Mesa|Mesas|CSV)$/;
 // Artículos, preposiciones y posesivos: en mayúsculas de oración van en minúscula y no cuentan
 const CONECTORES = /^(de|del|la|las|el|los|en|y|o|a|al|por|para|con|sin|tu|tus|su|sus|mi|mis|un|una|e|u|que|se)$/i;
 // Pantallas que se corrigen en un grupo posterior (se quitan de aquí al corregirlas)

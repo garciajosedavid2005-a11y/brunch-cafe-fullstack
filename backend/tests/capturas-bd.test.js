@@ -68,7 +68,10 @@ describe('Preparar la BD de capturas', () => {
         expect(estados).toMatchObject({ 1: 'ocupada', 2: 'libre', 3: 'cuenta_pedida', 4: 'bloqueada', 6: 'ocupada', 7: 'por_limpiar' })
         expect(await Cuenta.countDocuments({ estado: { $in: ['abierta', 'cuenta_pedida'] } })).toBe(3)
         expect(await Cuenta.countDocuments({ estado: 'cancelada' })).toBe(1)
-        expect(await Comanda.countDocuments({ estado: 'enviada' })).toBe(2)
+        // 2 del salón en servicio + 9 de las ventas de ejemplo de la Fase 5 (cobradas en un turno ya cerrado)
+        expect(await Comanda.countDocuments({ estado: 'enviada' })).toBe(11)
+        expect(await Cuenta.countDocuments({ estado: 'cerrada' })).toBe(9)
+        expect(estados[5]).toBe('libre')
         const minutos = async (numero) => {
             const cuenta = await Cuenta.findOne({ 'mesas.numero': numero, estado: { $in: ['abierta', 'cuenta_pedida'] } }).lean()
             return (Date.now() - cuenta.abiertaEn) / 60_000

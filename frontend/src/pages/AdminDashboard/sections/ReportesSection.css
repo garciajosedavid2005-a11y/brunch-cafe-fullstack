@@ -1,0 +1,152 @@
+/* Fase 5 · Admin › Reportes */
+.reportes-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.reportes-filtros label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-weight: 700;
+  color: #2c0703;
+}
+
+.reportes-filtros .admin-form-input {
+  min-height: 44px;
+  margin: 0;
+}
+
+.reportes-atajos {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.reportes-atajos button,
+.reportes-tarjeta__cabecera button {
+  min-height: 44px;
+}
+
+.reportes__rango,
+.reportes__nota,
+.reportes__vacio {
+  color: #5f5048;
+  margin: 0 0 0.75rem;
+}
+
+.reportes__nota {
+  font-size: 0.85rem;
+}
+
+.reportes-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.reportes-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.9rem 1rem;
+}
+
+.reportes-kpi span {
+  color: #5f5048;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.reportes-kpi strong {
+  color: #2c0703;
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.reportes-rejilla {
+  display: grid;
+  gap: 1rem;
+}
+
+.reportes-tarjeta {
+  padding: 1rem;
+  min-width: 0;
+}
+
+.reportes-tarjeta__cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.reportes-tarjeta__cabecera h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #2c0703;
+}
+
+.reportes-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Barras de una sola serie: color de marca en la barra; etiqueta y valor en tinta */
+.reportes-barras {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.reportes-barras li {
+  display: grid;
+  grid-template-columns: minmax(90px, 9rem) 1fr minmax(80px, auto);
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: #2c0703;
+}
+
+.reportes-barras__etiqueta {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reportes-barras__pista {
+  height: 14px;
+  border-radius: 4px;
+  background: #f4e8e3;
+  overflow: hidden;
+}
+
+.reportes-barras__barra {
+  display: block;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  background: #890620;
+}
+
+.reportes-barras__valor {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tablet: los encabezados se parten para que las tablas anchas quepan mejor (revisor-visual) */
+@media (max-width: 820px) {
+  .reportes-tabla th {
+    white-space: normal;
+  }
+
+  .reportes-tabla th,
+  .reportes-tabla td {
+    padding: 0.5rem 0.4rem;
+  }
+}

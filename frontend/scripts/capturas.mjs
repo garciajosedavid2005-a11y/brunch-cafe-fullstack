@@ -1040,6 +1040,17 @@ const VISTAS = {
     await abrirPestanaAdmin("Resumen")(p);
     await p.getByText("Inventario:", { exact: true }).waitFor();
   } },
+  // 5.6 y 5.7 · Reportes (ventas de ejemplo de la última semana en la BD de capturas)
+  "admin-reportes": { usuario: "admin", preparar: async (p) => {
+    await abrirPestanaAdmin("Reportes")(p);
+    await p.getByRole("table", { name: "Ventas por mesero" }).getByText(/Mesero/).first().waitFor();
+  } },
+  "admin-reportes-operacion": { usuario: "admin", preparar: async (p) => {
+    await abrirPestanaAdmin("Reportes")(p);
+    await p.getByRole("table", { name: "Ventas por día" }).waitFor();
+    await p.getByRole("button", { name: "Operación y márgenes" }).click();
+    await p.getByRole("table", { name: "Tiempos de preparación por estación" }).getByText(/min/).first().waitFor();
+  } },
   "staff-inventario-compras": { usuario: "compras", preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);
     await p.getByRole("table", { name: "Insumos del inventario" }).waitFor();

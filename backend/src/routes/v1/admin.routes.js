@@ -15,6 +15,7 @@ import { zonasRouter, mesasRouter } from '../../modulos/salon/salonConfig.routes
 import { estacionesRouter, gruposRouter } from '../../modulos/catalogo/catalogoConfig.routes.js'
 import { horariosSchema } from '../../modulos/configuracion/horarios.schema.js'
 import { verHorariosAdmin, editarHorarios } from '../../modulos/configuracion/horarios.controller.js'
+import reportesRoutes from '../../modulos/reportes/reportes.routes.js'
 
 // /api/v1/admin: configuración del negocio. Cada router exige su permiso (no el rol).
 const router = Router()
@@ -30,6 +31,7 @@ router.use('/zonas', zonasRouter) // 1.2 · salon:configurar
 router.use('/mesas', mesasRouter)
 router.use('/estaciones', estacionesRouter) // 1.3 · salon:configurar
 router.use('/grupos-modificadores', gruposRouter) // 1.3 · catalogo:gestionar
+router.use('/reportes', reportesRoutes) // Fase 5 · reporte:ver
 
 const comentarios = Router()
 comentarios.use(validateToken, requirePermission('resena:moderar'))
