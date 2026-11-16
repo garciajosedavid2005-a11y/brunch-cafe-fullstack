@@ -17,6 +17,7 @@ import {
   LayoutGrid,
   ListPlus,
   Utensils,
+  Package,
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 import { Link, useNavigate } from "react-router-dom";
@@ -34,6 +35,7 @@ import UsersSection from "./sections/UsersSection";
 import HorariosSection from "./sections/HorariosSection";
 import SalonSection from "./sections/SalonSection";
 import ProfileSection from "./sections/ProfileSection";
+import Inventario from "../Inventario/Inventario";
 import useAnchoAccionesFijas from "./hooks/useAnchoAccionesFijas";
 import LimiteErrores from "../../components/LimiteErrores/LimiteErrores";
 import "./AdminDashboard.css";
@@ -50,6 +52,7 @@ const sections = [
   { id: "states", label: "Estados", icon: Sliders },
   { id: "horarios", label: "Horarios", icon: Clock },
   { id: "salon", label: "Salón", icon: LayoutGrid },
+  { id: "inventario", label: "Inventario", icon: Package }, // Fase 5
   { id: "users", label: "Usuarios", icon: Users },
   { id: "roles", label: "Roles", icon: Shield },
   { id: "profile", label: "Mi perfil", icon: UserRound },
@@ -96,6 +99,8 @@ export default function AdminDashboard() {
         return <HorariosSection />;
       case "salon":
         return <SalonSection />;
+      case "inventario":
+        return <Inventario permisos={user?.permisos || []} />;
       case "roles":
         return <RolesSection />;
       case "users":

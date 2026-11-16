@@ -1,5 +1,5 @@
 // Usuarios de prueba para desarrollo y capturas (npm run seed:dev). NUNCA en producción.
-// - Crea o actualiza admin.dev / cliente.dev / mesero.dev / cocina.dev / cajero.dev @brunchcafe.test (dominio reservado .test).
+// - Crea o actualiza admin.dev / cliente.dev / mesero.dev / cocina.dev / cajero.dev / compras.dev @brunchcafe.test (dominio reservado .test).
 // - La contraseña la recibe del llamador (DEV_USUARIOS_PASSWORD); no está en el código.
 // - Solo toca usuarios de @brunchcafe.test; los demás usuarios no se modifican.
 // - Deja un pedido pendiente del cliente de prueba (si no tiene ninguno) para ver el detalle en el admin.
@@ -24,6 +24,8 @@ export const USUARIOS_DEV = [
     { rol: 'cocina', correo: 'cocina.dev@brunchcafe.test', nombre: 'Carlos', apellido: 'Cocina' },
     // Fase 3 · Para revisar la Caja (/staff › Caja) y sus capturas
     { rol: 'cajero', correo: 'cajero.dev@brunchcafe.test', nombre: 'Carla', apellido: 'Caja' },
+    // Fase 5 · Para revisar el inventario desde /staff (rol compras)
+    { rol: 'compras', correo: 'compras.dev@brunchcafe.test', nombre: 'Camilo', apellido: 'Compras' },
 ]
 
 /** Devuelve { usuarios, pedido: 'creado' | 'existente' | 'sin-productos' }. */

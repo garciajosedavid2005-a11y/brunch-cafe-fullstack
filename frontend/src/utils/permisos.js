@@ -24,6 +24,10 @@ export const puedeEntrarAStaff = (user) => esPersonal(user) || esAdministrador(u
 // 2.5 · Pantalla de cocina (/kds): personal con kds:ver y también el administrador
 export const puedeEntrarAKds = (user) => puedeEntrarAStaff(user) && tienePermiso(user, "kds:ver");
 
+// Fase 5 (F5-b) · Pantalla de inventario: cualquiera de estos permisos (cada pestaña pide el suyo)
+export const PERMISOS_INVENTARIO = ["inventario:ver", "inventario:gestionar", "inventario:ajustar", "compra:gestionar", "compra:recibir"];
+export const puedeVerInventario = (permisos = []) => PERMISOS_INVENTARIO.some((p) => incluyePermiso(permisos, p));
+
 export const rutaInicio = (user) => {
   if (esAdministrador(user)) return "/admin";
   // 2.5 · Cocina y barista (kds:ver sin mesa:ver) empiezan en el KDS; con los dos, /staff enlaza al KDS

@@ -30,8 +30,9 @@ describe('Permisos de salón (1.1)', () => {
         ])
     })
 
-    it('ya no existen los roles anfitrion ni compras (1.5b)', async () => {
-        expect(await Rol.countDocuments({ nombre: { $in: ['anfitrion', 'compras'] } })).toBe(0)
+    it('ya no existe el rol anfitrion (1.5b); compras volvió en la Fase 5 solo con permisos de inventario', async () => {
+        expect(await Rol.countDocuments({ nombre: 'anfitrion' })).toBe(0)
+        expect(await permisosDe('compras')).toEqual(['inventario:ver', 'inventario:gestionar', 'inventario:ajustar', 'compra:gestionar', 'compra:recibir'])
     })
 
     it('item:anular, cuenta:cerrar_sin_cobro y salon:configurar no los tiene ningún rol de staff (solo el admin con "*")', async () => {

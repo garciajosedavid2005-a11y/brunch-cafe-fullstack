@@ -17,7 +17,7 @@ describe('Seed de roles base', () => {
         await sembrarRoles()
         const roles = await Rol.find().sort({ nombre: 1 }).lean()
         expect(roles.map((r) => r.nombre)).toEqual(
-            ['admin', 'barista', 'cajero', 'cliente', 'cocina', 'mesero', 'repartidor']
+            ['admin', 'barista', 'cajero', 'cliente', 'cocina', 'compras', 'mesero', 'repartidor']
         )
         expect(roles.every((r) => r.esSistema)).toBe(true)
         const porNombre = Object.fromEntries(roles.map((r) => [r.nombre, r.permisos]))
@@ -34,7 +34,8 @@ describe('Seed de roles base', () => {
             'comanda:tomar', 'comanda:enviar', 'cuenta:solicitar',
             'item:servir', 'producto:agotar', // 2.1 (F2-2, F2-5)
         ])
-        expect(porNombre.compras).toBeUndefined() // 1.5b: roles anfitrion y compras eliminados
+        // Fase 5 (F5-8): compras vuelve, solo con permisos de inventario
+        expect(porNombre.compras).toEqual(['inventario:ver', 'inventario:gestionar', 'inventario:ajustar', 'compra:gestionar', 'compra:recibir'])
         expect(porNombre.anfitrion).toBeUndefined()
     })
 

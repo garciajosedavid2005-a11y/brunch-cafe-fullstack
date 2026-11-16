@@ -144,6 +144,18 @@ describe('Migración 1.5b (quitar los roles anfitrion y compras)', () => {
         expect((await usuarios().findOne({ _id: a1 })).rol).toEqual((await rol('mesero'))._id)
     })
 
+    it('Fase 5 · no borra el rol compras nuevo (con permisos de inventario) ni mueve a sus usuarios', async () => {
+        const compras = await rol('compras')
+        await roles().updateOne({ _id: compras._id }, { $set: { permisos: ['inventario:ver', 'compra:recibir'] } })
+        const u = await usuarioCon(compras)
+        const r = await up(db())
+        expect(r.rolesAEliminar).toEqual(['anfitrion'])
+        expect(r.usuarios.compras).toBe(0)
+        expect((await rol('compras'))._id).toEqual(compras._id)
+        expect((await usuarios().findOne({ _id: u })).rol).toEqual(compras._id)
+        await db().collection(COLECCION_RESPALDO).drop() // los casos siguientes parten sin la copia
+    })
+
     it('sin los roles (BD nueva) no hace nada más que dar los permisos al mesero', async () => {
         await roles().deleteMany({ nombre: { $in: ['anfitrion', 'compras'] } })
         const r = await up(db())

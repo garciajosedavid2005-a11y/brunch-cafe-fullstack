@@ -1,0 +1,109 @@
+/* Fase 5 · Inventario (Admin › Inventario y /staff › Inventario). Usa las clases del admin. */
+.inventario-pestanas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.inventario-pestanas button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d9c8bd;
+  border-radius: 999px;
+  background: #fff;
+  color: #4a2b20;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.inventario-pestanas button.is-active {
+  background: #890620;
+  border-color: #890620;
+  color: #fff;
+}
+
+.inventario-pestanas button:focus-visible {
+  outline: 3px solid #b78103;
+  outline-offset: 2px;
+}
+
+.inventario-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.inventario-entrada { color: #1b5e20; }
+.inventario-salida { color: #8e1b1b; }
+
+.inventario-fila--inactiva td { color: #6b6b6b; }
+
+.inventario-inactivo { margin-left: 0.5rem; }
+
+.inventario-ayuda {
+  display: block;
+  margin-top: 0.25rem;
+  color: #5f5048;
+  font-size: 0.85rem;
+}
+
+.inventario-form-fila {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0 1rem;
+}
+
+.inventario-panel .admin-toolbar {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* En /staff la pantalla va dentro del contenido de la tablet */
+.staff-tablet__contenido .inventario {
+  padding: 1rem;
+}
+
+.inventario-minimo {
+  display: block;
+  color: #5f5048;
+  font-size: 0.8rem;
+}
+
+/* Acciones solo con icono (nombre accesible en aria-label): la tabla cabe a 1024 px */
+.inventario-icono {
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
+}
+
+/* Kárdex y tablas dentro de diálogos: más ancho y celdas compactas */
+.admin-modal-container.inventario-modal-ancho {
+  width: min(1040px, calc(100vw - 2rem));
+  max-width: min(1040px, calc(100vw - 2rem));
+}
+
+.inventario-tabla-compacta th,
+.inventario-tabla-compacta td {
+  padding: 0.6rem 0.5rem;
+}
+
+.inventario-tabla-compacta th:first-child,
+.inventario-tabla-compacta td:first-child {
+  padding-left: 0.85rem;
+}
+
+/* El nombre del insumo puede ocupar dos líneas (la tabla cabe en el contenido del admin a 1024 px) */
+.admin-table td.inventario-nombre {
+  white-space: normal;
+  min-width: 110px;
+}
+
+.inventario-insignias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}

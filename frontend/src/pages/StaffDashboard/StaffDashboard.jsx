@@ -8,6 +8,7 @@ import {
   Clock3,
   LayoutGrid,
   ListOrdered,
+  Package,
   ReceiptText,
   ShieldHalf,
   Plus,
@@ -23,7 +24,7 @@ import { useAuth } from "../../context/useAuth";
 import { apiRequest } from "../../services/api";
 import { fechaLocal, formatearFechaCalendario, formatearHoraTexto, horaLocal, hoyLocal } from "../../utils/fechas";
 import { formatearCOP } from "../../utils/moneda";
-import { esAdministrador, tienePermiso } from "../../utils/permisos";
+import { esAdministrador, puedeVerInventario, tienePermiso } from "../../utils/permisos";
 import { textoModificadores } from "../../utils/modificadores";
 import { claseEstado } from "../AdminDashboard/components/estadoUtils";
 import ProfileSection from "../CustomerDashboard/sections/ProfileSection";
@@ -36,6 +37,7 @@ import PlanoMesas from "./plano/PlanoMesas";
 import AvisoListos from "./plano/AvisoListos";
 import PanelAgotados from "./agotados/PanelAgotados";
 import Caja from "./caja/Caja";
+import Inventario from "../Inventario/Inventario";
 import LimiteErrores from "../../components/LimiteErrores/LimiteErrores";
 import { useSonidoKds } from "../Kds/useSonidoKds";
 import CuentasAbiertas from "./cuentas/CuentasAbiertas";
@@ -75,7 +77,9 @@ export default function StaffDashboard() {
   // Fase 3 · cajero y admin (F3-1); 3b.4 · también el repartidor, que cobra sus domicilios (pedido:cobrar)
   const puedeCobrar = tienePermiso(user, "cuenta:cobrar") || tienePermiso(user, "pedido:cobrar");
   // Con mesa:ver, el panel abre primero el plano de mesas (decisión 1.6 del 2026-11-07); el cajero, la caja
-  const [seccion, setSeccion] = useState(() => (puedeVerMesas ? "mesas" : puedeCobrar ? "caja" : "resumen"));
+  // Fase 5 (F5-b) · Inventario (rol compras; el admin lo usa en Admin › Inventario)
+  const puedeInventario = puedeVerInventario(permisos) && !admin;
+  const [seccion, setSeccion] = useState(() => (puedeVerMesas ? "mesas" : puedeCobrar ? "caja" : puedeInventario ? "inventario" : "resumen"));
   // 2.6 · Aviso «Listo para servir» a quien sirve mesas (el de sus cuentas), con sonido apagado por
   // defecto en esta pantalla (F2-8). Tocar una mesa del aviso abre su cuenta en «Mesas»
   const avisaListos = puedeVerMesas && tienePermiso(user, "item:servir") && Boolean(user?.id);
@@ -199,6 +203,7 @@ export default function StaffDashboard() {
       : []),
     ...(puedeVerPedidos ? [{ id: "pedidos", label: "Pedidos", icon: ListOrdered }] : []),
     ...(puedeAgotar ? [{ id: "agotados", label: "Agotados", icon: Ban }] : []),
+    ...(puedeInventario ? [{ id: "inventario", label: "Inventario", icon: Package }] : []),
     { id: "perfil", label: "Mi perfil", icon: UserRound },
     { id: "seguridad", label: "Seguridad", icon: ShieldCheck },
   ];
@@ -327,8 +332,9 @@ export default function StaffDashboard() {
         {seccion === "cuentas" && <CuentasAbiertas permisos={permisos} />}
         {seccion === "agotados" && <PanelAgotados permisos={permisos} />}
         {seccion === "caja" && <Caja />}
+        {seccion === "inventario" && <Inventario permisos={permisos} />}
 
-        {!["mesas", "cuentas", "agotados", "caja"].includes(seccion) && (
+        {!["mesas", "cuentas", "agotados", "caja", "inventario"].includes(seccion) && (
         <section className="customer-dashboard__content" aria-live="polite">
           {seccion === "resumen" && (
             <div>

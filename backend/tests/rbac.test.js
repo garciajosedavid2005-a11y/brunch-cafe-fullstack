@@ -270,9 +270,10 @@ describe('Protecciones de roles', () => {
         expect((await Rol.findById(id)).permisos).toEqual(['*'])
     })
 
-    it('"*" y los permisos reservados no se pueden asignar; claves desconocidas tampoco', async () => {
+    // Fase 5 · Ya no queda ningún permiso reservado (inventario y reportes se asignan); el mecanismo sigue en rol.schema.js
+    it('"*" no se puede asignar; claves desconocidas tampoco', async () => {
         const { sesion } = await crearConSesion('admin')
-        for (const permisos of [['*'], ['inventario:gestionar'], ['hacer:todo']]) {
+        for (const permisos of [['*'], ['hacer:todo']]) {
             const res = await sesion.post('/api/v1/admin/roles').send({ nombre: 'Prueba', permisos })
             expect(res.status, JSON.stringify(permisos)).toBe(400)
             expect(res.body.error.code).toBe('VALIDATION_ERROR')
@@ -303,9 +304,9 @@ describe('Protecciones de roles', () => {
         expect((await sesion.delete(`/api/v1/admin/roles/${creado.body.id}`)).status).toBe(200)
     })
 
-    it('ninguno de los 7 roles de sistema se puede eliminar (0.7b; 1.5b sin anfitrion ni compras)', async () => {
+    it('ninguno de los 8 roles de sistema se puede eliminar (0.7b; 1.5b sin anfitrion; Fase 5: vuelve compras)', async () => {
         const { sesion } = await crearConSesion('admin')
-        const sistema = ['admin', 'cliente', 'mesero', 'cocina', 'barista', 'cajero', 'repartidor']
+        const sistema = ['admin', 'cliente', 'mesero', 'cocina', 'barista', 'cajero', 'repartidor', 'compras']
         const lista = (await sesion.get('/api/v1/admin/roles')).body
         for (const codigo of sistema) {
             const rol = lista.find((r) => r.codigo === codigo)
@@ -314,7 +315,7 @@ describe('Protecciones de roles', () => {
             expect(res.status, codigo).toBe(403)
             expect(res.body.error.code).toBe('ROL_PROTEGIDO')
         }
-        expect(await Rol.countDocuments({ nombre: { $in: sistema } })).toBe(7)
+        expect(await Rol.countDocuments({ nombre: { $in: sistema } })).toBe(8)
     })
 
     it('rol con usuarios: 409 ROL_CON_USUARIOS con plural correcto (0.7b)', async () => {
@@ -342,7 +343,8 @@ describe('Protecciones de roles', () => {
             modulo: 'reservas',
             reservado: false,
         })
-        expect(porClave['inventario:gestionar'].reservado).toBe(true)
+        expect(porClave['inventario:gestionar'].reservado).toBe(false) // Fase 5
+        expect(porClave['reporte:ver'].reservado).toBe(false)
         expect(porClave['caja:cerrar'].reservado).toBe(false) // 3b
         expect(porClave['*']).toBeUndefined()
     })

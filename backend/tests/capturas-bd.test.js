@@ -57,8 +57,8 @@ describe('Preparar la BD de capturas', () => {
         delete process.env.ADMIN_NOMBRE
 
         const correos = (await Usuario.find().lean()).map((u) => u.correo).sort()
-        // 2.5 · cocina.dev para las capturas del KDS; Fase 3 · cajero.dev para las de la Caja
-        expect(correos).toEqual(['admin.dev@brunchcafe.test', 'cajero.dev@brunchcafe.test', 'cliente.dev@brunchcafe.test', 'cocina.dev@brunchcafe.test', 'mesero.dev@brunchcafe.test'])
+        // 2.5 · cocina.dev para las capturas del KDS; Fase 3 · cajero.dev para las de la Caja; Fase 5 · compras.dev
+        expect(correos).toEqual(['admin.dev@brunchcafe.test', 'cajero.dev@brunchcafe.test', 'cliente.dev@brunchcafe.test', 'cocina.dev@brunchcafe.test', 'compras.dev@brunchcafe.test', 'mesero.dev@brunchcafe.test'])
         expect(await Categoria.countDocuments({ estacion: { $type: 'objectId' } })).toBe(await Categoria.countDocuments())
         expect(await Categoria.countDocuments()).toBeGreaterThan(0)
         expect(await GrupoModificadores.countDocuments()).toBe(4)
@@ -86,7 +86,7 @@ describe('Preparar la BD de capturas', () => {
         // y (Fase 4) dos de hoy para la agenda: una confirmada en la mesa 2 y una pendiente sin mesa
         expect(await Reserva.countDocuments()).toBe(3)
         expect(await Reserva.countDocuments({ mesa: { $type: 'objectId' } })).toBe(1)
-        expect(r.usuarios).toBe(5)
+        expect(r.usuarios).toBe(6)
     })
 
     it('sin contraseña de prueba siembra solo los datos públicos (sin usuarios)', async () => {

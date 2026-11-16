@@ -4,6 +4,7 @@ import { sembrarMenu } from './menu.js'
 import { sembrarModificadoresEjemplo } from './modificadores.js'
 import { sembrarSalonEjemplo } from './salon.js'
 import { sembrarUsuariosDev } from './dev.js'
+import { sembrarInventarioEjemplo } from './inventario.js'
 import Usuario from '../modulos/identidad/usuario.model.js'
 import Reserva from '../modulos/salon/reserva.model.js'
 import Espera from '../modulos/salon/espera.model.js'
@@ -53,6 +54,7 @@ export const sembrarDatosCapturas = async ({ password }) => {
     await sembrarMenu()
     await sembrarModificadoresEjemplo()
     await sembrarSalonEjemplo()
+    await sembrarInventarioEjemplo() // Fase 5
     if (!password) return { usuarios: 0 }
 
     const { usuarios } = await sembrarUsuariosDev(password)

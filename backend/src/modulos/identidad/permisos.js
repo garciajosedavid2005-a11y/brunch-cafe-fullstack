@@ -46,9 +46,14 @@ export const PERMISOS = [
     { clave: 'caja:cerrar', modulo: 'caja', descripcion: 'Cerrar el turno de caja con el arqueo' },
     { clave: 'factura:anular', modulo: 'caja', descripcion: 'Anular comprobantes con nota crédito' },
     { clave: 'pedido:cobrar', modulo: 'caja', descripcion: 'Registrar el cobro contra entrega de un domicilio' },
-    // Fases futuras (reservados)
-    { clave: 'inventario:gestionar', modulo: 'inventario', descripcion: 'Gestionar insumos, recetas y movimientos', reservado: true },
-    { clave: 'reporte:ver', modulo: 'reportes', descripcion: 'Ver reportes de ventas y operación', reservado: true },
+    // Fase 5 · inventario y compras (PLAN_FASE_5, F5-8 y F5-a): el rol compras; el admin por «*»
+    { clave: 'inventario:ver', modulo: 'inventario', descripcion: 'Ver insumos, existencias, recetas, movimientos y alertas' },
+    { clave: 'inventario:gestionar', modulo: 'inventario', descripcion: 'Crear y editar insumos y recetas' },
+    { clave: 'inventario:ajustar', modulo: 'inventario', descripcion: 'Registrar ajustes, mermas y vencimientos con motivo' },
+    { clave: 'compra:gestionar', modulo: 'inventario', descripcion: 'Gestionar proveedores y órdenes de compra' },
+    { clave: 'compra:recibir', modulo: 'inventario', descripcion: 'Recibir compras (suma existencias y recalcula el costo)' },
+    // Fase 5 · reportes (F5-9): solo el admin («*») mientras Brayan no lo dé a otro rol
+    { clave: 'reporte:ver', modulo: 'reportes', descripcion: 'Ver reportes de ventas y operación' },
 ]
 
 export const CLAVES = PERMISOS.map((p) => p.clave)
@@ -95,6 +100,14 @@ export const PERMISOS_CAJA = {
     repartidor: ['pedido:cobrar'],
 }
 
+// Fase 5 (F5-8) · El rol compras: inventario, proveedores, órdenes y recepción; sin caja, salón ni cocina.
+// La migración 5 usa una copia fija de esta lista; un cambio aquí necesita su propia migración.
+export const PERMISOS_INVENTARIO = {
+    compras: ['inventario:ver', 'inventario:gestionar', 'inventario:ajustar', 'compra:gestionar', 'compra:recibir'],
+}
+// Cualquiera de estos deja ver la pantalla de inventario (cada pestaña pide el suyo)
+export const PERMISOS_PANTALLA_INVENTARIO = ['inventario:ver', ...PERMISOS_INVENTARIO.compras.filter((p) => p !== 'inventario:ver')]
+
 // 2.5b · Estaciones del KDS de cada rol al crearlo (Brayan, 2026-11-13): cocina → Cocina, barista → Barra.
 // Las edita el admin en Admin › Roles; los roles existentes las reciben con la migración 2.5b.
 export const ESTACIONES_POR_ROL = { cocina: ['cocina'], barista: ['barra'] }
@@ -112,6 +125,8 @@ export const ROLES_STAFF = [
     { nombre: 'barista', etiqueta: 'Barista', descripcion: 'Prepara las bebidas.', permisos: ['pedido:ver', ...PERMISOS_COCINA.barista], estaciones: ESTACIONES_POR_ROL.barista },
     { nombre: 'cajero', etiqueta: 'Cajero', descripcion: 'Cobra cuentas y gestiona la caja.', permisos: ['pedido:ver', ...PERMISOS_CAJA.cajero] },
     { nombre: 'repartidor', etiqueta: 'Repartidor', descripcion: 'Entrega pedidos a domicilio.', permisos: ['pedido:ver', ...PERMISOS_CAJA.repartidor] },
+    // Fase 5 (F5-8) · Vuelve el rol compras (se había quitado en 1.5b, cuando no tenía permisos)
+    { nombre: 'compras', etiqueta: 'Compras', descripcion: 'Gestiona el inventario, los proveedores y las compras.', permisos: [...PERMISOS_INVENTARIO.compras] },
 ]
 
 // 1.7b · Atiende mesas quien tiene comanda:tomar en su rol, sin contar el comodín: el administrador

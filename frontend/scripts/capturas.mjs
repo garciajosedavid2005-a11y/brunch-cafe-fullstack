@@ -68,6 +68,7 @@ const USUARIOS = {
   mesero: "mesero.dev@brunchcafe.test",
   cocina: "cocina.dev@brunchcafe.test", // 2.5 · KDS
   cajero: "cajero.dev@brunchcafe.test", // Fase 3 · Caja
+  compras: "compras.dev@brunchcafe.test", // Fase 5 · Inventario
 };
 
 // ── Entorno aislado: API sobre la BD de capturas + Vite apuntando a ella ──
@@ -990,6 +991,22 @@ const VISTAS = {
     await p.getByRole("button", { name: "Recargar" }).scrollIntoViewIfNeeded();
   } },
   "admin-salon": { usuario: "admin", preparar: abrirPestanaAdmin("Salón") }, // 1.2
+  // Fase 5 · Inventario: insumos en el admin, alta y kárdex; la misma pantalla en /staff con el rol compras
+  "admin-inventario": { usuario: "admin", preparar: abrirPestanaAdmin("Inventario") },
+  "admin-inventario-nuevo": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Inventario")(p);
+    await p.getByRole("button", { name: /nuevo insumo/i }).click();
+    await p.getByRole("dialog", { name: "Nuevo insumo" }).waitFor();
+  } },
+  "admin-inventario-kardex": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Inventario")(p);
+    await p.getByRole("button", { name: "Movimientos de Café en grano" }).click();
+    await p.getByRole("dialog", { name: /Movimientos de Café en grano/ }).getByRole("table").waitFor();
+  } },
+  "staff-inventario-compras": { usuario: "compras", preparar: async (p) => {
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("table", { name: "Insumos del inventario" }).waitFor();
+  } },
   "admin-salon-mesa-form": { usuario: "admin", completa: false, preparar: async (p) => {
     await abrirPestanaAdmin("Salón")(p);
     await p.getByRole("button", { name: "Nueva mesa" }).click();

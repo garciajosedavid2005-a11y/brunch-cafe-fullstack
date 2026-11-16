@@ -31,6 +31,7 @@
     "migrate:4": "node scripts/migrar-4-indices-reservas.js",
     "migrate:4.6": "node scripts/migrar-4.6-apartar-mesa.js",
     "migrate:4.6.5": "node scripts/migrar-4.6.5-texto-no-show.js",
+    "migrate:5": "node scripts/migrar-5-inventario.js",
     "seed:dev": "node scripts/seed-dev.js",
     "seed:demo": "node scripts/seed-demo.js",
     "seed:salon": "node scripts/seed-salon.js",

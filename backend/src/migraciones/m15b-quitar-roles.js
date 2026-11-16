@@ -22,6 +22,8 @@ export const COLECCION_RESPALDO = 'migracion_15b_roles'
 // Copia fija (no se importa de permisos.js): si el catálogo cambia, la migración hace lo mismo
 export const PERMISOS_PARA_MESERO = ['reserva:cambiar_estado', 'mesa:bloquear', 'mesa:unir', 'cuenta:transferir']
 const DESTINO = { anfitrion: 'mesero', compras: 'cliente' }
+// Copia fija de los permisos del rol compras de la Fase 5 (PERMISOS_INVENTARIO.compras)
+const PERMISOS_COMPRAS_FASE_5 = ['inventario:ver', 'inventario:gestionar', 'inventario:ajustar', 'compra:gestionar', 'compra:recibir']
 const ELIMINAR = Object.keys(DESTINO)
 
 const enTransaccion = async (db, trabajo) => {
@@ -46,7 +48,12 @@ const plan = async (db, session) => {
         throw new Error('Falta el rol «mesero» o «cliente»: ejecuta npm run seed:base antes de esta migración. No se escribió nada.')
     }
     const destinos = { mesero, cliente }
-    const aEliminar = await roles.find({ nombre: { $in: ELIMINAR } }, { session }).toArray()
+    // Fase 5 · El rol «compras» volvió con permisos de inventario: esta migración solo quita el de antes de
+    // 1.5b (sin ninguno de esos permisos); volver a ejecutarla no borra el nuevo ni mueve a sus usuarios
+    const aEliminar = await roles.find({
+        nombre: { $in: ELIMINAR },
+        $nor: [{ nombre: 'compras', permisos: { $in: PERMISOS_COMPRAS_FASE_5 } }, { nombre: 'compras', _migracion5: true }],
+    }, { session }).toArray()
     const conteo = Object.fromEntries(ELIMINAR.map((n) => [n, 0]))
     for (const r of aEliminar) conteo[r.nombre] = await usuarios.countDocuments({ rol: r._id }, { session })
     const actuales = mesero.permisos || []

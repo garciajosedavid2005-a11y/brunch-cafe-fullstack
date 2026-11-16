@@ -6,6 +6,7 @@ import adminRoutes from './v1/admin.routes.js'
 import comentariosRoutes from '../modulos/catalogo/comentario.v1.routes.js'
 import authRoutes from '../modulos/identidad/auth.routes.js'
 import { verHorarios } from '../modulos/configuracion/horarios.controller.js'
+import inventarioRoutes from '../modulos/inventario/inventario.routes.js'
 
 // API versionada (0.8): /auth, /catalogo y /comentarios (públicas), /cliente (la sesión sobre
 // sus datos), /staff (operación, por permiso) y /admin (configuración, por permiso).
@@ -22,5 +23,7 @@ router.use('/comentarios', comentariosRoutes)
 router.use('/cliente', clienteRoutes)
 router.use('/staff', staffRoutes)
 router.use('/admin', adminRoutes)
+// Fase 5 · Inventario (admin y rol compras, por permiso)
+router.use('/inventario', inventarioRoutes)
 
 export default router
