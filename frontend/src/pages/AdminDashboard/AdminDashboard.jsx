@@ -62,6 +62,12 @@ export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
+  // 5.5 · El aviso del Resumen abre Inventario en «Alertas»
+  const [pestanaInventario, setPestanaInventario] = useState(null);
+  const irA = (tab, subpestana = null) => {
+    setPestanaInventario(subpestana);
+    setActiveTab(tab);
+  };
   // 1.6b · Ancho de «Acciones» en cada tabla para fijar la columna de estado a su izquierda
   const contenidoRef = useRef(null);
   useAnchoAccionesFijas(contenidoRef);
@@ -78,7 +84,7 @@ export default function AdminDashboard() {
   const renderContent = () => {
     switch (activeTab) {
       case "overview":
-        return <OverviewSection onNavigateTab={setActiveTab} />;
+        return <OverviewSection onNavigateTab={irA} />;
       case "orders":
         return <OrdersSection />;
       case "reservations":
@@ -100,7 +106,7 @@ export default function AdminDashboard() {
       case "salon":
         return <SalonSection />;
       case "inventario":
-        return <Inventario permisos={user?.permisos || []} />;
+        return <Inventario permisos={user?.permisos || []} inicial={pestanaInventario} />;
       case "roles":
         return <RolesSection />;
       case "users":
@@ -108,7 +114,7 @@ export default function AdminDashboard() {
       case "profile":
         return <ProfileSection />;
       default:
-        return <OverviewSection onNavigateTab={setActiveTab} />;
+        return <OverviewSection onNavigateTab={irA} />;
     }
   };
 
@@ -161,7 +167,7 @@ export default function AdminDashboard() {
                   key={section.id}
                   type="button"
                   className={`admin-sidebar__button ${activeTab === section.id ? "is-active" : ""}`}
-                  onClick={() => setActiveTab(section.id)}
+                  onClick={() => irA(section.id)}
                 >
                   <div className="admin-sidebar__button-left">
                     <SectionIcon size={18} className="admin-sidebar__icon" />

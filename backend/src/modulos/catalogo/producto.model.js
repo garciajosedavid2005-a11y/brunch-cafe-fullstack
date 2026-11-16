@@ -35,6 +35,12 @@ const productoSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    // Fase 5 (F5-7) · true = lo agotó el sistema por falta de insumos (se reactiva solo al entrar stock);
+    // un agotado a mano lo deja en false. Sin migración: ausente = false
+    agotadoAuto: {
+        type: Boolean,
+        default: false
+    },
     // Producto destacado (se muestra en la portada)
     destacado: {
         type: Boolean,

@@ -76,7 +76,8 @@ const opcionNoExiste = () => new AppError(404, 'OPCION_NO_ENCONTRADA', 'La opci�
 export const marcarProducto = async (productoId, disponible, sesion, session) => {
     // Solo si está en el estado contrario (los productos anteriores al campo se leen como disponibles)
     const filtro = disponible ? { _id: productoId, disponible: false } : { _id: productoId, disponible: { $ne: false } }
-    const producto = await Producto.findOneAndUpdate(filtro, { $set: { disponible } }, { returnDocument: 'after', session })
+    // Fase 5 (F5-7) · Un cambio a mano deja agotadoAuto en false: el sistema no reactiva lo que alguien agotó
+    const producto = await Producto.findOneAndUpdate(filtro, { $set: { disponible, agotadoAuto: false } }, { returnDocument: 'after', session })
     if (!producto) {
         if (!(await Producto.exists({ _id: productoId }).session(session))) throw productoNoExiste()
         return { id: String(productoId), disponible, cambiado: false }
@@ -95,7 +96,7 @@ export const marcarOpcion = async (grupoId, opcionId, disponible, sesion, sessio
     const grupo = await GrupoModificadores.findOneAndUpdate(
         // Como en el producto: una opción sin el campo guardado se lee como disponible (schema-reviewer)
         { _id: grupoId, opciones: { $elemMatch: { _id: opcionId, disponible: disponible ? false : { $ne: false } } } },
-        { $set: { 'opciones.$.disponible': disponible }, $inc: { __v: 1 } },
+        { $set: { 'opciones.$.disponible': disponible, 'opciones.$.agotadoAuto': false }, $inc: { __v: 1 } },
         { returnDocument: 'after', session },
     )
     if (!grupo) {

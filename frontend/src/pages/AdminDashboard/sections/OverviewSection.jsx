@@ -4,6 +4,8 @@ import { api } from "../../../services/api";
 import AdminStatus from "../components/AdminStatus";
 import { formatClock, formatCurrency, formatDate, formatCalendarDate } from "../adminFormat";
 import { hoyLocal, fechaLocal } from "../../../utils/fechas";
+import AvisoAlertas from "../../Inventario/AvisoAlertas";
+import "../../Inventario/Inventario.css";
 
 const cargarDatosResumen = () => Promise.all([
   api.get("/v1/staff/pedidos"),
@@ -76,6 +78,8 @@ export default function OverviewSection({ onNavigateTab }) {
 
   return (
     <div className="admin-overview">
+      {/* Fase 5 · 5.5 · Alertas del inventario (stock bajo y vencimientos) */}
+      <AvisoAlertas onVer={() => onNavigateTab("inventario", "alertas")} />
       {/* 1. TARJETAS DE MÉTRICAS RÁPIDAS (KPIs) - AHORA TOTALMENTE INTERACTIVAS */}
       <div className="admin-overview__kpis">
         {/* KPI 1: Pedidos */}

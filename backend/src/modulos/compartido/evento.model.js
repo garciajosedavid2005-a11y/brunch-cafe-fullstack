@@ -10,7 +10,9 @@ import { AppError } from './errors.js'
 // 2.7 · 'producto' (F2-5) y 'modificador' (grupo de modificadores; datos.opcion y datos.nombre): agotar y
 // reactivar desde la operación, con quién lo hizo
 // Fase 5 · 'insumo' (alta, edición y movimientos manuales del inventario)
-export const ENTIDADES_EVENTO = ['pedido', 'reserva', 'mesa', 'cuenta', 'usuario', 'configuracion', 'producto', 'modificador', 'turno', 'espera', 'insumo']
+export const ENTIDADES_EVENTO = ['pedido', 'reserva', 'mesa', 'cuenta', 'usuario', 'configuracion', 'producto', 'modificador', 'turno', 'espera', 'insumo',
+    // 5.4 · Compras
+    'proveedor', 'orden_compra']
 // Los Eventos anteriores a 1.4 no guardan `tipo` (se leen como 'cambio_estado' por el default): un filtro
 // por tipo debe usar { tipo: { $in: ['cambio_estado', null] } } para incluirlos.
 export const TIPOS_EVENTO = [
@@ -45,6 +47,13 @@ export const TIPOS_EVENTO = [
     'espera_retirada',
     // 5.1 · Inventario (entidad 'insumo'): alta (con su existencia inicial) y edición (datos.antes / datos.despues)
     'insumo_creado', 'insumo_editado',
+    // 5.2 · Receta de un producto (entidad 'producto') o de una opción (entidad 'modificador', datos.opcion)
+    'receta_editada',
+    // 5.3 · Descuento y devolución automáticos (entidad 'cuenta' o 'pedido'; datos.movimientos) y movimientos
+    // manuales (entidad 'insumo': ajuste, merma o vencimiento con motivo)
+    'inventario_descontado', 'inventario_devuelto', 'inventario_ajustado',
+    // 5.4 · Proveedores (entidad 'proveedor') y órdenes de compra (entidad 'orden_compra'; la recepción con de/a del estado)
+    'proveedor_creado', 'proveedor_editado', 'orden_creada', 'orden_cancelada', 'compra_recibida',
 ]
 const eventoSchema = new mongoose.Schema({
     entidad: {

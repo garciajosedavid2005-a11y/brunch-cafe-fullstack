@@ -1,22 +1,51 @@
 import { useState } from "react";
-import { Plus, Edit2, Search, X, History } from "lucide-react";
+import { Plus, Edit2, Search, X, History, SlidersHorizontal } from "lucide-react";
 import useAdminResource from "../AdminDashboard/hooks/useAdminResource";
 import AdminStatus from "../AdminDashboard/components/AdminStatus";
-import { api } from "../../services/api";
+import { api, apiRequest } from "../../services/api";
+import { useDialogo } from "../../context/useDialogo";
 import { formatearCOP } from "../../utils/moneda";
 import { formatearFecha, formatearHora } from "../../utils/fechas";
-import { UNIDADES, NIVELES, TIPOS_MOVIMIENTO, formatearCantidad, formatearCosto, leerNumero } from "./inventarioFormato";
+import { UNIDADES, NIVELES, TIPOS_MOVIMIENTO, formatearCantidad, formatearCosto, leerNumero, nuevaClave } from "./inventarioFormato";
 
 const VACIO = { nombre: "", unidad: "g", minimo: "", costoPromedio: "", existenciaInicial: "", activo: true };
 
 /** Fase 5 · 5.1 · Insumos: existencias frente al mínimo, costo promedio y kárdex de cada uno. */
-export default function InsumosPanel({ puedeGestionar }) {
+export default function InsumosPanel({ puedeGestionar, puedeAjustar = false }) {
   const { items: insumos, cargando, error, guardando, cargar, crear, actualizar } = useAdminResource("/v1/inventario/insumos");
   const [busqueda, setBusqueda] = useState("");
   const [enEdicion, setEnEdicion] = useState(null); // null = cerrado; {} = nuevo; insumo = editar
   const [form, setForm] = useState(VACIO);
   const [errorForm, setErrorForm] = useState("");
   const [kardex, setKardex] = useState(null);
+  // 5.3 (F5-4) · Ajuste, merma o vencimiento con motivo obligatorio
+  const [ajuste, setAjuste] = useState(null);
+  const [enviandoAjuste, setEnviandoAjuste] = useState(false);
+  const { avisar } = useDialogo();
+
+  const registrarAjuste = async (e) => {
+    e.preventDefault();
+    const valor = leerNumero(ajuste.cantidad);
+    if (!Number.isFinite(valor) || valor <= 0) {
+      setAjuste({ ...ajuste, error: "Escribe una cantidad mayor que 0." });
+      return;
+    }
+    const cantidad = ajuste.tipo === "ajuste" && ajuste.sentido === "sale" ? -valor : valor;
+    setEnviandoAjuste(true);
+    try {
+      await apiRequest("/v1/inventario/movimientos", {
+        method: "POST",
+        body: JSON.stringify({ insumoId: ajuste.insumo.id, tipo: ajuste.tipo, cantidad, motivo: ajuste.motivo.trim() }),
+        headers: { "Idempotency-Key": ajuste.clave },
+      });
+      setAjuste(null);
+      await cargar();
+    } catch (err) {
+      await avisar({ tipo: "error", titulo: "No se pudo registrar el movimiento", mensaje: err.message });
+    } finally {
+      setEnviandoAjuste(false);
+    }
+  };
 
   const abrirNuevo = () => {
     setForm(VACIO);
@@ -116,6 +145,12 @@ export default function InsumosPanel({ puedeGestionar }) {
                       <button type="button" className="admin-button--secondary-sm inventario-icono" onClick={() => verKardex(i)} aria-label={`Movimientos de ${i.nombre}`} title="Movimientos">
                         <History size={16} aria-hidden="true" />
                       </button>
+                      {puedeAjustar && (
+                        <button type="button" className="admin-button--secondary-sm inventario-icono" title="Ajuste, merma o vencimiento" aria-label={`Ajustar existencia de ${i.nombre}`}
+                          onClick={() => setAjuste({ insumo: i, tipo: "ajuste", sentido: "entra", cantidad: "", motivo: "", error: "", clave: nuevaClave() })}>
+                          <SlidersHorizontal size={16} aria-hidden="true" />
+                        </button>
+                      )}
                       {puedeGestionar && (
                         <button type="button" className="admin-button--secondary-sm inventario-icono" onClick={() => abrirEditar(i)} aria-label={`Editar ${i.nombre}`} title="Editar">
                           <Edit2 size={16} aria-hidden="true" />
@@ -191,6 +226,52 @@ export default function InsumosPanel({ puedeGestionar }) {
         </div>
       )}
 
+      {ajuste && (
+        <div className="admin-modal-overlay" onClick={() => setAjuste(null)}>
+          <div className="admin-modal-container admin-modal-container--sm" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="ajuste-titulo">
+            <div className="admin-modal-header">
+              <h3 className="admin-modal-title" id="ajuste-titulo">Movimiento de {ajuste.insumo.nombre}</h3>
+              <button type="button" className="admin-modal-close" onClick={() => setAjuste(null)} aria-label="Cerrar"><X size={18} /></button>
+            </div>
+            <form onSubmit={registrarAjuste}>
+              <div className="admin-modal-body">
+                <p className="inventario-ayuda">Existencia actual: <strong>{formatearCantidad(ajuste.insumo.existencia, ajuste.insumo.unidad)}</strong></p>
+                <div className="admin-form-group">
+                  <label className="admin-form-label" htmlFor="ajuste-tipo">Tipo *</label>
+                  <select id="ajuste-tipo" className="admin-form-select" value={ajuste.tipo} onChange={(e) => setAjuste({ ...ajuste, tipo: e.target.value })}>
+                    <option value="ajuste">Ajuste por conteo</option>
+                    <option value="merma">Merma (se dañó o se perdió)</option>
+                    <option value="vencimiento">Vencimiento</option>
+                  </select>
+                </div>
+                {ajuste.tipo === "ajuste" && (
+                  <fieldset className="inventario-sentido">
+                    <legend className="admin-form-label">El conteo da</legend>
+                    <label className="admin-checkbox-label"><input type="radio" name="sentido" checked={ajuste.sentido === "entra"} onChange={() => setAjuste({ ...ajuste, sentido: "entra" })} /> <span>Más de lo registrado (suma)</span></label>
+                    <label className="admin-checkbox-label"><input type="radio" name="sentido" checked={ajuste.sentido === "sale"} onChange={() => setAjuste({ ...ajuste, sentido: "sale" })} /> <span>Menos de lo registrado (resta)</span></label>
+                  </fieldset>
+                )}
+                <div className="admin-form-group">
+                  <label className="admin-form-label" htmlFor="ajuste-cantidad">Cantidad ({ajuste.insumo.unidad}) *</label>
+                  <input id="ajuste-cantidad" className="admin-form-input" inputMode="decimal" required value={ajuste.cantidad} onChange={(e) => setAjuste({ ...ajuste, cantidad: e.target.value })} />
+                  {ajuste.tipo !== "ajuste" && <small className="inventario-ayuda">Se resta de la existencia.</small>}
+                </div>
+                <div className="admin-form-group">
+                  <label className="admin-form-label" htmlFor="ajuste-motivo">Motivo *</label>
+                  <input id="ajuste-motivo" className="admin-form-input" required minLength={3} maxLength={300} placeholder="Ej. conteo del cierre, se quemó una tanda"
+                    value={ajuste.motivo} onChange={(e) => setAjuste({ ...ajuste, motivo: e.target.value })} />
+                </div>
+                {ajuste.error && <p className="admin-alert-error" role="alert">{ajuste.error}</p>}
+              </div>
+              <div className="admin-modal-footer">
+                <button type="button" className="admin-button--modal-cancel" onClick={() => setAjuste(null)}>Cancelar</button>
+                <button type="submit" className="admin-button--primary" disabled={enviandoAjuste}>Registrar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {kardex && (
         <div className="admin-modal-overlay" onClick={() => setKardex(null)}>
           <div className="admin-modal-container inventario-modal-ancho" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="kardex-titulo">
@@ -216,7 +297,7 @@ export default function InsumosPanel({ puedeGestionar }) {
                             {m.cantidad > 0 ? "+" : "−"}{formatearCantidad(Math.abs(m.cantidad), kardex.insumo.unidad)}
                           </td>
                           <td className="inventario-num">{formatearCantidad(m.existenciaDespues, kardex.insumo.unidad)}</td>
-                          <td>{m.motivo}{m.referencia.codigo ? ` · ${m.referencia.codigo}` : ""}</td>
+                          <td className="inventario-motivo">{m.motivo}{m.referencia.codigo ? ` · ${m.referencia.codigo}` : ""}</td>
                           <td>{m.autor || m.actor}</td>
                         </tr>
                       ))}

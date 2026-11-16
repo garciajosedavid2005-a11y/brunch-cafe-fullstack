@@ -1,6 +1,9 @@
 // Fase 5 · Formatos del inventario (F5-c): cantidades con hasta 3 decimales y costos con hasta 2.
 import { formatearCOPDecimal, formatearNumero } from "../../utils/moneda";
 
+/** Idempotency-Key de una acción (un formulario abierto = una clave): un reintento no la repite en el servidor. */
+export const nuevaClave = () => globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+
 export const UNIDADES = [
   { valor: "g", etiqueta: "Gramos (g)" },
   { valor: "ml", etiqueta: "Mililitros (ml)" },

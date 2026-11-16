@@ -4,7 +4,7 @@ import { sembrarMenu } from './menu.js'
 import { sembrarModificadoresEjemplo } from './modificadores.js'
 import { sembrarSalonEjemplo } from './salon.js'
 import { sembrarUsuariosDev } from './dev.js'
-import { sembrarInventarioEjemplo } from './inventario.js'
+import { sembrarInventarioEjemplo, sembrarComprasEjemplo } from './inventario.js'
 import Usuario from '../modulos/identidad/usuario.model.js'
 import Reserva from '../modulos/salon/reserva.model.js'
 import Espera from '../modulos/salon/espera.model.js'
@@ -71,6 +71,8 @@ export const sembrarDatosCapturas = async ({ password }) => {
     await registrarEvento({ entidad: 'reserva', entidadId: reserva._id, a: 'pendiente', actor: 'sistema', motivo: 'capturas' })
     await sembrarSalonEnServicio()
     await sembrarReservasDeHoy()
+    // Fase 5 · Compras con lotes por vencer (alertas)
+    await sembrarComprasEjemplo(await Usuario.findOne({ correo: 'admin.dev@brunchcafe.test' }).select('_id').lean())
     return { usuarios }
 }
 

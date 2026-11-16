@@ -26,6 +26,18 @@ export const INDICES = [
         coleccion: 'movimientos_inventario', nombre: 'una_vez_por_referencia', clave: { insumo: 1, 'referencia.tipo': 1, 'referencia.id': 1, tipo: 1 },
         opciones: { unique: true, partialFilterExpression: { tipo: { $in: ['consumo', 'devolucion', 'recepcion'] } } },
     },
+    // 5.2 · Recetas: una por producto, una por opción y búsqueda por insumo
+    { coleccion: 'recetas', nombre: 'una_por_producto', clave: { producto: 1 }, opciones: { unique: true, partialFilterExpression: { tipo: 'producto' } } },
+    { coleccion: 'recetas', nombre: 'una_por_opcion', clave: { grupo: 1, opcion: 1 }, opciones: { unique: true, partialFilterExpression: { tipo: 'opcion' } } },
+    { coleccion: 'recetas', nombre: 'lineas.insumo_1', clave: { 'lineas.insumo': 1 }, opciones: {} },
+    // 5.4 · Proveedores, órdenes de compra, recepciones y lotes
+    { coleccion: 'proveedores', nombre: 'nombre_unico', clave: { nombre: 1 }, opciones: { unique: true, collation: { locale: 'es', strength: 1 } } },
+    { coleccion: 'ordenes_compra', nombre: 'numero_unico', clave: { numero: 1 }, opciones: { unique: true } },
+    { coleccion: 'ordenes_compra', nombre: 'estado_1_createdAt_-1', clave: { estado: 1, createdAt: -1 }, opciones: {} },
+    { coleccion: 'ordenes_compra', nombre: 'proveedor_1_createdAt_-1', clave: { proveedor: 1, createdAt: -1 }, opciones: {} },
+    { coleccion: 'recepciones', nombre: 'orden_1_createdAt_1', clave: { orden: 1, createdAt: 1 }, opciones: {} },
+    { coleccion: 'lotes', nombre: 'descartado_1_vencimiento_1', clave: { descartado: 1, vencimiento: 1 }, opciones: {} },
+    { coleccion: 'lotes', nombre: 'insumo_1_createdAt_-1', clave: { insumo: 1, createdAt: -1 }, opciones: {} },
 ]
 
 const existentes = async (db, coleccion) => {

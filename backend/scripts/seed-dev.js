@@ -5,7 +5,8 @@
 import mongoose from 'mongoose'
 import { config } from '../src/config.js'
 import { sembrarUsuariosDev, USUARIOS_DEV } from '../src/seeds/dev.js'
-import { sembrarInventarioEjemplo } from '../src/seeds/inventario.js'
+import { sembrarInventarioEjemplo, sembrarComprasEjemplo } from '../src/seeds/inventario.js'
+import Usuario from '../src/modulos/identidad/usuario.model.js'
 
 if (config.NODE_ENV === 'production') {
     console.error('seed:dev no se ejecuta en producción.')
@@ -30,7 +31,10 @@ try {
     console.log(PEDIDO[pedido])
     // Fase 5 · Insumos (y desde 5.2 recetas) de ejemplo: solo crea lo que falte
     const inventario = await sembrarInventarioEjemplo()
-    console.log(`Inventario de ejemplo: ${inventario.insumos} insumo(s) nuevo(s).`)
+    console.log(`Inventario de ejemplo: ${inventario.insumos} insumo(s) y ${inventario.recetas} receta(s) nuevos.`)
+    // 5.4 · Proveedores y órdenes de ejemplo (solo si no hay proveedores), a nombre de admin.dev
+    const compras = await sembrarComprasEjemplo(await Usuario.findOne({ correo: 'admin.dev@brunchcafe.test' }).select('_id').lean())
+    console.log(`Compras de ejemplo: ${compras.ordenes} orden(es) nueva(s).`)
 } catch (error) {
     console.error('seed:dev falló:', error.message)
     process.exitCode = 1

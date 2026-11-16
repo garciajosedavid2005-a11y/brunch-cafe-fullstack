@@ -9,6 +9,8 @@ import { notFound } from '../compartido/errors.js'
 import { codigoPedido } from './pedidoComoCuenta.js'
 import { esEstadoFinal } from '../compartido/estados.js'
 import { cambiarEstado, codigoDestino, estadosDelTipo, opcionesDeCambio } from '../compartido/estados.service.js'
+import { efectosInventarioPedido } from './inventarioPedido.js'
+import { avisarCambiosDisponibilidad } from '../inventario/consumo.service.js'
 
 const POBLAR = [
     ['usuario', 'nombre apellido correo telefono'],
@@ -126,10 +128,12 @@ export const verPedido = async (req, res) => {
 // la máquina de estados decide desde qué estados se puede (pendiente o confirmado)
 export const cancelarPedido = async (req, res) => {
     const pedido = await buscarPedido(req.params.id)
+    const inventario = efectosInventarioPedido(req.usuario) // 5.3 · devuelve lo que descontó la confirmación
     const actualizado = await cambiarEstado({
         tipo: 'pedido', Modelo: Pedido, documento: pedido, a: 'cancelado',
-        sesion: req.usuario, motivo: req.validado.motivo, contexto: pedido,
+        sesion: req.usuario, motivo: req.validado.motivo, contexto: pedido, efectos: inventario.efectos,
     })
+    avisarCambiosDisponibilidad(inventario.cambios())
     const [respuesta] = await serializar([await poblar(Pedido.findById(actualizado._id)).lean()], req.usuario.permisos)
     res.json(respuesta)
 }
@@ -140,6 +144,7 @@ export const cambiarEstadoPedido = async (req, res) => {
     const pedido = await buscarPedido(req.params.id)
 
     const a = await codigoDestino('pedido', req.validado)
+    const inventario = efectosInventarioPedido(req.usuario) // 5.3 · descuenta al confirmar, devuelve al cancelar
     const actualizado = await cambiarEstado({
         tipo: 'pedido',
         Modelo: Pedido,
@@ -148,7 +153,9 @@ export const cambiarEstadoPedido = async (req, res) => {
         sesion: req.usuario,
         motivo: req.validado.motivo,
         contexto: pedido,
+        efectos: inventario.efectos,
     })
+    avisarCambiosDisponibilidad(inventario.cambios())
     const [respuesta] = await serializar([await poblar(Pedido.findById(actualizado._id)).lean()], req.usuario.permisos)
     res.json(respuesta)
 }

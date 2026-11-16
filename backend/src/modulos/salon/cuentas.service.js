@@ -34,6 +34,7 @@ import Reserva from './reserva.model.js'
 import { avisarReserva } from './reservas.avisos.js'
 import { hora12 } from '../configuracion/horarios.reglas.js'
 import { horaLocal } from '../compartido/fechas.js'
+import { descontarRonda, devolverItem, avisarCambiosDisponibilidad } from '../inventario/consumo.service.js'
 
 // 1.4 · Núcleo de cuenta y comanda (sin endpoints: llegan en 1.5 y reciben `sesion` = req.usuario).
 // Reglas:
@@ -630,7 +631,11 @@ export const enviarRonda = async (cuentaId, datos, sesion) => {
     exigirPermiso(sesion, 'comanda:enviar')
     const { numeroRonda, versionEsperada } = validar(enviarRondaSchema, datos)
 
-    return conTransaccion(async (session) => {
+    // Fase 5 (F5-3) · El inventario se descuenta en la misma transacción; los agotados automáticos se avisan
+    // por «catalogo» después de confirmarla (si la transacción se reintenta, la lista empieza de nuevo)
+    let cambiosDisponibilidad = []
+    const resultado = await conTransaccion(async (session) => {
+        cambiosDisponibilidad = []
         if (!mongoose.isValidObjectId(cuentaId)) throw cuentaNoEncontrada()
         const previa = await Cuenta.findById(cuentaId).select('ultimaRonda').session(session).lean()
         if (!previa) throw cuentaNoEncontrada()
@@ -663,8 +668,11 @@ export const enviarRonda = async (cuentaId, datos, sesion) => {
             entidad: 'cuenta', entidadId: cuenta._id, tipo: 'ronda_enviada', ...quien(sesion),
             datos: { comanda: ronda._id, numeroRonda: ronda.numeroRonda, items: ronda.items.length, subtotal: ronda.subtotal }, session,
         })
+        cambiosDisponibilidad = await descontarRonda({ cuenta, ronda, sesion, session })
         return detalle(cuenta, session)
     })
+    avisarCambiosDisponibilidad(cambiosDisponibilidad)
+    return resultado
 }
 
 /** Anula un ítem enviado (F1-6, D1): item:anular, motivo del catálogo («otro» con detalle). No se cobra. */
@@ -674,7 +682,9 @@ export const anularItem = async (cuentaId, itemId, datos, sesion) => {
     if (motivo === 'otro' && !detalleMotivo) throw error(400, 'MOTIVO_REQUERIDO', 'Describe el motivo de la anulación.')
     const texto = (detalleMotivo ? `${motivo}: ${detalleMotivo}` : motivo).slice(0, 300)
 
-    return conTransaccion(async (session) => {
+    let cambiosDisponibilidad = []
+    const resultado = await conTransaccion(async (session) => {
+        cambiosDisponibilidad = []
         const cuenta = await tocarCuenta(cuentaId, { versionEsperada }, session)
         const { comanda, item } = await buscarItem(cuenta, itemId, session)
         const de = item.estado
@@ -686,10 +696,14 @@ export const anularItem = async (cuentaId, itemId, datos, sesion) => {
             entidad: 'cuenta', entidadId: cuenta._id, tipo: 'item_anulado', de, a: 'anulado', motivo: texto, ...quien(sesion),
             datos: { comanda: comanda._id, numeroRonda: comanda.numeroRonda, item: resumenItem(item) }, session,
         })
+        // Fase 5 (F5-3) · Lo que consumió el ítem vuelve al inventario
+        cambiosDisponibilidad = await devolverItem({ cuenta, comanda, item, sesion, session })
         await reabrirSiTodoAnulado(cuenta, { sesion, session })
         await guardarCuenta(cuenta, session)
         return detalle(cuenta, session)
     })
+    avisarCambiosDisponibilidad(cambiosDisponibilidad)
+    return resultado
 }
 
 /** La mesa pide la cuenta: exige algo enviado y no anulado, y nada pendiente en el borrador. */

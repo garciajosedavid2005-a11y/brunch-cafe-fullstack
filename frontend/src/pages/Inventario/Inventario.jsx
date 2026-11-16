@@ -1,7 +1,10 @@
 import { createElement, useState } from "react";
-import { Package } from "lucide-react";
+import { BellRing, BookOpen, Package, Truck } from "lucide-react";
 import { incluyePermiso, PERMISOS_INVENTARIO } from "../../utils/permisos";
 import InsumosPanel from "./InsumosPanel";
+import RecetasPanel from "./RecetasPanel";
+import ComprasPanel from "./ComprasPanel";
+import AlertasPanel from "./AlertasPanel";
 import "../AdminDashboard/AdminDashboard.css";
 import "./Inventario.css";
 
@@ -10,18 +13,22 @@ import "./Inventario.css";
 
 const PESTANAS = [
   { id: "insumos", label: "Insumos", icon: Package, permisos: PERMISOS_INVENTARIO },
+  { id: "recetas", label: "Recetas", icon: BookOpen, permisos: ["inventario:ver", "inventario:gestionar"] }, // 5.2
+  { id: "compras", label: "Compras", icon: Truck, permisos: ["inventario:ver", "compra:gestionar", "compra:recibir"] }, // 5.4
+  { id: "alertas", label: "Alertas", icon: BellRing, permisos: PERMISOS_INVENTARIO }, // 5.5
 ];
 
-export default function Inventario({ permisos = [] }) {
+export default function Inventario({ permisos = [], inicial }) {
   const visibles = PESTANAS.filter((p) => p.permisos.some((clave) => incluyePermiso(permisos, clave)));
-  const [pestana, setPestana] = useState(visibles[0]?.id || "insumos");
+  const [pestana, setPestana] = useState(visibles.some((p) => p.id === inicial) ? inicial : visibles[0]?.id || "insumos");
+  const puede = (clave) => incluyePermiso(permisos, clave);
 
   return (
     <div className="admin-section inventario">
       <div className="admin-section__header">
         <div>
           <h2 className="admin-section__title">Inventario</h2>
-          <p className="admin-section__subtitle">Insumos, existencias y costos del café.</p>
+          <p className="admin-section__subtitle">Insumos, recetas, compras y alertas del café.</p>
         </div>
       </div>
       {visibles.length > 1 && (
@@ -34,7 +41,10 @@ export default function Inventario({ permisos = [] }) {
           ))}
         </nav>
       )}
-      {pestana === "insumos" && <InsumosPanel puedeGestionar={incluyePermiso(permisos, "inventario:gestionar")} />}
+      {pestana === "insumos" && <InsumosPanel puedeGestionar={puede("inventario:gestionar")} puedeAjustar={puede("inventario:ajustar")} />}
+      {pestana === "recetas" && <RecetasPanel puedeGestionar={puede("inventario:gestionar")} />}
+      {pestana === "compras" && <ComprasPanel puedeGestionar={puede("compra:gestionar")} puedeRecibir={puede("compra:recibir")} />}
+      {pestana === "alertas" && <AlertasPanel puedeAjustar={puede("inventario:ajustar")} />}
     </div>
   );
 }

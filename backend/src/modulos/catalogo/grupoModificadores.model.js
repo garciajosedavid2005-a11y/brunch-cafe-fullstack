@@ -21,6 +21,8 @@ const opcionSchema = new mongoose.Schema({
     nombre: { type: String, required: true, trim: true, minlength: 1, maxlength: 40 },
     precioExtra: { type: Number, required: true, default: 0, min: 0, max: MAX_RECARGO, validate: entero('El recargo') },
     disponible: { type: Boolean, required: true, default: true },
+    // Fase 5 (F5-7) · Agotada por el sistema (falta de insumos): se reactiva sola al entrar stock
+    agotadoAuto: { type: Boolean, required: true, default: false },
     // 3.7.1 · Opción preseleccionada (solo en grupos de opción única): se aplica si la línea llega sin el grupo
     porDefecto: { type: Boolean, required: true, default: false },
 })

@@ -79,7 +79,8 @@ const fusionarOpciones = (actuales, nuevas) => {
         if (vistos.has(id)) throw opcionNoValida('Hay opciones repetidas.')
         vistos.add(id)
         const actual = porId.get(id)
-        return { _id: actual._id, nombre: actual.nombre, precioExtra: actual.precioExtra, disponible: actual.disponible, porDefecto: actual.porDefecto, ...datos }
+        // Fase 5 · agotadoAuto se conserva: editar el grupo no convierte un agotado del sistema en uno manual
+        return { _id: actual._id, nombre: actual.nombre, precioExtra: actual.precioExtra, disponible: actual.disponible, porDefecto: actual.porDefecto, agotadoAuto: actual.agotadoAuto === true, ...datos }
     })
 }
 

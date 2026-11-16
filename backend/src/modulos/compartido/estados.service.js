@@ -63,6 +63,8 @@ export const registrarEvento = async ({
  */
 export const cambiarEstado = async ({
     tipo, Modelo, documento, a, actor = 'staff', sesion, motivo, contexto, cambios = {}, filtro = {}, session: sesionExterna,
+    // Fase 5 · Efectos del cambio en la misma transacción (p. ej. el inventario al confirmar o cancelar un domicilio)
+    efectos = null,
 }) => {
     const de = await codigoActual(documento)
     const { motivo: motivoFinal } = validarTransicion(tipo, de, a, {
@@ -90,6 +92,7 @@ export const cambiarEstado = async ({
             actor: actor === 'sistema' ? 'sistema' : sesion?.rol || actor,
             session,
         })
+        if (efectos) await efectos({ documento: actualizado, de, a, session })
         return actualizado
     }
     return sesionExterna ? escribir(sesionExterna) : conTransaccion(escribir)

@@ -1003,6 +1003,43 @@ const VISTAS = {
     await p.getByRole("button", { name: "Movimientos de Café en grano" }).click();
     await p.getByRole("dialog", { name: /Movimientos de Café en grano/ }).getByRole("table").waitFor();
   } },
+  // 5.2 a 5.5 · Recetas, ajuste manual, compras y alertas
+  "admin-inventario-recetas": { usuario: "admin", preparar: async (p) => {
+    await abrirPestanaAdmin("Inventario")(p);
+    await p.getByRole("button", { name: "Recetas", exact: true }).click();
+    await p.getByRole("table", { name: "Recetas de los productos" }).waitFor();
+  } },
+  "admin-inventario-receta-opcion": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Inventario")(p);
+    await p.getByRole("button", { name: "Recetas", exact: true }).click();
+    await p.getByRole("button", { name: "Editar receta de Leche › Almendra" }).click();
+    await p.getByRole("dialog", { name: "Leche › Almendra" }).waitFor();
+  } },
+  "admin-inventario-ajuste": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Inventario")(p);
+    await p.getByRole("button", { name: "Ajustar existencia de Café en grano" }).click();
+    await p.getByRole("dialog", { name: "Movimiento de Café en grano" }).waitFor();
+  } },
+  "admin-inventario-compras": { usuario: "admin", preparar: async (p) => {
+    await abrirPestanaAdmin("Inventario")(p);
+    await p.getByRole("button", { name: "Compras", exact: true }).click();
+    await p.getByRole("table", { name: "Órdenes de compra" }).getByText("OC-000001").waitFor();
+  } },
+  "admin-inventario-recepcion": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Inventario")(p);
+    await p.getByRole("button", { name: "Compras", exact: true }).click();
+    await p.getByRole("button", { name: "Recibir OC-000002" }).click();
+    await p.getByRole("dialog", { name: "Recibir OC-000002" }).waitFor();
+  } },
+  "admin-inventario-alertas": { usuario: "admin", preparar: async (p) => {
+    await abrirPestanaAdmin("Inventario")(p);
+    await p.getByRole("button", { name: "Alertas", exact: true }).click();
+    await p.getByText(/Vencen en 7 días \([1-9]/).waitFor();
+  } },
+  "admin-resumen-alertas": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Resumen")(p);
+    await p.getByText("Inventario:", { exact: true }).waitFor();
+  } },
   "staff-inventario-compras": { usuario: "compras", preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);
     await p.getByRole("table", { name: "Insumos del inventario" }).waitFor();

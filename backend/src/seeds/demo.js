@@ -31,6 +31,7 @@ import Pedido from '../modulos/pedidos/pedido.model.js'
 import DetallePedido from '../modulos/pedidos/detallePedido.model.js'
 import MetodoPago from '../modulos/pedidos/metodoPago.model.js'
 import { estadoPorCodigo, registrarEvento, cambiarEstado } from '../modulos/compartido/estados.service.js'
+import { efectosInventarioPedido } from '../modulos/pedidos/inventarioPedido.js'
 import { fechaLocal, instanteLocal } from '../modulos/compartido/fechas.js'
 import {
     abrirCuenta, agregarItem, enviarRonda, solicitarCuenta, cobrarCuenta, cambiarEstadoMesa, unirMesas,
@@ -165,7 +166,8 @@ const sembrarDomicilio = async (cliente, admin, productos) => {
     }
     // Confirmado por el personal, por la misma máquina de estados que usa el panel (si quedó
     // pendiente por un corte anterior, aquí se completa)
-    await cambiarEstado({ tipo: 'pedido', Modelo: Pedido, documento: pedido, a: confirmado.codigo, sesion: admin, contexto: pedido })
+    // Fase 5 · Como en el panel: confirmar descuenta el inventario (efectos de cambiarEstado)
+    await cambiarEstado({ tipo: 'pedido', Modelo: Pedido, documento: pedido, a: confirmado.codigo, sesion: admin, contexto: pedido, efectos: efectosInventarioPedido(admin).efectos })
     return resultado
 }
 
