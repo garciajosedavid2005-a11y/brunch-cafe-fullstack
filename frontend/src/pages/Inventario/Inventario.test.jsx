@@ -34,6 +34,17 @@ describe("Inventario › Insumos", () => {
     expect(within(tabla).getByText("Leche entera").closest("tr")).toHaveTextContent("Suficiente");
   });
 
+  it("5.8.6 · una existencia negativa se ve en rojo y con su aviso en texto", async () => {
+    const huevo = { ...CAFE, id: "i9", nombre: "Huevo", unidad: "unidad", existencia: -2, minimo: 10, valor: 0, nivel: "negativo" };
+    api.get.mockResolvedValue([huevo, LECHE]);
+    render(<DialogoProvider><Inventario permisos={["inventario:ver"]} /></DialogoProvider>);
+    const tabla = await screen.findByRole("table", { name: "Insumos del inventario" });
+    const fila = (await within(tabla).findByText("Huevo")).closest("tr");
+    expect(fila).toHaveTextContent("Existencia negativa");
+    expect(within(fila).getByText("-2 unidades", { exact: false }).closest("td")).toHaveClass("inventario-num--negativa");
+    expect(fila).toHaveTextContent("Revisa el conteo");
+  });
+
   it("sin inventario:gestionar no ofrece crear ni editar", async () => {
     const tabla = await montar(["inventario:ver"]);
     await within(tabla).findByText("Café en grano");

@@ -70,7 +70,8 @@ export const TRANSICIONES = {
         staff('listo', 'en_camino', 'pedido:cambiar_estado', { condicion: (c) => modalidad(c) === 'domicilio' }),
         staff('en_camino', 'entregado', 'pedido:cambiar_estado'),
         staff('listo', 'entregado', 'pedido:cambiar_estado', { condicion: (c) => modalidad(c) === 'para_llevar' }),
-        staff(['pendiente', 'confirmado'], 'cancelado', 'pedido:cancelar', { requiereMotivo: true }),
+        // 5.8.5 · También en preparación o listo (lo preparado queda como merma automática del inventario)
+        staff(['pendiente', 'confirmado', 'en_preparacion', 'listo'], 'cancelado', 'pedido:cancelar', { requiereMotivo: true }),
         cliente('pendiente', 'cancelado', { motivoPorDefecto: 'cancelado por cliente' }),
         cocina('confirmado', 'en_preparacion', 'pedido:preparar'),
         cocina('en_preparacion', 'listo', 'pedido:preparar'),

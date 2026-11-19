@@ -16,6 +16,7 @@ import {
     solicitarCuenta, cancelarCuenta, cerrarSinCobro, cambiarEstadoMesa, obtenerCuenta,
 } from '../src/modulos/salon/cuentas.service.js'
 import { verificarConsistenciaSalon } from '../src/modulos/salon/consistencia.js'
+import { logger } from '../src/modulos/compartido/logger.js'
 import { actualizarZona } from '../src/modulos/salon/salonConfig.service.js'
 
 // 1.4 · Núcleo de cuenta y comanda (sin endpoints: llegan en 1.5). Reglas: F1-6, F1-7, F1-13,
@@ -185,7 +186,16 @@ describe('Abrir cuenta (F1-7)', () => {
     it('si otra cuenta abierta ya tiene la mesa (dato incoherente), abrir da 409 MESAS_INCONSISTENTES, no un 500', async () => {
         const cuenta = await abrir()
         await Mesa.updateOne({ _id: mesa._id }, { estado: 'libre', cuentaActual: null })
-        expect(await error(abrir())).toMatchObject({ status: 409, code: 'MESAS_INCONSISTENTES' })
+        const aviso = vi.spyOn(logger, 'warn')
+        try {
+            const e = await error(abrir())
+            expect(e).toMatchObject({ status: 409, code: 'MESAS_INCONSISTENTES' })
+            // Pendiente de 5.8 · El mesero no lee comandos técnicos: «npm run verificar:salon» va solo al log
+            expect(e.message).not.toMatch(/npm|verificar/)
+            expect(aviso).toHaveBeenCalledWith(expect.objectContaining({ code: 'MESAS_INCONSISTENTES' }), expect.stringContaining('npm run verificar:salon'))
+        } finally {
+            aviso.mockRestore()
+        }
         expect(await Cuenta.countDocuments()).toBe(1)
         expect(cuenta.estado).toBe('abierta')
     })

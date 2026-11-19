@@ -4,7 +4,7 @@ import AdminStatus from "../AdminDashboard/components/AdminStatus";
 import { api } from "../../services/api";
 import { useDialogo } from "../../context/useDialogo";
 import { formatearFechaCalendario } from "../../utils/fechas";
-import { formatearCantidad } from "./inventarioFormato";
+import { NIVELES, formatearCantidad } from "./inventarioFormato";
 
 /** Fase 5 · 5.5 (F5-6) · Stock bajo y vencimientos de los próximos 7 días (lo que queda de cada lote es estimado). */
 export default function AlertasPanel({ puedeAjustar, onCambio }) {
@@ -63,8 +63,9 @@ export default function AlertasPanel({ puedeAjustar, onCambio }) {
             {alertas.stockBajo.map((i) => (
               <li key={i.id}>
                 <strong>{i.nombre}</strong>
-                <span className={`admin-badge ${i.nivel === "agotado" ? "admin-badge--danger" : "admin-badge--warning"}`}>{i.nivel === "agotado" ? "Sin existencia" : "Bajo el mínimo"}</span>
-                <span className="inventario-minimo">Hay {formatearCantidad(i.existencia, i.unidad)} · mínimo {formatearCantidad(i.minimo, i.unidad)}</span>
+                <span className={`admin-badge ${(NIVELES[i.nivel] || NIVELES.bajo).clase}`}>{(NIVELES[i.nivel] || NIVELES.bajo).texto}</span>
+                <span className={`inventario-minimo${i.existencia < 0 ? " inventario-num--negativa" : ""}`}>Hay {formatearCantidad(i.existencia, i.unidad)} · mínimo {formatearCantidad(i.minimo, i.unidad)}</span>
+                {i.existencia < 0 && <span className="inventario-aviso-negativo">Revisa el conteo: se descontó más de lo registrado.</span>}
               </li>
             ))}
           </ul>

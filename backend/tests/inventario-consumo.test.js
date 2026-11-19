@@ -21,6 +21,8 @@ import { estadoPorCodigo } from '../src/modulos/compartido/estados.service.js'
 import { marcarProducto } from '../src/modulos/catalogo/agotados.service.js'
 import { conTransaccion } from '../src/modulos/compartido/transacciones.js'
 import { PERMISOS_SALON } from '../src/modulos/identidad/permisos.js'
+import { listarAlertas } from '../src/modulos/inventario/alertas.service.js'
+import { nivelExistencia } from '../src/modulos/inventario/insumos.service.js'
 
 const { ObjectId } = mongoose.Types
 const mesero = { id: String(new ObjectId()), rol: 'mesero', permisos: PERMISOS_SALON.mesero }
@@ -72,6 +74,26 @@ describe('5.3 · Salón: descuento al enviar, devolución al anular', () => {
         expect(await Evento.exists({ tipo: 'inventario_devuelto' })).toBeTruthy()
     })
 
+    it('5.8.5 · anular un ítem EN PREPARACIÓN o LISTO no lo devuelve: registra devolución y merma automática (existencia igual)', async () => {
+        for (const [numero, estado] of [[1, 'en_preparacion'], [2, 'listo']]) {
+            await MovimientoInventario.collection.deleteMany({})
+            const cuenta = await rondaEnviada(1, numero)
+            const comanda = await Comanda.findOne({ cuenta: cuenta.id }).lean()
+            await Comanda.updateOne({ _id: comanda._id, 'items._id': comanda.items[0]._id }, { $set: { 'items.$.estado': estado } })
+            const antes = await existencia(huevo)
+            await anularItem(cuenta.id, String(comanda.items[0]._id), { motivo: 'error_toma', versionEsperada: await version(cuenta.id) }, admin)
+            expect(await existencia(huevo)).toBe(antes)
+            const mermas = await MovimientoInventario.find({ tipo: 'merma', 'referencia.id': comanda.items[0]._id }).lean()
+            expect(mermas.map((m) => m.cantidad).sort((x, y) => x - y)).toEqual([-2, -1])
+            expect(mermas[0].motivo).toContain('merma automática')
+            expect(await Evento.exists({ entidad: 'cuenta', entidadId: cuenta.id, tipo: 'inventario_merma' })).toBeTruthy()
+            expect(await Evento.exists({ entidad: 'cuenta', entidadId: cuenta.id, tipo: 'inventario_devuelto' })).toBeFalsy()
+            // Un reintento no mueve nada: el ítem ya está anulado (409) y siguen las mismas mermas
+            await expect(anularItem(cuenta.id, String(comanda.items[0]._id), { motivo: 'error_toma', versionEsperada: await version(cuenta.id) }, admin)).rejects.toMatchObject({ status: 409 })
+            expect(await MovimientoInventario.countDocuments({ tipo: 'merma', 'referencia.id': comanda.items[0]._id })).toBe(2)
+        }
+    })
+
     it('si un insumo no alcanza, el envío NO se bloquea: la existencia queda negativa y el producto se agota solo', async () => {
         await rondaEnviada(6) // 12 huevos con 10 en existencia
         expect(await existencia(huevo)).toBe(-2)
@@ -79,6 +101,12 @@ describe('5.3 · Salón: descuento al enviar, devolución al anular', () => {
         expect(producto).toMatchObject({ disponible: false, agotadoAuto: true })
         const evento = await Evento.findOne({ entidad: 'producto', tipo: 'producto_agotado' }).lean()
         expect(evento).toMatchObject({ actor: 'sistema', motivo: 'sin Huevo' })
+        // 5.8.6 · La existencia negativa tiene su propio nivel y va primero en las alertas (Azúcar, en 0, va después)
+        await Insumo.create({ nombre: 'Azúcar', unidad: 'g', existencia: 0, minimo: 100, costoPromedio: 5 })
+        const { stockBajo } = await listarAlertas({ id: admin.id, permisos: ['*'] })
+        expect(stockBajo.map((i) => [i.nombre, i.nivel])).toEqual([['Huevo', 'negativo'], ['Azúcar', 'agotado']])
+        expect(nivelExistencia({ existencia: -2, minimo: 5 })).toBe('negativo')
+        expect(nivelExistencia({ existencia: 0, minimo: 5 })).toBe('agotado')
     })
 })
 
@@ -127,6 +155,30 @@ describe('5.3 · Domicilio: descuento al confirmar, devolución al cancelar', ()
         await sesion.patch(`/api/v1/staff/pedidos/${otro._id}/cancelar`).send({ motivo: 'duplicado' })
         expect(await MovimientoInventario.countDocuments({ 'referencia.id': otro._id })).toBe(0)
     })
+
+    it('5.8.5 · cancelar un domicilio EN PREPARACIÓN o LISTO registra merma automática (no devuelve)', async () => {
+        const { sesion } = await crearConSesion('admin')
+        for (const hasta of ['en_preparacion', 'listo']) {
+            const pedido = await pedidoPendiente()
+            for (const codigo of ['confirmado', 'en_preparacion', ...(hasta === 'listo' ? ['listo'] : [])]) {
+                const paso = await sesion.patch(`/api/v1/staff/pedidos/${pedido._id}/estado`).send({ codigo })
+                expect(paso.status, JSON.stringify(paso.body)).toBe(200)
+            }
+            const antes = await existencia(huevo)
+            // La cocina no puede cancelarlo (sin pedido:cancelar): 403 y ningún movimiento nuevo
+            const { sesion: cocina } = await crearConSesion('cocina')
+            expect((await cocina.patch(`/api/v1/staff/pedidos/${pedido._id}/cancelar`).send({ motivo: 'x' })).status).toBe(403)
+            expect(await MovimientoInventario.countDocuments({ tipo: 'merma', 'referencia.id': pedido._id })).toBe(0)
+            const r = await sesion.patch(`/api/v1/staff/pedidos/${pedido._id}/cancelar`).send({ motivo: 'cliente canceló por teléfono' })
+            expect(r.status, JSON.stringify(r.body)).toBe(200)
+            expect(await existencia(huevo)).toBe(antes)
+            expect(await MovimientoInventario.countDocuments({ tipo: 'merma', 'referencia.id': pedido._id })).toBe(2)
+            expect(await Evento.exists({ entidad: 'pedido', entidadId: pedido._id, tipo: 'inventario_merma' })).toBeTruthy()
+            // Reintento: ya está cancelado (409) y las mermas no se duplican
+            expect((await sesion.patch(`/api/v1/staff/pedidos/${pedido._id}/cancelar`).send({ motivo: 'otra vez' })).status).toBe(409)
+            expect(await MovimientoInventario.countDocuments({ tipo: 'merma', 'referencia.id': pedido._id })).toBe(2)
+        }
+    })
 })
 
 describe('5.3 · Movimientos manuales', () => {
@@ -145,4 +197,5 @@ describe('5.3 · Movimientos manuales', () => {
         const { sesion: m } = await crearConSesion('mesero')
         expect((await m.post('/api/v1/inventario/movimientos').send({ insumoId: String(pan._id), tipo: 'ajuste', cantidad: 1, motivo: 'conteo' })).status).toBe(403)
     })
+
 })

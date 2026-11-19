@@ -28,6 +28,8 @@ export const leerNumero = (texto) => {
 };
 
 export const NIVELES = {
+  // 5.8.6 · Se vendió más de lo registrado: hay que contar de nuevo
+  negativo: { texto: "Existencia negativa", clase: "admin-badge--danger" },
   agotado: { texto: "Sin existencia", clase: "admin-badge--danger" },
   bajo: { texto: "Bajo el mínimo", clase: "admin-badge--warning" },
   ok: { texto: "Suficiente", clase: "admin-badge--success" },

@@ -2,6 +2,7 @@
 // llama (enviar la ronda, anular el ítem, confirmar o cancelar el domicilio):
 //   - descuento: cada ítem enviado (referencia: el ítem) o el pedido confirmado (referencia: el pedido);
 //   - devolución: lo que consumió esa referencia y aún no se devolvió (dos devoluciones no suman dos veces);
+//     si ya estaba en preparación o lista, merma automática (5.8.5);
 //   - agotado automático: un producto u opción sin insumos para una unidad se agota solo (Evento «sistema»);
 //     al entrar stock se reactiva solo, salvo que lo hayan agotado a mano.
 // El descuento no bloquea (F5-d): la existencia puede quedar negativa.
@@ -36,19 +37,36 @@ export const descontarRonda = async ({ cuenta, ronda, sesion, session }) => {
     return revisarDisponibilidad(movimientos.map((m) => m.insumo), sesion, session)
 }
 
-/** Devuelve lo que consumió un ítem anulado. */
-export const devolverItem = async ({ cuenta, comanda, item, sesion, session }) => {
-    const pendiente = await pendientePorDevolver([{ tipo: 'item', id: item._id }], session)
+// 5.8.5 · Lo preparado no vuelve al estante: anular un ítem o cancelar un domicilio que ya estaba EN PREPARACIÓN o
+// LISTO registra una merma automática. En el libro queda la devolución de lo consumido y, en la misma operación, una
+// merma por lo mismo (la existencia no cambia y el kárdex dice por qué se perdió). Si la referencia ya no tiene nada
+// pendiente (reintento), no hace nada: la devolución es única por referencia.
+const ESTADOS_CON_MERMA = ['en_preparacion', 'listo']
+export const terminaEnMerma = (estado) => ESTADOS_CON_MERMA.includes(estado)
+
+const devolverOMermar = async ({ referencia, motivo, merma, sesion, session }) => {
+    const pendiente = await pendientePorDevolver([{ tipo: referencia.tipo, id: referencia.id }], session)
     if (!pendiente.length) return []
-    const movimientos = await aplicarMovimientos(pendiente.map((p) => ({ insumo: p.insumo, cantidad: -p.neto, tipo: 'devolucion' })), {
-        motivo: `ítem anulado (${item.nombre})`, sesion, session,
+    const lineas = pendiente.map((p) => ({ insumo: p.insumo, cantidad: -p.neto, tipo: 'devolucion' }))
+    if (merma) lineas.push(...pendiente.map((p) => ({ insumo: p.insumo, cantidad: p.neto, tipo: 'merma' })))
+    return aplicarMovimientos(lineas, { motivo: merma ? `${motivo} (merma automática)` : motivo, sesion, session, referencia })
+}
+
+/** Devuelve lo que consumió un ítem anulado o, si ya estaba en preparación o listo (`de`), lo registra como merma. */
+export const devolverItem = async ({ cuenta, comanda, item, de, sesion, session }) => {
+    const merma = terminaEnMerma(de)
+    const movimientos = await devolverOMermar({
         referencia: { tipo: 'item', id: item._id, cuenta: cuenta._id, codigo: `${cuenta.codigo} · R${comanda.numeroRonda}` },
+        motivo: `ítem anulado (${item.nombre})`, merma, sesion, session,
     })
+    if (!movimientos.length) return []
     await registrarEvento({
-        entidad: 'cuenta', entidadId: cuenta._id, tipo: 'inventario_devuelto', usuario: sesion.id, actor: sesion.rol || 'staff',
-        motivo: 'ítem anulado', datos: { comanda: comanda._id, numeroRonda: comanda.numeroRonda, item: item._id, movimientos: resumen(movimientos) }, session,
+        entidad: 'cuenta', entidadId: cuenta._id, tipo: merma ? 'inventario_merma' : 'inventario_devuelto', usuario: sesion.id, actor: sesion.rol || 'staff',
+        motivo: merma ? `ítem anulado en ${de === 'listo' ? 'listo' : 'preparación'}` : 'ítem anulado',
+        datos: { comanda: comanda._id, numeroRonda: comanda.numeroRonda, item: item._id, movimientos: resumen(movimientos) }, session,
     })
-    return revisarDisponibilidad(movimientos.map((m) => m.insumo), sesion, session)
+    // La merma no cambia la existencia: no hay disponibilidad que revisar
+    return merma ? [] : revisarDisponibilidad(movimientos.map((m) => m.insumo), sesion, session)
 }
 
 /** Descuenta un domicilio confirmado (sus líneas son copia del pedido: producto, cantidad y opciones). */
@@ -65,18 +83,18 @@ export const descontarPedido = async ({ pedido, codigo, lineas, sesion, session 
     return revisarDisponibilidad(movimientos.map((m) => m.insumo), sesion, session)
 }
 
-/** Devuelve lo que consumió un domicilio cancelado (nada si no llegó a confirmarse). */
-export const devolverPedido = async ({ pedido, codigo, sesion, session }) => {
-    const pendiente = await pendientePorDevolver([{ tipo: 'pedido', id: pedido._id }], session)
-    if (!pendiente.length) return []
-    const movimientos = await aplicarMovimientos(pendiente.map((p) => ({ insumo: p.insumo, cantidad: -p.neto, tipo: 'devolucion' })), {
-        motivo: 'domicilio cancelado', sesion, session, referencia: { tipo: 'pedido', id: pedido._id, codigo },
+/** Devuelve lo que consumió un domicilio cancelado (nada si no llegó a confirmarse); en preparación o listo, merma. */
+export const devolverPedido = async ({ pedido, codigo, de, sesion, session }) => {
+    const merma = terminaEnMerma(de)
+    const movimientos = await devolverOMermar({
+        referencia: { tipo: 'pedido', id: pedido._id, codigo }, motivo: 'domicilio cancelado', merma, sesion, session,
     })
+    if (!movimientos.length) return []
     await registrarEvento({
-        entidad: 'pedido', entidadId: pedido._id, tipo: 'inventario_devuelto', usuario: sesion?.id || null, actor: sesion?.rol || 'staff',
-        motivo: 'domicilio cancelado', datos: { movimientos: resumen(movimientos) }, session,
+        entidad: 'pedido', entidadId: pedido._id, tipo: merma ? 'inventario_merma' : 'inventario_devuelto', usuario: sesion?.id || null, actor: sesion?.rol || 'staff',
+        motivo: merma ? `domicilio cancelado en ${de === 'listo' ? 'listo' : 'preparación'}` : 'domicilio cancelado', datos: { movimientos: resumen(movimientos) }, session,
     })
-    return revisarDisponibilidad(movimientos.map((m) => m.insumo), sesion, session)
+    return merma ? [] : revisarDisponibilidad(movimientos.map((m) => m.insumo), sesion, session)
 }
 
 const alcanza = (lineas, existencias) => lineas.every((l) => (existencias.get(String(l.insumo)) ?? 0) >= l.cantidad * (1 + (l.merma || 0) / 100))

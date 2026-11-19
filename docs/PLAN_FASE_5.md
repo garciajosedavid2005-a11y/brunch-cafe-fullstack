@@ -26,7 +26,7 @@ Pedida por Brayan el 2026-11-15. Orden: 5.1 → 5.7, un commit por ítem y una s
 - **F5-8 · Rol «compras»:** permisos de inventario, sin caja, salón ni cocina. El admin lo tiene todo por «*».
 - **F5-9 · Reportes:** solo con `reporte:ver` (el admin); filtros por fecha en hora de Bogotá; CSV de cada reporte.
 
-## Decisiones técnicas: Claude (a confirmar por Brayan)
+## Decisiones técnicas: Claude (confirmadas por Brayan el 2026-11-19; F5-3 tras preparar: merma automática, ver 5.8.5)
 
 - **F5-a · Permisos:** `inventario:ver`, `inventario:gestionar` (insumos y recetas; ya estaba reservado), `inventario:ajustar` (movimientos manuales), `compra:gestionar` (proveedores y órdenes) y `compra:recibir` (recepción). El rol «compras» los tiene todos; `reporte:ver` deja de estar reservado y solo lo tiene el admin.
 - **F5-b · Pantalla:** el inventario es una sola pantalla que se usa en Admin › Inventario y en la pestaña «Inventario» de /staff (el rol compras entra a /staff, como el resto del personal). Reportes solo en el admin.

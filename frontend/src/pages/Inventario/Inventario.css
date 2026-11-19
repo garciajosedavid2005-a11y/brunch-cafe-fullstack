@@ -326,3 +326,23 @@
 .inventario-variantes li > span {
   min-width: 0;
 }
+
+/* 5.8.6 · Existencia negativa: en rojo y con su aviso en texto (no solo color) */
+.inventario-num--negativa {
+  color: #a3221b;
+  font-weight: 700;
+}
+
+.inventario-aviso-negativo {
+  display: block;
+  /* La celda numérica no parte líneas (nowrap): el aviso sí, para no ensanchar la tabla */
+  white-space: normal;
+  max-width: 12rem;
+  color: #a3221b;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.inventario-alerta li .inventario-aviso-negativo {
+  flex-basis: 100%;
+}

@@ -51,7 +51,7 @@ export const TIPOS_EVENTO = [
     'receta_editada',
     // 5.3 · Descuento y devolución automáticos (entidad 'cuenta' o 'pedido'; datos.movimientos) y movimientos
     // manuales (entidad 'insumo': ajuste, merma o vencimiento con motivo)
-    'inventario_descontado', 'inventario_devuelto', 'inventario_ajustado',
+    'inventario_descontado', 'inventario_devuelto', 'inventario_merma', 'inventario_ajustado',
     // 5.4 · Proveedores (entidad 'proveedor') y órdenes de compra (entidad 'orden_compra'; la recepción con de/a del estado)
     'proveedor_creado', 'proveedor_editado', 'orden_creada', 'orden_cancelada', 'compra_recibida',
 ]

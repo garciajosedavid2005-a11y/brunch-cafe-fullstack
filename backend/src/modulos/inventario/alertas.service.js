@@ -13,7 +13,7 @@ import { fechaLocal } from '../compartido/fechas.js'
 import { validar } from '../salon/cuentas.schema.js'
 import { redondear } from './cantidades.js'
 import { motivoObligatorio } from './inventario.schema.js'
-import { exigirPermiso } from './insumos.service.js'
+import { exigirPermiso, nivelExistencia } from './insumos.service.js'
 import { aplicarMovimientos, actorDe } from './movimientos.service.js'
 import { revisarDisponibilidad, avisarCambiosDisponibilidad } from './consumo.service.js'
 
@@ -50,16 +50,23 @@ export const listarAlertas = async (sesion, ahora = new Date()) => {
     const hoy = fechaLocal(ahora)
     const limite = sumarDias(hoy, DIAS_AVISO_VENCIMIENTO)
     const [bajos, proximos] = await Promise.all([
-        Insumo.find({ activo: true, $expr: { $lte: ['$existencia', '$minimo'] } }).sort({ nombre: 1 }).limit(200).lean(),
+        // 5.8.6 · Los negativos primero ANTES del límite (ninguno se queda fuera por su nombre)
+        Insumo.aggregate([
+            { $match: { activo: true, $expr: { $lte: ['$existencia', '$minimo'] } } },
+            { $addFields: { negativo: { $lt: ['$existencia', 0] } } },
+            { $sort: { negativo: -1, nombre: 1 } },
+            { $limit: 200 },
+        ]),
         // Sin límite antes de filtrar: los lotes ya consumidos (restante 0) no deben ocupar el cupo de los reales
         Lote.find({ descartado: false, vencimiento: { $lte: limite } }).sort({ vencimiento: 1 }).populate('insumo', 'nombre unidad').lean(),
     ])
     const restantes = await restantesDeLotes([...new Set(proximos.map((l) => String(l.insumo?._id)))])
     return {
         hoy,
+        // 5.8.6 · Las existencias negativas van primero (nivel «negativo»)
         stockBajo: bajos.map((i) => ({
             id: String(i._id), nombre: i.nombre, unidad: i.unidad, existencia: i.existencia, minimo: i.minimo,
-            nivel: i.existencia <= 0 ? 'agotado' : 'bajo',
+            nivel: nivelExistencia(i),
         })),
         vencimientos: proximos
             .map((l) => ({

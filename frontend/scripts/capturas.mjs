@@ -38,6 +38,18 @@ const HOY_BOGOTA = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota"
 const DESFASE_MS = new Date(`${HOY_BOGOTA}T${HORA_CAPTURAS}:00-05:00`).getTime() - Date.now();
 const ahoraCapturas = () => Date.now() + DESFASE_MS;
 const ETIQUETA = process.argv[2] || "actual";
+
+// 5.8.6 · Deja un insumo con existencia negativa con un ajuste por la API (si ya lo está, no repite). Queda así
+// en la BD de capturas, que se vacía y se siembra de nuevo en cada ejecución
+const dejarInsumoNegativo = async (p, nombre) => {
+  const api = p.context().request;
+  const insumos = await (await api.get(`${API}/inventario/insumos`)).json();
+  const insumo = insumos.find((i) => i.nombre === nombre);
+  if (!insumo) throw new Error(`No existe el insumo ${nombre} en la BD de capturas`);
+  if (insumo.existencia < 0) return;
+  const res = await api.post(`${API}/inventario/movimientos`, { data: { insumoId: insumo.id, tipo: "ajuste", cantidad: -(insumo.existencia + 500), motivo: "conteo de capturas" } });
+  if (!res.ok()) throw new Error(`Ajuste negativo: ${res.status()} ${(await res.text()).slice(0, 200)}`);
+};
 // Cada tamaño es un ancho (alto 900, página completa) o ANCHOxALTO (1.6: pantalla de tablet, solo lo visible)
 const TAMANOS = (process.env.ANCHOS || "1280,1024,768").split(",").map((t) => {
   const [ancho, alto] = t.toLowerCase().split("x").map(Number);
@@ -1061,6 +1073,23 @@ const VISTAS = {
     await abrirPestanaAdmin("Resumen")(p);
     await p.getByText("Inventario:", { exact: true }).waitFor();
   } },
+  // 5.8.6 · Existencia negativa (un conteo deja la Leche entera por debajo de 0): en rojo, con aviso y primero en alertas
+  "admin-inventario-negativo": { usuario: "admin", preparar: async (p) => {
+    await dejarInsumoNegativo(p, "Leche entera");
+    await abrirPestanaAdmin("Inventario")(p);
+    await p.getByText("Existencia negativa").first().waitFor();
+  } },
+  "admin-inventario-alertas-negativo": { usuario: "admin", preparar: async (p) => {
+    await dejarInsumoNegativo(p, "Leche entera");
+    await abrirPestanaAdmin("Inventario")(p);
+    await p.getByRole("button", { name: "Alertas", exact: true }).click();
+    await p.getByText("Revisa el conteo", { exact: false }).first().waitFor();
+  } },
+  "admin-resumen-negativo": { usuario: "admin", completa: false, preparar: async (p) => {
+    await dejarInsumoNegativo(p, "Leche entera");
+    await abrirPestanaAdmin("Resumen")(p);
+    await p.getByText(/existencia negativa/).waitFor();
+  }, alFinal: (p) => p.getByText(/existencia negativa/).evaluate((e) => e.scrollIntoView({ block: "center" })) },
   // 5.6 y 5.7 · Reportes (ventas de ejemplo de la última semana en la BD de capturas)
   "admin-reportes": { usuario: "admin", preparar: async (p) => {
     await abrirPestanaAdmin("Reportes")(p);

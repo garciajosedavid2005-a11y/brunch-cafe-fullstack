@@ -110,9 +110,16 @@ describe('PATCH /api/v1/staff/pedidos/:id/cancelar', () => {
         expect(otra.status).toBe(409)
     })
 
-    it('no cancela un pedido en preparación (solo pendiente o confirmado)', async () => {
+    it('5.8.5 · cancela un pedido en preparación (merma automática), pero no uno en camino', async () => {
         await mesero.patch(`${BASE}/${id}/estado`).send({ codigo: 'confirmado' })
         await mesero.patch(`${BASE}/${id}/estado`).send({ codigo: 'en_preparacion' })
+        expect((await admin.patch(`${BASE}/${id}/cancelar`).send({ motivo: 'Cliente llamó' })).status).toBe(200)
+    })
+
+    it('no cancela un pedido en camino (ya salió)', async () => {
+        for (const codigo of ['confirmado', 'en_preparacion', 'listo', 'en_camino']) {
+            expect((await mesero.patch(`${BASE}/${id}/estado`).send({ codigo })).status).toBe(200)
+        }
         expect((await admin.patch(`${BASE}/${id}/cancelar`).send({ motivo: 'Cliente llamó' })).status).toBe(409)
     })
 

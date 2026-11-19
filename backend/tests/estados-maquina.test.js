@@ -64,7 +64,7 @@ describe('Transiciones de pedido', () => {
             .toEqual({ status: 409, code: 'TRANSICION_INVALIDA' })
     })
 
-    it('staff cancela solo en pendiente o confirmado, con permiso pedido:cancelar y motivo', () => {
+    it('staff cancela hasta «listo» (5.8.5: en preparación o listo con merma), con permiso pedido:cancelar y motivo', () => {
         expect(codigoError(() => validarTransicion('pedido', 'pendiente', 'cancelado', { permisos: MESERO, motivo: 'x' })))
             .toEqual({ status: 403, code: 'FORBIDDEN' })
         expect(codigoError(() => validarTransicion('pedido', 'confirmado', 'cancelado', { permisos: ['pedido:cancelar'] })))
@@ -73,7 +73,15 @@ describe('Transiciones de pedido', () => {
             .toEqual({ status: 400, code: 'MOTIVO_REQUERIDO' })
         expect(validarTransicion('pedido', 'confirmado', 'cancelado', { permisos: ['pedido:cancelar'], motivo: 'Sin insumos' }).motivo)
             .toBe('Sin insumos')
-        expect(codigoError(() => validarTransicion('pedido', 'en_preparacion', 'cancelado', { permisos: ADMIN, motivo: 'x' })))
+        expect(validarTransicion('pedido', 'en_preparacion', 'cancelado', { permisos: ADMIN, motivo: 'x' }).motivo).toBe('x')
+        expect(validarTransicion('pedido', 'listo', 'cancelado', { permisos: ADMIN, motivo: 'x' }).motivo).toBe('x')
+        for (const de of ['en_preparacion', 'listo']) {
+            expect(codigoError(() => validarTransicion('pedido', de, 'cancelado', { permisos: ['pedido:preparar', 'pedido:cambiar_estado'], motivo: 'x' })))
+                .toEqual({ status: 403, code: 'FORBIDDEN' })
+            expect(codigoError(() => validarTransicion('pedido', de, 'cancelado', { permisos: ['pedido:cancelar'] })))
+                .toEqual({ status: 400, code: 'MOTIVO_REQUERIDO' })
+        }
+        expect(codigoError(() => validarTransicion('pedido', 'en_camino', 'cancelado', { permisos: ADMIN, motivo: 'x' })))
             .toEqual({ status: 409, code: 'TRANSICION_INVALIDA' })
     })
 

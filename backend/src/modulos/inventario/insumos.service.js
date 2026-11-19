@@ -22,8 +22,11 @@ export const exigirPermiso = (sesion, ...claves) => {
 const noEncontrado = () => new AppError(404, 'INSUMO_NO_ENCONTRADO', 'El insumo no existe.')
 const nombreRepetido = (nombre) => new AppError(409, 'INSUMO_DUPLICADO', `Ya existe un insumo llamado «${nombre}».`)
 
-/** Estado de la existencia frente al mínimo (texto, no solo color, en la pantalla). */
-export const nivelExistencia = (i) => (i.existencia <= 0 ? 'agotado' : i.existencia <= i.minimo ? 'bajo' : 'ok')
+/**
+ * Estado de la existencia frente al mínimo (texto, no solo color, en la pantalla). 5.8.6 · «negativo»: se vendió
+ * más de lo registrado (el descuento no bloquea, F5-d); hay que revisar el conteo.
+ */
+export const nivelExistencia = (i) => (i.existencia < 0 ? 'negativo' : i.existencia === 0 ? 'agotado' : i.existencia <= i.minimo ? 'bajo' : 'ok')
 
 export const formatoInsumo = (i) => ({
     id: String(i._id),

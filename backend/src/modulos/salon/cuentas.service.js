@@ -35,6 +35,7 @@ import { avisarReserva } from './reservas.avisos.js'
 import { hora12 } from '../configuracion/horarios.reglas.js'
 import { horaLocal } from '../compartido/fechas.js'
 import { descontarRonda, devolverItem, avisarCambiosDisponibilidad } from '../inventario/consumo.service.js'
+import { logger } from '../compartido/logger.js'
 
 // 1.4 · Núcleo de cuenta y comanda (sin endpoints: llegan en 1.5 y reciben `sesion` = req.usuario).
 // Reglas:
@@ -386,14 +387,22 @@ const exigirBorrador = (comanda) => {
     }
 }
 
+/**
+ * Dato incoherente del salón: el usuario ve qué hacer (recargar o avisar) y el detalle técnico (cómo revisarlo con
+ * `npm run verificar:salon`) va solo al log.
+ */
+const mesasInconsistentes = (mensaje, contexto = {}) => {
+    logger.warn({ code: 'MESAS_INCONSISTENTES', ...contexto }, `Salón inconsistente: ${mensaje} Revisa con npm run verificar:salon.`)
+    return error(409, 'MESAS_INCONSISTENTES', mensaje)
+}
+
 /** Si el índice único dice que la mesa ya está en otra cuenta abierta (dato incoherente), 409 en vez de 500. */
 const siMesaEnOtraCuenta = async (operacion) => {
     try {
         return await operacion()
     } catch (e) {
         if (e?.code === 11000 && 'mesas.mesa' in (e.keyPattern || {})) {
-            throw error(409, 'MESAS_INCONSISTENTES',
-                'La mesa figura en otra cuenta abierta. Recarga; si se repite, avisa al administrador (npm run verificar:salon).')
+            throw mesasInconsistentes('La mesa figura en otra cuenta abierta. Recarga; si se repite, avisa al administrador.', { indice: e.keyValue })
         }
         throw e
     }
@@ -700,8 +709,8 @@ export const anularItem = async (cuentaId, itemId, datos, sesion) => {
             entidad: 'cuenta', entidadId: cuenta._id, tipo: 'item_anulado', de, a: 'anulado', motivo: texto, ...quien(sesion),
             datos: { comanda: comanda._id, numeroRonda: comanda.numeroRonda, item: resumenItem(item) }, session,
         })
-        // Fase 5 (F5-3) · Lo que consumió el ítem vuelve al inventario
-        cambiosDisponibilidad = await devolverItem({ cuenta, comanda, item, sesion, session })
+        // Fase 5 (F5-3) · Lo que consumió el ítem vuelve al inventario; si ya se preparaba o estaba listo, merma (5.8.5)
+        cambiosDisponibilidad = await devolverItem({ cuenta, comanda, item, de, sesion, session })
         await reabrirSiTodoAnulado(cuenta, { sesion, session })
         await guardarCuenta(cuenta, session)
         return detalle(cuenta, session)
@@ -985,7 +994,7 @@ export const moverCuenta = async (mesaOrigenId, datos, sesion) => {
             throw error(409, 'MESAS_INCONSISTENTES', 'Las mesas cambiaron mientras movías la cuenta. Recarga e intenta de nuevo.')
         }
         const posicion = cuenta.mesas.findIndex((m) => String(m.mesa) === String(origen._id))
-        if (posicion === -1) throw error(409, 'MESAS_INCONSISTENTES', 'La mesa no figura en su cuenta. Avisa al administrador (npm run verificar:salon).')
+        if (posicion === -1) throw mesasInconsistentes('La mesa no figura en su cuenta. Avisa al administrador.', { cuenta: String(cuenta._id), mesa: String(origen._id) })
         cuenta.mesas.splice(posicion, 1, copiaDeMesa(destino, zona))
         await siMesaEnOtraCuenta(() => guardarCuenta(cuenta, session))
 
@@ -1067,7 +1076,7 @@ export const separarMesa = async (mesaId, datos, sesion) => {
         const mesa = await mesaConCuenta(mesaId, session)
         const cuenta = await tocarCuenta(mesa.cuentaActual, { versionEsperada, estados: ['abierta'] }, session)
         if (!cuenta.mesas.some((m) => String(m.mesa) === String(mesa._id))) {
-            throw error(409, 'MESAS_INCONSISTENTES', 'La mesa no figura en su cuenta. Avisa al administrador (npm run verificar:salon).')
+            throw mesasInconsistentes('La mesa no figura en su cuenta. Avisa al administrador.', { cuenta: String(cuenta._id), mesa: String(mesa._id) })
         }
         if (cuenta.mesas.length < 2) throw error(409, 'MESA_NO_UNIDA', `La mesa ${mesa.numero} no está unida a otras.`)
         if (await Comanda.exists({ cuenta: cuenta._id, estado: 'enviada' }).session(session)) {

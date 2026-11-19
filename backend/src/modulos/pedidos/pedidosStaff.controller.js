@@ -125,7 +125,8 @@ export const verPedido = async (req, res) => {
 }
 
 // PATCH /api/v1/staff/pedidos/:id/cancelar { motivo } (0.13): exige pedido:cancelar y motivo;
-// la máquina de estados decide desde qué estados se puede (pendiente o confirmado)
+// la máquina de estados decide desde qué estados se puede (pendiente, confirmado y, desde 5.8.5, en preparación o
+// listo: lo preparado queda como merma automática)
 export const cancelarPedido = async (req, res) => {
     const pedido = await buscarPedido(req.params.id)
     const inventario = efectosInventarioPedido(req.usuario) // 5.3 · devuelve lo que descontó la confirmación

@@ -132,9 +132,10 @@ export default function InsumosPanel({ puedeGestionar, puedeAjustar = false }) {
                       {!i.activo && <span className="admin-badge admin-badge--neutral">Inactivo</span>}
                     </span>
                   </td>
-                  <td className="inventario-num">
+                  <td className={`inventario-num${i.existencia < 0 ? " inventario-num--negativa" : ""}`}>
                     {formatearCantidad(i.existencia, i.unidad)}
                     <small className="inventario-minimo">mín. {formatearCantidad(i.minimo, i.unidad)}</small>
+                    {i.existencia < 0 && <small className="inventario-aviso-negativo">Revisa el conteo: se descontó más de lo registrado.</small>}
                   </td>
                   <td className="inventario-num">
                     {formatearCosto(i.costoPromedio, i.unidad)}
