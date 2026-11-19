@@ -380,15 +380,41 @@ describe("Cuenta: subtotal, solicitar y cancelar", () => {
     expect(await screen.findByRole("alertdialog", { name: /No se pudo solicitar/ })).toHaveTextContent(/cancela la cuenta/);
   });
 
-  it("con ítems enviados (aunque estén todos anulados) no se ofrece cancelar (D4, F1-18)", async () => {
-    await pintar();
-    expect(screen.queryByRole("button", { name: "Cancelar cuenta" })).not.toBeInTheDocument();
-    const cuenta = CUENTA({ subtotal: 0 });
+  // 5.8.3 · Con ítems enviados (aunque estén todos anulados) «Cancelar cuenta» se ve deshabilitado y dice por qué
+  const cuentaTodoAnulado = () => {
+    const cuenta = CUENTA({ subtotal: 0, total: 0, pendiente: 0, rondas: [CUENTA().rondas[0]] });
     cuenta.rondas[0].items = cuenta.rondas[0].items.map((i) => ({ ...i, estado: "anulado", anulacion: { motivo: "demora", detalle: "" } }));
-    respuestas.cuenta = cuenta;
-    fireEvent.click(screen.getByRole("button", { name: "Actualizar la cuenta" }));
-    await waitFor(() => expect(screen.getAllByText(/Anulado · Demora/)).toHaveLength(2));
-    expect(screen.queryByRole("button", { name: "Cancelar cuenta" })).not.toBeInTheDocument();
+    return cuenta;
+  };
+
+  it("con ítems enviados (aunque estén todos anulados) cancelar queda deshabilitado con su motivo (D4, F1-18)", async () => {
+    respuestas.cuenta = cuentaTodoAnulado();
+    await pintar();
+    const cancelar = await screen.findByRole("button", { name: "Cancelar cuenta" });
+    expect(cancelar).toBeDisabled();
+    expect(cancelar).toHaveAccessibleDescription("Ya se enviaron productos a cocina: pide la cuenta o, si eres admin, usa «Cerrar sin cobro».");
+    // El mesero no tiene cuenta:cerrar_sin_cobro
+    expect(screen.queryByRole("button", { name: "Cerrar sin cobro" })).not.toBeInTheDocument();
+  });
+
+  it("5.8.3 · todo anulado: pedir la cuenta explica que no se cobra $0 sin llamar al servidor", async () => {
+    respuestas.cuenta = cuentaTodoAnulado();
+    await pintar();
+    fireEvent.click(await screen.findByRole("button", { name: "Solicitar cuenta" }));
+    expect(await screen.findByRole("alertdialog", { name: "No se puede pedir la cuenta" })).toHaveTextContent("no se puede cobrar $0. Si eres admin, usa «Cerrar sin cobro»");
+    expect(llamadas(`${BASE}/cuentas/c1/solicitar`, "POST")).toHaveLength(0);
+  });
+
+  it("5.8.3 · el admin cierra sin cobro con motivo obligatorio y vuelve al plano", async () => {
+    respuestas.cuenta = cuentaTodoAnulado();
+    await pintar(["*"]);
+    fireEvent.click(await screen.findByRole("button", { name: "Cerrar sin cobro" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Cerrar sin cobro" });
+    fireEvent.change(within(dialogo).getByRole("textbox"), { target: { value: "Se anuló todo" } });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Cerrar sin cobro" }));
+    await waitFor(() => expect(llamadas(`${BASE}/cuentas/c1/cerrar-sin-cobro`, "POST")).toHaveLength(1));
+    expect(cuerpo(`${BASE}/cuentas/c1/cerrar-sin-cobro`, "POST")).toEqual({ motivo: "Se anuló todo", versionEsperada: 4 });
+    await waitFor(() => expect(onVolver).toHaveBeenCalled());
   });
 
   it("si otra persona canceló la cuenta, el estado se lee en español y no se ofrecen acciones", async () => {

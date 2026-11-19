@@ -192,6 +192,22 @@ describe("Plano de mesas", () => {
     expect(selector).toHaveValue("a1");
   });
 
+  it("5.8.3 · el admin ve «Cerrar sin cobro» en la mesa con cuenta (motivo obligatorio); el mesero no", async () => {
+    estado.confirmar.mockResolvedValue({ confirmado: true, motivo: "Se anuló todo" });
+    pintar(["*"]);
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 1\b/ }));
+    fireEvent.click(within(screen.getByRole("region", { name: "Mesa 1" })).getByRole("button", { name: "Cerrar sin cobro" }));
+    await waitFor(() => expect(llamadasA("/v1/staff/salon/cuentas/c1/cerrar-sin-cobro")).toHaveLength(1));
+    expect(estado.confirmar.mock.calls[0][0].motivo).toMatchObject({ requerido: true });
+    expect(JSON.parse(llamadasA("/v1/staff/salon/cuentas/c1/cerrar-sin-cobro")[0][1].body)).toEqual({ motivo: "Se anuló todo", versionEsperada: 4 });
+  });
+
+  it("5.8.3 · el mesero no ve «Cerrar sin cobro»", async () => {
+    pintar(MESERO);
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 1\b/ }));
+    expect(within(screen.getByRole("region", { name: "Mesa 1" })).queryByRole("button", { name: "Cerrar sin cobro" })).not.toBeInTheDocument();
+  });
+
   it("si la lista no trae «yo» (quien no atiende mesas), debe elegir un mesero", async () => {
     respuestas.meseros = respuestas.meseros.filter((m) => !m.yo);
     pintar(["*"]);

@@ -244,6 +244,24 @@ describe('Comanda: ítems y envío', () => {
         expect(sinClave.body.error.code).toBe('RONDA_YA_ENVIADA')
     })
 
+    // 5.8.3 · Caso real (Brayan): se envió la comanda, se anuló todo y la mesa quedó sin salida
+    it('mesa atrapada: enviar y anular todo → pedir la cuenta lo explica; el mesero no cierra sin cobro (403) y el admin sí', async () => {
+        const enviada = await enviar(await agregar(await abrir()))
+        const itemId = enviada.rondas[0].items[0].id
+        const anulada = esperar(await admin.post(`${BASE}/cuentas/${enviada.id}/items/${itemId}/anular`).send({ motivo: 'error_toma' }), 200)
+        expect(anulada).toMatchObject({ estado: 'abierta', subtotal: 0 })
+        // No se puede cobrar $0: el mensaje dice qué hacer (no «cancela la cuenta», que tampoco se puede)
+        const pedir = await mesero.post(`${BASE}/cuentas/${enviada.id}/solicitar`).send({ versionEsperada: anulada.version })
+        expect(pedir.status).toBe(409)
+        expect(pedir.body.error).toMatchObject({ code: 'CUENTA_SIN_CONSUMO', message: expect.stringMatching(/Ya se enviaron productos a cocina.*Cerrar sin cobro/) })
+        expect((await mesero.post(`${BASE}/cuentas/${enviada.id}/cancelar`).send({ motivo: 'x', versionEsperada: anulada.version })).body.error.code).toBe('CUENTA_CON_ITEMS_ENVIADOS')
+        expect((await mesero.post(`${BASE}/cuentas/${enviada.id}/cerrar-sin-cobro`).send({ motivo: 'se fueron', versionEsperada: anulada.version })).status).toBe(403)
+        const cerrada = esperar(await admin.post(`${BASE}/cuentas/${enviada.id}/cerrar-sin-cobro`).send({ motivo: 'se anuló todo', versionEsperada: anulada.version }), 200)
+        expect(cerrada.estado).toBe('cerrada_sin_cobro')
+        expect(await estadoMesa(m1)).toBe('por_limpiar')
+        expect(await Evento.exists({ entidad: 'cuenta', entidadId: enviada.id, a: 'cerrada_sin_cobro' })).toBeTruthy()
+    })
+
     it('anular (admin), solicitar, F1-18 (vuelve a abierta) y cerrar sin cobro', async () => {
         const enviada = await enviar(await agregar(await abrir()))
         const pedida = esperar(await mesero.post(`${BASE}/cuentas/${enviada.id}/solicitar`).send({ versionEsperada: enviada.version }), 200)

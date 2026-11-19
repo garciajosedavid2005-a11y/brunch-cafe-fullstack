@@ -743,3 +743,13 @@
 .panel-mesa__reserva-acciones .panel-mesa__campo {
   flex-basis: 100%;
 }
+
+/* 5.8.3 · Acción que cierra la cuenta sin cobro (texto en rojo; sigue siendo secundaria) */
+.plano__boton--peligro {
+  color: #a1261e;
+}
+
+/* 5.8.3 · La acción destructiva va al final y separada de las demás (revisor-visual) */
+.plano__boton--apartado {
+  margin-top: 0.75rem;
+}

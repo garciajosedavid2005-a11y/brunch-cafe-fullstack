@@ -222,6 +222,27 @@ const abrirCuentaDeMesa = async (p, numero) => {
   await p.getByRole("button", { name: /^Ver cuenta/ }).click();
   await p.getByRole("heading", { name: new RegExp(`^Mesa ${numero}`), level: 2 }).waitFor();
 };
+// 5.8.3 · Anula (como admin, por la API) todos los ítems enviados de la cuenta de la mesa 1, una vez por ejecución
+let mesa1Anulada = false;
+const anularTodoMesa1 = async () => {
+  if (mesa1Anulada) return;
+  if (!sesionAdmin) {
+    sesionAdmin = await request.newContext();
+    await sesionAdmin.post(`${API}/auth/login`, { data: { correo: USUARIOS.admin, contraseña: CLAVE } });
+  }
+  const plano = await (await sesionAdmin.get(`${API}/staff/salon/mesas`)).json();
+  const mesa = plano.mesas.find((m) => m.numero === 1);
+  if (!mesa?.cuenta?.id) throw new Error("La mesa 1 no tiene cuenta en la BD de capturas");
+  let cuenta = await (await sesionAdmin.get(`${API}/staff/salon/cuentas/${mesa.cuenta.id}`)).json();
+  for (const ronda of cuenta.rondas.filter((r) => r.estado === "enviada")) {
+    for (const item of ronda.items.filter((i) => i.estado !== "anulado")) {
+      const res = await sesionAdmin.post(`${API}/staff/salon/cuentas/${cuenta.id}/items/${item.id}/anular`, { data: { motivo: "error_toma", versionEsperada: cuenta.version } });
+      if (!res.ok()) throw new Error(`No se pudo anular en la mesa 1: ${res.status()}`);
+      cuenta = await res.json();
+    }
+  }
+  mesa1Anulada = true;
+};
 // En vertical (< 1000 px) la cuenta va en su propia vista
 const verCuentaEnVertical = async (p) => {
   const boton = p.getByRole("group", { name: "Ver" }).getByRole("button", { name: /^Cuenta/ });
@@ -1390,6 +1411,30 @@ const VISTAS = {
     await p.getByRole("dialog", { name: /^Enviar la ronda/ }).getByRole("button", { name: "Enviar" }).click();
     await p.getByRole("alertdialog", { name: /No se envió la ronda/ }).getByRole("button", { name: "Entendido" }).click();
     await disponibilidad("Latte frío artesanal", true);
+  } },
+  // 5.8.3 · Mesa atrapada (caso real): la ronda de la mesa 1 se envió y el admin anuló todos sus ítems
+  "staff-comanda-atrapada": { usuario: "admin", preparar: async (p) => {
+    await anularTodoMesa1();
+    await abrirCuentaDeMesa(p, 1);
+    await verCuentaEnVertical(p);
+  } },
+  "staff-comanda-atrapada-cerrar": { usuario: "admin", completa: false, preparar: async (p) => {
+    await anularTodoMesa1();
+    await abrirCuentaDeMesa(p, 1);
+    await verCuentaEnVertical(p);
+    await p.getByRole("button", { name: "Cerrar sin cobro" }).click();
+    await p.getByRole("dialog", { name: "Cerrar sin cobro" }).waitFor();
+  } },
+  "staff-comanda-atrapada-mesero": { usuario: "mesero", preparar: async (p) => {
+    await anularTodoMesa1();
+    await abrirCuentaDeMesa(p, 1);
+    await verCuentaEnVertical(p);
+  } },
+  "staff-plano-atrapada": { usuario: "admin", completa: false, preparar: async (p) => {
+    await anularTodoMesa1();
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: /^Mesa 1,/ }).click();
+    await p.locator(".panel-mesa").waitFor();
   } },
   // Cancelar una cuenta sin rondas enviadas (mesa 6): motivo obligatorio (D4)
   "staff-comanda-cancelar": { usuario: "mesero", preparar: async (p) => {

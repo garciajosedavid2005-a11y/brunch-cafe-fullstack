@@ -131,6 +131,20 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
     if (confirmado) await llamarReserva("estado", { method: "PATCH", body: JSON.stringify({ codigo: "no_show" }) });
   };
 
+  // 5.8.3 · Cierra la cuenta sin cobro con motivo; la mesa queda por limpiar (el plano y la caja se enteran en vivo)
+  const cerrarSinCobro = async () => {
+    const { confirmado, motivo } = await confirmar({
+      titulo: "Cerrar sin cobro",
+      mensaje: `La cuenta ${cuenta.codigo} de la mesa ${mesa.numero} se cierra sin cobrar ${formatearCOP(cuenta.total)} y la mesa queda por limpiar.`,
+      confirmarTexto: "Cerrar sin cobro",
+      cancelarTexto: "Volver",
+      peligroso: true,
+      motivo: { etiqueta: "Motivo", requerido: true },
+    });
+    if (!confirmado) return;
+    if (await ejecutar(`/cuentas/${cuenta.id}/cerrar-sin-cobro`, { motivo, versionEsperada: cuenta.version })) onCerrar();
+  };
+
   const abrirCuenta = async () => {
     // Si la lista no cargó (error), se abre a nombre propio y el backend decide (MESERO_REQUERIDO)
     if (eligeMesero && meseros && !meseroAbrir) {
@@ -345,6 +359,12 @@ export default function PanelMesa({ mesa, mesas, permisos, onHecho, onCerrar, on
           <button type="button" className="plano__boton plano__boton--secundario" aria-expanded={modo === "transferir"}
             onClick={() => { setMeseroId(""); setModo(modo === "transferir" ? null : "transferir"); }}>
             Transferir
+          </button>
+        )}
+        {/* 5.8.3 · Salida para una cuenta sin cobro posible (p. ej. todo anulado): cuenta:cerrar_sin_cobro (el admin) */}
+        {cuenta && ["abierta", "cuenta_pedida"].includes(cuenta.estado) && puede(permisos, "cuenta:cerrar_sin_cobro") && (
+          <button type="button" className="plano__boton plano__boton--secundario plano__boton--peligro plano__boton--apartado" disabled={enviando} onClick={cerrarSinCobro}>
+            Cerrar sin cobro
           </button>
         )}
       </div>

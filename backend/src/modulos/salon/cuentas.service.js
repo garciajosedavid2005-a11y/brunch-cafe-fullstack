@@ -723,6 +723,10 @@ export const solicitarCuenta = async (cuentaId, datos, sesion) => {
             throw error(409, 'RONDA_PENDIENTE', 'Hay ítems sin enviar: envíalos o quítalos antes de pedir la cuenta.')
         }
         if (!comandas.some((c) => c.estado === 'enviada' && c.items.some((i) => i.estado !== 'anulado'))) {
+            // 5.8.3 · Se envió algo y se anuló todo: no se cobra $0 ni se puede cancelar (ya llegó a cocina)
+            if (comandas.some((c) => c.estado === 'enviada' && c.items.length)) {
+                throw error(409, 'CUENTA_SIN_CONSUMO', MENSAJE_SOLO_ANULADOS)
+            }
             throw error(409, 'CUENTA_SIN_CONSUMO',
                 'La cuenta no tiene ítems enviados. Si los clientes se fueron sin pedir o se abrió por error, cancela la cuenta.')
         }
@@ -732,6 +736,9 @@ export const solicitarCuenta = async (cuentaId, datos, sesion) => {
         return detalle(cuenta, session)
     })
 }
+
+// 5.8.3 · Mismo texto que muestra la toma de comanda al pedir la cuenta con todo lo enviado anulado
+export const MENSAJE_SOLO_ANULADOS = 'Ya se enviaron productos a cocina y todos se anularon: no se puede cobrar $0. Si eres admin, usa «Cerrar sin cobro».'
 
 /** D4: cancela una cuenta abierta sin ítems enviados (abierta por error, clientes que se fueron). */
 export const cancelarCuenta = async (cuentaId, datos, sesion) => {

@@ -650,3 +650,14 @@
 @media (max-width: 999px) {
   .is-oculta-vertical { display: none; }
 }
+
+/* 5.8.3 · Por qué «Cancelar cuenta» está deshabilitado (texto, no solo el botón gris) */
+.comanda__nota--motivo {
+  margin-top: 0.5rem;
+  color: #5f5048;
+}
+
+/* 5.8.3 · Con dos acciones destructivas (cancelar y cerrar sin cobro), «Solicitar cuenta» ocupa su propia fila
+   y las otras dos se reparten debajo (revisor-visual) */
+.comanda-resumen__acciones .comanda__boton--primario { flex-basis: 100%; }
+.comanda-resumen__acciones .comanda__boton--primario ~ .comanda__boton--peligro-texto { flex: 1 1 0; margin-left: 0; }

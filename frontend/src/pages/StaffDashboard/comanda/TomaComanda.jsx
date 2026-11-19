@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ArrowLeft, BellRing, HandPlatter, Minus, Plus, ReceiptText, RefreshCw, Send, Trash2, TriangleAlert, Undo2, UtensilsCrossed } from "lucide-react";
 import { apiRequest } from "../../../services/api";
 import { useDialogo } from "../../../context/useDialogo";
@@ -71,8 +71,12 @@ function Catalogo({ catalogo, error, onElegir, onReintentar }) {
   );
 }
 
+// 5.8.3 · Mismo texto que el backend (CUENTA_SIN_CONSUMO) cuando se envió algo y se anuló todo
+const MENSAJE_SOLO_ANULADOS = "Ya se enviaron productos a cocina y todos se anularon: no se puede cobrar $0. Si eres admin, usa «Cerrar sin cobro».";
+
 export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
   const { avisar, confirmar } = useDialogo();
+  const idCancelar = useId();
   const { cuenta, error, recargar } = useCuenta(cuentaId);
   const tomaComandas = puede(permisos, "comanda:tomar");
   const [catalogo, setCatalogo] = useState(null);
@@ -113,6 +117,12 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
   const borrador = cuenta.rondas.find((r) => r.estado === "borrador" && r.items.length > 0) || null;
   const enviadas = cuenta.rondas.filter((r) => r.estado !== "borrador");
   const huboEnviados = enviadas.some((r) => r.items.length > 0);
+  // 5.8.3 · Se envió algo y se anuló todo: subtotal $0 (no se cobra ni se cancela)
+  const soloAnulados = huboEnviados && enviadas.every((r) => r.items.every((i) => i.estado === "anulado"));
+  // Por qué no se puede cancelar (null = sí se puede)
+  const motivoSinCancelar = cuenta?.estado === "cuenta_pedida"
+    ? "La cuenta ya se pidió: cóbrala en caja o, si eres admin, usa «Cerrar sin cobro»."
+    : huboEnviados ? "Ya se enviaron productos a cocina: pide la cuenta o, si eres admin, usa «Cerrar sin cobro»." : null;
   const enRonda = borrador ? cantidadItems(borrador) : 0;
   // 2.7 · Además de lo que rechazó el último envío, lo que el menú ya marca como agotado (producto u opción)
   const agotadoEnMenu = (item) => {
@@ -246,6 +256,11 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
   };
 
   const solicitar = async () => {
+    // 5.8.3 · Todo lo enviado se anuló: no hay nada que cobrar; se explica qué hacer sin llamar al servidor
+    if (soloAnulados && !borrador) {
+      await avisar({ tipo: "error", titulo: "No se puede pedir la cuenta", mensaje: MENSAJE_SOLO_ANULADOS });
+      return;
+    }
     const { confirmado } = await confirmar({
       titulo: "Solicitar la cuenta",
       mensaje: `${nombreMesas(cuenta)} pasa a «Cuenta pedida» con un subtotal de ${formatearCOP(cuenta.subtotal)}.`,
@@ -268,6 +283,22 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
     if (!confirmado) return;
     const fallo = await operar("/cancelar", { cuerpo: { motivo, versionEsperada: cuenta.version } });
     if (fallo) mostrarError(fallo, "No se pudo cancelar la cuenta");
+    else onVolver();
+  };
+
+  // 5.8.3 · Cierre sin cobro (cuenta:cerrar_sin_cobro, hoy el admin): motivo obligatorio y la mesa queda por limpiar
+  const cerrarSinCobro = async () => {
+    const { confirmado, motivo } = await confirmar({
+      titulo: "Cerrar sin cobro",
+      mensaje: `La cuenta ${cuenta.codigo} se cierra sin cobrar ${formatearCOP(cuenta.subtotal)} y ${nombreMesas(cuenta)} queda por limpiar. Lo que haya en la ronda en curso se descarta.`,
+      confirmarTexto: "Cerrar sin cobro",
+      cancelarTexto: "Volver",
+      peligroso: true,
+      motivo: { etiqueta: "Motivo", requerido: true },
+    });
+    if (!confirmado) return;
+    const fallo = await operar("/cerrar-sin-cobro", { cuerpo: { motivo, versionEsperada: cuenta.version } });
+    if (fallo) mostrarError(fallo, "No se pudo cerrar la cuenta");
     else onVolver();
   };
 
@@ -451,10 +482,22 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
               {cuenta.estado === "abierta" && puede(permisos, "cuenta:solicitar") && (
                 <button type="button" className="comanda__boton comanda__boton--primario" disabled={ocupado} onClick={solicitar}>Solicitar cuenta</button>
               )}
-              {cuenta.estado === "abierta" && !huboEnviados && puede(permisos, "cuenta:abrir") && (
-                <button type="button" className="comanda__boton comanda__boton--peligro-texto comanda__boton--secundario" disabled={ocupado} onClick={cancelar}>Cancelar cuenta</button>
+              {/* 5.8.3 · Si no se puede cancelar, el botón queda deshabilitado con su motivo (no desaparece) */}
+              {["abierta", "cuenta_pedida"].includes(cuenta.estado) && puede(permisos, "cuenta:abrir") && (
+                <button type="button" className="comanda__boton comanda__boton--peligro-texto comanda__boton--secundario"
+                  disabled={ocupado || Boolean(motivoSinCancelar)} aria-describedby={motivoSinCancelar ? `${idCancelar}-motivo` : undefined} onClick={cancelar}>
+                  Cancelar cuenta
+                </button>
+              )}
+              {["abierta", "cuenta_pedida"].includes(cuenta.estado) && puede(permisos, "cuenta:cerrar_sin_cobro") && (
+                <button type="button" className="comanda__boton comanda__boton--peligro-texto comanda__boton--secundario" disabled={ocupado} onClick={cerrarSinCobro}>
+                  Cerrar sin cobro
+                </button>
               )}
             </div>
+            {["abierta", "cuenta_pedida"].includes(cuenta.estado) && puede(permisos, "cuenta:abrir") && motivoSinCancelar && (
+              <p className="comanda__nota comanda__nota--motivo" id={`${idCancelar}-motivo`}>{motivoSinCancelar}</p>
+            )}
           </section>
         </div>
       </div>
