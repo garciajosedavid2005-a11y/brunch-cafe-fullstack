@@ -25,9 +25,9 @@ const motivoNoUnible = (m, cuenta) => {
   return null;
 };
 
-// 1.7b · Lista de responsables (abrir y transferir): el backend ya deja solo a quien atiende mesas,
-// sin administradores ni clientes, y marca con «yo» al usuario conectado. Va primero, una sola vez,
-// como «Nombre A. (yo)»; los demás, por nombre.
+// 1.7b · Lista de responsables (abrir y transferir): el backend deja solo a quien atiende mesas, sin clientes
+// ni OTROS administradores, y marca con «yo» al usuario conectado (5.8.2: también el admin, que puede
+// asignarse a sí mismo). Va primero, una sola vez, como «Nombre A. (yo)»; los demás, por nombre.
 const ordenarMeseros = (lista = []) => [
   ...lista.filter((m) => m.yo).map((m) => ({ ...m, etiqueta: `${m.nombre} (yo)` })),
   ...lista.filter((m) => !m.yo).sort((a, b) => a.nombre.localeCompare(b.nombre, "es")).map((m) => ({ ...m, etiqueta: m.nombre })),

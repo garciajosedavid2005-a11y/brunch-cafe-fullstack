@@ -130,8 +130,12 @@ export const ROLES_STAFF = [
 ]
 
 // 1.7b · Atiende mesas quien tiene comanda:tomar en su rol, sin contar el comodín: el administrador
-// puede operar en /staff (F1-19), pero no queda como mesero responsable de una cuenta
+// puede operar en /staff (F1-19), pero otro no lo puede dejar como responsable (5.8.2: él a sí mismo, sí)
 export const atiendeMesas = (permisosUsuario = []) => permisosUsuario.includes('comanda:tomar')
+
+// 5.8.2 · (Brayan, 2026-11-19) El usuario conectado puede quedar como responsable de una cuenta si atiende mesas
+// o si es el admin («*»), pero SOLO para sí mismo: los demás admins siguen sin aparecer ni poder asignarse.
+export const puedeSerResponsable = (permisosUsuario = []) => atiendeMesas(permisosUsuario) || permisosUsuario.includes(COMODIN)
 
 export const tienePermiso = (permisosUsuario = [], clave) =>
     permisosUsuario.includes(COMODIN) || permisosUsuario.includes(clave)

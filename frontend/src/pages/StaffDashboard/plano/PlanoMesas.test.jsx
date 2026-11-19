@@ -181,7 +181,18 @@ describe("Plano de mesas", () => {
     expect(JSON.parse(llamadasA("/v1/staff/salon/mesas/m2/abrir")[0][1].body)).toEqual({ comensales: 2, meseroId: "u1" });
   });
 
-  it("quien no atiende mesas (p. ej. el admin) no sale como «yo»: debe elegir un mesero", async () => {
+  it("5.8.2 · el admin sale primero como «(yo)» y queda elegido: puede asignarse a sí mismo", async () => {
+    respuestas.meseros = [{ id: "a1", nombre: "Admin P.", yo: true }, { id: "u2", nombre: "Luis G." }];
+    pintar(["*"]);
+    fireEvent.click(await screen.findByRole("button", { name: /^Mesa 2\b/ }));
+    const panel = screen.getByRole("region", { name: "Mesa 2" });
+    const selector = await within(panel).findByRole("combobox", { name: "Mesero responsable" });
+    await waitFor(() => expect(selector).toBeEnabled());
+    expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual(["Admin P. (yo)", "Luis G."]);
+    expect(selector).toHaveValue("a1");
+  });
+
+  it("si la lista no trae «yo» (quien no atiende mesas), debe elegir un mesero", async () => {
     respuestas.meseros = respuestas.meseros.filter((m) => !m.yo);
     pintar(["*"]);
     fireEvent.click(await screen.findByRole("button", { name: /^Mesa 2\b/ }));

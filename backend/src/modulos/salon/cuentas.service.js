@@ -18,7 +18,7 @@ import { cambiarEstado, registrarEvento } from '../compartido/estados.service.js
 import {
     MAQUINA_MESA, MAQUINA_CUENTA, MAQUINA_ITEM, ESTADOS_CUENTA_ABIERTA, MESA_SEGUN_CUENTA,
 } from '../compartido/estadosSalon.js'
-import { atiendeMesas, tienePermiso } from '../identidad/permisos.js'
+import { atiendeMesas, puedeSerResponsable, tienePermiso } from '../identidad/permisos.js'
 import { calcularItem, subtotalRonda, totalesCuenta } from './totales.js'
 import {
     validar, abrirCuentaSchema, agregarItemSchema, modificarItemSchema, versionOpcionalSchema,
@@ -404,10 +404,14 @@ const meseroNoValido = () => error(400, 'MESERO_NO_VALIDO', 'Ese usuario no pued
 
 /**
  * 1.5 · El responsable de una cuenta: usuario activo que atiende mesas (1.7b: sin el comodín del admin).
+ * 5.8.2 · Excepción: el admin conectado puede asignarse a sí mismo (otro admin, no).
  * 3.8 · Escribe en el usuario (updatedAt) dentro de la transacción: si a la vez se elimina o desactiva
  * esa cuenta, las dos transacciones chocan y la que se reintenta ve el estado nuevo.
  */
-const exigirMeseroValido = async (meseroId, session) => {
+const exigirMeseroValido = async (meseroId, session, sesion = null) => {
+    if (sesion && String(meseroId) === String(sesion.id) && puedeSerResponsable(permisosDe(sesion))) {
+        return tocarResponsable(meseroId, session)
+    }
     const usuario = await Usuario.findOneAndUpdate({ _id: meseroId }, { $currentDate: { updatedAt: true } },
         { session, projection: { activo: 1, eliminado: 1, rol: 1 } }).populate('rol', 'permisos').lean()
     if (!usuario || usuario.activo === false || usuario.eliminado === true || !atiendeMesas(usuario.rol?.permisos)) {
@@ -462,9 +466,9 @@ export const prepararApertura = async (datos, sesion) => {
     const { meseroId } = entrada
     const otroMesero = Boolean(meseroId) && meseroId !== String(sesion.id)
     if (otroMesero) exigirPermiso(sesion, 'cuenta:transferir')
-    // El responsable atiende mesas: quien no (un rol sin comanda:tomar o el admin) indica el mesero;
-    // si se indica a sí mismo, el mismo 400 que al transferir a quien no atiende mesas (1.7b)
-    if (!otroMesero && !atiendeMesas(permisosDe(sesion))) {
+    // El responsable atiende mesas: quien no (un rol sin comanda:tomar) indica el mesero; si se indica a sí mismo,
+    // el mismo 400 que al transferir a quien no atiende mesas (1.7b). 5.8.2 · El admin puede quedar él mismo
+    if (!otroMesero && !puedeSerResponsable(permisosDe(sesion))) {
         if (meseroId) throw error(400, 'MESERO_NO_VALIDO', 'Ese usuario no puede atender mesas: elige un mesero activo.')
         throw error(400, 'MESERO_REQUERIDO', 'Elige el mesero que atenderá la mesa.')
     }
@@ -920,7 +924,7 @@ export const transferirCuenta = async (cuentaId, datos, sesion) => {
         // 3b.2 · Transferir no cambia montos: también una cuenta a medio cobrar
         const cuenta = await tocarCuenta(cuentaId, { versionEsperada, permitirDividida: true }, session)
         if (String(cuenta.mesero) === meseroId) throw error(409, 'MISMO_MESERO', 'La cuenta ya es de ese mesero.')
-        await exigirMeseroValido(meseroId, session)
+        await exigirMeseroValido(meseroId, session, sesion)
         const anterior = cuenta.mesero
         cuenta.mesero = meseroId
         await guardarCuenta(cuenta, session)

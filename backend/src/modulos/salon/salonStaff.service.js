@@ -10,7 +10,7 @@ import Producto from '../catalogo/producto.model.js'
 import Categoria from '../catalogo/categoria.model.js'
 import { AppError } from '../compartido/errors.js'
 import { ESTADOS_CUENTA_ABIERTA } from '../compartido/estadosSalon.js'
-import { atiendeMesas, tienePermiso } from '../identidad/permisos.js'
+import { puedeSerResponsable, tienePermiso } from '../identidad/permisos.js'
 import { extrasDeModificadores } from '../catalogo/producto.controller.js'
 import { urlPublica } from '../catalogo/imagenesProducto.js'
 import { obtenerCuenta } from './cuentas.service.js'
@@ -226,8 +226,8 @@ export const catalogoSalon = async (sesion) => {
     }
 }
 
-/** Usuarios activos que pueden ser responsables de una cuenta: su rol tiene comanda:tomar, sin
- * administradores (comodín) ni clientes (1.7b). «yo» marca al usuario conectado. */
+/** Usuarios activos que pueden ser responsables de una cuenta: su rol tiene comanda:tomar, sin otros
+ * administradores ni clientes (1.7b). «yo» marca al usuario conectado, que va primero (5.8.2: también el admin). */
 export const listarMeseros = async (sesion, { limite = MAX_MESEROS } = {}) => {
     exigirAlguno(sesion, ['cuenta:transferir', 'cuenta:abrir'])
     const roles = await Rol.find({ permisos: 'comanda:tomar' }).select('_id').lean()
@@ -235,12 +235,15 @@ export const listarMeseros = async (sesion, { limite = MAX_MESEROS } = {}) => {
     // Orden alfabético en español («Íngrid» entre «Ana» y «Zoe»), no por bytes
     const usuarios = await Usuario.find(filtro).collation({ locale: 'es' })
         .sort({ nombre: 1, apellido: 1 }).limit(limite).select(CAMPOS_NOMBRE).lean()
-    // Si el límite deja fuera al usuario conectado y atiende mesas, va igualmente (es el valor por defecto)
-    if (atiendeMesas(sesion.permisos) && !usuarios.some((u) => String(u._id) === String(sesion.id))) {
-        const yo = await Usuario.findOne({ ...filtro, _id: sesion.id }).select(CAMPOS_NOMBRE).lean()
-        if (yo) usuarios.push(yo)
+    // El usuario conectado va siempre (es el valor por defecto) y primero: si atiende mesas, aunque el límite lo
+    // deje fuera; 5.8.2 · también el admin, que puede asignarse a sí mismo (los demás admins no salen)
+    const yoId = String(sesion.id)
+    let yo = usuarios.find((u) => String(u._id) === yoId)
+    if (!yo && puedeSerResponsable(sesion.permisos)) {
+        yo = await Usuario.findOne({ _id: sesion.id, activo: { $ne: false } }).select(CAMPOS_NOMBRE).lean()
     }
-    return usuarios.map((u) => ({ id: String(u._id), nombre: nombreCorto(u), yo: String(u._id) === String(sesion.id) }))
+    const lista = [...(yo ? [yo] : []), ...usuarios.filter((u) => String(u._id) !== yoId)]
+    return lista.map((u) => ({ id: String(u._id), nombre: nombreCorto(u), yo: String(u._id) === yoId }))
 }
 
 // ── 1.9 · «Cuentas abiertas»: salón + domicilio, solo lectura ────────────────────────────────

@@ -23,6 +23,7 @@ let otroMesero
 let otroMeseroUsuario
 let recepcion
 let admin
+let adminBase
 let interior
 let terraza
 let m1
@@ -40,7 +41,7 @@ beforeEach(async () => {
     // tomar comandas (lo que tenía el anfitrión), para probar MESERO_REQUERIDO y los 403 por permiso
     await Rol.create({ nombre: 'recepcion', permisos: ['mesa:ver', 'mesa:operar', 'mesa:bloquear', 'mesa:unir', 'cuenta:abrir', 'cuenta:transferir'] })
     ;({ sesion: recepcion } = await crearConSesion('recepcion'))
-    ;({ sesion: admin } = await crearConSesion('admin'))
+    ;({ sesion: admin, usuario: adminBase } = await crearConSesion('admin'))
     interior = await Zona.create({ nombre: 'Interior', orden: 1 })
     terraza = await Zona.create({ nombre: 'Terraza', orden: 2 })
     m1 = await Mesa.create({ numero: 1, zona: interior._id, capacidad: 4, combinable: true })
@@ -309,7 +310,7 @@ describe('Transferir (F1-8)', () => {
 })
 
 describe('Responsable de la cuenta: solo quien atiende mesas (1.7b)', () => {
-    it('la lista excluye administradores y personal que no atiende mesas, marca al usuario conectado y va por nombre', async () => {
+    it('la lista excluye administradores y personal que no atiende mesas; el usuario conectado va primero y el resto por nombre', async () => {
         const { usuario: adminUsuario } = await crearConSesion('admin')
         const { usuario: cocinero } = await crearConSesion('cocina')
         const { usuario: tercero } = await crearConSesion('mesero')
@@ -322,7 +323,8 @@ describe('Responsable de la cuenta: solo quien atiende mesas (1.7b)', () => {
         expect(ids).not.toContain(String(adminUsuario._id))
         expect(ids).not.toContain(String(cocinero._id))
         expect(lista.filter((m) => m.yo)).toEqual([expect.objectContaining({ id: String(meseroUsuario._id) })])
-        expect(lista.map((m) => m.nombre.split(' ')[0])).toEqual(['Ana', 'Íngrid', 'Zoe'])
+        // 5.8.2 · El usuario conectado («yo», Zoe) va primero; los demás, por nombre
+        expect(lista.map((m) => m.nombre.split(' ')[0])).toEqual(['Zoe', 'Ana', 'Íngrid'])
         const deRecepcion = esperar(await recepcion.get(`${BASE}/meseros`), 200)
         expect(deRecepcion.some((m) => m.yo)).toBe(false)
     })
@@ -348,19 +350,33 @@ describe('Responsable de la cuenta: solo quien atiende mesas (1.7b)', () => {
         expect(transferir.body.error.code).toBe('MESERO_NO_VALIDO')
     })
 
-    it('el administrador (permiso *) no queda como responsable: debe elegir un mesero', async () => {
-        const res = await admin.post(`${BASE}/mesas/${m1._id}/abrir`).send({ comensales: 2 })
-        expect(res.status).toBe(400)
-        expect(res.body.error.code).toBe('MESERO_REQUERIDO')
-        expect(await estadoMesa(m1)).toBe('libre')
-        expect(await Cuenta.countDocuments()).toBe(0)
-        // Con su propio id como mesero: no atiende mesas → MESERO_NO_VALIDO (como al transferir)
+    // 5.8.2 · (Brayan, 2026-11-19; cambia 1.7b) El admin conectado puede quedar como responsable, solo de sí mismo
+    it('el administrador puede asignarse a sí mismo al abrir y al transferir; a otro admin, no', async () => {
         const { sesion: otroAdmin, usuario: otroAdminUsuario } = await crearConSesion('admin')
-        const aSiMismo = await otroAdmin.post(`${BASE}/mesas/${m1._id}/abrir`).send({ comensales: 2, meseroId: String(otroAdminUsuario._id) })
-        expect(aSiMismo.status).toBe(400)
-        expect(aSiMismo.body.error.code).toBe('MESERO_NO_VALIDO')
-        const cuenta = await abrir(m1, admin, { meseroId: String(meseroUsuario._id) })
-        expect(cuenta.mesero).toBe(String(meseroUsuario._id))
+        const lista = esperar(await otroAdmin.get(`${BASE}/meseros`), 200)
+        expect(lista[0]).toMatchObject({ id: String(otroAdminUsuario._id), yo: true })
+        expect(lista.filter((m) => m.yo)).toHaveLength(1)
+        expect(lista.map((m) => m.id)).not.toContain(String(adminBase._id)) // los demás admins no salen
+        // Sin indicar mesero, queda él; con su propio id, también
+        const propia = await abrir(m1, otroAdmin)
+        expect(propia.mesero).toBe(String(otroAdminUsuario._id))
+        const conId = await otroAdmin.post(`${BASE}/mesas/${m2._id}/abrir`).send({ comensales: 2, meseroId: String(otroAdminUsuario._id) })
+        expect(conId.status, JSON.stringify(conId.body)).toBe(201)
+        // Transferir a sí mismo una cuenta de un mesero
+        const ajena = await abrir(m3, mesero)
+        const aSiMismo = await otroAdmin.post(`${BASE}/cuentas/${ajena.id}/transferir`).send({ meseroId: String(otroAdminUsuario._id) })
+        expect(aSiMismo.status, JSON.stringify(aSiMismo.body)).toBe(200)
+        expect(aSiMismo.body.mesero).toBe(String(otroAdminUsuario._id))
+        // Asignar a OTRO admin sigue rechazado
+        const { usuario: tercerAdmin } = await crearConSesion('admin')
+        const aOtroAdmin = await otroAdmin.post(`${BASE}/cuentas/${ajena.id}/transferir`).send({ meseroId: String(tercerAdmin._id) })
+        expect(aOtroAdmin.status).toBe(400)
+        expect(aOtroAdmin.body.error.code).toBe('MESERO_NO_VALIDO')
+        expect(String((await Cuenta.findById(ajena.id).lean()).mesero)).toBe(String(otroAdminUsuario._id))
+        // Abrir a nombre de otro admin, tampoco
+        const m9 = await Mesa.create({ numero: 9, zona: interior._id, capacidad: 2 })
+        const abrirAOtro = await otroAdmin.post(`${BASE}/mesas/${m9._id}/abrir`).send({ comensales: 2, meseroId: String(tercerAdmin._id) })
+        expect(abrirAOtro.body.error.code).toBe('MESERO_NO_VALIDO')
     })
 })
 
