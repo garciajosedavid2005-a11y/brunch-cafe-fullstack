@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const estado = vi.hoisted(() => ({ apiRequest: vi.fn(), confirmar: vi.fn() }));
 vi.mock("../../../services/api", () => ({ apiRequest: estado.apiRequest }));
@@ -200,6 +200,16 @@ describe("Plano de mesas", () => {
     await waitFor(() => expect(llamadasA("/v1/staff/salon/cuentas/c1/cerrar-sin-cobro")).toHaveLength(1));
     expect(estado.confirmar.mock.calls[0][0].motivo).toMatchObject({ requerido: true });
     expect(JSON.parse(llamadasA("/v1/staff/salon/cuentas/c1/cerrar-sin-cobro")[0][1].body)).toEqual({ motivo: "Se anuló todo", versionEsperada: 4 });
+  });
+
+  it("5.8.4 · sin mesas, al mesero no se le dice quién las configura; a quien configura el salón, dónde", async () => {
+    respuestas.plano = { ...PLANO(), mesas: [] };
+    pintar(MESERO);
+    const vacio = await screen.findByText(/No hay mesas activas/);
+    expect(vacio.textContent).not.toMatch(/admin/i);
+    cleanup();
+    pintar(["*"]);
+    expect(await screen.findByText(/No hay mesas activas/)).toHaveTextContent("Puedes configurarlas en Admin › Salón");
   });
 
   it("5.8.3 · el mesero no ve «Cerrar sin cobro»", async () => {

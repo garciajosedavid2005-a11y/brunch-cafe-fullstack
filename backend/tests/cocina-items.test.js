@@ -223,8 +223,10 @@ describe('«Deshacer» de listo (F2-7)', () => {
         expect(await error(cambiarEstadoItem(huevos, { a: 'en_preparacion', de: 'listo' }, otroCocinero)))
             .toMatchObject({ status: 403, code: 'DESHACER_NO_PERMITIDO' })
         vi.setSystemTime(new Date(Date.now() + 11_000))
-        expect(await error(cambiarEstadoItem(huevos, { a: 'en_preparacion', de: 'listo' }, cocinero)))
-            .toMatchObject({ status: 403, code: 'DESHACER_NO_PERMITIDO' })
+        const tarde = await error(cambiarEstadoItem(huevos, { a: 'en_preparacion', de: 'listo' }, cocinero))
+        expect(tarde).toMatchObject({ status: 403, code: 'DESHACER_NO_PERMITIDO' })
+        // 5.8.4 · Al personal no se le dice qué puede hacer el admin
+        expect(tarde.message).not.toMatch(/admin/i)
     })
 
     it('pasados 10 s, el admin deshace con motivo (sin motivo → 400) y el Evento lo guarda', async () => {

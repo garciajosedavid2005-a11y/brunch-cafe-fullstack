@@ -71,8 +71,10 @@ function Catalogo({ catalogo, error, onElegir, onReintentar }) {
   );
 }
 
-// 5.8.3 · Mismo texto que el backend (CUENTA_SIN_CONSUMO) cuando se envió algo y se anuló todo
-const MENSAJE_SOLO_ANULADOS = "Ya se enviaron productos a cocina y todos se anularon: no se puede cobrar $0. Si eres admin, usa «Cerrar sin cobro».";
+// 5.8.3 y 5.8.4 · Mismo texto que el backend (CUENTA_SIN_CONSUMO) cuando se envió algo y se anuló todo. Solo quien
+// puede cerrar sin cobro lee esa salida: a los demás no se les dice qué puede hacer otro rol
+const mensajeSoloAnulados = (cierraSinCobro) =>
+  `Ya se enviaron productos a cocina y todos se anularon: no se puede cobrar $0.${cierraSinCobro ? " Usa «Cerrar sin cobro»." : ""}`;
 
 export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
   const { avisar, confirmar } = useDialogo();
@@ -120,9 +122,14 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
   // 5.8.3 · Se envió algo y se anuló todo: subtotal $0 (no se cobra ni se cancela)
   const soloAnulados = huboEnviados && enviadas.every((r) => r.items.every((i) => i.estado === "anulado"));
   // Por qué no se puede cancelar (null = sí se puede)
+  // (5.8.4: «Cerrar sin cobro» solo se nombra a quien tiene el permiso)
+  const cierraSinCobro = puede(permisos, "cuenta:cerrar_sin_cobro");
+  const salidaSinCobro = cierraSinCobro ? " o usa «Cerrar sin cobro»" : "";
   const motivoSinCancelar = cuenta?.estado === "cuenta_pedida"
-    ? "La cuenta ya se pidió: cóbrala en caja o, si eres admin, usa «Cerrar sin cobro»."
-    : huboEnviados ? "Ya se enviaron productos a cocina: pide la cuenta o, si eres admin, usa «Cerrar sin cobro»." : null;
+    ? `La cuenta ya se pidió: cóbrala en caja${salidaSinCobro}.`
+    // Todo anulado: pedir la cuenta no sirve (no se cobra $0); sin el permiso, solo se dice que no se puede
+    : soloAnulados ? (cierraSinCobro ? "Ya se enviaron productos a cocina: usa «Cerrar sin cobro»." : "Ya se enviaron productos a cocina: esta cuenta no se puede cancelar.")
+    : huboEnviados ? `Ya se enviaron productos a cocina: pide la cuenta${salidaSinCobro}.` : null;
   const enRonda = borrador ? cantidadItems(borrador) : 0;
   // 2.7 · Además de lo que rechazó el último envío, lo que el menú ya marca como agotado (producto u opción)
   const agotadoEnMenu = (item) => {
@@ -258,7 +265,7 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
   const solicitar = async () => {
     // 5.8.3 · Todo lo enviado se anuló: no hay nada que cobrar; se explica qué hacer sin llamar al servidor
     if (soloAnulados && !borrador) {
-      await avisar({ tipo: "error", titulo: "No se puede pedir la cuenta", mensaje: MENSAJE_SOLO_ANULADOS });
+      await avisar({ tipo: "error", titulo: "No se puede pedir la cuenta", mensaje: mensajeSoloAnulados(puede(permisos, "cuenta:cerrar_sin_cobro")) });
       return;
     }
     const { confirmado } = await confirmar({

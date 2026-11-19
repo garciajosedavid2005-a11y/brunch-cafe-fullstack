@@ -187,7 +187,8 @@ export default function Kds() {
       {errorEstaciones && <p className="kds__error" role="alert">{errorEstaciones}</p>}
       {errorAccion && <p className="kds__error" role="alert">{errorAccion}</p>}
       {estaciones && estaciones.length === 0 && (
-        <p className="kds__vacio">Tu rol no tiene estaciones asignadas. Pide al administrador que te asigne una en Admin › Roles.</p>
+        // 5.8.4 · Sin nombrar a otro rol ni dónde se configura
+        <p className="kds__vacio">Tu rol no tiene estaciones asignadas. Pide que te asignen una para ver los pedidos.</p>
       )}
       {datos?.truncado && (
         <p className="kds__aviso">Hay más rondas de las que caben en pantalla: termina las más antiguas para ver el resto.</p>

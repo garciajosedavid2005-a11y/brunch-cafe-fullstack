@@ -79,7 +79,8 @@ const motivoDeshacer = (item, sesion, motivo, ahora) => {
     if (propio) return motivo || ''
     if (!permisosDe(sesion).includes(COMODIN)) {
         throw new AppError(403, 'DESHACER_NO_PERMITIDO',
-            'Solo quien lo marcó puede deshacerlo en los 10 segundos siguientes; después, un administrador con motivo.')
+            // 5.8.4 · Sin decir qué puede hacer otro rol
+            'Solo quien lo marcó puede deshacerlo, y solo en los 10 segundos siguientes.')
     }
     if (!motivo) throw new AppError(400, 'MOTIVO_REQUERIDO', 'Indica el motivo para deshacer «listo».')
     return motivo

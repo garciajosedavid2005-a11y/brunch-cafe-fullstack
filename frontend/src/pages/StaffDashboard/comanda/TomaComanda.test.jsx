@@ -392,7 +392,9 @@ describe("Cuenta: subtotal, solicitar y cancelar", () => {
     await pintar();
     const cancelar = await screen.findByRole("button", { name: "Cancelar cuenta" });
     expect(cancelar).toBeDisabled();
-    expect(cancelar).toHaveAccessibleDescription("Ya se enviaron productos a cocina: pide la cuenta o, si eres admin, usa «Cerrar sin cobro».");
+    // 5.8.4 · Al mesero no se le dicen las capacidades del admin
+    expect(cancelar).toHaveAccessibleDescription("Ya se enviaron productos a cocina: esta cuenta no se puede cancelar.");
+    expect(document.body.textContent).not.toMatch(/admin|sin cobro/i);
     // El mesero no tiene cuenta:cerrar_sin_cobro
     expect(screen.queryByRole("button", { name: "Cerrar sin cobro" })).not.toBeInTheDocument();
   });
@@ -401,13 +403,17 @@ describe("Cuenta: subtotal, solicitar y cancelar", () => {
     respuestas.cuenta = cuentaTodoAnulado();
     await pintar();
     fireEvent.click(await screen.findByRole("button", { name: "Solicitar cuenta" }));
-    expect(await screen.findByRole("alertdialog", { name: "No se puede pedir la cuenta" })).toHaveTextContent("no se puede cobrar $0. Si eres admin, usa «Cerrar sin cobro»");
+    const aviso = await screen.findByRole("alertdialog", { name: "No se puede pedir la cuenta" });
+    expect(aviso).toHaveTextContent("no se puede cobrar $0.");
+    expect(aviso.textContent).not.toMatch(/admin|sin cobro/i);
     expect(llamadas(`${BASE}/cuentas/c1/solicitar`, "POST")).toHaveLength(0);
   });
 
   it("5.8.3 · el admin cierra sin cobro con motivo obligatorio y vuelve al plano", async () => {
     respuestas.cuenta = cuentaTodoAnulado();
     await pintar(["*"]);
+    // Con el permiso, el motivo indica la salida (sin hablar de roles)
+    expect(await screen.findByRole("button", { name: "Cancelar cuenta" })).toHaveAccessibleDescription("Ya se enviaron productos a cocina: usa «Cerrar sin cobro».");
     fireEvent.click(await screen.findByRole("button", { name: "Cerrar sin cobro" }));
     const dialogo = await screen.findByRole("dialog", { name: "Cerrar sin cobro" });
     fireEvent.change(within(dialogo).getByRole("textbox"), { target: { value: "Se anuló todo" } });

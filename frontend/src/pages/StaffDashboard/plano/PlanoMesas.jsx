@@ -9,6 +9,7 @@ import PanelMesa from "./PanelMesa";
 import DibujoMesa from "./DibujoMesa";
 import { nivelTiempo } from "./geometriaMesa";
 import TomaComanda from "../comanda/TomaComanda";
+import { incluyePermiso } from "../../../utils/permisos";
 import "./PlanoMesas.css";
 
 // 1.6 · Plano de mesas para tablet (PLAN_FASE_1 §1.6). Pestañas por zona, tarjetas con el estado en
@@ -198,7 +199,8 @@ export default function PlanoMesas({ permisos = [], cuentaVista: cuentaExterna, 
         {error && !plano && <p className="plano__aviso" role="alert">{error}</p>}
         {cargando && !plano && <p className="plano__vacio">Cargando el plano…</p>}
         {plano && visibles.length === 0 && (
-          <p className="plano__vacio">No hay mesas activas{zona === "todas" ? "" : " en esta zona"}. El administrador las configura en Admin › Salón.</p>
+          // 5.8.4 · Dónde configurarlas solo se dice a quien configura el salón (sin nombrar otros roles)
+          <p className="plano__vacio">No hay mesas activas{zona === "todas" ? "" : " en esta zona"}.{incluyePermiso(permisos, "salon:configurar") ? " Puedes configurarlas en Admin › Salón." : ""}</p>
         )}
         <div className="plano__salas">
         {salas.map((sala) => (

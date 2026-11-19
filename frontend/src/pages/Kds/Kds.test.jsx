@@ -304,7 +304,8 @@ describe("KDS: estaciones del rol (2.5b)", () => {
   it("sin estaciones asignadas lo dice y no pide ninguna cola", async () => {
     conEstaciones([]);
     pintar();
-    expect(await screen.findByText(/Tu rol no tiene estaciones asignadas/)).toBeInTheDocument();
+    const aviso = await screen.findByText(/Tu rol no tiene estaciones asignadas/);
+    expect(aviso.textContent).not.toMatch(/admin/i); // 5.8.4 · no se nombran capacidades de otro rol
     expect(estado.apiRequest.mock.calls.some(([r]) => r.startsWith("/v1/staff/cocina/cola"))).toBe(false);
   });
 
