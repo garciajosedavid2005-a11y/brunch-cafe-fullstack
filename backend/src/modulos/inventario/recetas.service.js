@@ -102,13 +102,34 @@ export const listarRecetas = async (sesion) => {
     exigirPermiso(sesion, ...LECTURA)
     const [productos, grupos, recetas, insumosLista] = await Promise.all([
         Producto.find().populate('categoria', 'nombre').select('nombre precio categoria gruposModificadores disponible').sort({ nombre: 1 }).lean(),
-        GrupoModificadores.find({ activo: true }).select('nombre opciones._id opciones.nombre').sort({ nombre: 1 }).lean(),
+        GrupoModificadores.find({ activo: true }).select('nombre opciones._id opciones.nombre opciones.precioExtra opciones.disponible').sort({ nombre: 1 }).lean(),
         Receta.find().lean(),
         Insumo.find().collation(COLACION_INSUMO).sort({ nombre: 1 }).lean(),
     ])
     const insumos = new Map(insumosLista.map((i) => [String(i._id), i]))
     const porProducto = new Map(recetas.filter((r) => r.tipo === 'producto').map((r) => [String(r.producto), r]))
     const porOpcion = new Map(recetas.filter((r) => r.tipo === 'opcion').map((r) => [claveOpcion(r.grupo, r.opcion), r]))
+    const gruposPorId = new Map(grupos.map((g) => [String(g._id), g]))
+    const costoDeConsumo = (consumo) => Math.round([...consumo].reduce((t, [id, c]) => t + c * (insumos.get(id)?.costoPromedio || 0), 0))
+
+    /**
+     * 5.8.1 · Variantes del producto: una por cada opción de sus grupos que cambia la receta, con lo que cambia
+     * (suma o reemplaza), el precio con el recargo y el costo de una unidad con esa opción (misma cuenta que el descuento).
+     */
+    const variantesDe = (p) => (p.gruposModificadores || []).flatMap((grupoId) => {
+        const g = gruposPorId.get(String(grupoId))
+        if (!g) return []
+        return g.opciones.flatMap((o) => {
+            const receta = porOpcion.get(claveOpcion(g._id, o._id))
+            if (!receta?.lineas?.length) return []
+            const consumo = consumoUnitario({ producto: p._id, modificadores: [{ grupo: g._id, opcion: o._id }] }, { porProducto, porOpcion })
+            return [{
+                grupoId: String(g._id), grupo: g.nombre, opcionId: String(o._id), opcion: o.nombre, disponible: o.disponible !== false,
+                cambios: formatoLineas(receta.lineas, insumos), version: receta.__v ?? null,
+                precio: p.precio + (o.precioExtra || 0), costo: costoDeConsumo(consumo),
+            }]
+        })
+    })
     return {
         productos: productos.map((p) => {
             const receta = porProducto.get(String(p._id))
@@ -123,6 +144,7 @@ export const listarRecetas = async (sesion) => {
                 lineas: formatoLineas(lineas, insumos),
                 costo: costoDeLineas(lineas, insumos),
                 version: receta?.__v ?? null,
+                variantes: variantesDe(p),
             }
         }),
         grupos: grupos.map((g) => ({

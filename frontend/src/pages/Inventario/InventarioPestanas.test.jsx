@@ -17,7 +17,9 @@ const INSUMOS = [
 ];
 const RECETAS = {
   productos: [{ id: "p1", nombre: "Latte frío", categoria: "Bebidas", precio: 11000, disponible: true, grupos: ["g1"], costo: 1740, version: 0,
-    lineas: [{ insumoId: "i1", insumo: "Leche entera", unidad: "ml", activo: true, cantidad: 200, merma: 5, reemplazaId: null, reemplaza: null }] }],
+    lineas: [{ insumoId: "i1", insumo: "Leche entera", unidad: "ml", activo: true, cantidad: 200, merma: 5, reemplazaId: null, reemplaza: null }],
+    variantes: [{ grupoId: "g1", grupo: "Leche", opcionId: "o2", opcion: "Deslactosada", version: 0, precio: 11000, costo: 1900,
+      cambios: [{ insumoId: "i2", insumo: "Leche de almendra", unidad: "ml", activo: true, cantidad: 200, merma: 0, reemplazaId: "i1", reemplaza: "Leche entera" }] }] }],
   grupos: [{ id: "g1", nombre: "Leche", opciones: [{ id: "o1", nombre: "Almendra", version: null, lineas: [] }] }],
   insumos: INSUMOS.map(({ id, nombre, unidad, costoPromedio }) => ({ id, nombre, unidad, costoPromedio })),
 };
@@ -63,6 +65,21 @@ describe("Inventario › pestañas de la Fase 5", () => {
     fireEvent.change(within(dialogo).getByLabelText("En lugar de"), { target: { value: "i1" } });
     fireEvent.click(within(dialogo).getByRole("button", { name: "Guardar receta" }));
     await waitFor(() => expect(api.put).toHaveBeenCalledWith("/v1/inventario/recetas/grupos/g1/opciones/o1", { lineas: [{ insumoId: "i2", cantidad: 200, merma: 0, reemplazaId: "i1" }] }));
+  });
+
+  it("5.8.1 · recetas: muestra cada variante con lo que cambia, su costo y margen, y la edita con su versión", async () => {
+    montar(TODOS, "recetas");
+    const variantes = await screen.findByRole("list", { name: "Variantes de Latte frío" });
+    expect(variantes).toHaveTextContent("Leche: Deslactosada → reemplaza Leche entera por Leche de almendra, 200 ml");
+    expect(variantes).toHaveTextContent("costo $ 1.900 · precio $ 11.000 · margen 83 %");
+    api.put.mockResolvedValue({});
+    fireEvent.click(within(variantes).getByRole("button", { name: "Editar receta de Leche › Deslactosada" }));
+    const dialogo = screen.getByRole("dialog", { name: "Leche › Deslactosada" });
+    fireEvent.change(within(dialogo).getByLabelText(/Cantidad/), { target: { value: "180" } });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Guardar receta" }));
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith("/v1/inventario/recetas/grupos/g1/opciones/o2", {
+      lineas: [{ insumoId: "i2", cantidad: 180, merma: 0, reemplazaId: "i1" }], versionEsperada: 0,
+    }));
   });
 
   it("ajuste manual: una merma pide motivo y envía la cantidad positiva; un conteo que da menos envía negativo", async () => {

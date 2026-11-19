@@ -285,3 +285,44 @@
 .aviso-inventario button {
   min-height: 44px;
 }
+
+/* 5.8.1 · Variantes por opción: fila propia a todo el ancho bajo el producto */
+.inventario-fila--con-variantes td {
+  border-bottom: 0;
+}
+
+.admin-table .inventario-fila-variantes td,
+.admin-table .inventario-variantes li,
+.admin-table .inventario-variantes li > span {
+  white-space: normal;
+}
+
+.admin-table .inventario-fila-variantes td {
+  padding-top: 0;
+}
+
+.inventario-variantes {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.5rem;
+  border-left: 3px solid #eedfd9;
+}
+
+.inventario-variantes li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #f0e1db;
+  border-radius: 10px;
+  background: #fffaf8;
+  font-size: 0.9rem;
+}
+
+.inventario-variantes li > span {
+  min-width: 0;
+}

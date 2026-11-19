@@ -9,6 +9,14 @@ import GrupoModificadores from '../src/modulos/catalogo/grupoModificadores.model
 import Evento from '../src/modulos/compartido/evento.model.js'
 import { consumoDeLineas } from '../src/modulos/inventario/recetas.service.js'
 import { sembrarInventarioEjemplo } from '../src/seeds/inventario.js'
+import mongoose from 'mongoose'
+import Zona from '../src/modulos/salon/zona.model.js'
+import Mesa from '../src/modulos/salon/mesa.model.js'
+import Cuenta from '../src/modulos/salon/cuenta.model.js'
+import Comanda from '../src/modulos/salon/comanda.model.js'
+import MovimientoInventario from '../src/modulos/inventario/movimiento.model.js'
+import { abrirCuenta, agregarItem, enviarRonda } from '../src/modulos/salon/cuentas.service.js'
+import { PERMISOS_SALON } from '../src/modulos/identidad/permisos.js'
 
 const BASE = '/api/v1/inventario/recetas'
 let latte, leche, cafe, entera, almendra, hielo
@@ -73,6 +81,47 @@ describe('5.2 · Recetas', () => {
         expect(Object.fromEntries(conAlmendra.map((l) => [l.insumo, l.cantidad]))).toEqual({
             [String(cafe._id)]: 18, [String(almendra._id)]: 200, [String(hielo._id)]: 120,
         })
+    })
+
+    it('5.8.1 · cada producto trae sus variantes por opción, con lo que cambia, su precio y su costo', async () => {
+        await Receta.create({ tipo: 'producto', producto: latte._id, lineas: [
+            { insumo: cafe._id, cantidad: 18 }, { insumo: entera._id, cantidad: 200, merma: 5 },
+        ] })
+        await Receta.create({ tipo: 'opcion', grupo: leche._id, opcion: opcion('Almendra')._id, lineas: [
+            { insumo: almendra._id, cantidad: 200, reemplaza: entera._id },
+        ] })
+        const { sesion } = await crearConSesion('compras')
+        const producto = (await sesion.get(BASE)).body.productos.find((p) => p.nombre === 'Latte frío')
+        // Solo la opción que cambia la receta (Entera no tiene receta propia)
+        expect(producto.variantes).toEqual([expect.objectContaining({
+            grupo: 'Leche', opcion: 'Almendra', precio: 13000, version: 0,
+            // 18 × 50 de café + 200 × 12 de leche de almendra (la entera y su merma salen)
+            costo: 3300,
+            cambios: [expect.objectContaining({ insumo: 'Leche de almendra', reemplaza: 'Leche entera', cantidad: 200 })],
+        })])
+    })
+
+    it('5.8.1 · un Latte frío con Almendra descuenta leche de almendra y no leche entera al enviar la ronda', async () => {
+        await Promise.all([Cuenta.createIndexes(), Comanda.createIndexes(), Mesa.createIndexes(), MovimientoInventario.createIndexes()])
+        await Insumo.updateMany({}, { $set: { existencia: 5000 } })
+        await Receta.create({ tipo: 'producto', producto: latte._id, lineas: [
+            { insumo: cafe._id, cantidad: 18 }, { insumo: entera._id, cantidad: 200 },
+        ] })
+        await Receta.create({ tipo: 'opcion', grupo: leche._id, opcion: opcion('Almendra')._id, lineas: [
+            { insumo: almendra._id, cantidad: 200, reemplaza: entera._id },
+        ] })
+        const mesero = { id: String(new mongoose.Types.ObjectId()), rol: 'mesero', permisos: PERMISOS_SALON.mesero }
+        const zona = await Zona.create({ nombre: 'Interior' })
+        const mesa = await Mesa.create({ numero: 1, zona: zona._id, capacidad: 4 })
+        const cuenta = await abrirCuenta({ mesaId: String(mesa._id), comensales: 1 }, mesero)
+        await agregarItem(cuenta.id, {
+            productoId: String(latte._id), cantidad: 2,
+            modificadores: [{ grupoId: String(leche._id), opcionIds: [String(opcion('Almendra')._id)] }],
+        }, mesero)
+        await enviarRonda(cuenta.id, { numeroRonda: 1, versionEsperada: (await Cuenta.findById(cuenta.id).lean()).version }, mesero)
+        const existencias = Object.fromEntries((await Insumo.find().lean()).map((i) => [i.nombre, i.existencia]))
+        expect(existencias).toMatchObject({ 'Leche de almendra': 4600, 'Leche entera': 5000, Café: 4964 })
+        expect(await MovimientoInventario.exists({ insumo: entera._id })).toBeNull()
     })
 
     it('rechaza insumos inactivos, repetidos, cantidades en 0 y reemplazos en la receta de un producto', async () => {

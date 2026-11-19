@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { Edit2, Plus, Search, Trash2, X } from "lucide-react";
 import AdminStatus from "../AdminDashboard/components/AdminStatus";
 import { api } from "../../services/api";
@@ -78,6 +78,8 @@ export default function RecetasPanel({ puedeGestionar }) {
   const texto = busqueda.trim().toLowerCase();
   const productos = datos.productos.filter((p) => p.nombre.toLowerCase().includes(texto) || p.categoria.toLowerCase().includes(texto));
   const unidadDe = (id) => datos.insumos.find((i) => i.id === id)?.unidad || "";
+  // «reemplaza Leche entera por Leche de almendra, 200 ml» · «suma Tocineta 40 g (+10 % merma)»
+  const textoCambios = (cambios) => cambios.map((l) => `${l.reemplaza ? `reemplaza ${l.reemplaza} por ${l.insumo}, ` : `suma ${l.insumo} `}${formatearCantidad(l.cantidad, l.unidad)}${l.merma ? ` (+${l.merma} % merma)` : ""}`).join(" · ");
   const resumenLineas = (lineas) => lineas.map((l) => `${l.reemplaza ? `${l.insumo} en lugar de ${l.reemplaza}` : l.insumo} ${formatearCantidad(l.cantidad, l.unidad)}${l.merma ? ` (+${l.merma} % merma)` : ""}`).join(" · ");
 
   return (
@@ -104,7 +106,8 @@ export default function RecetasPanel({ puedeGestionar }) {
               {productos.map((p) => {
                 const margen = p.precio ? Math.round(((p.precio - p.costo) / p.precio) * 100) : 0;
                 return (
-                  <tr key={p.id}>
+                  <Fragment key={p.id}>
+                  <tr className={p.variantes?.length ? "inventario-fila--con-variantes" : ""}>
                     <td className="inventario-nombre">
                       <strong className="admin-table__client-name">{p.nombre}</strong>
                       <small className="inventario-minimo">{p.categoria} · {formatearCOP(p.precio)}</small>
@@ -125,6 +128,34 @@ export default function RecetasPanel({ puedeGestionar }) {
                       )}
                     </td>
                   </tr>
+                      {/* 5.8.1 · Variantes por opción: qué cambia, con su costo y margen (precio con el recargo) */}
+                      {p.variantes?.length > 0 && (
+                    <tr className="inventario-fila-variantes">
+                      <td colSpan="4">
+                        <ul className="inventario-variantes" aria-label={`Variantes de ${p.nombre}`}>
+                          {p.variantes.map((v) => {
+                            const margenVariante = v.precio ? Math.round(((v.precio - v.costo) / v.precio) * 100) : 0;
+                            return (
+                              <li key={`${v.grupoId}-${v.opcionId}`}>
+                                <span>
+                                  <strong>{v.grupo}: {v.opcion}{v.disponible === false ? " (agotada)" : ""}</strong> → {textoCambios(v.cambios)}
+                                  <small className="inventario-minimo">costo {formatearCOP(v.costo)} · precio {formatearCOP(v.precio)} · margen {margenVariante} %</small>
+                                </span>
+                                {puedeGestionar && (
+                                  <button type="button" className="admin-button--secondary-sm inventario-icono" title="Editar variante"
+                                    aria-label={`Editar receta de ${v.grupo} › ${v.opcion}`}
+                                    onClick={() => abrir("opcion", `${v.grupo} › ${v.opcion}`, `/v1/inventario/recetas/grupos/${v.grupoId}/opciones/${v.opcionId}`, { lineas: v.cambios, version: v.version })}>
+                                    <Edit2 size={16} aria-hidden="true" />
+                                  </button>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </td>
+                    </tr>
+                      )}
+                  </Fragment>
                 );
               })}
               {!cargando && productos.length === 0 && <tr><td colSpan="4" className="admin-table__empty">Ningún producto coincide.</td></tr>}
