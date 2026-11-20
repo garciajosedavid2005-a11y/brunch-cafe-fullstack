@@ -169,7 +169,7 @@ export default function ReportesSection() {
               ["Propinas", formatearCOP(v.resumen.propinas)],
               ["Notas crédito", formatearCOP(v.resumen.notasCredito)],
             ].map(([etiqueta, valor]) => (
-              <div key={etiqueta} className="admin-card reportes-kpi">
+              <div key={etiqueta} className={`admin-card reportes-kpi${etiqueta === "Ventas netas" ? " reportes-kpi--destacado" : ""}`}>
                 <span>{etiqueta}</span>
                 <strong>{valor}</strong>
               </div>

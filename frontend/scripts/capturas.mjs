@@ -792,6 +792,21 @@ const medirEstados = async (page) => {
 };
 
 // nombre → { usuario, preparar(page), completa }
+// Cierre · Carrito con la casilla de cumpleaños marcada, la dirección (si no hay una guardada) y la primera hora
+const prepararCumpleanosEnCarrito = async (p) => {
+  await VISTAS.carrito.preparar(p);
+  await p.getByRole("checkbox", { name: /descuento de cumpleaños/i }).check();
+  await p.getByText(/^Descuento de cumpleaños: /).waitFor();
+  const direccion = p.getByPlaceholder("Ej: Calle 8 # 12-34");
+  if (await direccion.isVisible() && !(await direccion.inputValue())) {
+    await direccion.fill("Mz 5 Cs 3, Villa del Sol");
+    await p.getByPlaceholder("Barrio o conjunto...").fill("Centro");
+  }
+  const hora = p.locator("#carrito-hora");
+  await hora.locator("option[value]:not([value=''])").first().waitFor({ state: "attached" });
+  await hora.selectOption(await hora.locator("option[value]:not([value=''])").first().getAttribute("value"));
+};
+
 const VISTAS = {
   inicio: { preparar: (p) => p.goto(`${FRONT}/`) },
   // 3.6 · «Lo que dicen nuestros clientes» con reseñas (la BD de capturas no tiene publicadas): la respuesta
@@ -1315,6 +1330,13 @@ const VISTAS = {
   } },
   "admin-metodos-pago": { usuario: "admin", preparar: abrirPestanaAdmin("Métodos de pago") },
   "admin-usuarios": { usuario: "admin", preparar: abrirPestanaAdmin("Usuarios") },
+  // Cierre · El admin corrige la fecha de nacimiento de un cliente (el cliente ya no puede)
+  "admin-usuarios-nacimiento": { usuario: "admin", completa: false, preparar: async (p) => {
+    await abrirPestanaAdmin("Usuarios")(p);
+    const fila = p.locator("tr").filter({ hasText: USUARIOS.cliente });
+    await fila.getByRole("button", { name: /Corregir la fecha de nacimiento/ }).click();
+    await p.getByRole("dialog").getByLabel("Fecha de nacimiento").waitFor();
+  } },
   // Ajuste tras 1.5b · Una cuenta creada por el admin que aún no definió su contraseña: «Reenviar enlace»
   "admin-usuarios-pendiente": { usuario: "admin", preparar: async (p) => {
     const roles = await (await p.context().request.get(`${API}/admin/roles`)).json();
@@ -1573,6 +1595,34 @@ const VISTAS = {
     await casilla.check();
     await p.getByText(/^Descuento de cumpleaños: /).waitFor();
     await casilla.evaluate((e) => e.scrollIntoView({ block: "center" }));
+  } },
+  // Cierre (pendiente de 6.7) · El resumen del carrito («FINALIZAR COMPRA») con el descuento de cumpleaños; no envía
+  "carrito-cumpleanos-resumen": { usuario: "cliente", completa: false, preparar: async (p) => {
+    await prepararCumpleanosEnCarrito(p);
+    await p.getByRole("button", { name: "FINALIZAR COMPRA" }).click();
+    const fila = p.locator(".resumen-pedido-modal").getByText("Descuento de cumpleaños").first();
+    await fila.waitFor();
+    await fila.evaluate((e) => e.scrollIntoView({ block: "center" }));
+  } },
+  // Cierre (pendiente de 6.7) · Mis pedidos con un pedido que usó el 10 %. Envía el pedido de verdad (gasta el uso
+  // del año en la BD de capturas): va después de staff-caja-cumpleanos y carrito-cumpleanos
+  "cuenta-cliente-pedidos-cumpleanos": { usuario: "cliente", completa: false, preparar: async (p) => {
+    const abrirMisPedidos = async () => {
+      await p.goto(`${FRONT}/cuenta`);
+      await p.getByRole("button", { name: /mis pedidos/i }).click();
+      await p.waitForLoadState("networkidle");
+    };
+    await abrirMisPedidos();
+    if (!(await p.locator(".dashboard-card__descuento").count())) { // el primer ancho lo crea; los demás lo reutilizan
+      await prepararCumpleanosEnCarrito(p);
+      await p.getByRole("button", { name: "FINALIZAR COMPRA" }).click();
+      await p.getByRole("button", { name: "Confirmar pedido" }).click();
+      await p.waitForLoadState("networkidle");
+      await abrirMisPedidos();
+    }
+    const fila = p.locator(".dashboard-card__descuento").first();
+    await fila.waitFor();
+    await fila.evaluate((e) => e.scrollIntoView({ block: "center" }));
   } },
   "staff-comanda-producto": { usuario: "mesero", preparar: async (p) => {
     await abrirCuentaDeMesa(p, 1);

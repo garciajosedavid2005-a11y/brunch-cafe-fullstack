@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../../context/useAuth";
 import { apiRequest } from "../../../services/api";
-import { formatearFecha, hoyLocal } from "../../../utils/fechas";
+import { formatearFecha, formatearFechaCalendario, hoyLocal } from "../../../utils/fechas";
 import SectionHeading from "../SectionHeading";
 
 const MAX_TEXTO = 200; // 6.4 · el mismo límite del backend (usuario.model.js)
@@ -19,6 +19,8 @@ export default function ProfileSection() {
     preferencias: "",
   });
   const [consentimiento, setConsentimiento] = useState(null);
+  // Cierre (Brayan, 2026-11-20) · La fecha registrada queda fija: solo el café (Admin › Usuarios) la corrige
+  const [fechaFija, setFechaFija] = useState("");
   const [status, setStatus] = useState({ message: "", error: false });
   const [saving, setSaving] = useState(false);
 
@@ -34,6 +36,7 @@ export default function ProfileSection() {
           preferencias: perfil.preferencias || "",
         }));
         setConsentimiento(perfil.consentimiento || null);
+        setFechaFija(perfil.fechaNacimiento || "");
       })
       .catch((error) => activo && setStatus({ message: error.message || "No se pudo cargar tu perfil.", error: true }));
     return () => { activo = false; };
@@ -53,11 +56,14 @@ export default function ProfileSection() {
         method: "PATCH",
         body: JSON.stringify({
           nombre: form.nombre, apellido: form.apellido, correo: form.email, telefono: form.telefono,
-          fechaNacimiento: form.fechaNacimiento, alergias: form.alergias.trim(), preferencias: form.preferencias.trim(),
+          // Fija: no se envía; sin registrar, solo si se escribió una
+          ...(!fechaFija && form.fechaNacimiento ? { fechaNacimiento: form.fechaNacimiento } : {}),
+          alergias: form.alergias.trim(), preferencias: form.preferencias.trim(),
         }),
       });
       const actualizado = { nombre: perfil.nombre, apellido: perfil.apellido, email: perfil.correo, telefono: perfil.telefono };
       setForm({ ...actualizado, fechaNacimiento: perfil.fechaNacimiento || "", alergias: perfil.alergias || "", preferencias: perfil.preferencias || "" });
+      setFechaFija(perfil.fechaNacimiento || "");
       setUser((currentUser) => ({ ...currentUser, ...actualizado }));
       setStatus({ message: "Tu perfil se actualizó correctamente.", error: false });
     } catch (error) {
@@ -79,9 +85,20 @@ export default function ProfileSection() {
         <label>Correo electrónico<input name="email" type="email" value={form.email} onChange={updateField} required maxLength={254} /></label>
         <label>Teléfono<input name="telefono" type="tel" value={form.telefono} onChange={updateField} required maxLength={30} /></label>
         {/* 6.4 · Para el descuento de cumpleaños (opcional) */}
-        <label>Fecha de nacimiento
-          <input name="fechaNacimiento" type="date" value={form.fechaNacimiento} onChange={updateField} min="1900-01-01" max={hoyLocal()} />
-        </label>
+        {fechaFija ? (
+          <div className="dashboard-form__fija dashboard-form__wide">
+            <span className="dashboard-form__fija-titulo">Fecha de nacimiento</span>
+            <strong>{formatearFechaCalendario(fechaFija, "long")}</strong>
+            <small>Para corregirla, contacta al café</small>
+          </div>
+        ) : (
+          <div className="dashboard-form__fija">
+            <label>Fecha de nacimiento
+              <input name="fechaNacimiento" type="date" value={form.fechaNacimiento} onChange={updateField} min="1900-01-01" max={hoyLocal()} aria-describedby="ayuda-nacimiento" />
+            </label>
+            <small id="ayuda-nacimiento">Revísala bien: después solo el café puede corregirla.</small>
+          </div>
+        )}
         <p className="dashboard-form__wide dashboard-form__ayuda">
           Tus alergias y preferencias las ve el equipo de cocina y de sala cuando te atiende. Nada más de tu perfil.
         </p>

@@ -41,11 +41,23 @@
   font-size: 0.85rem;
 }
 
+/* Cierre · 7 tarjetas con «Ventas netas» a dos columnas: 2 + 2 + 2 + 2 en el teléfono, 4 + 4 desde 600 px (a 1024
+   «Notas crédito» ya no queda sola) y una fila desde 1440 px */
 .reportes-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
   margin-bottom: 1rem;
+}
+
+.reportes-kpi--destacado { grid-column: span 2; }
+
+@media (min-width: 600px) {
+  .reportes-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1440px) {
+  .reportes-kpis { grid-template-columns: repeat(8, minmax(0, 1fr)); }
 }
 
 .reportes-kpi {
@@ -63,7 +75,9 @@
 
 .reportes-kpi strong {
   color: #2c0703;
-  font-size: 1.35rem;
+  /* Cierre · Montos de 7 cifras en tarjetas de ~125 px (4 columnas a 1024) */
+  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+  overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
 }
 

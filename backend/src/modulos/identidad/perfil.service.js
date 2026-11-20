@@ -6,6 +6,11 @@ import { invalidarSesionUsuario } from './sesiones.js'
 
 const SIN_SECRETOS = '-contraseña -tokenVersion'
 const CORREO_OCUPADO = () => new AppError(409, 'EMAIL_IN_USE', 'Ese correo ya está asociado a otra cuenta.')
+// Cierre (Brayan, 2026-11-20) · La fecha de nacimiento queda fija tras el primer registro (si no, el cliente elegiría
+// el mes de su 10 % de cumpleaños); solo el admin la corrige desde Admin › Usuarios
+const FECHA_FIJA = () => new AppError(409, 'FECHA_NACIMIENTO_FIJA',
+    'Tu fecha de nacimiento ya está registrada. Para corregirla, contacta al café.')
+const mismaFecha = (a, b) => (a ? new Date(a).getTime() : null) === (b ? new Date(b).getTime() : null)
 
 export const obtenerPerfil = async (usuarioId) => {
     const usuario = await Usuario.findById(usuarioId).select(SIN_SECRETOS).populate('rol').lean()
@@ -20,14 +25,28 @@ export const actualizarPerfil = async (usuarioId, { nombre, apellido, correo, te
     if (ocupado) throw CORREO_OCUPADO()
     const cambios = { nombre, apellido, correo }
     if (telefono !== undefined) cambios.telefono = telefono
-    // 6.4 · Omitidos = se conservan
-    if (fechaNacimiento !== undefined) cambios.fechaNacimiento = fechaNacimiento
+    // 6.4 · Omitidos = se conservan. Cierre · La fecha solo se pone si no hay ninguna (escritura condicional: dos
+    // pestañas a la vez → una gana y la otra 409); reenviar la misma no cambia nada
+    const filtro = { _id: usuarioId }
+    if (fechaNacimiento !== undefined) {
+        const actual = await Usuario.findById(usuarioId).select('fechaNacimiento').lean()
+        if (!actual) throw notFound('Usuario no encontrado')
+        if (!mismaFecha(actual.fechaNacimiento, fechaNacimiento)) {
+            if (actual.fechaNacimiento) throw FECHA_FIJA()
+            cambios.fechaNacimiento = fechaNacimiento
+            filtro.fechaNacimiento = null // ausente o null
+        }
+    }
     if (alergias !== undefined) cambios.alergias = alergias
     if (preferencias !== undefined) cambios.preferencias = preferencias
     try {
-        const usuario = await Usuario.findByIdAndUpdate(usuarioId, { $set: cambios }, { returnDocument: 'after', runValidators: true })
+        const usuario = await Usuario.findOneAndUpdate(filtro, { $set: cambios }, { returnDocument: 'after', runValidators: true })
             .select(SIN_SECRETOS).populate('rol').lean()
-        if (!usuario) throw notFound('Usuario no encontrado')
+        if (!usuario) {
+            // La fecha llegó de otra pestaña entre la lectura y la escritura
+            if (filtro.fechaNacimiento === null && await Usuario.exists({ _id: usuarioId })) throw FECHA_FIJA()
+            throw notFound('Usuario no encontrado')
+        }
         invalidarSesionUsuario(usuarioId) // /auth/me refleja el cambio de inmediato
         return usuario
     } catch (error) {

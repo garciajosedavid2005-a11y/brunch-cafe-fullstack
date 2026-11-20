@@ -27,7 +27,7 @@ Pedida por Brayan el 2026-11-19. Orden: 6.1 → 6.8, un commit por ítem y una s
 - **F6-8 · Perfil:** alergias y preferencias visibles al staff (cuenta, KDS y domicilio); libreta de direcciones con una principal; consentimiento Ley 1581 obligatorio en el registro con fecha y versión, y los usuarios existentes lo aceptan en su próximo inicio de sesión.
 - **F6-9 · Migraciones:** las que solo agregan colecciones, campos, índices, permisos o roles están aprobadas (mongodump, `--dry-run`, up → down → up); se detiene si alguna modifica o borra datos (salvo la de 6.1).
 
-## Decisiones técnicas: Claude (a confirmar por Brayan)
+## Decisiones técnicas: Claude (confirmadas por Brayan el 2026-11-20)
 
 - **F6-a · Permisos nuevos:** `pedido:asignar_repartidor` (admin por «*» y cajero) y `pedido:entregar` (repartidor: listo → en camino → entregado solo en los suyos); `pedido:ver` del repartidor queda limitado a los suyos en el servicio. `cliente:identificar` (mesero, cajero) para buscar un cliente por correo o teléfono y `puntos:canjear` (cajero). Todo con una migración que solo agrega permisos.
 - **F6-b · Para llevar «entregado»:** se reutiliza el estado `servido` del ítem, que en una cuenta para llevar se muestra como «Entregado»; la cuenta se cobra en la caja como las del salón (sin mesa, sin mesero obligatorio: queda quien la abre). Así no se toca el enum del ítem ni las máquinas existentes.

@@ -2,6 +2,7 @@ import mongoose from 'mongoose'
 import { z } from 'zod'
 import { booleano, requerido, texto, esTelefono, MENSAJE_TELEFONO } from '../compartido/comunes.schema.js'
 import { correo } from './auth.schema.js'
+import { fechaNacimiento } from './perfil.schema.js'
 
 // 1.5b · Alta desde el admin: sin contraseña (se define con el enlace) ni otros campos
 export const crearUsuarioSchema = z.strictObject({
@@ -21,8 +22,10 @@ export const actualizarUsuarioSchema = z
             .string(requerido('El rol'))
             .refine(mongoose.isValidObjectId, { error: 'El rol seleccionado no es válido' })
             .optional(),
+        // Cierre · Solo el admin corrige la fecha de nacimiento (el cliente la pone una vez); '' la borra
+        fechaNacimiento: fechaNacimiento.optional(),
     })
-    .strict({ error: 'Solo se pueden cambiar los campos activo y rolId' })
-    .refine((datos) => datos.activo !== undefined || datos.rolId !== undefined, {
-        error: 'Indica activo o rolId',
+    .strict({ error: 'Solo se pueden cambiar los campos activo, rolId y fechaNacimiento' })
+    .refine((datos) => datos.activo !== undefined || datos.rolId !== undefined || datos.fechaNacimiento !== undefined, {
+        error: 'Indica activo, rolId o fechaNacimiento',
     })

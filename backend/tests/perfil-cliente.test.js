@@ -1,12 +1,15 @@
 // 6.4 (F6-8, F6-f, F6-g) · Perfil del cliente: fecha de nacimiento, alergias y preferencias; libreta de direcciones
 // (hasta 5, una principal) y consentimiento de datos (Ley 1581) con versión y fecha. El registro exige aceptarlo; un
 // cliente sin la versión vigente la acepta antes de seguir (403 CONSENTIMIENTO_PENDIENTE salvo aceptar, /me y perfil).
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import mongoose from 'mongoose'
 import { agente } from './helpers/app.js'
 import { crearConSesion } from './helpers/usuarios.js'
 import Usuario from '../src/modulos/identidad/usuario.model.js'
 import { CONSENTIMIENTO_VERSION } from '../src/modulos/identidad/consentimiento.js'
+import Evento from '../src/modulos/compartido/evento.model.js'
+import Rol from '../src/modulos/identidad/rol.model.js'
+import { actualizarPerfil } from '../src/modulos/identidad/perfil.service.js'
 
 const REGISTRO = { nombre: 'Ana', apellido: 'Ruiz', correo: 'ana.ruiz@example.com', contraseña: 'secreta123', telefono: '3001234567' }
 const DIRECCION = { direccion: 'Cra 36B #30-06', barrio: 'Centro', indicaciones: 'Torre 2', etiqueta: 'Casa' }
@@ -73,8 +76,39 @@ describe('6.4 · Datos del perfil', () => {
 
         const igual = await sesion.patch('/api/v1/cliente/perfil').send(base)
         expect(igual.body.perfil).toMatchObject({ fechaNacimiento: '1990-11-05', alergias: 'Maní' })
-        const borra = await sesion.patch('/api/v1/cliente/perfil').send({ ...base, fechaNacimiento: '', alergias: '' })
-        expect(borra.body.perfil).toMatchObject({ fechaNacimiento: '', alergias: '', preferencias: 'Sin lactosa' })
+        // Cierre · La fecha queda fija: reenviar la misma no cambia nada; las alergias sí se borran con vacío
+        const borra = await sesion.patch('/api/v1/cliente/perfil').send({ ...base, fechaNacimiento: '1990-11-05', alergias: '' })
+        expect(borra.body.perfil).toMatchObject({ fechaNacimiento: '1990-11-05', alergias: '', preferencias: 'Sin lactosa' })
+    })
+
+    it('cierre · la fecha de nacimiento queda fija tras el primer registro: cambiarla o borrarla da 409 y no escribe nada', async () => {
+        const { sesion, usuario } = await crearConSesion('cliente')
+        const base = { nombre: 'Ana', apellido: 'Ruiz', correo: usuario.correo }
+        expect((await sesion.patch('/api/v1/cliente/perfil').send({ ...base, fechaNacimiento: '1990-11-05' })).status).toBe(200)
+        for (const fechaNacimiento of ['1990-12-05', '']) {
+            const r = await sesion.patch('/api/v1/cliente/perfil').send({ ...base, nombre: 'Otra', fechaNacimiento })
+            expect(r.status, fechaNacimiento).toBe(409)
+            expect(r.body.error.code).toBe('FECHA_NACIMIENTO_FIJA')
+            expect(r.body.error.message).toContain('contacta al café')
+        }
+        const guardado = await Usuario.findById(usuario._id).lean()
+        expect(guardado.fechaNacimiento.toISOString()).toBe('1990-11-05T00:00:00.000Z')
+        expect(guardado.nombre).toBe('Ana') // el 409 no guarda el resto del formulario
+    })
+
+    it('cierre · la otra pestaña la puso entre la lectura y la escritura: 409 y la primera queda intacta', async () => {
+        const { usuario } = await crearConSesion('cliente', { fechaNacimiento: new Date('1990-11-05T00:00:00.000Z') })
+        // La lectura previa ve «sin fecha» (como si la otra pestaña aún no hubiera escrito); la escritura condicional choca
+        const lectura = vi.spyOn(Usuario, 'findById').mockReturnValueOnce({ select: () => ({ lean: async () => ({ fechaNacimiento: null }) }) })
+        try {
+            await expect(actualizarPerfil(usuario._id, { nombre: 'Ana', apellido: 'Ruiz', correo: usuario.correo, fechaNacimiento: new Date('1991-03-07T00:00:00.000Z') }))
+                .rejects.toMatchObject({ code: 'FECHA_NACIMIENTO_FIJA' })
+        } finally {
+            lectura.mockRestore()
+        }
+        const guardado = await Usuario.findById(usuario._id).lean()
+        expect(guardado.fechaNacimiento.toISOString()).toBe('1990-11-05T00:00:00.000Z')
+        expect(guardado.nombre).not.toBe('Ana')
     })
 
     it('rechaza fechas futuras, imposibles o anteriores a 1900 y textos de más de 200 caracteres', async () => {
@@ -84,6 +118,76 @@ describe('6.4 · Datos del perfil', () => {
             expect((await sesion.patch('/api/v1/cliente/perfil').send({ ...base, fechaNacimiento })).status, fechaNacimiento).toBe(400)
         }
         expect((await sesion.patch('/api/v1/cliente/perfil').send({ ...base, alergias: 'x'.repeat(201) })).status).toBe(400)
+    })
+})
+
+describe('Cierre · El admin corrige la fecha de nacimiento', () => {
+    it('Admin › Usuarios la corrige (o la borra) con Evento de/a; el cliente la ve; sin usuario:gestionar, 403', async () => {
+        const { sesion: admin, usuario: adminU } = await crearConSesion('admin')
+        const { sesion: cliente, usuario } = await crearConSesion('cliente', { fechaNacimiento: new Date('1990-11-05T00:00:00.000Z') })
+        const { sesion: mesero } = await crearConSesion('mesero')
+
+        expect((await mesero.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '1990-12-05' })).status).toBe(403)
+        expect((await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '2999-01-01' })).status).toBe(400)
+
+        const lista = await admin.get('/api/v1/admin/usuarios')
+        expect(lista.body.find((u) => String(u.id) === String(usuario._id))).toMatchObject({ fechaNacimiento: '1990-11-05', nacimientoEditable: true })
+
+        const r = await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '1990-12-05' })
+        expect(r.status, JSON.stringify(r.body)).toBe(200)
+        expect(r.body.fechaNacimiento).toBe('1990-12-05')
+        expect((await cliente.get('/api/v1/cliente/perfil')).body.perfil.fechaNacimiento).toBe('1990-12-05')
+        const eventos = await Evento.find({ entidad: 'usuario', entidadId: usuario._id, tipo: 'fecha_nacimiento_corregida' }).lean()
+        expect(eventos).toHaveLength(1)
+        expect(eventos[0]).toMatchObject({ de: '1990-11-05', a: '1990-12-05' })
+        expect(String(eventos[0].usuario)).toBe(String(adminU._id))
+
+        // La misma fecha otra vez no escribe otro Evento; vacío la borra (y el cliente puede volver a ponerla una vez)
+        const igual = await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '1990-12-05' })
+        expect(igual.status).toBe(200)
+        expect(igual.body.fechaNacimiento).toBe('1990-12-05')
+        expect(await Evento.countDocuments({ entidadId: usuario._id, tipo: 'fecha_nacimiento_corregida' })).toBe(1)
+        const borra = await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '' })
+        expect(borra.body.fechaNacimiento).toBe('')
+        const ultimo = await Evento.findOne({ entidadId: usuario._id, tipo: 'fecha_nacimiento_corregida' }).sort({ createdAt: -1, _id: -1 }).lean()
+        expect(ultimo).toMatchObject({ de: '1990-12-05', a: null })
+        const base = { nombre: 'Ana', apellido: 'Ruiz', correo: usuario.correo }
+        expect((await cliente.patch('/api/v1/cliente/perfil').send({ ...base, fechaNacimiento: '1990-10-01' })).status).toBe(200)
+        expect((await cliente.patch('/api/v1/cliente/perfil').send({ ...base, fechaNacimiento: '1990-09-01' })).status).toBe(409)
+    })
+
+    it('si el cliente la puso mientras el admin la corregía: 409 y no se pisa', async () => {
+        const { sesion: admin } = await crearConSesion('admin')
+        const { usuario } = await crearConSesion('cliente')
+        const original = Usuario.exists.bind(Usuario)
+        // Justo antes de la escritura del admin (dentro de su transacción), el cliente guarda su primera fecha
+        const espia = vi.spyOn(Usuario, 'exists').mockImplementation((filtro, ...resto) => {
+            if (!filtro || !('eliminado' in filtro) || String(filtro._id) !== String(usuario._id)) return original(filtro, ...resto)
+            return { session: async (s) => {
+                await Usuario.collection.updateOne({ _id: usuario._id }, { $set: { fechaNacimiento: new Date('1990-11-05T00:00:00.000Z') } })
+                return original(filtro, ...resto).session(s)
+            } }
+        })
+        try {
+            const r = await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '1985-01-01' })
+            expect(r.status, JSON.stringify(r.body)).toBe(409)
+            expect(r.body.error.code).toBe('FECHA_NACIMIENTO_MODIFICADA')
+        } finally {
+            espia.mockRestore()
+        }
+        expect((await Usuario.findById(usuario._id).lean()).fechaNacimiento.toISOString()).toBe('1990-11-05T00:00:00.000Z')
+        expect(await Evento.countDocuments({ entidadId: usuario._id, tipo: 'fecha_nacimiento_corregida' })).toBe(0)
+    })
+
+    it('un gestor sin «*» no corrige la de un admin (403) y un 400 no deja Evento', async () => {
+        await Rol.create({ nombre: 'gestor-test', permisos: ['usuario:gestionar'] })
+        const { sesion: gestor } = await crearConSesion('gestor-test')
+        const { usuario: otroAdmin } = await crearConSesion('admin')
+        const { usuario: cliente } = await crearConSesion('cliente')
+        expect((await gestor.patch(`/api/v1/admin/usuarios/${otroAdmin._id}`).send({ fechaNacimiento: '1990-12-05' })).status).toBe(403)
+        expect((await gestor.patch(`/api/v1/admin/usuarios/${cliente._id}`).send({ fechaNacimiento: '2999-01-01' })).status).toBe(400)
+        expect(await Evento.countDocuments({ tipo: 'fecha_nacimiento_corregida', entidadId: { $in: [otroAdmin._id, cliente._id] } })).toBe(0)
+        expect((await Usuario.findById(otroAdmin._id).lean()).fechaNacimiento ?? null).toBeNull()
     })
 })
 

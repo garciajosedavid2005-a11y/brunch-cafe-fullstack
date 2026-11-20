@@ -6,7 +6,7 @@ import { fechaLocal } from '../compartido/fechas.js'
 
 // 6.4 · Fecha de nacimiento «AAAA-MM-DD» (un día del calendario) → Date a las 00:00 UTC; '' la borra (null). Entre
 // 1900-01-01 y hoy; una fecha imposible (30 de febrero) se rechaza
-const fechaNacimiento = z.string({ error: 'Ingresa la fecha de nacimiento' }).trim()
+export const fechaNacimiento = z.string({ error: 'Ingresa la fecha de nacimiento' }).trim()
     .refine((v) => v === '' || /^\d{4}-\d{2}-\d{2}$/.test(v), { error: 'Ingresa la fecha como AAAA-MM-DD' })
     .transform((v, ctx) => {
         if (v === '') return null

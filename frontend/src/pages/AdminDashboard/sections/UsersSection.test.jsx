@@ -104,6 +104,21 @@ describe("Usuarios (admin)", () => {
     expect(alerta).toHaveTextContent("Debe quedar al menos un administrador activo.");
   });
 
+  it("cierre · corrige la fecha de nacimiento donde el backend lo indica (clientes) y muestra la actual", async () => {
+    await montar([...USUARIOS, usuario("nora", { fechaNacimiento: "1990-11-05", nacimientoEditable: true }),
+      usuario("memo", { rol: { id: "r-mesero", codigo: "mesero", nombre: "Mesero" } })]);
+    expect(within(fila("memo@example.com")).queryByRole("button", { name: /nacimiento/i })).not.toBeInTheDocument();
+    expect(within(fila("nora@example.com")).getByText("Nació el 5 de noviembre de 1990")).toBeInTheDocument();
+    fireEvent.click(within(fila("nora@example.com")).getByRole("button", { name: "Corregir la fecha de nacimiento de Nombre-nora Apellido" }));
+    const dialogo = screen.getByRole("dialog");
+    const campo = within(dialogo).getByLabelText("Fecha de nacimiento");
+    expect(campo).toHaveValue("1990-11-05");
+    fireEvent.change(campo, { target: { value: "1990-12-05" } });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Guardar fecha" }));
+    await waitFor(() => expect(api.patch).toHaveBeenCalledWith("/v1/admin/usuarios/nora", { fechaNacimiento: "1990-12-05" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
   it("usa plural correcto en el contador", async () => {
     await montar();
     expect(screen.getByText("3 usuarios")).toBeInTheDocument();

@@ -727,6 +727,17 @@
 
 .dashboard-consentimiento { margin-top: 1.25rem; }
 
+/* Cierre · Fecha de nacimiento ya registrada: en solo lectura (como un campo, sin caja editable) */
+.dashboard-form__fija {
+  display: grid;
+  gap: 0.45rem;
+  color: #493733;
+  font-size: 0.87rem;
+}
+.dashboard-form__fija-titulo { font-weight: 600; }
+.dashboard-form__fija strong { font-size: 1rem; color: #2f211e; }
+.dashboard-form__fija small { color: #594742; font-size: 0.82rem; font-weight: 400; }
+
 .dashboard-direcciones { margin: 1rem 0 0; padding: 0; list-style: none; }
 
 .dashboard-direccion h3 {

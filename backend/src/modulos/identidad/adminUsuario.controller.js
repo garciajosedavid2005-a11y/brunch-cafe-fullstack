@@ -8,6 +8,10 @@ import { invalidarSesionUsuario } from './sesiones.js'
 import { crearUsuarioAdmin, reenviarEnlaceCreacion } from './altaUsuario.service.js'
 import { asegurarBloqueoAdmins, comprobarQuedaOtroAdmin } from './ultimoAdmin.js'
 import { eliminarUsuario as bajaUsuario } from './bajaUsuario.service.js'
+import { registrarEvento } from '../compartido/estados.service.js'
+
+// Fecha de nacimiento como «AAAA-MM-DD» (día del calendario, sin zona) o '' si no hay
+const diaTexto = (fecha) => (fecha ? new Date(fecha).toISOString().slice(0, 10) : '')
 
 const formato = (usuario) => ({
     id: usuario._id,
@@ -21,6 +25,10 @@ const formato = (usuario) => ({
     rol: usuario.rol
         ? { id: usuario.rol._id, codigo: usuario.rol.nombre, nombre: usuario.rol.etiqueta || usuario.rol.nombre }
         : null,
+    // Cierre · Para corregirla desde Admin › Usuarios
+    fechaNacimiento: diaTexto(usuario.fechaNacimiento),
+    // El botón «Nacimiento» sale en las cuentas de clientes (el PATCH acepta la fecha de cualquier cuenta)
+    nacimientoEditable: usuario.rol?.nombre === ROL_CLIENTE,
     createdAt: usuario.createdAt,
     // 3.8 · Solo las cuentas del personal se pueden eliminar (el botón depende de esto)
     eliminable: Boolean(usuario.rol) && usuario.rol.nombre !== ROL_CLIENTE,
@@ -49,7 +57,7 @@ export const listarUsuarios = async (req, res) => {
 }
 
 /**
- * PATCH /api/admin/usuarios/:id  { activo?, rolId? }
+ * PATCH /api/admin/usuarios/:id  { activo?, rolId?, fechaNacimiento? }
  * Protecciones:
  *  - Un admin no puede desactivarse ni quitarse el rol admin a sí mismo.
  *  - No se puede dejar el sistema sin ningún admin activo.
@@ -57,7 +65,7 @@ export const listarUsuarios = async (req, res) => {
  */
 export const actualizarUsuario = async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) throw notFound('Usuario no encontrado')
-    const { activo, rolId } = req.validado
+    const { activo, rolId, fechaNacimiento } = req.validado
 
     const usuario = await Usuario.findById(req.params.id).populate('rol', 'nombre etiqueta permisos')
     if (!usuario || usuario.eliminado === true) throw notFound('Usuario no encontrado')
@@ -92,6 +100,10 @@ export const actualizarUsuario = async (req, res) => {
     }
     if (activo !== undefined) usuario.activo = activo
     if (rolNuevo) usuario.rol = rolNuevo._id
+    // Cierre · Corrección de la fecha de nacimiento: solo si cambia, con Evento de/a en la misma transacción
+    const fechaLeida = usuario.fechaNacimiento || null
+    const fechaAntes = diaTexto(fechaLeida)
+    const corrigeFecha = fechaNacimiento !== undefined && diaTexto(fechaNacimiento) !== fechaAntes
 
     if (pierdeAdmin) await asegurarBloqueoAdmins()
     await conTransaccion(async (session) => {
@@ -99,8 +111,25 @@ export const actualizarUsuario = async (req, res) => {
         if (!(await Usuario.exists({ _id: usuario._id, eliminado: { $ne: true } }).session(session))) throw notFound('Usuario no encontrado')
         if (pierdeAdmin) await comprobarQuedaOtroAdmin(rolAdminId, usuario._id, session)
         await usuario.save({ session })
+        if (corrigeFecha) {
+            // Condicional sobre la fecha leída: si el cliente (u otro admin) la cambió entretanto, 409 y no se pisa
+            const { matchedCount } = await Usuario.updateOne(
+                { _id: usuario._id, fechaNacimiento: fechaLeida },
+                { $set: { fechaNacimiento } },
+                { session, runValidators: true },
+            )
+            if (!matchedCount) {
+                throw new AppError(409, 'FECHA_NACIMIENTO_MODIFICADA', 'La fecha de nacimiento cambió mientras la editabas. Recarga e intenta de nuevo.')
+            }
+            await registrarEvento({
+                entidad: 'usuario', entidadId: usuario._id, tipo: 'fecha_nacimiento_corregida',
+                de: fechaAntes || null, a: diaTexto(fechaNacimiento) || null,
+                usuario: req.usuario.id, actor: req.usuario.rol || 'admin', session,
+            })
+        }
     })
     invalidarSesionUsuario(usuario._id)
+    if (corrigeFecha) usuario.fechaNacimiento = fechaNacimiento // para la respuesta (ya guardada)
 
     await usuario.populate('rol', 'nombre etiqueta')
     res.json(formato(usuario.toObject()))

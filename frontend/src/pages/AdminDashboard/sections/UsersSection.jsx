@@ -6,6 +6,7 @@ import { useAuth } from "../../../context/useAuth";
 import { apiRequest } from "../../../services/api";
 import { useDialogo } from "../../../context/useDialogo";
 import { plural } from "../adminFormat";
+import { formatearFechaCalendario, hoyLocal } from "../../../utils/fechas";
 
 const etiquetaRol = (rol) => rol?.etiqueta || rol?.nombre || "Sin rol";
 
@@ -97,6 +98,46 @@ function FormularioCrear({ roles, guardando, onCrear, onCerrar }) {
   );
 }
 
+/** Cierre (Brayan, 2026-11-20) · Corregir la fecha de nacimiento de un cliente (él solo la pone una vez). */
+function FormularioNacimiento({ usuario, guardando, onGuardar, onCerrar }) {
+  const id = useId();
+  const [fecha, setFecha] = useState(usuario.fechaNacimiento || "");
+  const enviar = (e) => {
+    e.preventDefault();
+    onGuardar(fecha);
+  };
+  return (
+    <div className="admin-modal-overlay" onClick={onCerrar}>
+      <div className="admin-modal-container admin-modal-container--sm" onClick={(e) => e.stopPropagation()}
+        role="dialog" aria-modal="true" aria-labelledby={`${id}-titulo`}>
+        <div className="admin-modal-header">
+          <h3 className="admin-modal-title" id={`${id}-titulo`}>Fecha de nacimiento</h3>
+          <button type="button" className="admin-modal-close" onClick={onCerrar} aria-label="Cerrar">
+            <X size={20} />
+          </button>
+        </div>
+        <form onSubmit={enviar}>
+          <div className="admin-modal-body">
+            <p className="admin-users__ayuda">
+              {`${usuario.nombre} ${usuario.apellido}`.trim()} · {usuario.correo}. El cliente no puede cambiarla desde su perfil;
+              el cambio queda registrado. Déjala vacía para borrarla.
+            </p>
+            <div className="admin-form-group">
+              <label htmlFor={`${id}-fecha`} className="admin-form-label">Fecha de nacimiento</label>
+              <input id={`${id}-fecha`} className="admin-form-input" type="date" min="1900-01-01" max={hoyLocal()}
+                value={fecha} onChange={(e) => setFecha(e.target.value)} />
+            </div>
+          </div>
+          <div className="admin-modal-actions">
+            <button type="button" className="admin-button--secondary-sm" onClick={onCerrar}>Cancelar</button>
+            <button type="submit" className="admin-button--primary" disabled={guardando}>Guardar fecha</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // Pantalla mínima: lista de usuarios, alta de cuentas (1.5b), cambio de rol y activar/desactivar.
 // Las protecciones (último admin, auto-bloqueo) las aplica el backend; aquí se confirman las acciones.
 export default function UsersSection() {
@@ -109,6 +150,7 @@ export default function UsersSection() {
   const [creando, setCreando] = useState(false);
   const [reenviando, setReenviando] = useState("");
   const [eliminando, setEliminando] = useState("");
+  const [nacimiento, setNacimiento] = useState(null); // usuario cuya fecha se corrige
 
   const texto = busqueda.toLowerCase();
   const filtrados = usuarios.filter((u) =>
@@ -250,6 +292,11 @@ export default function UsersSection() {
     await parchear(usuario.id, { activo: !usuario.activo });
   };
 
+  const guardarNacimiento = async (fecha) => {
+    const actualizado = await parchear(nacimiento.id, { fechaNacimiento: fecha });
+    if (actualizado) setNacimiento(null);
+  };
+
   return (
     <div className="admin-section">
       <div className="admin-section__header">
@@ -267,6 +314,10 @@ export default function UsersSection() {
 
       {creando && (
         <FormularioCrear roles={roles} guardando={guardando} onCrear={crearUsuario} onCerrar={() => setCreando(false)} />
+      )}
+
+      {nacimiento && (
+        <FormularioNacimiento usuario={nacimiento} guardando={guardando} onGuardar={guardarNacimiento} onCerrar={() => setNacimiento(null)} />
       )}
 
       <div className="admin-toolbar">
@@ -305,6 +356,9 @@ export default function UsersSection() {
                         <strong className="admin-table__client-name">{nombreCompleto(usuario)}</strong>
                         {esYo && <span className="admin-users__yo"> (tú)</span>}
                         <div className="admin-users__correo">{usuario.correo}</div>
+                        {usuario.fechaNacimiento && (
+                          <div className="admin-users__correo">Nació el {formatearFechaCalendario(usuario.fechaNacimiento, "long")}</div>
+                        )}
                       </td>
                       <td>
                         {esYo ? (
@@ -362,6 +416,17 @@ export default function UsersSection() {
                             >
                               {usuario.activo ? "Desactivar" : "Activar"}
                             </button>
+                            {usuario.nacimientoEditable && (
+                              <button
+                                type="button"
+                                className="admin-button--secondary-sm"
+                                disabled={guardando}
+                                onClick={() => setNacimiento(usuario)}
+                                aria-label={`Corregir la fecha de nacimiento de ${nombreCompleto(usuario)}`}
+                              >
+                                Nacimiento
+                              </button>
+                            )}
                             {usuario.eliminable && (
                               <button
                                 type="button"
