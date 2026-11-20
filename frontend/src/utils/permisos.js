@@ -10,6 +10,12 @@ export const tienePermiso = (user, clave) => {
 // 1.7 · Lo mismo sobre una lista de permisos (plano y comanda reciben la lista, no el usuario)
 export const incluyePermiso = (permisos = [], clave) => permisos.includes("*") || permisos.includes(clave);
 
+// 6.3 (F6-3) · En una cuenta para llevar, `cuenta:para_llevar` permite tomar, enviar, pasar a caja, cancelar y entregar
+// (el backend aplica la misma regla en permisos.js). En el salón no suma nada
+export const PERMISOS_EN_PARA_LLEVAR = ["cuenta:ver", "cuenta:abrir", "comanda:tomar", "comanda:enviar", "cuenta:solicitar", "item:servir"];
+export const permisosEnCuenta = (permisos = [], canal) =>
+  canal === "para_llevar" && permisos.includes("cuenta:para_llevar") ? [...new Set([...permisos, ...PERMISOS_EN_PARA_LLEVAR])] : permisos;
+
 // Panel de administración: el permiso comodín "*"
 export const esAdministrador = (user) => permisosDe(user).includes("*");
 

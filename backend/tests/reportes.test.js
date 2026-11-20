@@ -64,7 +64,7 @@ describe('5.6 · Reporte de ventas', () => {
         expect(r.porProducto).toEqual([expect.objectContaining({ nombre: 'Huevos pericos', categoria: 'Desayunos', cantidad: 3, ventas: 45000 })])
         expect(r.porCategoria).toEqual([{ categoria: 'Desayunos', cantidad: 3, ventas: 45000 }])
         expect(r.porCanal.find((c) => c.canal === 'salon')).toMatchObject({ ventas: 45000, tickets: 2 })
-        expect(r.porCanal.find((c) => c.canal === 'para_llevar')).toMatchObject({ ventas: 0, disponible: false })
+        expect(r.porCanal.find((c) => c.canal === 'para_llevar')).toMatchObject({ ventas: 0, tickets: 0, disponible: true })
         expect(r.porMesero).toEqual([expect.objectContaining({ id: mesero.id, cuentas: 2, ventas: 45000, propinas: 3000, ticketPromedio: 22500 })])
         expect(r.porMetodo.find((m) => m.metodo === 'efectivo')).toMatchObject({ cobrado: 33000, neto: 33000, pagos: 1 })
         expect(r.porMetodo.find((m) => m.metodo === 'tarjeta')).toMatchObject({ cobrado: 15000 })

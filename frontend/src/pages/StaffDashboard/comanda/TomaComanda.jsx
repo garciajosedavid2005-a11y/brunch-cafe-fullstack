@@ -10,9 +10,10 @@ import { useEnVivo } from "../compartido/useEnVivo";
 import DialogoProducto from "./DialogoProducto";
 import DialogoAnular from "./DialogoAnular";
 import {
-  ANULABLES, BASE, CUENTA_EDITABLE, ESTADOS_CUENTA, ESTADOS_ITEM, MAX_CANTIDAD, MOTIVOS_ANULACION, PROBLEMAS_ITEM,
+  ANULABLES, BASE, CUENTA_EDITABLE, ESTADOS_CUENTA, ESTADOS_ITEM, ESTADOS_ITEM_PARA_LLEVAR, MAX_CANTIDAD, MOTIVOS_ANULACION, PROBLEMAS_ITEM,
   puede, textoModificadores,
 } from "./estadosComanda";
+import { permisosEnCuenta } from "../../../utils/permisos";
 import "./TomaComanda.css";
 
 // 1.7 · Toma de comanda en tablet (PLAN_FASE_1 §1.7). Menú por categorías, diálogo de modificadores y
@@ -23,7 +24,11 @@ import "./TomaComanda.css";
 // el admin, «Deshacer listo» con motivo obligatorio (F2-7: pasados los 10 s solo él; la cocina deshace
 // lo suyo desde /kds). Mismo endpoint que la cocina, con el estado que se ve en pantalla (`de`).
 
-const nombreMesas = (cuenta) => `Mesa ${cuenta.mesas.map((m) => m.numero).join(" + ")}`;
+// 6.3 · Una cuenta para llevar no tiene mesa: «Para llevar · nombre» (o el teléfono si no dio el nombre)
+const esParaLlevar = (cuenta) => cuenta?.canal === "para_llevar";
+const nombreMesas = (cuenta) => (esParaLlevar(cuenta)
+  ? `Para llevar · ${cuenta.paraLlevar?.nombre || cuenta.paraLlevar?.telefono || cuenta.codigo}`
+  : `Mesa ${cuenta.mesas.map((m) => m.numero).join(" + ")}`);
 const cantidadItems = (ronda) => ronda.items.reduce((suma, i) => suma + i.cantidad, 0);
 
 function Catalogo({ catalogo, error, onElegir, onReintentar }) {
@@ -76,10 +81,13 @@ function Catalogo({ catalogo, error, onElegir, onReintentar }) {
 const mensajeSoloAnulados = (cierraSinCobro) =>
   `Ya se enviaron productos a cocina y todos se anularon: no se puede cobrar $0.${cierraSinCobro ? " Usa «Cerrar sin cobro»." : ""}`;
 
-export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
+export default function TomaComanda({ cuentaId, permisos: permisosUsuario = [], onVolver, textoVolver = "Volver al plano" }) {
   const { avisar, confirmar } = useDialogo();
   const idCancelar = useId();
   const { cuenta, error, recargar } = useCuenta(cuentaId);
+  // 6.3 · En una para llevar, cuenta:para_llevar suma lo necesario para atenderla (el cajero no toma comandas del salón)
+  const canal = cuenta?.canal;
+  const permisos = useMemo(() => permisosEnCuenta(permisosUsuario, canal), [permisosUsuario, canal]);
   const tomaComandas = puede(permisos, "comanda:tomar");
   const [catalogo, setCatalogo] = useState(null);
   const [errorCatalogo, setErrorCatalogo] = useState("");
@@ -106,7 +114,7 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
     return (
       <div className="comanda comanda--cargando">
         <button type="button" className="comanda__boton comanda__boton--secundario" onClick={onVolver}>
-          <ArrowLeft size={20} aria-hidden="true" /> Volver al plano
+          <ArrowLeft size={20} aria-hidden="true" /> {textoVolver}
         </button>
         {error
           ? <p className="comanda__aviso" role="alert">{error} <button type="button" className="comanda__boton comanda__boton--secundario" onClick={recargar}>Reintentar</button></p>
@@ -142,7 +150,10 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
   const problemaDe = (item) => problemas[item.id] || agotadoEnMenu(item);
   const conProblema = Boolean(borrador?.items.some((i) => problemaDe(i)));
   const listos = enviadas.reduce((suma, r) => suma + r.items.filter((i) => i.estado === "listo").length, 0);
-  const sirve = editable && puede(permisos, "item:servir");
+  const paraLlevar = esParaLlevar(cuenta);
+  // 6.3 · Una para llevar cobrada sigue entregando lo que quede listo
+  const sirve = (editable || (paraLlevar && cuenta.estado === "cerrada")) && puede(permisos, "item:servir");
+  const textoServir = paraLlevar ? "Entregar" : "Servir";
   const deshaceListo = editable && permisos.includes("*"); // F2-7: pasados los 10 s, solo el admin
 
   // ── Acciones ──────────────────────────────────────────────────────────────────────────
@@ -246,7 +257,7 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
 
   const servir = async (item) => {
     const fallo = await cambiarItem(item, "servido");
-    if (fallo) mostrarError(fallo, "No se pudo servir");
+    if (fallo) mostrarError(fallo, paraLlevar ? "No se pudo entregar" : "No se pudo servir");
   };
 
   const deshacerListo = async (item) => {
@@ -270,8 +281,10 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
     }
     const { confirmado } = await confirmar({
       titulo: "Solicitar la cuenta",
-      mensaje: `${nombreMesas(cuenta)} pasa a «Cuenta pedida» con un subtotal de ${formatearCOP(cuenta.subtotal)}.`,
-      confirmarTexto: "Solicitar",
+      mensaje: paraLlevar
+        ? `${nombreMesas(cuenta)} pasa a la caja con un subtotal de ${formatearCOP(cuenta.subtotal)}.`
+        : `${nombreMesas(cuenta)} pasa a «Cuenta pedida» con un subtotal de ${formatearCOP(cuenta.subtotal)}.`,
+      confirmarTexto: paraLlevar ? "Pasar a caja" : "Solicitar",
     });
     if (!confirmado) return;
     const fallo = await operar("/solicitar", { cuerpo: { versionEsperada: cuenta.version } });
@@ -281,7 +294,7 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
   const cancelar = async () => {
     const { confirmado, motivo } = await confirmar({
       titulo: "Cancelar la cuenta",
-      mensaje: `La cuenta ${cuenta.codigo} se cancela sin cobro y la mesa queda por limpiar. Lo que haya en la ronda en curso se descarta.`,
+      mensaje: `La cuenta ${cuenta.codigo} se cancela sin cobro${paraLlevar ? "" : " y la mesa queda por limpiar"}. Lo que haya en la ronda en curso se descarta.`,
       confirmarTexto: "Cancelar cuenta",
       cancelarTexto: "Volver",
       peligroso: true,
@@ -297,7 +310,7 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
   const cerrarSinCobro = async () => {
     const { confirmado, motivo } = await confirmar({
       titulo: "Cerrar sin cobro",
-      mensaje: `La cuenta ${cuenta.codigo} se cierra sin cobrar ${formatearCOP(cuenta.subtotal)} y ${nombreMesas(cuenta)} queda por limpiar. Lo que haya en la ronda en curso se descarta.`,
+      mensaje: `La cuenta ${cuenta.codigo} se cierra sin cobrar ${formatearCOP(cuenta.subtotal)}${paraLlevar ? "" : ` y ${nombreMesas(cuenta)} queda por limpiar`}. Lo que haya en la ronda en curso se descarta.`,
       confirmarTexto: "Cerrar sin cobro",
       cancelarTexto: "Volver",
       peligroso: true,
@@ -314,12 +327,14 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
     <div className="comanda">
       <header className="comanda__cabecera">
         <button type="button" className="comanda__boton comanda__boton--secundario" onClick={onVolver}>
-          <ArrowLeft size={20} aria-hidden="true" /> Volver al plano
+          <ArrowLeft size={20} aria-hidden="true" /> {textoVolver}
         </button>
         <div className="comanda__titulos">
           <h2 className="comanda__titulo">{nombreMesas(cuenta)}</h2>
           <p className="comanda__sub">
-            {[cuenta.mesas[0]?.zona?.nombre, `Cuenta ${cuenta.codigo}`, `${cuenta.comensales} ${cuenta.comensales === 1 ? "comensal" : "comensales"}`, cuenta.mesero?.nombre]
+            {(paraLlevar
+              ? [`Cuenta ${cuenta.codigo}`, cuenta.paraLlevar?.nombre && cuenta.paraLlevar?.telefono ? `Tel. ${cuenta.paraLlevar.telefono}` : null, cuenta.mesero?.nombre]
+              : [cuenta.mesas[0]?.zona?.nombre, `Cuenta ${cuenta.codigo}`, `${cuenta.comensales} ${cuenta.comensales === 1 ? "comensal" : "comensales"}`, cuenta.mesero?.nombre])
               .filter(Boolean).map((parte, i) => (
                 // El separador va fuera de la parte: la línea se parte entre partes, nunca dentro de una
                 <Fragment key={parte}>{i > 0 && " · "}<span className="comanda__sub-parte">{parte}</span></Fragment>
@@ -328,12 +343,12 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
         </div>
         <span className={`comanda__estado comanda__estado--${cuenta.estado}`}>
           {cuenta.estado === "cuenta_pedida" ? <ReceiptText size={16} aria-hidden="true" /> : <UtensilsCrossed size={16} aria-hidden="true" />}
-          {ESTADOS_CUENTA[cuenta.estado] || cuenta.estado}
+          {paraLlevar && cuenta.estado === "cuenta_pedida" ? "En caja" : paraLlevar && cuenta.estado === "cerrada" ? "Cobrada" : ESTADOS_CUENTA[cuenta.estado] || cuenta.estado}
         </span>
         {listos > 0 && (
           <span className="comanda__listos">
             <BellRing size={16} aria-hidden="true" />
-            {`Listo para servir (${listos})`}
+            {`Listo para ${paraLlevar ? "entregar" : "servir"} (${listos})`}
           </span>
         )}
         <button type="button" className="comanda__boton-icono" aria-label="Actualizar la cuenta" onClick={recargar}>
@@ -341,7 +356,14 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
         </button>
       </header>
 
-      {!editable && <p className="comanda__aviso" role="status">Esta cuenta ya no admite cambios. Vuelve al plano.</p>}
+      {!editable && (
+        <p className="comanda__aviso" role="status">
+          {/* 6.3 · Una para llevar cobrada sigue entregando lo listo */}
+          {paraLlevar && cuenta.estado === "cerrada"
+            ? "Cuenta cobrada: solo queda entregar lo que esté listo."
+            : `Esta cuenta ya no admite cambios. ${paraLlevar ? "Vuelve a Para llevar." : "Vuelve al plano."}`}
+        </p>
+      )}
       {cuenta.estado === "cuenta_pedida" && tomaComandas && (
         <p className="comanda__nota-estado">Agregar un ítem la vuelve a abrir.</p>
       )}
@@ -446,7 +468,7 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
                           {item.nota && <span className="comanda-item__detalle">Nota: {item.nota}</span>}
                         </div>
                         <span className={`comanda-item__estado comanda-item__estado--${item.estado}`}>
-                          {ESTADOS_ITEM[item.estado] || item.estado}{motivo ? ` · ${motivo}` : ""}
+                          {(paraLlevar ? ESTADOS_ITEM_PARA_LLEVAR : ESTADOS_ITEM)[item.estado] || item.estado}{motivo ? ` · ${motivo}` : ""}
                         </span>
                         <span className="comanda-item__monto">{anulado ? <s>{formatearCOP(item.subtotal)}</s> : formatearCOP(item.subtotal)}</span>
                         {conAccionesListo && (
@@ -454,8 +476,8 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
                           <span className="comanda-item__acciones-listo">
                             {sirve && (
                               <button type="button" className="comanda__boton comanda__boton--primario"
-                                aria-label={`Servir ${item.cantidad} × ${item.nombre}`} disabled={ocupado} onClick={() => servir(item)}>
-                                <HandPlatter size={18} aria-hidden="true" /> Servir
+                                aria-label={`${textoServir} ${item.cantidad} × ${item.nombre}`} disabled={ocupado} onClick={() => servir(item)}>
+                                <HandPlatter size={18} aria-hidden="true" /> {textoServir}
                               </button>
                             )}
                             {deshaceListo && (
@@ -487,7 +509,7 @@ export default function TomaComanda({ cuentaId, permisos = [], onVolver }) {
             <p className="comanda__nota">Sin impuestos ni propina: se calculan al cobrar.</p>
             <div className="comanda-resumen__acciones">
               {cuenta.estado === "abierta" && puede(permisos, "cuenta:solicitar") && (
-                <button type="button" className="comanda__boton comanda__boton--primario" disabled={ocupado} onClick={solicitar}>Solicitar cuenta</button>
+                <button type="button" className="comanda__boton comanda__boton--primario" disabled={ocupado} onClick={solicitar}>{paraLlevar ? "Pasar a caja" : "Solicitar cuenta"}</button>
               )}
               {/* 5.8.3 · Si no se puede cancelar, el botón queda deshabilitado con su motivo (no desaparece) */}
               {["abierta", "cuenta_pedida"].includes(cuenta.estado) && puede(permisos, "cuenta:abrir") && (

@@ -18,10 +18,10 @@ import { cambiarEstado, registrarEvento } from '../compartido/estados.service.js
 import {
     MAQUINA_MESA, MAQUINA_CUENTA, MAQUINA_ITEM, ESTADOS_CUENTA_ABIERTA, MESA_SEGUN_CUENTA,
 } from '../compartido/estadosSalon.js'
-import { atiendeMesas, puedeSerResponsable, tienePermiso } from '../identidad/permisos.js'
+import { atiendeMesas, puedeSerResponsable, tienePermiso, permisosEnCuenta } from '../identidad/permisos.js'
 import { calcularItem, subtotalRonda, totalesCuenta } from './totales.js'
 import {
-    validar, abrirCuentaSchema, agregarItemSchema, modificarItemSchema, versionOpcionalSchema,
+    validar, abrirCuentaSchema, abrirParaLlevarSchema, agregarItemSchema, modificarItemSchema, versionOpcionalSchema,
     enviarRondaSchema, cambioCuentaSchema, anularItemSchema, cambioMesaSchema,
     transferirSchema, moverSchema, unirSchema,
 } from './cuentas.schema.js'
@@ -61,6 +61,17 @@ const exigirPermiso = (sesion, clave) => {
     if (!tienePermiso(permisosDe(sesion), clave)) {
         throw error(403, 'FORBIDDEN', 'No tienes permiso para realizar esta acción.', { requiere: [clave] })
     }
+}
+
+// 6.3 (F6-3) · Permisos con los que se opera ESTA cuenta: en una para llevar, cuenta:para_llevar suma tomar, enviar,
+// pasar a caja, cancelar y entregar (permisos.js). Antes de leer la cuenta se acepta el permiso propio o el de para llevar;
+// ya leída, si no tiene el propio, la cuenta tiene que ser para llevar (si no, 403)
+const permisosEn = (sesion, cuenta) => permisosEnCuenta(permisosDe(sesion), cuenta?.canal)
+const exigirPermisoOParaLlevar = (sesion, clave) => {
+    if (!tienePermiso(permisosDe(sesion), 'cuenta:para_llevar')) exigirPermiso(sesion, clave)
+}
+const exigirEnCuenta = (sesion, clave, cuenta) => {
+    if (!tienePermiso(permisosEn(sesion, cuenta), clave)) exigirPermiso(sesion, clave)
 }
 
 // ── Formatos (los usa la API de 1.5) ───────────────────────────────────────────────────
@@ -110,6 +121,8 @@ const formatoCuenta = (cuenta, comandas) => ({
     mesas: cuenta.mesas.map((m) => ({
         id: String(m.mesa), numero: m.numero, nombre: m.nombre || '', zona: { id: String(m.zona), nombre: m.zonaNombre || '' },
     })),
+    // 6.3 · Quién recoge una cuenta para llevar (null en el salón)
+    paraLlevar: cuenta.paraLlevar ? { nombre: cuenta.paraLlevar.nombre || '', telefono: cuenta.paraLlevar.telefono || '' } : null,
     mesero: String(cuenta.mesero),
     comensales: cuenta.comensales,
     subtotal: cuenta.subtotal,
@@ -187,6 +200,7 @@ const guardarCuenta = async (cuenta, session) => {
  */
 const moverMesas = async (cuenta, de, a, { sesion, session, liberar = false, motivo = '' }) => {
     MAQUINA_MESA.validar(de, a, { via: 'sistema' })
+    if (!cuenta.mesas.length) return // 6.3 · para llevar: sin mesas
     const ids = cuenta.mesas.map((m) => m.mesa)
     const { matchedCount } = await Mesa.updateMany(
         { _id: { $in: ids }, cuentaActual: cuenta._id, estado: de },
@@ -214,7 +228,7 @@ const cambiarEstadoCuenta = async (cuenta, a, { sesion, session, motivo = '', da
 /** D2: con la cuenta pedida, pedir algo más la reabre (cuenta abierta y mesas ocupadas). */
 const reabrirSiHaceFalta = async (cuenta, { sesion, session }) => {
     if (cuenta.estado !== 'cuenta_pedida') return
-    MAQUINA_CUENTA.validar('cuenta_pedida', 'abierta', { permisos: permisosDe(sesion) })
+    MAQUINA_CUENTA.validar('cuenta_pedida', 'abierta', { permisos: permisosEn(sesion, cuenta) })
     await moverMesas(cuenta, 'cuenta_pedida', 'ocupada', { sesion, session, motivo: 'se agregó un ítem' })
     await cambiarEstadoCuenta(cuenta, 'abierta', { sesion, session, motivo: 'se agregó un ítem' })
 }
@@ -458,10 +472,11 @@ const copiaDeMesa = (mesa, zona) => ({ mesa: mesa._id, numero: mesa.numero, nomb
 
 // ── Operaciones ────────────────────────────────────────────────────────────────────────
 export const obtenerCuenta = async (cuentaId, sesion) => {
-    exigirPermiso(sesion, 'cuenta:ver')
+    exigirPermisoOParaLlevar(sesion, 'cuenta:ver')
     if (!mongoose.isValidObjectId(cuentaId)) throw cuentaNoEncontrada()
     const cuenta = await Cuenta.findById(cuentaId).lean()
     if (!cuenta) throw cuentaNoEncontrada()
+    exigirEnCuenta(sesion, 'cuenta:ver', cuenta)
     return formatoCuenta(cuenta, await Comanda.find({ cuenta: cuenta._id }).lean())
 }
 
@@ -558,13 +573,46 @@ export const abrirEnTransaccion = async ({ mesaId, comensales, notas, meseroId, 
     return formatoCuenta(cuenta, [])
 }
 
+/**
+ * 6.3 (F6-3) · Abre una cuenta para llevar (sin mesas) con el nombre o el teléfono de quien la recoge. Responsable:
+ * quien la abre (mesero, cajero o admin; F6-b). Después pasa por cocina y caja como una del salón y, al final, sus
+ * ítems listos se «entregan» (el mismo paso listo → servido).
+ */
+export const abrirParaLlevar = async (datos, sesion) => {
+    exigirPermiso(sesion, 'cuenta:para_llevar')
+    const { nombre, telefono, notas } = validar(abrirParaLlevarSchema, datos)
+    const codigo = `C-${String(await siguienteValor('cuenta')).padStart(6, '0')}`
+    return conTransaccion(async (session) => {
+        await tocarResponsable(sesion.id, session)
+        const [cuenta] = await Cuenta.create([{
+            codigo,
+            canal: 'para_llevar',
+            mesas: [],
+            paraLlevar: { nombre: nombre || '', telefono: telefono || '' },
+            mesero: sesion.id,
+            comensales: 1,
+            estado: 'abierta',
+            abiertaPor: sesion.id,
+            abiertaEn: new Date(),
+            notas: notas || '',
+        }], { session })
+        // Sin el teléfono en el Evento (dato personal): basta con el código y el nombre
+        await registrarEvento({
+            entidad: 'cuenta', entidadId: cuenta._id, a: 'abierta', ...quien(sesion),
+            datos: { codigo, canal: 'para_llevar', nombre: nombre || '' }, session,
+        })
+        return formatoCuenta(cuenta, [])
+    })
+}
+
 /** Agrega un ítem a la ronda en borrador (la crea si no hay). Con la cuenta pedida, la reabre (D2). */
 export const agregarItem = async (cuentaId, datos, sesion) => {
-    exigirPermiso(sesion, 'comanda:tomar')
+    exigirPermisoOParaLlevar(sesion, 'comanda:tomar')
     const entrada = validar(agregarItemSchema, datos)
 
     return conTransaccion(async (session) => {
         const cuenta = await tocarCuenta(cuentaId, { versionEsperada: entrada.versionEsperada }, session)
+        exigirEnCuenta(sesion, 'comanda:tomar', cuenta)
         const nuevo = await armarItem(entrada, sesion, session)
         await reabrirSiHaceFalta(cuenta, { sesion, session })
 
@@ -586,11 +634,12 @@ export const agregarItem = async (cuentaId, datos, sesion) => {
 
 /** Cambia la cantidad o la nota de un ítem del borrador. */
 export const modificarItem = async (cuentaId, itemId, datos, sesion) => {
-    exigirPermiso(sesion, 'comanda:tomar')
+    exigirPermisoOParaLlevar(sesion, 'comanda:tomar')
     const { cantidad, nota, versionEsperada } = validar(modificarItemSchema, datos)
 
     return conTransaccion(async (session) => {
         const cuenta = await tocarCuenta(cuentaId, { versionEsperada }, session)
+        exigirEnCuenta(sesion, 'comanda:tomar', cuenta)
         const { comanda, item } = await buscarItem(cuenta, itemId, session)
         exigirBorrador(comanda)
         const antes = { cantidad: item.cantidad, nota: item.nota }
@@ -611,11 +660,12 @@ export const modificarItem = async (cuentaId, itemId, datos, sesion) => {
 
 /** Quita un ítem del borrador (antes de enviar se quita libremente, F1-6). La ronda vacía se borra. */
 export const quitarItem = async (cuentaId, itemId, datos, sesion) => {
-    exigirPermiso(sesion, 'comanda:tomar')
+    exigirPermisoOParaLlevar(sesion, 'comanda:tomar')
     const { versionEsperada } = validar(versionOpcionalSchema, datos)
 
     return conTransaccion(async (session) => {
         const cuenta = await tocarCuenta(cuentaId, { versionEsperada }, session)
+        exigirEnCuenta(sesion, 'comanda:tomar', cuenta)
         const { comanda, item } = await buscarItem(cuenta, itemId, session)
         exigirBorrador(comanda)
         const resumen = resumenItem(item)
@@ -641,7 +691,7 @@ export const quitarItem = async (cuentaId, itemId, datos, sesion) => {
  * Si algún producto u opción ya no está disponible se rechaza toda la ronda (D3).
  */
 export const enviarRonda = async (cuentaId, datos, sesion) => {
-    exigirPermiso(sesion, 'comanda:enviar')
+    exigirPermisoOParaLlevar(sesion, 'comanda:enviar')
     const { numeroRonda, versionEsperada } = validar(enviarRondaSchema, datos)
 
     // Fase 5 (F5-3) · El inventario se descuenta en la misma transacción; los agotados automáticos se avisan
@@ -650,12 +700,14 @@ export const enviarRonda = async (cuentaId, datos, sesion) => {
     const resultado = await conTransaccion(async (session) => {
         cambiosDisponibilidad = []
         if (!mongoose.isValidObjectId(cuentaId)) throw cuentaNoEncontrada()
-        const previa = await Cuenta.findById(cuentaId).select('ultimaRonda').session(session).lean()
+        const previa = await Cuenta.findById(cuentaId).select('ultimaRonda canal').session(session).lean()
         if (!previa) throw cuentaNoEncontrada()
+        exigirEnCuenta(sesion, 'comanda:enviar', previa) // 6.3 · el 403 antes del 409 que revela la ronda
         if (numeroRonda <= previa.ultimaRonda) {
             throw error(409, 'RONDA_YA_ENVIADA', `La ronda ${numeroRonda} ya se envió.`, { numeroRonda })
         }
         const cuenta = await tocarCuenta(cuentaId, { versionEsperada }, session)
+        exigirEnCuenta(sesion, 'comanda:enviar', cuenta)
         const ronda = await borradorDe(cuenta._id, session)
         if (!ronda || ronda.items.length === 0) throw error(409, 'RONDA_VACIA', 'No hay ítems por enviar.')
         if (ronda.numeroRonda !== numeroRonda) {
@@ -670,7 +722,7 @@ export const enviarRonda = async (cuentaId, datos, sesion) => {
                 { items: problemas })
         }
         for (const item of ronda.items) {
-            MAQUINA_ITEM.validar(item.estado, 'enviado', { permisos: permisosDe(sesion) })
+            MAQUINA_ITEM.validar(item.estado, 'enviado', { permisos: permisosEn(sesion, cuenta) })
             item.estado = 'enviado'
         }
         ronda.set({ estado: 'enviada', enviadaPor: sesion.id, enviadaEn: new Date() })
@@ -721,12 +773,13 @@ export const anularItem = async (cuentaId, itemId, datos, sesion) => {
 
 /** La mesa pide la cuenta: exige algo enviado y no anulado, y nada pendiente en el borrador. */
 export const solicitarCuenta = async (cuentaId, datos, sesion) => {
-    exigirPermiso(sesion, 'cuenta:solicitar')
+    exigirPermisoOParaLlevar(sesion, 'cuenta:solicitar')
     const { versionEsperada, motivo } = validar(cambioCuentaSchema, datos)
 
     return conTransaccion(async (session) => {
         const cuenta = await tocarCuenta(cuentaId, { versionEsperada }, session)
-        MAQUINA_CUENTA.validar(cuenta.estado, 'cuenta_pedida', { permisos: permisosDe(sesion) })
+        exigirEnCuenta(sesion, 'cuenta:solicitar', cuenta)
+        MAQUINA_CUENTA.validar(cuenta.estado, 'cuenta_pedida', { permisos: permisosEn(sesion, cuenta) })
         const comandas = await Comanda.find({ cuenta: cuenta._id }).select('estado items.estado').session(session).lean()
         if (comandas.some((c) => c.estado === 'borrador' && c.items.length)) {
             throw error(409, 'RONDA_PENDIENTE', 'Hay ítems sin enviar: envíalos o quítalos antes de pedir la cuenta.')
@@ -754,12 +807,13 @@ const mensajeSoloAnulados = (sesion) => `Ya se enviaron productos a cocina y tod
 
 /** D4: cancela una cuenta abierta sin ítems enviados (abierta por error, clientes que se fueron). */
 export const cancelarCuenta = async (cuentaId, datos, sesion) => {
-    exigirPermiso(sesion, 'cuenta:abrir')
+    exigirPermisoOParaLlevar(sesion, 'cuenta:abrir')
     const { versionEsperada, motivo } = validar(cambioCuentaSchema, datos)
 
     return conCierre(async (session, cierre) => {
         const cuenta = await tocarCuenta(cuentaId, { versionEsperada }, session)
-        const { motivo: texto } = MAQUINA_CUENTA.validar(cuenta.estado, 'cancelada', { permisos: permisosDe(sesion), motivo })
+        exigirEnCuenta(sesion, 'cuenta:abrir', cuenta)
+        const { motivo: texto } = MAQUINA_CUENTA.validar(cuenta.estado, 'cancelada', { permisos: permisosEn(sesion, cuenta), motivo })
         // Cuenta también un ítem enviado y luego anulado: ya llegó a cocina o barra (mermas)
         if (await Comanda.exists({ cuenta: cuenta._id, estado: 'enviada' }).session(session)) {
             throw error(409, 'CUENTA_CON_ITEMS_ENVIADOS',

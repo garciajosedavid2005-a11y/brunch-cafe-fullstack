@@ -235,6 +235,60 @@ const asignarDomicilioARepartidor = async () => {
     if (!res.ok()) throw new Error(`No se pudo pasar el domicilio a ${codigo}: ${res.status()}`);
   }
 };
+// 6.3 · Cuentas para llevar del cajero.dev por la API: 2 productos enviados a cocina y pasadas a caja. «Ana» queda
+// en caja; «Beto» además se cobra y cocina deja todo listo (queda por entregar). Una sola vez cada una
+const paraLlevarHechas = new Set();
+const exigirOk = async (res, que) => {
+  if (!res.ok()) throw new Error(`Para llevar: no se pudo ${que}: ${res.status()} ${(await res.text()).slice(0, 200)}`);
+  return res.json();
+};
+const paraLlevarEnCaja = async (ctx, nombre) => {
+  const cuenta = await exigirOk(await ctx.post(`${API}/staff/salon/para-llevar`, { data: { nombre, telefono: "3001234567" } }), "abrir");
+  const { productos } = await exigirOk(await ctx.get(`${API}/staff/salon/catalogo`), "leer el catálogo");
+  // Uno de cocina y uno de barra, con la primera opción disponible de cada grupo obligatorio
+  const opciones = (pr) => (pr.modificadores || []).filter((g) => g.obligatorio || g.min > 0).map((g) => ({
+    grupoId: g.id, opcionIds: g.opciones.filter((o) => o.disponible !== false).slice(0, Math.max(1, g.min || 0)).map((o) => o.id),
+  }));
+  const elegidos = ["cocina", "barra"].map((codigo) => productos.find((x) => x.disponible && x.estacion?.codigo === codigo));
+  if (elegidos.some((x) => !x)) throw new Error("Para llevar: falta un producto de cocina o de barra en la BD de capturas");
+  for (const producto of elegidos) {
+    await exigirOk(await ctx.post(`${API}/staff/salon/cuentas/${cuenta.id}/items`, { data: { productoId: producto.id, cantidad: 1, modificadores: opciones(producto) } }), `agregar ${producto.nombre}`);
+  }
+  const leer = async () => exigirOk(await ctx.get(`${API}/staff/salon/cuentas/${cuenta.id}`), "leer la cuenta");
+  await exigirOk(await ctx.post(`${API}/staff/salon/cuentas/${cuenta.id}/rondas/1/enviar`, { data: { versionEsperada: (await leer()).version } }), "enviar");
+  await exigirOk(await ctx.post(`${API}/staff/salon/cuentas/${cuenta.id}/solicitar`, { data: { versionEsperada: (await leer()).version } }), "pasar a caja");
+  return leer();
+};
+const sesionCajero = async () => {
+  const ctx = await request.newContext();
+  await ctx.post(`${API}/auth/login`, { data: { correo: USUARIOS.cajero, contraseña: CLAVE } });
+  return ctx;
+};
+const cuentaParaLlevar = async () => {
+  if (paraLlevarHechas.has("Ana")) return;
+  const ctx = await sesionCajero();
+  await paraLlevarEnCaja(ctx, "Ana");
+  await ctx.dispose();
+  paraLlevarHechas.add("Ana");
+};
+const paraLlevarCobradaLista = async () => {
+  if (paraLlevarHechas.has("Beto")) return;
+  const ctx = await sesionCajero();
+  const cuenta = await paraLlevarEnCaja(ctx, "Beto");
+  const { turno } = await exigirOk(await ctx.get(`${API}/staff/caja/turno`), "leer el turno");
+  if (!turno) await exigirOk(await ctx.post(`${API}/staff/caja/turno/abrir`, { data: { base: 150000 } }), "abrir el turno");
+  await exigirOk(await ctx.post(`${API}/staff/caja/cuentas/${cuenta.id}/cobrar`, {
+    data: { versionEsperada: cuenta.version, propina: 0, pagos: [{ metodo: "tarjeta", monto: cuenta.total }] },
+  }), "cobrar");
+  await ctx.dispose();
+  // Cocina y barra la dejan lista (el admin opera las dos estaciones)
+  await abrirSesionAdmin();
+  const ronda = cuenta.rondas.find((r) => r.estado === "enviada");
+  for (const estacion of new Set(ronda.items.map((i) => i.estacion?.codigo).filter(Boolean))) {
+    await exigirOk(await sesionAdmin.post(`${API}/staff/cocina/rondas/${ronda.id}/todo-listo`, { data: { estacion } }), `dejar lista la ronda en ${estacion}`);
+  }
+  paraLlevarHechas.add("Beto");
+};
 // 3b.4 · Un domicilio «en camino» (el pedido sembrado de cliente.dev, avanzado por el admin) para cobrarlo
 let domicilioListo = false;
 const domicilioEnCamino = async () => {
@@ -1540,6 +1594,13 @@ const VISTAS = {
   } },
   // 2.5 · KDS (cocina.dev). Al final: preparan datos que cambian el salón de las vistas anteriores
   "kds-cocina": { usuario: "cocina", completa: false, preparar: (p) => abrirKds(p, "Cocina") },
+  // 6.3 · La ronda de una para llevar en el KDS: «Para llevar · Ana»
+  "kds-para-llevar": { usuario: "cocina", completa: false, preparar: async (p) => {
+    await cuentaParaLlevar();
+    await p.goto(`${FRONT}/kds`);
+    await p.getByRole("region", { name: "Cola de Cocina" }).waitFor();
+    await p.getByText("Para llevar · Ana").first().waitFor();
+  } },
   // 2.5b · cocina.dev solo tiene Cocina: la barra la mira el admin (ve todas, con los botones de cambio)
   "kds-barra": { usuario: "admin", completa: false, preparar: (p) => abrirKds(p, "Barra") },
   // 2.5b · Admin › Roles: estaciones del KDS del rol Cocina
@@ -1695,6 +1756,33 @@ const VISTAS = {
     await p.goto(`${FRONT}/staff`);
     await p.getByRole("button", { name: "Pedidos", exact: true }).click();
     await p.getByRole("button", { name: "En camino" }).first().waitFor();
+  } },
+  // 6.3 · Para llevar: la lista del cajero (formulario y la de Ana en caja) y su toma de comanda
+  "staff-para-llevar": { usuario: "cajero", preparar: async (p) => {
+    await cuentaParaLlevar();
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: "Para llevar", exact: true }).click();
+    await p.getByRole("button", { name: /^Abrir Ana, En caja/ }).waitFor();
+  } },
+  "staff-para-llevar-comanda": { usuario: "cajero", preparar: async (p) => {
+    await VISTAS["staff-para-llevar"].preparar(p);
+    await p.getByRole("button", { name: /^Abrir Ana, En caja/ }).click();
+    await p.getByRole("heading", { name: "Para llevar · Ana" }).waitFor();
+  } },
+  // 6.3 · Cobrada y lista: el cajero ve «Cobrada · 2 para entregar», entra y entrega; Cuentas abiertas con su filtro
+  "staff-para-llevar-entregar": { usuario: "cajero", preparar: async (p) => {
+    await cuentaParaLlevar();
+    await paraLlevarCobradaLista();
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: "Para llevar", exact: true }).click();
+    await p.getByRole("button", { name: /^Abrir Beto, Cobrada/ }).click();
+    await p.getByRole("button", { name: /^Entregar/ }).first().waitFor();
+  } },
+  "staff-cuentas-para-llevar": { usuario: "mesero", preparar: async (p) => {
+    await cuentaParaLlevar();
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: "Cuentas", exact: true }).click();
+    await p.getByText("Para llevar · Ana").first().waitFor();
   } },
   "staff-caja": { usuario: "cajero", completa: false, preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);

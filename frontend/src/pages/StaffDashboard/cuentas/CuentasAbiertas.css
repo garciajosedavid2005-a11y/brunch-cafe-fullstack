@@ -56,6 +56,11 @@
   border-left-color: #7a4a1e;
 }
 
+/* 6.3 · Para llevar en verde oliva oscuro (texto e icono, no solo color) */
+.cuentas__tarjeta--para_llevar {
+  border-left-color: #4f5b2a;
+}
+
 .cuentas__cabecera {
   display: flex;
   flex-wrap: wrap;
@@ -86,6 +91,11 @@
 .cuentas__canal--domicilio {
   background: #f3e6d8;
   color: #5a3412;
+}
+
+.cuentas__canal--para_llevar {
+  background: #eaeedc;
+  color: #3b4420;
 }
 
 /* El código no se parte por el guion; si no cabe junto al canal, baja entero */

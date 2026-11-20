@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { FileText, ReceiptText, Wallet } from "lucide-react";
+import { FileText, ReceiptText, ShoppingBag, Wallet } from "lucide-react";
 import { apiRequest } from "../../../services/api";
 import { formatearCOP } from "../../../utils/moneda";
 import { formatearHora } from "../../../utils/fechas";
 import { useSondeo } from "../compartido/useSondeo";
 import Actualizado from "../compartido/Actualizado";
 import { formatearMinutos } from "../plano/estadosMesa";
-import { etiquetaMetodo } from "./cobro";
+import { etiquetaMetodo, mesasTexto, origenCuenta } from "./cobro";
 import CobrarCuenta from "./CobrarCuenta";
 import Comprobante from "./Comprobante";
 import { FranjaTurno, CerrarTurno } from "./TurnoCaja";
@@ -19,12 +19,12 @@ import "./Caja.css";
 // cobradas hoy, en vivo por el canal «caja» con polling de respaldo. Cobrar abre la pantalla de cobro y,
 // al terminar, el comprobante (imprimible).
 const CANALES = ["caja"];
-const mesasTexto = (mesas = []) => (mesas.length > 1 ? `Mesas ${mesas.join(" + ")}` : `Mesa ${mesas[0] ?? "—"}`);
-// Un comprobante es de una cuenta (mesas) o de un domicilio (pedido)
-const origenTexto = (c) => (c.pedido ? `Domicilio ${c.pedido}` : mesasTexto(c.mesas));
+// Un comprobante es de una cuenta (mesas), de una para llevar (sin mesas, 6.3) o de un domicilio (pedido)
+const origenTexto = (c) => (c.pedido ? `Domicilio ${c.pedido}` : c.mesas?.length ? mesasTexto(c.mesas) : "Para llevar");
 const minutosDesde = (fecha) => (fecha ? Math.max(0, Math.floor((Date.now() - new Date(fecha).getTime()) / 60000)) : null);
 
-export default function Caja() {
+// 6.3 · `onParaLlevar` (con cuenta:para_llevar): abre la pestaña «Para llevar» para tomar un pedido desde la caja
+export default function Caja({ onParaLlevar = null }) {
   const [vista, setVista] = useState({ tipo: "lista" });
   const enLista = vista.tipo === "lista";
   const { user } = useAuth();
@@ -71,7 +71,14 @@ export default function Caja() {
     <section className="caja" aria-label="Caja">
       <div className="caja__barra">
         <h2 className="caja__titulo">Caja</h2>
-        <Actualizado desde={vivo.actualizadoEn} error={vivo.error} onActualizar={volver} enVivo={vivo.enVivo} />
+        <div className="caja__acciones">
+          {onParaLlevar && (
+            <button type="button" className="caja__boton caja__boton--secundario" onClick={onParaLlevar}>
+              <ShoppingBag size={18} aria-hidden="true" /> Nueva para llevar
+            </button>
+          )}
+          <Actualizado desde={vivo.actualizadoEn} error={vivo.error} onActualizar={volver} enVivo={vivo.enVivo} />
+        </div>
       </div>
 
       {cobraCuentas && (<>
@@ -88,9 +95,9 @@ export default function Caja() {
           return (
             <li key={c.id} className="caja__cuenta">
               <div className="caja__cuenta-datos">
-                <strong className="caja__cuenta-mesa">{mesasTexto(c.mesas)}</strong>
-                <span>{[c.mesero, `${c.comensales} ${c.comensales === 1 ? "persona" : "personas"}`].filter(Boolean).join(" · ")}</span>
-                {espera !== null && <span className="caja__cuenta-espera">Pidió la cuenta hace {formatearMinutos(espera)}</span>}
+                <strong className="caja__cuenta-mesa">{origenCuenta(c)}</strong>
+                <span>{[c.mesero, c.paraLlevar ? null : `${c.comensales} ${c.comensales === 1 ? "persona" : "personas"}`].filter(Boolean).join(" · ")}</span>
+                {espera !== null && <span className="caja__cuenta-espera">{c.paraLlevar ? "En caja" : "Pidió la cuenta"} hace {formatearMinutos(espera)}</span>}
                 {c.division && (
                   <span className="caja__cuenta-division">
                     {c.division.modo === "iguales" ? `Parte ${c.division.cobradas} de ${c.division.partes} cobrada` : `${c.division.cobradas} ${c.division.cobradas === 1 ? "parte cobrada" : "partes cobradas"} por ítems`}
@@ -99,7 +106,7 @@ export default function Caja() {
                 )}
               </div>
               <strong className="caja__cuenta-total">{formatearCOP(c.porCobrar ?? c.total)}</strong>
-              <button type="button" className="caja__boton caja__boton--primario" aria-label={`Cobrar ${mesasTexto(c.mesas)}, ${formatearCOP(c.porCobrar ?? c.total)}`}
+              <button type="button" className="caja__boton caja__boton--primario" aria-label={`Cobrar ${origenCuenta(c)}, ${formatearCOP(c.porCobrar ?? c.total)}`}
                 disabled={!turno} title={turno ? undefined : "Abre el turno de caja para cobrar"}
                 onClick={() => setVista({ tipo: "cobrar", cuenta: c })}>
                 <Wallet size={18} aria-hidden="true" /> Cobrar

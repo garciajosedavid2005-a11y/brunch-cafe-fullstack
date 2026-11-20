@@ -10,6 +10,7 @@ import {
   ListOrdered,
   Package,
   ReceiptText,
+  ShoppingBag,
   ShieldHalf,
   Plus,
   ShieldCheck,
@@ -38,6 +39,7 @@ import PlanoMesas from "./plano/PlanoMesas";
 import AvisoListos from "./plano/AvisoListos";
 import PanelAgotados from "./agotados/PanelAgotados";
 import Caja from "./caja/Caja";
+import ParaLlevar from "./paraLlevar/ParaLlevar";
 import Inventario from "../Inventario/Inventario";
 import LimiteErrores from "../../components/LimiteErrores/LimiteErrores";
 import { useSonidoKds } from "../Kds/useSonidoKds";
@@ -77,6 +79,8 @@ export default function StaffDashboard() {
   const puedeVerCuentas = tienePermiso(user, "cuenta:ver") || puedeVerPedidos;
   // Fase 3 · cajero y admin (F3-1); 3b.4 · también el repartidor, que cobra sus domicilios (pedido:cobrar)
   const puedeCobrar = tienePermiso(user, "cuenta:cobrar") || tienePermiso(user, "pedido:cobrar");
+  // 6.3 (F6-3) · Cuentas para llevar: mesero, cajero y admin
+  const puedeParaLlevar = tienePermiso(user, "cuenta:para_llevar");
   // Con mesa:ver, el panel abre primero el plano de mesas (decisión 1.6 del 2026-11-07); el cajero, la caja
   // Fase 5 (F5-b) · Inventario (rol compras; el admin lo usa en Admin › Inventario)
   const puedeInventario = puedeVerInventario(permisos) && !admin;
@@ -212,6 +216,7 @@ export default function StaffDashboard() {
     ...(puedeVerMesas ? [{ id: "mesas", label: "Mesas", icon: LayoutGrid }] : []),
     ...(puedeVerCuentas ? [{ id: "cuentas", label: "Cuentas", icon: ReceiptText }] : []),
     ...(puedeCobrar ? [{ id: "caja", label: "Caja", icon: Wallet }] : []),
+    ...(puedeParaLlevar ? [{ id: "para_llevar", label: "Para llevar", icon: ShoppingBag }] : []),
     { id: "resumen", label: "Resumen", icon: CalendarCheck2 },
     ...(puedeVerReservas || puedeCrearReservas
       ? [{ id: "reservas", label: "Reservas", icon: CalendarDays }]
@@ -346,10 +351,11 @@ export default function StaffDashboard() {
         {seccion === "mesas" && <PlanoMesas permisos={permisos} cuentaVista={cuentaVista} onCuentaVista={setCuentaVista} />}
         {seccion === "cuentas" && <CuentasAbiertas permisos={permisos} />}
         {seccion === "agotados" && <PanelAgotados permisos={permisos} />}
-        {seccion === "caja" && <Caja />}
+        {seccion === "caja" && <Caja onParaLlevar={puedeParaLlevar ? () => setSeccion("para_llevar") : null} />}
+        {seccion === "para_llevar" && <ParaLlevar permisos={permisos} />}
         {seccion === "inventario" && <Inventario permisos={permisos} />}
 
-        {!["mesas", "cuentas", "agotados", "caja", "inventario"].includes(seccion) && (
+        {!["mesas", "cuentas", "agotados", "caja", "para_llevar", "inventario"].includes(seccion) && (
         <section className="customer-dashboard__content" aria-live="polite">
           {seccion === "resumen" && (
             <div>

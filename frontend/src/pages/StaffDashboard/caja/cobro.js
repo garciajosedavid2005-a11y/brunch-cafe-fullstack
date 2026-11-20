@@ -7,6 +7,12 @@ export const METODOS = [
 ];
 export const etiquetaMetodo = (codigo) => METODOS.find((m) => m.codigo === codigo)?.etiqueta || codigo;
 
+/** Mesa o mesas de la cuenta; 6.3 · en una para llevar, «Para llevar · nombre» (o el teléfono). */
+export const mesasTexto = (mesas = []) => (mesas.length > 1 ? `Mesas ${mesas.join(" + ")}` : `Mesa ${mesas[0] ?? "—"}`);
+export const origenCuenta = (c) => (c?.paraLlevar
+  ? `Para llevar · ${c.paraLlevar.nombre || c.paraLlevar.telefono}`
+  : mesasTexto(c?.mesas));
+
 /** Texto de un campo de pesos → entero (solo dígitos: «$ 33.000» → 33000; vacío → 0). */
 export const pesos = (texto) => {
   const digitos = String(texto ?? "").replace(/\D/g, "").slice(0, 9);

@@ -35,6 +35,7 @@
     "migrate:6.1": "node scripts/migrar-6.1-canal-pedidos.js",
     "migrate:6.2": "node scripts/migrar-6.2-repartidor.js",
     "migrate:6.2b": "node scripts/migrar-6.2b-descripcion-cobro.js",
+    "migrate:6.3": "node scripts/migrar-6.3-para-llevar.js",
     "seed:dev": "node scripts/seed-dev.js",
     "seed:demo": "node scripts/seed-demo.js",
     "seed:salon": "node scripts/seed-salon.js",

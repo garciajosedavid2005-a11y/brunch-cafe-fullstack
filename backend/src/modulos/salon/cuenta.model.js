@@ -5,7 +5,8 @@ import { ESTADOS_CUENTA, ESTADOS_CUENTA_ABIERTA } from '../compartido/estadosSal
 // vez (F1-7): lo garantiza el servicio con Mesa.cuentaActual y, como respaldo, el índice único parcial
 // sobre mesas.mesa. Los montos (COP enteros) los calcula el servidor desde las rondas (totales.js).
 // Cambios: solo desde salon/cuentas.service.js, en transacción y «tocando» la cuenta ($inc version).
-export const CANALES_CUENTA = ['salon'] // para_llevar y domicilio: Fase 6
+// 6.3 (F6-3) · para_llevar: cuenta sin mesas, con el nombre o el teléfono de quien la recoge. El domicilio sigue en Pedido (F6-1)
+export const CANALES_CUENTA = ['salon', 'para_llevar']
 export const MAX_COMENSALES = 50
 export const MAX_MESAS_POR_CUENTA = 10
 
@@ -39,6 +40,15 @@ const divisionSchema = new mongoose.Schema({
     itemsCobrados: { type: [mongoose.Schema.Types.ObjectId], default: [] },
 }, { _id: false })
 
+// 6.3 · Quién recoge el pedido para llevar (al menos uno de los dos)
+export const MAX_NOMBRE_PARA_LLEVAR = 60
+// Una para llevar cobrada sigue en el KDS y en la lista «Para llevar» hasta 12 h, mientras le falte algo por entregar
+export const VENTANA_PARA_LLEVAR_MS = 12 * 60 * 60 * 1000
+const paraLlevarSchema = new mongoose.Schema({
+    nombre: { type: String, trim: true, maxlength: MAX_NOMBRE_PARA_LLEVAR, default: '' },
+    telefono: { type: String, trim: true, match: /^$|^\d{7,15}$/, default: '' },
+}, { _id: false })
+
 const cuentaSchema = new mongoose.Schema({
     // «C-000123» (contador atómico «cuenta»; los huecos son aceptables)
     codigo: { type: String, required: true, immutable: true, match: /^C-\d{6,}$/ },
@@ -46,10 +56,11 @@ const cuentaSchema = new mongoose.Schema({
     mesas: {
         type: [mesaDeCuentaSchema],
         validate: [
-            { validator: (v) => v.length >= 1 && v.length <= MAX_MESAS_POR_CUENTA, message: `Una cuenta de salón tiene entre 1 y ${MAX_MESAS_POR_CUENTA} mesas` },
+            { validator: (v) => v.length <= MAX_MESAS_POR_CUENTA, message: `Una cuenta tiene como máximo ${MAX_MESAS_POR_CUENTA} mesas` }, // el mínimo, en problemasDeCuenta
             { validator: (v) => new Set(v.map((m) => String(m.mesa))).size === v.length, message: 'Hay mesas repetidas en la cuenta' },
         ],
     },
+    paraLlevar: { type: paraLlevarSchema, default: null }, // 6.3 · solo en canal para_llevar
     // Responsable (F1-17: cualquiera con el permiso puede operar la cuenta; el Evento dice quién lo hizo)
     mesero: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
     comensales: { type: Number, required: true, min: 1, max: MAX_COMENSALES, validate: entero('Los comensales') },
@@ -85,6 +96,15 @@ export const problemasDeCuenta = (cuenta) => {
     const anotar = (campo, mensaje) => problemas.push({ campo, mensaje })
     // total = subtotal mientras impuestos, propina y descuento sean null (Fase 3: subtotal + impuestos + propina − descuento)
     if (Number.isInteger(cuenta.subtotal) && cuenta.total !== cuenta.subtotal) anotar('total', 'El total no coincide con el subtotal')
+    // 6.3 · El salón tiene mesas; para llevar, ninguna y el nombre o el teléfono de quien recoge
+    const nMesas = cuenta.mesas?.length ?? 0
+    if (cuenta.canal === 'para_llevar') {
+        if (nMesas) anotar('mesas', 'Una cuenta para llevar no tiene mesas')
+        if (!cuenta.paraLlevar?.nombre && !cuenta.paraLlevar?.telefono) anotar('paraLlevar', 'Indica el nombre o el teléfono de quien recoge')
+    } else {
+        if (nMesas < 1) anotar('mesas', `Una cuenta de salón tiene entre 1 y ${MAX_MESAS_POR_CUENTA} mesas`)
+        if (cuenta.paraLlevar) anotar('paraLlevar', 'Solo una cuenta para llevar tiene quién la recoge')
+    }
     // 3b.2 · División coherente: en partes iguales hay N y ningún ítem; por ítems, sin N; nunca más de lo que hay
     const d = cuenta.division
     if (d) {
@@ -111,10 +131,13 @@ cuentaSchema.pre('validate', function () {
 })
 
 cuentaSchema.index({ codigo: 1 }, { unique: true })
-// Una mesa en una sola cuenta abierta (F1-7)
+// Una mesa en una sola cuenta abierta (F1-7). 6.3 · Solo las del salón: una para llevar no tiene mesas y, sin el
+// filtro por canal, dos abiertas a la vez chocarían en el índice único (el arreglo vacío se indexa como un valor).
+// Migración 6.3: reemplaza el índice anterior (`mesa_en_una_cuenta_abierta`, sin canal) por este
+export const INDICE_MESA_ABIERTA = 'mesa_en_una_cuenta_abierta_salon'
 cuentaSchema.index(
     { 'mesas.mesa': 1 },
-    { unique: true, partialFilterExpression: { estado: { $in: ESTADOS_CUENTA_ABIERTA } }, name: 'mesa_en_una_cuenta_abierta' },
+    { unique: true, partialFilterExpression: { estado: { $in: ESTADOS_CUENTA_ABIERTA }, canal: 'salon' }, name: INDICE_MESA_ABIERTA },
 )
 cuentaSchema.index({ estado: 1, abiertaEn: -1 })   // cuentas abiertas (plano y «Cuentas abiertas»)
 cuentaSchema.index({ 'mesas.mesa': 1, abiertaEn: -1 }) // historial de una mesa (409 MESA_CON_HISTORIAL)

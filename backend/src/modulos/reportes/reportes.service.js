@@ -57,7 +57,7 @@ const ordenarPor = (campo) => (a, b) => b[campo] - a[campo]
 /** Líneas vendidas del rango (salón y domicilio) con lo necesario para cada reporte. */
 const lineasDeVenta = async ({ inicio, fin }) => {
     const cuentas = await Cuenta.find({ estado: 'cerrada', cerradaEn: { $gte: inicio, $lt: fin } })
-        .select('codigo mesero mesas abiertaEn cerradaEn total').lean()
+        .select('codigo canal mesero mesas abiertaEn cerradaEn total').lean()
     const comandas = cuentas.length
         ? await Comanda.find({ cuenta: { $in: cuentas.map((c) => c._id) }, estado: 'enviada' }).select('cuenta items').lean()
         : []
@@ -68,7 +68,7 @@ const lineasDeVenta = async ({ inicio, fin }) => {
         for (const item of comanda.items) {
             if (item.estado === 'anulado') continue
             lineas.push({
-                canal: 'salon', instante: cuenta.cerradaEn, ticket: `c:${cuenta._id}`, mesero: String(cuenta.mesero),
+                canal: cuenta.canal || 'salon', instante: cuenta.cerradaEn, ticket: `c:${cuenta._id}`, mesero: String(cuenta.mesero), // 6.3 · salón o para llevar
                 producto: String(item.producto), nombre: item.nombre, cantidad: item.cantidad, subtotal: item.subtotal,
                 modificadores: (item.modificadores || []).map((m) => ({ grupo: m.grupo, opcion: m.opcion })),
             })
@@ -134,7 +134,7 @@ export const reporteVentas = async (sesion, consulta) => {
 
     // Por canal
     const porCanal = new Map(CANALES.map(([c]) => [c, { ventas: 0, tickets: 0 }]))
-    sumar(porCanal, 'salon', { tickets: cuentas.length })
+    for (const c of cuentas) sumar(porCanal, c.canal || 'salon', { tickets: 1 }) // 6.3 · salón o para llevar
     for (const p of pedidos) sumar(porCanal, p.canal, { tickets: 1 })
     for (const l of lineas) sumar(porCanal, l.canal, { ventas: l.subtotal })
 
@@ -162,7 +162,7 @@ export const reporteVentas = async (sesion, consulta) => {
         porFranja: [...porHora].sort((a, b) => a[0] - b[0]).map(([h, v]) => ({ hora: h, franja: `${String(h).padStart(2, '0')}:00–${String(h + 1).padStart(2, '0')}:00`, ventas: v.ventas, tickets: v.tickets })),
         porProducto: [...porProducto].map(([id, v]) => ({ id, nombre: v.nombre, categoria: categoriaDe.get(id) || 'Sin categoría', cantidad: v.cantidad, ventas: v.ventas })).sort(ordenarPor('ventas')),
         porCategoria: [...porCategoria].map(([nombre, v]) => ({ categoria: nombre, cantidad: v.cantidad, ventas: v.ventas })).sort(ordenarPor('ventas')),
-        porCanal: CANALES.map(([c, etiqueta]) => ({ canal: c, etiqueta, ventas: porCanal.get(c)?.ventas || 0, tickets: porCanal.get(c)?.tickets || 0, disponible: c !== 'para_llevar' })),
+        porCanal: CANALES.map(([c, etiqueta]) => ({ canal: c, etiqueta, ventas: porCanal.get(c)?.ventas || 0, tickets: porCanal.get(c)?.tickets || 0, disponible: true })), // 6.3 · para llevar ya es real
         porMesero: [...porMesero].map(([id, v]) => ({ id, mesero: nombreDe.get(id) || 'Usuario eliminado', cuentas: v.cuentas || 0, ventas: v.ventas || 0, propinas: v.propinas || 0, ticketPromedio: v.cuentas ? Math.round((v.ventas || 0) / v.cuentas) : 0 })).sort(ordenarPor('ventas')),
         porMetodo: [...porMetodo].map(([metodo, v]) => ({ metodo, pagos: v.pagos, cobrado: v.cobrado, devuelto: v.devuelto, neto: v.cobrado - v.devuelto })),
     }

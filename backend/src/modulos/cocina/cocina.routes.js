@@ -9,7 +9,7 @@ import { listarEstacionesKds } from './cola.service.js'
 const router = Router()
 
 // Idempotency-Key opcional, como en el salón: el reintento de una tablet con mala red no da 409
-router.post('/items/:itemId/estado', requirePermission('item:preparar', 'item:servir'), idempotencia, async (req, res) => {
+router.post('/items/:itemId/estado', requirePermission('item:preparar', 'item:servir', 'cuenta:para_llevar'), idempotencia, async (req, res) => {
     res.json(await cambiarEstadoItem(req.params.itemId, req.body, req.usuario))
 })
 

@@ -12,6 +12,7 @@ import Producto from '../catalogo/producto.model.js'
 import Estacion, { umbralesDe, COLACION_NOMBRE } from '../catalogo/estacion.model.js'
 import { AppError } from '../compartido/errors.js'
 import { ESTADOS_CUENTA_ABIERTA } from '../compartido/estadosSalon.js'
+import { VENTANA_PARA_LLEVAR_MS } from '../salon/cuenta.model.js'
 import { estadoPorCodigo, registrarEvento } from '../compartido/estados.service.js'
 import { validarTransicion } from '../compartido/estados.js'
 import { conTransaccion } from '../compartido/transacciones.js'
@@ -81,7 +82,13 @@ const codigosDeProductos = async (productoIds, session) => {
 const tarjetasSalon = async (codigo, ahora, limite) => {
     // Primero las cuentas abiertas (pocas, con índice { estado, abiertaEn }): las rondas sin terminar de
     // una cuenta ya cerrada no deben ocupar el límite
-    const cuentas = await Cuenta.find({ estado: { $in: ESTADOS_CUENTA_ABIERTA } }).select('mesas mesero').lean()
+    // 6.3 (F6-3) · Y las para llevar cobradas hace poco (el cliente pagó y espera): su ronda sigue en cocina
+    const cuentas = await Cuenta.find({
+        $or: [
+            { estado: { $in: ESTADOS_CUENTA_ABIERTA } },
+            { canal: 'para_llevar', estado: 'cerrada', cerradaEn: { $gte: new Date(ahora.getTime() - VENTANA_PARA_LLEVAR_MS) } },
+        ],
+    }).select('canal paraLlevar mesas mesero').lean()
     const cuentaPorId = new Map(cuentas.map((c) => [String(c._id), c]))
     const ids = cuentas.map((c) => c._id)
     const [pendientes, recientes] = await Promise.all([
@@ -104,6 +111,8 @@ const tarjetasSalon = async (codigo, ahora, limite) => {
                 cuentaId: String(c.cuenta),
                 numeroRonda: c.numeroRonda,
                 mesas: (cuenta.mesas || []).map((m) => m.numero),
+                // 6.3 · «Para llevar · nombre» en la tarjeta (sin el teléfono)
+                paraLlevar: cuenta.canal === 'para_llevar' ? { nombre: cuenta.paraLlevar?.nombre || '' } : null,
                 mesero: nombreCorto(meseroPorId.get(String(cuenta.mesero))),
                 enviadaEn: c.enviadaEn,
                 items: c.items.filter((i) => i.estacion?.codigo === codigo && i.estado !== 'borrador').map(itemDeCola),

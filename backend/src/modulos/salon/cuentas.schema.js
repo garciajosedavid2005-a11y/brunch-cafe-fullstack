@@ -1,9 +1,9 @@
 import { z } from 'zod'
 import mongoose from 'mongoose'
-import { requerido, textoOpcional } from '../compartido/comunes.schema.js'
+import { requerido, textoOpcional, esTelefono } from '../compartido/comunes.schema.js'
 import { AppError, detallesZod } from '../compartido/errors.js'
 import { MOTIVOS_ANULACION } from '../compartido/estadosSalon.js'
-import { MAX_COMENSALES, MAX_MESAS_POR_CUENTA } from './cuenta.model.js'
+import { MAX_COMENSALES, MAX_MESAS_POR_CUENTA, MAX_NOMBRE_PARA_LLEVAR } from './cuenta.model.js'
 import { MAX_CANTIDAD } from './comanda.model.js'
 import { modificadoresEntradaSchema, MAX_NOTA_ITEM } from '../catalogo/modificadores.validacion.js'
 
@@ -30,6 +30,17 @@ export const abrirCuentaSchema = z.strictObject({
     // 1.5 · Otro responsable distinto de quien abre exige cuenta:transferir (F1-8)
     meseroId: id('El mesero').optional(),
 })
+
+// 6.3 (F6-3) · Cuenta para llevar: el nombre o el teléfono de quien recoge (al menos uno). El teléfono se guarda solo
+// con sus dígitos (7 a 15)
+export const abrirParaLlevarSchema = z.strictObject({
+    nombre: textoOpcional('El nombre', MAX_NOMBRE_PARA_LLEVAR),
+    telefono: z.string(requerido('El teléfono')).trim()
+        .refine((v) => v === '' || (esTelefono(v) && v.replace(/\D/g, '').length <= 15), { error: 'El teléfono debe tener entre 7 y 15 dígitos' })
+        .transform((v) => v.replace(/\D/g, ''))
+        .optional(),
+    notas: textoOpcional('Las notas', 300),
+}).refine((d) => Boolean(d.nombre) || Boolean(d.telefono), { error: 'Indica el nombre o el teléfono de quien recoge el pedido' })
 
 // 1.5 · Transferir, mover, unir y separar (F1-8, F1-9). La versión es opcional (como al agregar).
 export const transferirSchema = z.strictObject({ meseroId: id('El mesero'), motivo, versionEsperada: version(false) })

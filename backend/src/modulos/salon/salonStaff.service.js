@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 import Zona from './zona.model.js'
 import Mesa from './mesa.model.js'
-import Cuenta from './cuenta.model.js'
+import Cuenta, { VENTANA_PARA_LLEVAR_MS } from './cuenta.model.js'
 import Comanda from './comanda.model.js'
 import Evento from '../compartido/evento.model.js'
 import Usuario from '../identidad/usuario.model.js'
@@ -205,7 +205,7 @@ export const detalleCuenta = async (cuentaId, sesion) => {
  * (`disponible: false`, se muestran deshabilitados), con estación y grupos activos.
  */
 export const catalogoSalon = async (sesion) => {
-    exigirAlguno(sesion, ['comanda:tomar'])
+    exigirAlguno(sesion, ['comanda:tomar', 'cuenta:para_llevar']) // 6.3 · también quien solo toma para llevar
     const [productos, categorias] = await Promise.all([
         Producto.find().populate('categoria', 'nombre').sort({ codigo: 1, nombre: 1 }).lean(),
         Categoria.find().sort({ nombre: 1 }).select('nombre').lean(),
@@ -224,6 +224,51 @@ export const catalogoSalon = async (sesion) => {
             disponible: p.disponible !== false,
             ...extra(p),
         })),
+    }
+}
+
+// 6.3 (F6-3) · Lista «Para llevar»: las abiertas y las cobradas en las últimas horas que aún tienen algo por entregar
+export const MAX_PARA_LLEVAR = 100
+export const filtroParaLlevar = (ahora = new Date()) => ({
+    canal: 'para_llevar',
+    $or: [
+        { estado: { $in: ESTADOS_CUENTA_ABIERTA } },
+        { estado: 'cerrada', cerradaEn: { $gte: new Date(ahora.getTime() - VENTANA_PARA_LLEVAR_MS) } },
+    ],
+})
+
+/**
+ * 6.3 · GET /staff/salon/para-llevar (cuenta:para_llevar o cuenta:ver): cada cuenta para llevar con lo que falta
+ * (por preparar, listos para entregar y entregados). Dos consultas en lote. Una cobrada sale de la lista cuando
+ * se entregó todo; la abierta sigue hasta cobrarla y entregarla.
+ */
+export const listarParaLlevar = async (sesion, { ahora = new Date() } = {}) => {
+    exigirAlguno(sesion, ['cuenta:para_llevar', 'cuenta:ver'])
+    const cuentas = await Cuenta.find(filtroParaLlevar(ahora)).sort({ abiertaEn: 1 }).limit(MAX_PARA_LLEVAR)
+        .select('codigo estado paraLlevar total version abiertaEn cerradaEn mesero').lean()
+    const comandas = cuentas.length
+        ? await Comanda.find({ cuenta: { $in: cuentas.map((c) => c._id) }, estado: { $in: ['borrador', 'enviada'] } }).select('cuenta estado items.estado items.cantidad').lean()
+        : []
+    const conteo = new Map(cuentas.map((c) => [String(c._id), { enBorrador: 0, porPreparar: 0, listos: 0, entregados: 0 }]))
+    for (const comanda of comandas) {
+        const n = conteo.get(String(comanda.cuenta))
+        for (const item of comanda.items) {
+            if (item.estado === 'borrador') n.enBorrador += item.cantidad
+            else if (['enviado', 'en_preparacion'].includes(item.estado)) n.porPreparar += item.cantidad
+            else if (item.estado === 'listo') n.listos += item.cantidad
+            else if (item.estado === 'servido') n.entregados += item.cantidad
+        }
+    }
+    const personas = await personasPorId(cuentas.map((c) => c.mesero))
+    return {
+        cuentas: cuentas
+            .filter((c) => c.estado !== 'cerrada' || conteo.get(String(c._id)).porPreparar + conteo.get(String(c._id)).listos > 0)
+            .map((c) => ({
+                id: String(c._id), codigo: c.codigo, estado: c.estado, cobrada: c.estado === 'cerrada',
+                nombre: c.paraLlevar?.nombre || '', telefono: c.paraLlevar?.telefono || '',
+                total: c.total, version: c.version, abiertaEn: c.abiertaEn, responsable: persona(personas, c.mesero),
+                ...conteo.get(String(c._id)),
+            })),
     }
 }
 
@@ -255,16 +300,18 @@ const NOMBRE_ESTADO_CUENTA = { abierta: 'Abierta', cuenta_pedida: 'Cuenta pedida
 // una cuenta o un pedido viejo olvidado no debe esconder lo que está pasando ahora
 const cuentasDeSalon = async (ahora, limite) => {
     const cuentas = await Cuenta.find({ estado: { $in: ESTADOS_CUENTA_ABIERTA } }).sort({ abiertaEn: -1 })
-        .limit(limite).select('codigo estado mesero abiertaEn total pendiente comensales mesas.numero').lean()
+        .limit(limite).select('codigo canal paraLlevar.nombre estado mesero abiertaEn total pendiente comensales mesas.numero').lean()
     const meseros = await personasPorId(cuentas.map((c) => c.mesero))
     return cuentas.map((c) => {
         const numeros = c.mesas.map((m) => m.numero)
         return {
             id: String(c._id),
-            canal: 'salon',
+            canal: c.canal || 'salon', // 6.3 · salón o para llevar (sin mesa: el nombre de quien recoge)
             codigo: c.codigo,
             estado: { codigo: c.estado, nombre: NOMBRE_ESTADO_CUENTA[c.estado] || c.estado },
-            referencia: `${numeros.length > 1 ? 'Mesas' : 'Mesa'} ${numeros.join(', ')}`,
+            referencia: c.canal === 'para_llevar'
+                ? `Para llevar${c.paraLlevar?.nombre ? ` · ${c.paraLlevar.nombre}` : ''}`
+                : `${numeros.length > 1 ? 'Mesas' : 'Mesa'} ${numeros.join(', ')}`,
             cliente: '',
             responsable: persona(meseros, c.mesero),
             comensales: c.comensales,

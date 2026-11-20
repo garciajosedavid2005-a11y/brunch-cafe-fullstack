@@ -12,6 +12,8 @@ export const ESTADOS_ITEM = {
   servido: "Servido",
   anulado: "Anulado",
 };
+// 6.3 (F6-b) · En una cuenta para llevar, «servido» es «Entregado»
+export const ESTADOS_ITEM_PARA_LLEVAR = { ...ESTADOS_ITEM, listo: "Listo para entregar", servido: "Entregado" };
 export const ANULABLES = ["enviado", "en_preparacion", "listo"]; // D1: servido no
 
 // Catálogo de motivos de anulación (D1). Mismas claves que MOTIVOS_ANULACION del backend.

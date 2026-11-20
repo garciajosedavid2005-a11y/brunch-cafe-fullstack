@@ -94,7 +94,8 @@ export default function Comprobante({ comprobante, onVolver }) {
             <div><dt>Domicilio</dt><dd>{c.pedido}</dd></div>
           ) : (
             <>
-              <div><dt>{c.mesas.length > 1 ? "Mesas" : "Mesa"}</dt><dd>{c.mesas.join(" + ") || "—"}</dd></div>
+              {/* 6.3 · Una para llevar no tiene mesa */}
+              {c.mesas.length ? <div><dt>{c.mesas.length > 1 ? "Mesas" : "Mesa"}</dt><dd>{c.mesas.join(" + ")}</dd></div> : <div><dt>Origen</dt><dd>Para llevar</dd></div>}
               <div><dt>Mesero</dt><dd>{c.mesero || "—"}</dd></div>
             </>
           )}

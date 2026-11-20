@@ -6,14 +6,14 @@
 // cocina; tocar la cuenta igual serializa la operación con su cierre o una anulación.
 import mongoose from 'mongoose'
 import Comanda from '../salon/comanda.model.js'
-import Cuenta from '../salon/cuenta.model.js'
+import Cuenta, { VENTANA_PARA_LLEVAR_MS } from '../salon/cuenta.model.js'
 import { AppError } from '../compartido/errors.js'
 import { MAQUINA_ITEM, MAQUINA_CUENTA, ESTADOS_CUENTA_ABIERTA } from '../compartido/estadosSalon.js'
 import { registrarEvento } from '../compartido/estados.service.js'
 import { conTransaccion } from '../compartido/transacciones.js'
 import { resumenItem } from '../salon/cuentas.service.js'
 import { validar } from '../salon/cuentas.schema.js'
-import { COMODIN, tienePermiso } from '../identidad/permisos.js'
+import { COMODIN, tienePermiso, permisosEnCuenta } from '../identidad/permisos.js'
 import { cambioEstadoItemSchema, todoListoSchema, VENTANA_DESHACER_MS } from './cocina.schema.js'
 import { publicar } from '../tiempoReal/bus.js'
 import { exigirEstacion } from './estacionesRol.js'
@@ -31,10 +31,20 @@ const exigir = (sesion, clave) => {
     }
 }
 
-/** La cuenta sigue abierta o con la cuenta pedida: sube su versionCocina (si no, 409 o 404). */
+/**
+ * La cuenta sigue abierta o con la cuenta pedida: sube su versionCocina (si no, 409 o 404). 6.3 (F6-3) · Una para
+ * llevar ya cobrada también: el cliente pagó y espera; cocina sigue y se entrega lo listo.
+ */
 const tocarCuentaCocina = async (cuentaId, session) => {
     const cuenta = await Cuenta.findOneAndUpdate(
-        { _id: cuentaId, estado: { $in: ESTADOS_CUENTA_ABIERTA } },
+        {
+            _id: cuentaId,
+            $or: [
+                { estado: { $in: ESTADOS_CUENTA_ABIERTA } },
+                // La misma ventana que el KDS y la lista «Para llevar»: pasada, la cuenta ya no admite cambios
+                { canal: 'para_llevar', estado: 'cerrada', cerradaEn: { $gte: new Date(Date.now() - VENTANA_PARA_LLEVAR_MS) } },
+            ],
+        },
         { $inc: { versionCocina: 1 } },
         { returnDocument: 'after', session },
     )
@@ -94,8 +104,10 @@ const motivoDeshacer = (item, sesion, motivo, ahora) => {
  */
 export const cambiarEstadoItem = async (itemId, datos, sesion) => {
     const { a, de, motivo } = validar(cambioEstadoItemSchema, datos)
-    // Permiso del destino antes de leer nada: sin él no se sabe ni el estado del ítem
-    exigir(sesion, PERMISO_DESTINO[a])
+    // Permiso del destino antes de leer nada: sin él no se sabe ni el estado del ítem. 6.3 · Entregar lo de una cuenta
+    // para llevar también con cuenta:para_llevar (se comprueba con la cuenta, más abajo)
+    const entregaParaLlevar = a === 'servido' && !tienePermiso(permisosDe(sesion), 'item:servir') && tienePermiso(permisosDe(sesion), 'cuenta:para_llevar')
+    if (!entregaParaLlevar) exigir(sesion, PERMISO_DESTINO[a])
     const esDeshacer = de === 'listo' && a === 'en_preparacion'
     if (motivo && !esDeshacer) throw new AppError(400, 'MOTIVO_NO_APLICA', 'El motivo solo se indica al deshacer «listo».')
     if (!mongoose.isValidObjectId(itemId)) throw itemNoEncontrado()
@@ -108,12 +120,19 @@ export const cambiarEstadoItem = async (itemId, datos, sesion) => {
         // 2.5b · Preparar (empezar, listo y deshacer) solo en las estaciones del rol; servir no depende de la estación
         // (Distinguir 404 de 403 aquí solo dice si existe un ítem, a quien ya es personal de cocina: aceptado)
         if (PERMISO_DESTINO[a] === 'item:preparar') exigirEstacion(sesion, item.estacion?.codigo, { revelar: false })
+        // 6.3 · Quien entrega solo con cuenta:para_llevar: el 403 antes del 409 que revelaría el estado de un ítem del salón
+        if (entregaParaLlevar) {
+            const deLaCuenta = await Cuenta.findById(comanda.cuenta).select('canal').session(session).lean()
+            if (deLaCuenta?.canal !== 'para_llevar') exigir(sesion, 'item:servir')
+        }
         if (item.estado !== de) {
             throw new AppError(409, 'ITEM_MODIFICADO', 'Otra persona ya cambió este ítem: recarga la pantalla.', { estado: item.estado })
         }
         const actual = item.estado
-        MAQUINA_ITEM.validar(actual, a, { permisos: permisosDe(sesion) })
         const cuenta = await tocarCuentaCocina(comanda.cuenta, session)
+        const permisos = permisosEnCuenta(permisosDe(sesion), cuenta.canal)
+        if (entregaParaLlevar && !tienePermiso(permisos, 'item:servir')) exigir(sesion, 'item:servir')
+        MAQUINA_ITEM.validar(actual, a, { permisos })
         const ahora = new Date()
         let texto = ''
         if (actual === 'listo' && a === 'en_preparacion') {
@@ -129,6 +148,7 @@ export const cambiarEstadoItem = async (itemId, datos, sesion) => {
         aviso = {
             // 2.6 · El mesero se entera de lo que queda listo, se sirve o se deshace (su aviso en /staff)
             canales: [item.estacion?.codigo && `estacion:${item.estacion.codigo}`, `cuenta:${cuenta._id}`, 'plano',
+                ...(cuenta.canal === 'para_llevar' ? ['para_llevar'] : []),
                 ...(a === 'listo' || actual === 'listo' ? [`mesero:${cuenta.mesero}`] : [])],
             tipo: 'item_estado', ids: { cuentaId: String(cuenta._id), comandaId: String(comanda._id), itemId: String(item._id) },
         }
@@ -170,7 +190,7 @@ export const todoListo = async (comandaId, datos, sesion) => {
         await comanda.save({ session })
         for (const { foto, de, a } of pasos) await eventoItem(cuenta, comanda, foto, { de, a, sesion, session })
         aviso = {
-            canales: [`estacion:${estacion}`, `cuenta:${cuenta._id}`, 'plano', `mesero:${cuenta.mesero}`],
+            canales: [`estacion:${estacion}`, `cuenta:${cuenta._id}`, 'plano', `mesero:${cuenta.mesero}`, ...(cuenta.canal === 'para_llevar' ? ['para_llevar'] : [])],
             tipo: 'ronda_lista', ids: { cuentaId: String(cuenta._id), comandaId: String(comanda._id) },
         }
         return { items: pendientes.map(formatoItem), cuenta: resumenCuenta(cuenta) }

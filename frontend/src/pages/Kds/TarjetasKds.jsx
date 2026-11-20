@@ -87,7 +87,8 @@ function ItemKds({ item, ahora, usuarioId, puedePreparar, ocupado, onMarcar }) {
 }
 
 export function TarjetaRonda({ ronda, minutos, nivel, ahora, usuarioId, puedePreparar, ocupado, onMarcarItem, onTodoListo }) {
-  const titulo = textoMesas(ronda.mesas);
+  // 6.3 · Una cuenta para llevar no tiene mesa: «Para llevar · nombre»
+  const titulo = ronda.paraLlevar ? `Para llevar${ronda.paraLlevar.nombre ? ` · ${ronda.paraLlevar.nombre}` : ""}` : textoMesas(ronda.mesas);
   const anulados = ronda.items.filter((i) => i.estado === "anulado").length;
   const pendientes = ronda.items.filter((i) => ["enviado", "en_preparacion"].includes(i.estado)).length;
   return (

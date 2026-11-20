@@ -171,3 +171,29 @@ describe("Casos de Brayan (2.6b)", () => {
     expect(screen.getByText("Listo para servir (1)")).toBeInTheDocument();
   });
 });
+
+// 6.3 (F6-b) · En una cuenta para llevar, servir es «Entregar»: el ítem servido dice «Entregado» y el listo «Listo para
+// entregar». El cajero (solo cuenta:para_llevar) entrega lo listo aunque la cuenta ya esté cobrada
+describe("Para llevar (6.3)", () => {
+  const PARA_LLEVAR = () => CUENTA({ canal: "para_llevar", mesas: [], comensales: 1, estado: "cerrada", paraLlevar: { nombre: "Ana", telefono: "3001234567" } });
+
+  it("insignias «Entregado» y «Listo para entregar», botón «Entregar» y el aviso de cobrada", async () => {
+    respuestas.cuenta = PARA_LLEVAR();
+    render(<DialogoProvider><TomaComanda cuentaId="c1" permisos={["cuenta:cobrar", "cuenta:para_llevar"]} onVolver={vi.fn()} textoVolver="Volver a Para llevar" /></DialogoProvider>);
+    await screen.findByRole("heading", { name: "Para llevar · Ana" });
+    const enviadas = screen.getByRole("region", { name: "Rondas enviadas" });
+    expect(within(enviadas).getByText("Latte").closest("li")).toHaveTextContent("Listo para entregar");
+    expect(within(enviadas).getByText("Tostada").closest("li")).toHaveTextContent("Entregado");
+    expect(within(enviadas).getByText("Tostada").closest("li")).not.toHaveTextContent("Servido");
+    expect(screen.getByText("Listo para entregar (2)")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^Entregar/ })).toHaveLength(2);
+    expect(screen.getByText("Cuenta cobrada: solo queda entregar lo que esté listo.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Volver a Para llevar" })).toBeInTheDocument();
+  });
+
+  it("el mismo cajero no ve «Servir» en una cuenta del salón", async () => {
+    render(<DialogoProvider><TomaComanda cuentaId="c1" permisos={["cuenta:cobrar", "cuenta:para_llevar"]} onVolver={vi.fn()} /></DialogoProvider>);
+    await screen.findByRole("heading", { name: /Mesa 1/ });
+    expect(screen.queryByRole("button", { name: /^(Servir|Entregar)/ })).not.toBeInTheDocument();
+  });
+});

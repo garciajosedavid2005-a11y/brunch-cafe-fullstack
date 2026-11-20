@@ -1,0 +1,192 @@
+/* 6.3 · Pestaña «Para llevar» de /staff. Misma paleta y medidas que la caja: táctiles ≥ 44 px, textos ≥ 4,5:1
+   (bordó #890620 sobre blanco ~10:1, #594742 sobre blanco ~8:1) y estados con texto, no solo color. */
+.para-llevar {
+  display: grid;
+  gap: 0.85rem;
+  color: var(--color-oscuro);
+}
+
+.para-llevar__barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.para-llevar__titulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-family: var(--fuente-titulos), serif;
+  font-size: 1.9rem;
+}
+
+.para-llevar__titulo svg { flex: none; color: #890620; }
+
+.para-llevar__subtitulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.2rem 0 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.para-llevar__conteo {
+  min-width: 1.6rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: #fbe9ec;
+  color: #890620;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.para-llevar__vacio,
+.para-llevar__ayuda { margin: 0; color: #594742; }
+
+.para-llevar__aviso {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border-left: 4px solid #890620;
+  border-radius: 8px;
+  background: #fbe9ec;
+  color: #5e0416;
+  font-weight: 600;
+}
+
+/* Formulario de una cuenta nueva */
+.para-llevar__nueva {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem;
+  border: 2px solid #ead7d2;
+  border-radius: 14px;
+  background: #fffdfa;
+}
+
+.para-llevar__campos {
+  display: grid;
+  /* Nombre y teléfono comparten fila; el botón va al lado con su ancho natural, o debajo en pantallas angostas */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.para-llevar__campo { display: grid; gap: 0.25rem; font-weight: 600; }
+
+.para-llevar__campo input {
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid #c9b2ac;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--color-oscuro);
+  font: inherit;
+}
+
+.para-llevar__campo input:focus-visible { outline: 3px solid var(--color-oscuro); outline-offset: 2px; }
+
+.para-llevar__boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.55rem 1rem;
+  border: 2px solid #890620;
+  border-radius: 12px;
+  background: #fff;
+  color: #890620;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.para-llevar__boton svg { flex: none; }
+.para-llevar__boton:focus-visible { outline: 3px solid var(--color-oscuro); outline-offset: 2px; }
+.para-llevar__boton--primario { background: #890620; color: #fff; }
+.para-llevar__boton--primario:hover:not(:disabled) { background: #6e0519; }
+.para-llevar__boton:disabled { border-style: dashed; border-color: #8a6f69; background: #efe4e1; color: #4a3a36; cursor: not-allowed; }
+
+/* Lista en curso: cada tarjeta es un botón que abre la cuenta */
+.para-llevar__lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.para-llevar__tarjeta {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.85rem 1rem;
+  border: 2px solid #ead7d2;
+  border-left: 6px solid #4f5b2a;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 4px 14px #2c07030d;
+  color: var(--color-oscuro);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.para-llevar__tarjeta:hover { background: #fffaf7; }
+.para-llevar__tarjeta:focus-visible { outline: 3px solid var(--color-oscuro); outline-offset: 2px; }
+.para-llevar__tarjeta.is-listo { border-color: #e7c27d; border-left-color: #7a4100; background: #fffaf0; }
+
+.para-llevar__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.para-llevar__nombre { min-width: 0; font-size: 1.2rem; overflow-wrap: anywhere; }
+
+.para-llevar__estado {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #eaeedc;
+  color: #3b4420;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.para-llevar__estado--cuenta_pedida { background: #fdf3dc; color: #5c3d00; }
+.para-llevar__estado--cobrada { background: #e3efe6; color: #1f5130; }
+
+.para-llevar__detalle { color: #594742; font-size: 0.92rem; }
+
+.para-llevar__conteos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  color: #594742;
+  font-size: 0.92rem;
+}
+
+.para-llevar__conteos span { display: inline-flex; align-items: center; gap: 0.3rem; }
+.para-llevar__conteos svg { flex: none; }
+.para-llevar__listos { color: #7a4100; font-weight: 700; }
+.para-llevar__total { font-size: 1.15rem; }
+
+/* 6.3 · El botón no se parte; bajo 900 px ocupa su propia fila */
+.para-llevar__campos .para-llevar__boton { white-space: nowrap; }
+
+@media (max-width: 900px) {
+  .para-llevar__campos { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .para-llevar__campos .para-llevar__boton { grid-column: 1 / -1; }
+}
+
+@media (max-width: 480px) {
+  .para-llevar__campos { grid-template-columns: minmax(0, 1fr); }
+}

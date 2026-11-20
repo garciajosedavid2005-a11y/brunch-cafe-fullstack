@@ -1,5 +1,5 @@
 import { createElement, useState } from "react";
-import { Bike, Clock3, UtensilsCrossed } from "lucide-react";
+import { Bike, Clock3, ShoppingBag, UtensilsCrossed } from "lucide-react";
 import { formatearCOP } from "../../../utils/moneda";
 import { incluyePermiso } from "../../../utils/permisos";
 import { formatearMinutos } from "../plano/estadosMesa";
@@ -17,14 +17,15 @@ const RUTA = "/v1/staff/cuentas-abiertas";
 const CANALES = {
   salon: { etiqueta: "Salón", icono: UtensilsCrossed },
   domicilio: { etiqueta: "Domicilio", icono: Bike },
+  para_llevar: { etiqueta: "Para llevar", icono: ShoppingBag }, // 6.3
 };
 
 const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
 
 function TarjetaCuenta({ cuenta }) {
   const { etiqueta, icono } = CANALES[cuenta.canal] || { etiqueta: cuenta.canal, icono: Clock3 };
-  const detalle = cuenta.canal === "salon"
-    ? [cuenta.responsable?.nombre, cuenta.comensales ? plural(cuenta.comensales, "comensal", "comensales") : ""]
+  const detalle = cuenta.canal !== "domicilio"
+    ? [cuenta.responsable?.nombre, cuenta.canal === "salon" && cuenta.comensales ? plural(cuenta.comensales, "comensal", "comensales") : ""]
     : [cuenta.cliente, cuenta.hora ? `Entrega ${cuenta.hora}` : ""];
   return (
     <li className={`cuentas__tarjeta cuentas__tarjeta--${cuenta.canal}`}>
@@ -68,7 +69,10 @@ export default function CuentasAbiertas({ permisos = [] }) {
   const ambos = canales.salon && canales.domicilio;
   const visibles = canal === "todas" ? cuentas : cuentas.filter((c) => c.canal === canal);
   const cuantas = (c) => cuentas.filter((x) => x.canal === c).length;
-  const filtros = [["todas", "Todas", cuentas.length], ["salon", "Salón", cuantas("salon")], ["domicilio", "Domicilio", cuantas("domicilio")]];
+  const filtros = [["todas", "Todas", cuentas.length], ["salon", "Salón", cuantas("salon")],
+    // 6.3 · Para llevar (cuentas sin mesa) solo si hay alguna
+    ...(cuantas("para_llevar") ? [["para_llevar", "Para llevar", cuantas("para_llevar")]] : []),
+    ["domicilio", "Domicilio", cuantas("domicilio")]];
 
   return (
     <div className="cuentas">
@@ -77,7 +81,7 @@ export default function CuentasAbiertas({ permisos = [] }) {
         <Actualizado desde={actualizadoEn} error={error} onActualizar={recargar} enVivo={canalesVivo ? enVivo : undefined} />
       </div>
       <p className="cuentas__ayuda">
-        Salón y domicilios en curso, de la más antigua a la más nueva. Solo lectura: cada cuenta se atiende desde Mesas o Pedidos.
+        Salón, para llevar y domicilios en curso, de la más antigua a la más nueva. Solo lectura: cada cuenta se atiende desde Mesas, Para llevar o Pedidos.
       </p>
 
       {datos && ambos && (
@@ -90,7 +94,7 @@ export default function CuentasAbiertas({ permisos = [] }) {
         </div>
       )}
       {datos && !ambos && (
-        <p className="cuentas__ayuda">{canales.salon ? "Tu rol solo ve las cuentas de salón." : "Tu rol solo ve los domicilios."}</p>
+        <p className="cuentas__ayuda">{canales.salon ? "Tu rol solo ve las cuentas de salón y para llevar." : "Tu rol solo ve los domicilios."}</p>
       )}
       {datos?.truncado && (
         <p className="cuentas__aviso" role="status">Hay demasiadas cuentas abiertas: se muestran las 200 más antiguas de cada canal.</p>

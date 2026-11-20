@@ -25,12 +25,13 @@ const ok = (operacion) => responder(200, operacion)
 // 2.6 · También el mesero de la cuenta (su aviso «Listo para servir» cambia al anular, cancelar, cerrar o
 // transferir) y, en la transferencia, el anterior (`extra`).
 // Fase 3 · También la caja (sus cuentas por cobrar cambian al pedir, reabrir, cerrar o cobrar la cuenta)
+// 6.3 · Y la lista «Para llevar» (canal `para_llevar`)
 export const avisarSalon = (resultado, extra = []) => {
     const cuentaId = resultado?.id && Array.isArray(resultado?.rondas) ? String(resultado.id) : null
     const estaciones = (resultado?.rondas || []).filter((r) => r.estado === 'enviada')
         .flatMap((r) => r.items || []).map((i) => i.estacion?.codigo).filter(Boolean)
     const mesero = cuentaId && resultado.mesero ? `mesero:${resultado.mesero}` : null
-    publicar(['plano', 'caja', cuentaId && `cuenta:${cuentaId}`, mesero, ...extra, ...estaciones.map((c) => `estacion:${c}`)],
+    publicar(['plano', 'caja', 'para_llevar', cuentaId && `cuenta:${cuentaId}`, mesero, ...extra, ...estaciones.map((c) => `estacion:${c}`)],
         { tipo: 'salon_cambio', ids: cuentaId ? { cuentaId } : {} })
 }
 const cambio = (status, operacion, canalesPrevios) => async (req, res) => {
@@ -48,9 +49,14 @@ const meseroAnterior = async (req) => {
 
 // Lecturas
 router.get('/mesas', requirePermission('mesa:ver'), ok((req) => lecturas.obtenerPlano({ zona: req.query.zona }, req.usuario)))
-router.get('/catalogo', requirePermission('comanda:tomar'), ok((req) => lecturas.catalogoSalon(req.usuario)))
+router.get('/catalogo', requirePermission('comanda:tomar', 'cuenta:para_llevar'), ok((req) => lecturas.catalogoSalon(req.usuario)))
 router.get('/meseros', requirePermission('cuenta:transferir', 'cuenta:abrir'), ok((req) => lecturas.listarMeseros(req.usuario)))
-router.get('/cuentas/:id', requirePermission('cuenta:ver'), ok((req) => lecturas.detalleCuenta(req.params.id, req.usuario)))
+router.get('/cuentas/:id', requirePermission('cuenta:ver', 'cuenta:para_llevar'), ok((req) => lecturas.detalleCuenta(req.params.id, req.usuario)))
+
+// 6.3 (F6-3) · Para llevar: la lista y abrir una (el servicio pide el nombre o el teléfono). En las rutas de ítems,
+// rondas, pedir la cuenta y cancelar, `cuenta:para_llevar` también entra: el servicio solo lo acepta en una para llevar
+router.get('/para-llevar', requirePermission('cuenta:para_llevar', 'cuenta:ver'), ok((req) => lecturas.listarParaLlevar(req.usuario)))
+router.post('/para-llevar', requirePermission('cuenta:para_llevar'), idempotencia, cambio(201, (req) => cuentas.abrirParaLlevar(req.body, req.usuario)))
 
 // Mesas
 router.post('/mesas/unir', requirePermission('mesa:unir'), cambio(200, (req) => cuentas.unirMesas(req.body, req.usuario)))
@@ -63,20 +69,20 @@ router.post('/mesas/:id/estado', requirePermission('mesa:operar', 'mesa:bloquear
     cambio(200, (req) => cuentas.cambiarEstadoMesa(req.params.id, req.body, req.usuario)))
 
 // Ítems de la ronda en borrador y anulación de enviados
-router.post('/cuentas/:id/items', requirePermission('comanda:tomar'), idempotencia,
+router.post('/cuentas/:id/items', requirePermission('comanda:tomar', 'cuenta:para_llevar'), idempotencia,
     cambio(201, (req) => cuentas.agregarItem(req.params.id, req.body, req.usuario)))
-router.patch('/cuentas/:id/items/:itemId', requirePermission('comanda:tomar'),
+router.patch('/cuentas/:id/items/:itemId', requirePermission('comanda:tomar', 'cuenta:para_llevar'),
     cambio(200, (req) => cuentas.modificarItem(req.params.id, req.params.itemId, req.body, req.usuario)))
-router.delete('/cuentas/:id/items/:itemId', requirePermission('comanda:tomar'),
+router.delete('/cuentas/:id/items/:itemId', requirePermission('comanda:tomar', 'cuenta:para_llevar'),
     cambio(200, (req) => cuentas.quitarItem(req.params.id, req.params.itemId, req.body, req.usuario)))
 router.post('/cuentas/:id/items/:itemId/anular', requirePermission('item:anular'),
     cambio(200, (req) => cuentas.anularItem(req.params.id, req.params.itemId, req.body, req.usuario)))
 
 // Rondas y cuenta
-router.post('/cuentas/:id/rondas/:n/enviar', requirePermission('comanda:enviar'), idempotencia,
+router.post('/cuentas/:id/rondas/:n/enviar', requirePermission('comanda:enviar', 'cuenta:para_llevar'), idempotencia,
     cambio(200, (req) => cuentas.enviarRonda(req.params.id, { ...req.body, numeroRonda: Number(req.params.n) }, req.usuario)))
-router.post('/cuentas/:id/solicitar', requirePermission('cuenta:solicitar'), cambio(200, (req) => cuentas.solicitarCuenta(req.params.id, req.body, req.usuario)))
-router.post('/cuentas/:id/cancelar', requirePermission('cuenta:abrir'), cambio(200, (req) => cuentas.cancelarCuenta(req.params.id, req.body, req.usuario)))
+router.post('/cuentas/:id/solicitar', requirePermission('cuenta:solicitar', 'cuenta:para_llevar'), cambio(200, (req) => cuentas.solicitarCuenta(req.params.id, req.body, req.usuario)))
+router.post('/cuentas/:id/cancelar', requirePermission('cuenta:abrir', 'cuenta:para_llevar'), cambio(200, (req) => cuentas.cancelarCuenta(req.params.id, req.body, req.usuario)))
 router.post('/cuentas/:id/transferir', requirePermission('cuenta:transferir'), cambio(200, (req) => cuentas.transferirCuenta(req.params.id, req.body, req.usuario), meseroAnterior))
 router.post('/cuentas/:id/cerrar-sin-cobro', requirePermission('cuenta:cerrar_sin_cobro'),
     cambio(200, (req) => cuentas.cerrarSinCobro(req.params.id, req.body, req.usuario)))

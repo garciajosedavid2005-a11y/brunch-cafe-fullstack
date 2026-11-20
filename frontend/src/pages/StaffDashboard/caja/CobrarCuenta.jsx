@@ -3,14 +3,14 @@ import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { apiRequest } from "../../../services/api";
 import { formatearCOP } from "../../../utils/moneda";
 import { nuevaClave } from "../plano/estadosMesa";
-import { METODOS, cuerpoCobro, estadoPagos, montoParte, propinaSugerida } from "./cobro";
+import { METODOS, cuerpoCobro, estadoPagos, montoParte, origenCuenta, propinaSugerida } from "./cobro";
 import CampoPesos from "./CampoPesos";
 import DivisionCuenta from "./DivisionCuenta";
 
 // Fase 3 · Cobrar una cuenta (F3-2, F3-3): propina voluntaria (atajos «10 %» y «Sin propina»), uno o varios
 // pagos (uno por método) y, en efectivo, lo recibido y el cambio. «Cobrar» solo se habilita cuando los pagos
 // suman exactamente lo que hay que cobrar. La Idempotency-Key se reutiliza solo si no llegó respuesta.
-const mesasTexto = (mesas = []) => (mesas.length > 1 ? `Mesas ${mesas.join(" + ")}` : `Mesa ${mesas[0]}`);
+
 
 /** Qué le falta al pago para poder cobrar (o que ya cuadra, con el cambio si hay). */
 const textoEstado = ({ restante, valido, cambio }) => {
@@ -121,7 +121,7 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
           <ArrowLeft size={18} aria-hidden="true" /> Volver a la caja
         </button>
       </div>
-      <h2 id={`${id}-titulo`} className="caja__titulo">Cobrar · {esDomicilio ? `Domicilio ${cuenta.codigo}` : mesasTexto(cuenta.mesas)}</h2>
+      <h2 id={`${id}-titulo`} className="caja__titulo">Cobrar · {esDomicilio ? `Domicilio ${cuenta.codigo}` : origenCuenta(cuenta)}</h2>
       <p className="caja-cobro__sub">
         {esDomicilio ? [cuenta.cliente, cuenta.direccion].filter(Boolean).join(" · ") : `${cuenta.codigo}${cuenta.mesero ? ` · ${cuenta.mesero}` : ""}`}
       </p>
