@@ -23,6 +23,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./context/useAuth";
 import { CarritoProvider } from "./context/CarritoContext";
 import { DialogoProvider } from "./context/DialogoContext";
+import { AvisoCarritoProvider } from "./components/AgregarAlCarrito/AvisoCarrito";
 import { esAdministrador, esPersonal, puedeEntrarAKds, puedeEntrarAStaff, rutaInicio, tienePermiso } from "./utils/permisos";
 
 import "./styles/index.css";
@@ -171,9 +172,11 @@ function App() {
       <DialogoProvider>
         <AuthProvider>
           <CarritoProvider>
-            <PortadaProvider>
-              <AppRoutes />
-            </PortadaProvider>
+            <AvisoCarritoProvider>
+              <PortadaProvider>
+                <AppRoutes />
+              </PortadaProvider>
+            </AvisoCarritoProvider>
           </CarritoProvider>
         </AuthProvider>
       </DialogoProvider>

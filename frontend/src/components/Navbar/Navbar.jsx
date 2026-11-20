@@ -70,11 +70,16 @@ const NavbarContent = () => {
                 type="button"
                 className={`navbar__hamburger ${menuAbierto ? "navbar__hamburger--activo" : ""}`}
                 onClick={() => setMenuAbierto(!menuAbierto)}
-                aria-label="Abrir menú de navegación"
+                aria-label={!personal && totalProductos > 0 ? `Abrir menú de navegación (${totalProductos} en el carrito)` : "Abrir menú de navegación"}
+                data-carrito-destino="menu"
             >
                 <span></span>
                 <span></span>
                 <span></span>
+                {/* 7.1 · En el celular el carrito queda dentro del menú: su contador se ve en la hamburguesa */}
+                {!personal && !menuAbierto && totalProductos > 0 && (
+                    <span className="navbar__hamburger-badge" aria-hidden="true">{totalProductos}</span>
+                )}
             </button>
 
             {/* 2. LOGO (Se renderiza SOLO si el menú está cerrado) */}
@@ -138,10 +143,8 @@ const NavbarContent = () => {
                             {!personal && (
                             <li className="menu__item-carrito">
                                 <NavLink className="access" to="/domicilios">
-                                    <div
-                                        key={totalProductos}
-                                        className={`navbar__carrito ${totalProductos > 0 ? "navbar__carrito--animando" : ""}`}
-                                    >
+                                    {/* 7.1 · Destino del vuelo; el rebote lo hace animacionCarrito.js al llegar */}
+                                    <div className="navbar__carrito" data-carrito-destino="icono">
                                         <img
                                             src={compras}
                                             alt="Carrito de compras"

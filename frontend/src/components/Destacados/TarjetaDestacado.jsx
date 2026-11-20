@@ -1,3 +1,4 @@
+import { Check } from "lucide-react";
 /**
  * TarjetaDestacado.jsx
  * Subcomponente — muestra un producto destacado individual.
@@ -39,14 +40,14 @@ const TarjetaDestacado = ({
   } = producto;
 
   // 1.12 · Con opciones abre el diálogo; sin ellas agrega directo
-  const { agregar: handleAgregar, dialogo } = useAgregarAlCarrito(producto);
+  const { agregar: handleAgregar, dialogo, agregado } = useAgregarAlCarrito(producto);
 
   return (
     <article className="tarjeta-destacado">
 
       {/* Imagen */}
 
-      <div className="tarjeta-destacado__imagen-wrap">
+      <div className="tarjeta-destacado__imagen-wrap" data-vuelo-origen>
 
         {imagen ? (
           <img
@@ -69,7 +70,8 @@ const TarjetaDestacado = ({
               className="tarjeta-destacado__overlay-boton"
               onClick={handleAgregar}
             >
-              Agregar al carrito
+              {/* 7.1 · «✓ Agregado» durante 1,5 s (el ícono no se lee: el aviso ya lo anuncia) */}
+              {agregado ? <><Check size={16} strokeWidth={2.5} aria-hidden="true" className="boton-agregado__icono" /> Agregado</> : "Agregar al carrito"}
             </button>
           </div>
         </div>

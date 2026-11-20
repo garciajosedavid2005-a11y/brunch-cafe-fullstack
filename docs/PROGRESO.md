@@ -4,6 +4,26 @@
 
 Fases 0 a 6 hechas, Fase 6 aprobada por Brayan el 2026-11-20 y cierre final (C.1 a C.7) hecho: README de la raíz y del backend, [manual de usuario](MANUAL_USUARIO.md), [guía de la demo](GUIA_DEMO.md), `seed:demo` con los datos de las Fases 3b a 6 y [texto del PR final](PR_FINAL.md). Verificación al cerrar: backend 1255 tests (115 archivos), frontend 652 (113 archivos), lint, build y humo en verde. Brayan aprobó el proyecto el 2026-11-20 y confirmó en bloque todas las decisiones «a confirmar»; la limpieza final (L.1 a L.5) cerró la política de datos, el motivo de la corrección de la fecha, Node 22 en CLAUDE.md y las tablas de Reportes. Quedan solo los pendientes menores listados en «Cierre final del proyecto». Fuera de alcance (trabajo futuro): despliegue, inicio de sesión con Google, DIAN, plano C, PIN en tablets, impresora térmica y escalado a varios servidores.
 
+## Ítem 7.1 — Mejoras tras las pruebas (pedido por Brayan el 2026-11-20)
+
+Un commit por punto, con la verificación completa en verde antes de cada uno. Orden: 7.1.1 → 7.1.3.
+
+| ID | Punto | Estado inicial | Estado actual | Commit | Notas |
+|---|---|---|---|---|---|
+| 7.1.1 | Animación al agregar al carrito | FALTA (solo el rebote del contador con un `key` de React; sin aviso) | HECHO (sin backend ni dependencias) | este commit | `useAgregarAlCarrito` (menú y destacados): al agregar directo o al CONFIRMAR el diálogo de opciones, la miniatura de la tarjeta vuela con la API Web Animations (`animacionCarrito.js`) al ícono del carrito; si no está a la vista, a la hamburguesa (celular, carrito dentro del menú) o, si el navbar quedó arriba, al «Ver carrito» del aviso; al llegar, rebote del destino. El botón dice «✓ Agregado» 1,5 s (ícono `Check` con `aria-hidden`). Aviso nuevo `AvisoCarritoProvider` (en `App.jsx`): «Nombre agregado al carrito» con «Ver carrito» (→ /domicilios) y «×», 5 s (pausa con el ratón o el foco encima), en una región `aria-live="polite"` siempre montada (sin `role="status"`: cada página tiene el suyo). Con `prefers-reduced-motion`: sin vuelo, sin rebote ni entrada animada; solo el aviso. Contador nuevo sobre la hamburguesa (≤ 768 px, menú cerrado, no para el personal) y la etiqueta «Abrir menú de navegación (N en el carrito)»; los contadores pasan a `--color-primario`. Tests: `AvisoCarrito.test.jsx` (6: aviso en la región viva y su cierre, «✓ Agregado», vuelo y movimiento reducido, rebote al terminar, destino de respaldo y diálogo) y `Navbar.test.jsx` (+2, visto fallar sin el cambio). Capturas `7-1-carrito` (vuelo, opciones, contador y movimiento reducido a 1280 y 390×844; 0 medidas de contraste bajo el mínimo). |
+| 7.1.2 | Quién mueve cada estado del domicilio | — | — | — | — |
+| 7.1.3 | Manual y guía de la demo | — | — | — | — |
+
+### Decisiones de 7.1
+
+- 2026-11-20 · 7.1.1 · El rebote del contador ya no se dispara en cada cambio de cantidad (antes, un `key` de React lo repetía también desde la página del carrito): ahora lo hace `animacionCarrito.js` cuando llega el vuelo, y no hay rebote con movimiento reducido · Claude (a confirmar por Brayan)
+- 2026-11-20 · 7.1.1 · Contador del carrito sobre la hamburguesa en el celular (el carrito va dentro del menú) y destino del vuelo; si el carrito no está a la vista, la miniatura vuela al «Ver carrito» del aviso · Claude (a confirmar por Brayan)
+- 2026-11-20 · 7.1.1 · El aviso dura 5 s y se pausa con el ratón o el foco encima; uno nuevo reemplaza al anterior · Claude (a confirmar por Brayan)
+
+### Pendientes de 7.1
+
+- **7.1.1 (revisores, menores):** a ≤ 768 px el navbar no se queda fijo al bajar (`html` y `body` con `overflow-x: hidden` anulan el `position: sticky`; preexistente, afecta a todo el sitio público): por eso allí el vuelo va al aviso; arreglarlo (p. ej. `overflow-x: clip`) es un cambio global a revisar con capturas. Si alguien del personal abre /menu y agrega, también ve el aviso (el navbar no le muestra carrito). En el celular el aviso tapa ~100 px durante 5 s (se cierra con «×»).
+
 ## Fase anterior: 6 — Domicilio y fidelización (antes: 5, inventario y reportes). Brayan reabrió el proyecto el 2026-11-14: siguen la Fase 3b (caja completa), 4 (reservas en el salón), 5 (inventario y reportes), 6 (domicilio y fidelización) y el cierre final; fuera de alcance: despliegue e inicio de sesión con Google
 
 **Fase 4 — Reservas conectadas al salón: aprobada por Brayan el 2026-11-15; correcciones y pendientes del ítem 4.6 hechos (4.6.1 a 4.6.5)** (plan en [PLAN_FASE_4.md](PLAN_FASE_4.md)).

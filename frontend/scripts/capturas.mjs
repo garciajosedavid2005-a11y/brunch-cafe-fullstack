@@ -50,6 +50,20 @@ const dejarInsumoNegativo = async (p, nombre) => {
   const res = await api.post(`${API}/inventario/movimientos`, { data: { insumoId: insumo.id, tipo: "ajuste", cantidad: -(insumo.existencia + 500), motivo: "conteo de capturas" } });
   if (!res.ok()) throw new Error(`Ajuste negativo: ${res.status()} ${(await res.text()).slice(0, 200)}`);
 };
+// 7.1 · Menú con la primera tarjeta sin opciones a la vista (debajo del navbar)
+const irAlMenu = async (p) => {
+  await p.goto(`${FRONT}/menu`);
+  await p.waitForLoadState("networkidle");
+};
+const agregarYMirar = async (p, { esperaMs }) => {
+  const catalogo = await (await p.context().request.get(`${API}/catalogo?incluir=modificadores`)).json();
+  const [uno] = catalogo.productos.filter((pr) => pr.disponible !== false && !pr.modificadores?.length);
+  const tarjeta = p.locator(`#producto-${uno.codigo}`);
+  await tarjeta.scrollIntoViewIfNeeded();
+  await tarjeta.hover(); // el botón de la tarjeta se ve con el puntero encima
+  await tarjeta.getByRole("button", { name: "Agregar al carrito" }).click({ force: true });
+  await p.waitForTimeout(esperaMs);
+};
 // Cada tamaño es un ancho (alto 900, página completa) o ANCHOxALTO (1.6: pantalla de tablet, solo lo visible)
 const TAMANOS = (process.env.ANCHOS || "1280,1024,768").split(",").map((t) => {
   const [ancho, alto] = t.toLowerCase().split("x").map(Number);
@@ -969,6 +983,25 @@ const VISTAS = {
       await p.waitForLoadState("networkidle");
     },
   },
+  // 7.1 · Agregar al carrito: la miniatura a mitad de vuelo hacia el carrito (o la hamburguesa a 390), el
+  // botón «✓ Agregado» y el aviso con «Ver carrito». La foto sale ~300 ms después del clic
+  // (la pausa fija tras alFinal); a 390 el navbar quedó arriba (se va con la página) y la miniatura vuela al «Ver carrito» del aviso.
+  "carrito-agregado": { completa: false, preparar: (p) => irAlMenu(p), alFinal: (p) => agregarYMirar(p, { esperaMs: 0 }) },
+  // Con opciones: el vuelo y el aviso salen al confirmar el diálogo
+  "carrito-agregado-opciones": { completa: false, preparar: (p) => irAlMenu(p), alFinal: async (p) => {
+    await agregarPlatoConOpciones(p, {});
+    await p.getByRole("dialog").getByRole("button", { name: /^Agregar/ }).click();
+  } },
+  // El contador del carrito arriba, tras agregar (a 390, sobre la hamburguesa; el carrito va dentro del menú)
+  "carrito-contador": { completa: false, preparar: (p) => irAlMenu(p), alFinal: async (p) => {
+    await agregarYMirar(p, { esperaMs: 800 });
+    await p.evaluate(() => window.scrollTo(0, 0));
+  } },
+  // Con prefers-reduced-motion: sin vuelo ni rebote, solo el aviso
+  "carrito-agregado-reducido": { completa: false, preparar: async (p) => {
+    await p.emulateMedia({ reducedMotion: "reduce" });
+    await irAlMenu(p);
+  }, alFinal: (p) => agregarYMirar(p, { esperaMs: 350 }) },
   // 1.12 · Opciones del plato en el pedido a domicilio: diálogo desde el menú, carrito con el mismo plato
   // en dos líneas (opciones distintas) y el pedido con opciones en Mis pedidos, el admin y /staff
   "menu-opciones": {
@@ -1308,6 +1341,7 @@ const VISTAS = {
     await p.goto(`${FRONT}/admin`);
     await p.getByRole("heading", { name: /Hola,/ }).waitFor();
     await p.evaluate(() => window.scrollTo(0, 0));
+    console.log("DEPURAR", await p.evaluate(() => [...document.querySelectorAll("*")].filter((e) => e.scrollLeft || e.scrollTop).map((e) => `${e.tagName}.${e.className} L${e.scrollLeft} T${e.scrollTop} sw${e.scrollWidth} cw${e.clientWidth}`).join(" | ") + ` win=${scrollX},${scrollY}`));
   } },
   // Imagen de 3 MB en "Nuevo producto": debe salir el aviso del límite de 2 MB
   "admin-producto-imagen-grande": {

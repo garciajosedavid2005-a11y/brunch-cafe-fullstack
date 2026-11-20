@@ -1,0 +1,111 @@
+/* 7.1 · Aviso «X agregado al carrito» (abajo a la derecha; a lo ancho en el celular) */
+.aviso-carrito__region {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1100;
+  width: min(24rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.aviso-carrito {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.25rem 0.5rem 1rem;
+  background: var(--color-oscuro);
+  color: var(--color-marfil);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(44, 7, 3, 0.3);
+}
+
+.aviso-carrito__texto {
+  flex: 1;
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+/* inline-block: la regla global de img/svg los deja en bloque */
+.aviso-carrito__icono {
+  display: inline-block;
+  color: var(--color-suave);
+  vertical-align: -3px;
+}
+
+/* Ícono del botón «✓ Agregado» de las tarjetas del menú y los destacados */
+.boton-agregado__icono {
+  display: inline-block;
+  vertical-align: -2px;
+}
+
+.aviso-carrito__enlace,
+.aviso-carrito__enlace:visited {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.25rem;
+  color: var(--color-suave);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.aviso-carrito__enlace:hover,
+.aviso-carrito__enlace:focus-visible {
+  color: var(--color-marfil);
+}
+
+.aviso-carrito__cerrar {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--color-marfil);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.aviso-carrito__enlace:focus-visible,
+.aviso-carrito__cerrar:focus-visible {
+  outline: 2px solid var(--color-suave);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .aviso-carrito {
+    animation: aviso-carrito-entra 0.25s ease-out;
+  }
+}
+
+@keyframes aviso-carrito-entra {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Miniatura que vuela al carrito (se crea y se borra desde animacionCarrito.js) */
+.vuelo-carrito {
+  position: fixed;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--color-medio);
+  border: 2px solid var(--color-marfil);
+  box-shadow: 0 6px 16px rgba(44, 7, 3, 0.35);
+  z-index: 1200;
+  pointer-events: none;
+}
+
+@media (max-width: 480px) {
+  .aviso-carrito__region {
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+  }
+}
