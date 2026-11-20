@@ -32,7 +32,7 @@ Plan, decisiones de Brayan (F6-1 a F6-9) y técnicas (F6-a a F6-g, a confirmar) 
 
 | ID | Ítem | Estado inicial | Estado actual | Commit | Notas |
 |---|---|---|---|---|---|
-| 6.1 | `Pedido.canal` relleno (pendiente de 1.9) | FALTA | HECHO (migración 6.1 aplicada en la BD de trabajo el 2026-11-19 tras el respaldo `backups/pre-6.1-20261119T235237Z`; `--dry-run` solo rellenaba `canal` en 6 de 9 pedidos; up → down → up) | (commit) | Migración `m61-canal-pedidos` (`npm run migrate:6.1`): pone `canal: 'domicilio'` solo donde falta o es null y anota cada pedido en la colección nueva `migracion_6_1_canal` para que `--down` los deje exactamente como estaban (ausente o null). `Pedido.canal` pasa a obligatorio y los filtros `canal: { $in: ['domicilio', null] }` (caja, KDS, cuentas abiertas) y los `canal \|\| 'domicilio'` (reportes, cuentas abiertas) pasan a `canal: 'domicilio'`. Tests en `migracion-6.1` y `cuentas-abiertas`. |
+| 6.1 | `Pedido.canal` relleno (pendiente de 1.9) | FALTA | HECHO (migración 6.1 aplicada en la BD de trabajo el 2026-11-19 tras el respaldo `backups/pre-6.1-20261119T235237Z`; `--dry-run` solo rellenaba `canal` en 6 de 9 pedidos; up → down → up) | b8424c8 | Migración `m61-canal-pedidos` (`npm run migrate:6.1`): pone `canal: 'domicilio'` solo donde falta o es null y anota cada pedido en la colección nueva `migracion_6_1_canal` para que `--down` los deje exactamente como estaban (ausente o null). `Pedido.canal` pasa a obligatorio y los filtros `canal: { $in: ['domicilio', null] }` (caja, KDS, cuentas abiertas) y los `canal \|\| 'domicilio'` (reportes, cuentas abiertas) pasan a `canal: 'domicilio'`. Tests en `migracion-6.1` y `cuentas-abiertas`. |
 
 ## Fase 5 — Inventario y reportes (pedida por Brayan el 2026-11-15)
 
