@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs'
 import { agente } from './app.js'
 import Usuario from '../../src/modulos/identidad/usuario.model.js'
 import Rol from '../../src/modulos/identidad/rol.model.js'
+import { CONSENTIMIENTO_VERSION } from '../../src/modulos/identidad/consentimiento.js'
 
 const CLAVE = 'secreta123'
 // 2.4 · Para los tests que abren conexiones sin el agente (SSE con http.get)
@@ -22,6 +23,8 @@ export const crearConSesion = async (rolNombre = 'cliente', extra = {}) => {
         correo: `${rolNombre}${contador}@example.com`,
         contraseña: await bcrypt.hash(CLAVE, 4),
         rol: rol._id,
+        // 6.4 · Con el consentimiento vigente (si no, toda la API del cliente da 403); `extra` lo puede quitar
+        consentimiento: { version: CONSENTIMIENTO_VERSION, aceptadoEn: new Date() },
         ...extra,
     })
     const sesion = agente()

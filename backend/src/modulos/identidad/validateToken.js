@@ -4,6 +4,7 @@ import { COOKIE_SESION, borrarCookieSesion } from './cookies.js'
 import { cuerpoError } from '../compartido/errors.js'
 import { obtenerSesion } from './sesiones.js'
 import { duracionSesionMs } from './duracionSesion.js'
+import { consentimientoPendiente, rutaPermitidaSinConsentimiento } from './consentimiento.js'
 
 const rechazar = (res, code, message) => {
     borrarCookieSesion(res)
@@ -50,6 +51,13 @@ export const autenticar = async (req, res, next) => {
     // cliente o admin solo vale 2 h desde que se emitió
     if (!Number.isFinite(payload.iat) || Date.now() >= payload.iat * 1000 + duracionSesionMs(sesion)) {
         return rechazar(res, 'SESSION_EXPIRED', 'Tu sesión expiró. Inicia sesión de nuevo.')
+    }
+
+    // 6.4 (F6-f) · Un cliente sin el consentimiento vigente solo puede aceptarlo, consultar /me y leer su perfil
+    if (consentimientoPendiente(sesion.rol, sesion.consentimientoVersion)
+        && !rutaPermitidaSinConsentimiento(req.method, `${req.baseUrl}${req.path}`)) {
+        return res.status(403).json(cuerpoError('CONSENTIMIENTO_PENDIENTE',
+            'Para seguir, acepta la política de tratamiento de datos.'))
     }
 
     req.usuario = sesion

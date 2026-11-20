@@ -18,6 +18,7 @@ import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
 import StaffDashboard from "./pages/StaffDashboard/StaffDashboard";
 import Kds from "./pages/Kds/Kds";
 import RecuperarContrasena from "./pages/RecuperarContrasena/RecuperarContrasena";
+import Consentimiento, { PoliticaDatos } from "./pages/Consentimiento/Consentimiento";
 import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./context/useAuth";
 import { CarritoProvider } from "./context/CarritoContext";
@@ -115,12 +116,17 @@ function ReservationsRoute() {
 // 1.6 · /staff (y /kds, 2.5) tienen su propio layout de tablet: sin la navegación ni el pie del sitio público
 const RUTAS_STAFF = ["/staff", "/dashboard/staff", "/kds"];
 const esRutaStaff = (ruta) => RUTAS_STAFF.some((r) => ruta === r || ruta.startsWith(`${r}/`));
+// 6.4 (F6-f) · Con el consentimiento pendiente solo se ve la política y la pantalla de aceptarla
+const RUTAS_SIN_CONSENTIMIENTO = ["/consentimiento", "/politica-datos"];
 
 function AppRoutes() {
   const { user } = useAuth();
   const location = useLocation();
   const sinPie = esAdministrador(user) || esPersonal(user);
   const enTablet = puedeEntrarAStaff(user) && esRutaStaff(location.pathname); // F1-19: también el admin
+  if (user?.consentimientoPendiente && !RUTAS_SIN_CONSENTIMIENTO.includes(location.pathname)) {
+    return <Navigate to="/consentimiento" replace />;
+  }
 
   return (
     <>
@@ -137,6 +143,8 @@ function AppRoutes() {
           <Route path="/recuperar-contrasena" element={<RecuperarContrasena />} />
           <Route path="/restablecer-contrasena" element={<RecuperarContrasena />} />
           <Route path="/registro" element={<GuestRoute><Registro /></GuestRoute>} />
+          <Route path="/politica-datos" element={<PoliticaDatos />} />
+          <Route path="/consentimiento" element={<Consentimiento />} />
           <Route path="/perfil" element={<CustomerRoute><Perfil /></CustomerRoute>} />
           <Route path="/cuenta" element={<CustomerRoute><CustomerDashboard /></CustomerRoute>} />
           <Route path="/dashboard/cliente" element={<CustomerRoute><CustomerDashboard /></CustomerRoute>} />

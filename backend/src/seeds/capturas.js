@@ -60,6 +60,7 @@ export const sembrarDatosCapturas = async ({ password }) => {
     if (!password) return { usuarios: 0 }
 
     const { usuarios } = await sembrarUsuariosDev(password)
+    await sembrarPerfilesCliente()
     // Reserva pendiente del cliente de prueba. Directa al modelo (no por el servicio): así no se
     // envía ningún correo de confirmación al preparar las capturas
     const cliente = await Usuario.findOne({ correo: 'cliente.dev@brunchcafe.test' }).select('_id').lean()
@@ -77,6 +78,28 @@ export const sembrarDatosCapturas = async ({ password }) => {
     await sembrarComprasEjemplo(await Usuario.findOne({ correo: 'admin.dev@brunchcafe.test' }).select('_id').lean())
     await sembrarVentasDeEjemplo()
     return { usuarios }
+}
+
+/**
+ * 6.4 · cliente.dev con perfil completo (nacimiento, alergias, preferencias y 2 direcciones, la principal en casa) y
+ * clientenuevo.dev (misma contraseña) sin el consentimiento vigente, para la pantalla de aceptarlo.
+ */
+const sembrarPerfilesCliente = async () => {
+    const cliente = await Usuario.findOne({ correo: 'cliente.dev@brunchcafe.test' })
+    if (!cliente) throw new Error('Falta cliente.dev: ejecuta npm run seed:dev')
+    cliente.set({
+        fechaNacimiento: new Date('1992-11-05T00:00:00.000Z'), alergias: 'Maní y nueces', preferencias: 'Leche de almendra',
+        direcciones: [
+            { etiqueta: 'Casa', direccion: 'Cra 36B #30-06', barrio: 'Centro', indicaciones: 'Torre 2, apto 301', principal: true },
+            { etiqueta: 'Oficina', direccion: 'Calle 10 #43A-30', barrio: 'El Poblado', indicaciones: '', principal: false },
+        ],
+    })
+    await cliente.save()
+    await Usuario.updateOne(
+        { correo: 'clientenuevo.dev@brunchcafe.test' },
+        { $setOnInsert: { nombre: 'Lucía', apellido: 'Nueva', contraseña: cliente.contraseña, rol: cliente.rol, telefono: '3000000001', consentimiento: null } },
+        { upsert: true },
+    )
 }
 
 /**

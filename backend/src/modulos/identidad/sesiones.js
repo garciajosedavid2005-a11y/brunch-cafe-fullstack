@@ -14,7 +14,7 @@ const generacionDe = (id) => `${generacionGlobal}:${generaciones.get(id) || 0}`
 
 const resolverDesdeBD = async (id) => {
     const usuario = await Usuario.findById(id)
-        .select('nombre apellido correo telefono activo eliminado rol tokenVersion')
+        .select('nombre apellido correo telefono activo eliminado rol tokenVersion consentimiento.version')
         .populate('rol', 'nombre etiqueta permisos estaciones')
         .lean()
     if (!usuario) return null
@@ -30,6 +30,7 @@ const resolverDesdeBD = async (id) => {
         rol: usuario.rol?.nombre || null,
         permisos: usuario.rol?.permisos || [],
         estaciones: usuario.rol?.estaciones || [], // 2.5b · estaciones del KDS del rol
+        consentimientoVersion: usuario.consentimiento?.version || null, // 6.4
     }
 }
 

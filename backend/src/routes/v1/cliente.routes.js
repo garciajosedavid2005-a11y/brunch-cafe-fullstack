@@ -1,6 +1,9 @@
 import { Router } from 'express'
 import { validateToken } from '../../modulos/identidad/validateToken.js'
-import { verMiPerfil, editarMiPerfil, cambiarMiContrasena } from '../../modulos/identidad/perfil.controller.js'
+import {
+    verMiPerfil, editarMiPerfil, cambiarMiContrasena,
+    verMisDirecciones, agregarMiDireccion, editarMiDireccion, borrarMiDireccion, principalMiDireccion,
+} from '../../modulos/identidad/perfil.controller.js'
 import * as reservas from '../../modulos/salon/reservas.controller.js'
 import * as pedidos from '../../modulos/pedidos/pedidosCliente.controller.js'
 import { validateSchema } from '../../modulos/compartido/validator.middleware.js'
@@ -15,6 +18,13 @@ router.use(validateToken)
 router.get('/perfil', verMiPerfil)
 router.patch('/perfil', editarMiPerfil)
 router.put('/perfil/contrasena', cambiarMiContrasena)
+
+// 6.4 · Libreta de direcciones (hasta 5, una principal)
+router.get('/direcciones', verMisDirecciones)
+router.post('/direcciones', agregarMiDireccion)
+router.patch('/direcciones/:id', editarMiDireccion)
+router.delete('/direcciones/:id', borrarMiDireccion)
+router.post('/direcciones/:id/principal', principalMiDireccion)
 
 router.get('/reservas', reservas.listar)
 router.post('/reservas', reservas.crear)

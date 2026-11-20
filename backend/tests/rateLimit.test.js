@@ -61,7 +61,7 @@ describe('Rate limit de registro (30 / hora por IP, 2.8)', () => {
     })
 
     it('la ruta real lo aplica', async () => {
-        const res = await api().post('/api/v1/auth/registro').send({ nombre: 'N', apellido: 'A', correo: 'real@example.com', contraseña: 'secreta123' })
+        const res = await api().post('/api/v1/auth/registro').send({ nombre: 'N', apellido: 'A', correo: 'real@example.com', contraseña: 'secreta123', aceptaDatos: true })
         expect(res.status).toBe(200)
         expect(res.headers.ratelimit).toMatch(/r=29\b/)
     })

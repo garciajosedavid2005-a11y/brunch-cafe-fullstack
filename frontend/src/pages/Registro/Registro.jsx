@@ -17,6 +17,8 @@ const Registro = () => {
     telefono: "",
     password: "",
   });
+  // 6.4 (F6-8) · Casilla obligatoria: acepta la política de tratamiento de datos
+  const [aceptaDatos, setAceptaDatos] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
 
@@ -45,6 +47,11 @@ const Registro = () => {
       });
       return;
     }
+    if (!aceptaDatos) {
+      setCargando(false);
+      setMensaje({ tipo: "error", texto: "Debes aceptar la política de tratamiento de datos para crear tu cuenta." });
+      return;
+    }
 
     try {
       await register({
@@ -53,6 +60,7 @@ const Registro = () => {
         apellido: formData.apellido.trim(),
         email: formData.email.trim(),
         telefono: formData.telefono.trim(),
+        aceptaDatos,
       });
       setCargando(false);
       setMensaje({
@@ -224,6 +232,22 @@ const Registro = () => {
                   onChange={handleChange}
                 />
               </div>
+            </div>
+
+            {/* 6.4 · Consentimiento de datos (Ley 1581), obligatorio */}
+            <div className="auth-campo auth-consentimiento auth-animar-item auth-delay-6">
+              <label className="auth-consentimiento__casilla">
+                <input type="checkbox" name="aceptaDatos" checked={aceptaDatos} required
+                  onChange={(e) => setAceptaDatos(e.target.checked)} />
+                <span>
+                  Autorizo el tratamiento de mis datos personales según la política de tratamiento de datos{" "}
+                  <span className="auth-asterisco">*</span>
+                </span>
+              </label>
+              {/* Fuera de la etiqueta y en otra pestaña: leerla no borra lo que ya se escribió */}
+              <Link to="/politica-datos" target="_blank" rel="noopener" className="auth-consentimiento__enlace">
+                Leer la política de tratamiento de datos
+              </Link>
             </div>
 
             {/* Botón Principal Sólido en Color Granate para 'Crear cuenta' con transición >= 0.3s */}

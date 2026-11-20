@@ -135,7 +135,7 @@ describe('Seed del primer administrador', () => {
 
     it('el registro usa el rol cliente sembrado (sin upserts durante la petición)', async () => {
         const res = await api().post('/api/v1/auth/registro').send({
-            nombre: 'Ana', apellido: 'P', correo: 'ana@example.com', contraseña: 'secreta123',
+            nombre: 'Ana', apellido: 'P', correo: 'ana@example.com', contraseña: 'secreta123', aceptaDatos: true,
         })
         expect(res.status).toBe(200)
         expect(res.body.rol).toBe('cliente')

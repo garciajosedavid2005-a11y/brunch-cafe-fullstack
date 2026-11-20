@@ -58,7 +58,8 @@ describe('Preparar la BD de capturas', () => {
 
         const correos = (await Usuario.find().lean()).map((u) => u.correo).sort()
         // 2.5 · cocina.dev para las capturas del KDS; Fase 3 · cajero.dev para las de la Caja; Fase 5 · compras.dev; 6.2 · repartidor.dev
-        expect(correos).toEqual(['admin.dev@brunchcafe.test', 'cajero.dev@brunchcafe.test', 'cliente.dev@brunchcafe.test', 'cocina.dev@brunchcafe.test', 'compras.dev@brunchcafe.test', 'mesero.dev@brunchcafe.test', 'repartidor.dev@brunchcafe.test'])
+        expect(correos).toEqual(['admin.dev@brunchcafe.test', 'cajero.dev@brunchcafe.test', 'cliente.dev@brunchcafe.test', 'clientenuevo.dev@brunchcafe.test', // 6.4 · sin consentimiento
+            'cocina.dev@brunchcafe.test', 'compras.dev@brunchcafe.test', 'mesero.dev@brunchcafe.test', 'repartidor.dev@brunchcafe.test'])
         expect(await Categoria.countDocuments({ estacion: { $type: 'objectId' } })).toBe(await Categoria.countDocuments())
         expect(await Categoria.countDocuments()).toBeGreaterThan(0)
         expect(await GrupoModificadores.countDocuments()).toBe(4)

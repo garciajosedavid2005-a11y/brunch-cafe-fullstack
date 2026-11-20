@@ -2,6 +2,7 @@ import { createElement, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
+  MapPin,
   MessageSquareText,
   PackageCheck,
   ShieldCheck,
@@ -9,6 +10,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 import ProfileSection from "./sections/ProfileSection";
+import DireccionesSection from "./sections/DireccionesSection";
 import OrdersSection from "./sections/OrdersSection";
 import ReservationsSection from "./sections/ReservationsSection";
 import ReviewsSection from "./sections/ReviewsSection";
@@ -17,6 +19,7 @@ import "./CustomerDashboard.css";
 
 const sections = [
   { id: "profile", label: "Mi perfil", icon: UserRound },
+  { id: "addresses", label: "Mis direcciones", icon: MapPin }, // 6.4
   { id: "orders", label: "Mis pedidos", icon: PackageCheck },
   { id: "reservations", label: "Mis reservas", icon: CalendarDays },
   { id: "reviews", label: "Mis comentarios", icon: MessageSquareText },
@@ -25,6 +28,7 @@ const sections = [
 
 const sectionContent = {
   profile: ProfileSection,
+  addresses: DireccionesSection,
   orders: OrdersSection,
   reservations: ReservationsSection,
   reviews: ReviewsSection,

@@ -8,6 +8,7 @@ import { config } from '../src/config.js'
 import { duracionEnMs } from '../src/modulos/identidad/cookies.js'
 
 const datos = (extra = {}) => ({
+    aceptaDatos: true, // 6.4 · casilla obligatoria del consentimiento
     nombre: 'Luis',
     apellido: 'Gómez',
     correo: 'luis@example.com',

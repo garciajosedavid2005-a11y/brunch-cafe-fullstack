@@ -123,6 +123,20 @@
 .carrito-formulario__select {
     cursor: pointer;
     padding-right: 1.5rem;
+    appearance: none;
+}
+
+/* 6.4 · Flecha visible en los selectores (el fondo transparente del campo ocultaba la del navegador) */
+.carrito-formulario__campo--select {
+    position: relative;
+}
+
+.carrito-formulario__flecha {
+    position: absolute;
+    right: 1.1rem;
+    color: var(--color-primario);
+    font-size: 0.85rem;
+    pointer-events: none;
 }
 
 .carrito-formulario__select:disabled {

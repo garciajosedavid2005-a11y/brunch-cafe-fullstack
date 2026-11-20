@@ -1,7 +1,7 @@
 import "./CarritoFormulario.css"
 import { esDireccionValida, MENSAJE_DIRECCION } from '../../utils/direccion'
 import { useDialogo } from '../../context/useDialogo'
-import { FaUser, FaMapMarkerAlt, FaClock, FaHome, FaStickyNote, FaCreditCard, FaMoneyBillWave, FaPhone } from 'react-icons/fa'
+import { FaUser, FaMapMarkerAlt, FaClock, FaHome, FaStickyNote, FaCreditCard, FaMoneyBillWave, FaPhone, FaBookmark, FaChevronDown } from 'react-icons/fa'
 import { useCarrito } from '../../context/CarritoContext'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -88,7 +88,37 @@ const CarritoFormulario = () => {
         }
     }, [user?.id])
 
+    // 6.4 (F6-g) · Direcciones guardadas del cliente: la principal se propone al abrir; elegir otra rellena dirección,
+    // barrio e indicaciones (se pueden cambiar; el pedido guarda su propia copia). Sin libreta, el formulario de siempre
+    const [direccionesGuardadas, setDireccionesGuardadas] = useState([])
+    const [direccionElegida, setDireccionElegida] = useState('')
+    const aplicarDireccion = (d) => {
+        setDireccionElegida(d ? d.id : '')
+        // «Otra dirección» vacía los campos para escribirla
+        setFormData((actual) => ({ ...actual, direccion: d?.direccion || '', barrio: d?.barrio || '', indicaciones: d?.indicaciones || '' }))
+    }
+    useEffect(() => {
+        if (!user?.id || user.esPersonal) return undefined
+        let activo = true
+        apiRequest('/v1/cliente/direcciones')
+            .then(({ direcciones = [] }) => {
+                if (!activo || !direcciones.length) return
+                setDireccionesGuardadas(direcciones)
+                const principal = direcciones.find((d) => d.principal) || direcciones[0]
+                // Solo si el cliente aún no escribió una dirección; si ya escribió, el selector queda en «Otra dirección»
+                setFormData((actual) => {
+                    if (actual.direccion) return actual
+                    setDireccionElegida(principal.id)
+                    return { ...actual, direccion: principal.direccion, barrio: principal.barrio, indicaciones: principal.indicaciones || '' }
+                })
+            })
+            .catch(() => {}) // sin libreta (o sin red): se escribe a mano, como antes
+        return () => { activo = false }
+    }, [user?.id, user?.esPersonal])
+
     const handleChange = (e) => {
+        // 6.4 · Si cambia a mano la dirección o el barrio, ya no es la guardada
+        if (['direccion', 'barrio'].includes(e.target.name)) setDireccionElegida('')
         let valor = e.target.value
         valor = valor.replace(/\s+/g, ' ')
         setFormData({
@@ -262,6 +292,32 @@ const CarritoFormulario = () => {
                                 )}
                             </div>
 
+                            {/* 6.4 · DIRECCIÓN GUARDADA */}
+                            {direccionesGuardadas.length > 0 && (
+                                <div className="cell small-12">
+                                    <label className="carrito-formulario__label" htmlFor="carrito-direccion-guardada">
+                                        Dirección guardada
+                                    </label>
+                                    <div className="carrito-formulario__campo carrito-formulario__campo--select">
+                                        <FaBookmark className="carrito-formulario__icono" />
+                                        <select
+                                            id="carrito-direccion-guardada"
+                                            className="carrito-formulario__input carrito-formulario__select"
+                                            value={direccionElegida}
+                                            onChange={(e) => aplicarDireccion(direccionesGuardadas.find((d) => d.id === e.target.value))}
+                                        >
+                                            {direccionesGuardadas.map((d) => (
+                                                <option key={d.id} value={d.id}>
+                                                    {`${d.etiqueta ? `${d.etiqueta} · ` : ''}${d.direccion}${d.principal ? ' (principal)' : ''}`}
+                                                </option>
+                                            ))}
+                                            <option value="">Otra dirección (escríbela abajo)</option>
+                                        </select>
+                                        <FaChevronDown className="carrito-formulario__flecha" aria-hidden="true" />
+                                    </div>
+                                </div>
+                            )}
+
                             {/* DIRECCION */}
                             <div className="cell small-12 medium-6">
                                 <label className="carrito-formulario__label">
@@ -317,7 +373,7 @@ const CarritoFormulario = () => {
                                 <label className="carrito-formulario__label" htmlFor="carrito-hora">
                                     Hora de entrega
                                 </label>
-                                <div className="carrito-formulario__campo">
+                                <div className="carrito-formulario__campo carrito-formulario__campo--select">
                                     <FaClock className="carrito-formulario__icono" />
                                     <select
                                         id="carrito-hora"
@@ -335,6 +391,7 @@ const CarritoFormulario = () => {
                                             <option key={opcion.valor} value={opcion.valor}>{opcion.etiqueta}</option>
                                         ))}
                                     </select>
+                                    <FaChevronDown className="carrito-formulario__flecha" aria-hidden="true" />
                                 </div>
                                 <p id="carrito-hora-ayuda" className="carrito-formulario__ayuda" role={horarios && !horasEntrega.length ? 'status' : undefined}>
                                     {errorHorarios

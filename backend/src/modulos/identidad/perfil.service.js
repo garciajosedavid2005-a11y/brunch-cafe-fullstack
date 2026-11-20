@@ -14,12 +14,16 @@ export const obtenerPerfil = async (usuarioId) => {
 }
 
 /** datos: salida de perfilSchema (correo ya normalizado). */
-export const actualizarPerfil = async (usuarioId, { nombre, apellido, correo, telefono }) => {
+export const actualizarPerfil = async (usuarioId, { nombre, apellido, correo, telefono, fechaNacimiento, alergias, preferencias }) => {
     // Mismo criterio que el registro: sin distinguir mayúsculas
     const ocupado = await Usuario.exists({ correo, _id: { $ne: usuarioId } }).collation({ locale: 'en', strength: 2 })
     if (ocupado) throw CORREO_OCUPADO()
     const cambios = { nombre, apellido, correo }
     if (telefono !== undefined) cambios.telefono = telefono
+    // 6.4 · Omitidos = se conservan
+    if (fechaNacimiento !== undefined) cambios.fechaNacimiento = fechaNacimiento
+    if (alergias !== undefined) cambios.alergias = alergias
+    if (preferencias !== undefined) cambios.preferencias = preferencias
     try {
         const usuario = await Usuario.findByIdAndUpdate(usuarioId, { $set: cambios }, { returnDocument: 'after', runValidators: true })
             .select(SIN_SECRETOS).populate('rol').lean()

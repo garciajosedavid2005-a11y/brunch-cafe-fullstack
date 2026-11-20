@@ -14,6 +14,7 @@ import { sembrarRoles } from './base.js'
 import { sembrarEstados } from './estados.js'
 import { sembrarMetodosPago } from './metodosPago.js'
 import { estadoPorCodigo, registrarEvento } from '../modulos/compartido/estados.service.js'
+import { CONSENTIMIENTO_VERSION } from '../modulos/identidad/consentimiento.js'
 
 export const USUARIOS_DEV = [
     { rol: 'admin', correo: 'admin.dev@brunchcafe.test', nombre: 'Admin', apellido: 'Prueba' },
@@ -43,7 +44,11 @@ export const sembrarUsuariosDev = async (password) => {
             { correo: datos.correo },
             {
                 $set: { contraseña: hash, rol: rol._id, activo: true },
-                $setOnInsert: { correo: datos.correo, nombre: datos.nombre, apellido: datos.apellido, telefono: '3000000000' },
+                // 6.4 · Al crearse, con el consentimiento vigente (un cliente.dev que ya existía lo acepta al entrar)
+                $setOnInsert: {
+                    correo: datos.correo, nombre: datos.nombre, apellido: datos.apellido, telefono: '3000000000',
+                    consentimiento: { version: CONSENTIMIENTO_VERSION, aceptadoEn: new Date() },
+                },
             },
             { upsert: true }
         )

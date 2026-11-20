@@ -18,6 +18,13 @@ export const registroSchema = z.object({
         .min(6, { error: 'La contraseña debe tener al menos 6 caracteres' })
         .max(128, { error: 'La contraseña no puede superar 128 caracteres' }),
     telefono: z.string(requerido('El teléfono')).trim().max(30, { error: 'El teléfono no puede superar 30 caracteres' }).optional(),
+    // 6.4 (F6-8) · Casilla obligatoria: acepta la política de tratamiento de datos vigente (Ley 1581)
+    aceptaDatos: z.literal(true, { error: 'Debes aceptar la política de tratamiento de datos para crear tu cuenta' }),
+})
+
+// 6.4 (F6-f) · Aceptar la política vigente: la versión que el cliente leyó (si cambió entretanto, 400)
+export const consentimientoSchema = z.strictObject({
+    version: z.string({ error: 'Indica la versión de la política' }).trim().max(20),
 })
 
 export const loginSchema = z.object({

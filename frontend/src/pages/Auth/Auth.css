@@ -641,3 +641,39 @@
     font-size: 1.85rem;
   }
 }
+
+/* 6.4 · Casilla del consentimiento de datos en el registro (objetivo táctil de 44 px) */
+.auth-consentimiento__casilla {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  min-height: 44px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.auth-consentimiento__casilla input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 0.15rem;
+  accent-color: var(--color-primario);
+}
+
+.auth-consentimiento__enlace {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-left: 1.75rem;
+  color: var(--color-primario);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.auth-consentimiento__enlace:hover,
+.auth-consentimiento__enlace:focus-visible {
+  color: var(--color-oscuro);
+  outline-color: var(--color-oscuro);
+}

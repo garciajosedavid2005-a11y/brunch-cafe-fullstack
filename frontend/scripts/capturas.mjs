@@ -82,6 +82,7 @@ const USUARIOS = {
   cajero: "cajero.dev@brunchcafe.test", // Fase 3 · Caja
   compras: "compras.dev@brunchcafe.test", // Fase 5 · Inventario
   repartidor: "repartidor.dev@brunchcafe.test", // 6.2 · Sus domicilios asignados
+  clientenuevo: "clientenuevo.dev@brunchcafe.test", // 6.4 · Sin la política de datos vigente (la acepta al entrar)
 };
 
 // ── Entorno aislado: API sobre la BD de capturas + Vite apuntando a ella ──
@@ -857,6 +858,27 @@ const VISTAS = {
   },
   "cuenta-cliente": { usuario: "cliente", preparar: (p) => p.goto(`${FRONT}/cuenta`) },
   "cuenta-mesero": { usuario: "mesero", preparar: (p) => p.goto(`${FRONT}/cuenta`) },
+  // 6.4 · Perfil (nacimiento, alergias, preferencias), libreta de direcciones y aceptar la política de datos
+  "cuenta-cliente-perfil": { usuario: "cliente", preparar: async (p) => {
+    await p.goto(`${FRONT}/cuenta`);
+    const alergias = p.getByLabel("Alergias");
+    await alergias.waitFor();
+    // Espera a que el perfil cargue sus datos (no vienen en la sesión)
+    await p.waitForFunction(() => document.querySelector('textarea[name="alergias"]')?.value === "Maní y nueces");
+  } },
+  "cuenta-cliente-direcciones": { usuario: "cliente", preparar: async (p) => {
+    await p.goto(`${FRONT}/cuenta`);
+    await p.getByRole("button", { name: "Mis direcciones" }).first().click();
+    await p.getByRole("list", { name: "Direcciones guardadas" }).waitFor();
+  } },
+  "consentimiento": { usuario: "clientenuevo", preparar: async (p) => {
+    await p.goto(`${FRONT}/cuenta`);
+    await p.getByRole("heading", { name: /^Antes de seguir/ }).waitFor();
+  } },
+  "politica-datos": { preparar: async (p) => {
+    await p.goto(`${FRONT}/politica-datos`);
+    await p.getByRole("heading", { name: "Política de tratamiento de datos" }).waitFor();
+  } },
   "cuenta-cliente-pedidos": { usuario: "cliente", preparar: async (p) => {
     await p.goto(`${FRONT}/cuenta`);
     await p.getByRole("button", { name: /mis pedidos/i }).click();
@@ -981,6 +1003,17 @@ const VISTAS = {
     await p.waitForLoadState("networkidle");
   } },
   // 1.11 · Dirección: «Cra 36b Oriente #30-06» se acepta y una sin número muestra el ejemplo
+  // 6.4 · Con direcciones guardadas: el carrito propone la principal
+  "carrito-direcciones-guardadas": {
+    usuario: "cliente",
+    completa: false,
+    preparar: async (p) => {
+      await VISTAS.carrito.preparar(p);
+      const selector = p.getByLabel("Dirección guardada");
+      await selector.waitFor();
+      await selector.scrollIntoViewIfNeeded();
+    },
+  },
   "carrito-direccion": {
     usuario: "cliente",
     completa: false,

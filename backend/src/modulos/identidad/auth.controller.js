@@ -12,6 +12,7 @@ import { obtenerSesion, invalidarSesionUsuario } from './sesiones.js'
 import { AppError } from '../compartido/errors.js'
 import { publicarRevocacion } from '../tiempoReal/bus.js'
 import { solicitarRecuperacion as solicitar, restablecerContrasena as restablecer } from './recuperacion.service.js'
+import { CONSENTIMIENTO_VERSION, consentimientoPendiente } from './consentimiento.js'
 
 // Comparación sin distinguir mayúsculas: las cuentas antiguas pueden tener
 // el correo guardado con mayúsculas (ver scripts/reportar-correos-duplicados.js)
@@ -34,6 +35,8 @@ const usuarioPublico = (usuario, rol) => ({
     permisos: rol.permisos || [],
     // El frontend separa al personal del cliente sin comparar nombres de rol (0.15d)
     esPersonal: rol.nombre !== ROL_CLIENTE,
+    // 6.4 (F6-f) · El frontend pide aceptar la política antes de seguir
+    consentimientoPendiente: consentimientoPendiente(rol.nombre, usuario.consentimiento?.version),
     createdAt: usuario.createdAt,
     updatedAt: usuario.updatedAt,
 })
@@ -57,6 +60,7 @@ export const register = async (req, res) => {
             contraseña: await bcrypt.hash(contraseña, 10),
             telefono,
             rol: rolCliente._id,
+            consentimiento: { version: CONSENTIMIENTO_VERSION, aceptadoEn: new Date() }, // 6.4 · el esquema exige la casilla
         })
     } catch (error) {
         // Carrera entre dos registros con el mismo correo
@@ -138,4 +142,23 @@ export const solicitarRecuperacion = (req, res) => {
 export const restablecerContrasena = async (req, res) => {
     await restablecer(req.validado)
     res.json({ message: 'Tu contraseña fue restablecida. Ya puedes iniciar sesión.' })
+}
+
+/**
+ * 6.4 (F6-f) · POST /auth/consentimiento: el usuario de la sesión acepta la política vigente (guarda versión y fecha).
+ * Repetirlo con la misma versión no cambia la fecha. Una versión distinta de la vigente (el texto cambió) → 400.
+ */
+export const aceptarConsentimiento = async (req, res) => {
+    const { version } = req.validado
+    if (version !== CONSENTIMIENTO_VERSION) {
+        throw new AppError(400, 'CONSENTIMIENTO_DESACTUALIZADO', 'La política cambió: recarga la página y léela de nuevo.', { vigente: CONSENTIMIENTO_VERSION })
+    }
+    await Usuario.updateOne(
+        { _id: req.usuario.id, 'consentimiento.version': { $ne: CONSENTIMIENTO_VERSION } },
+        { $set: { consentimiento: { version: CONSENTIMIENTO_VERSION, aceptadoEn: new Date() } } },
+    )
+    invalidarSesionUsuario(req.usuario.id) // la siguiente petición ya no queda bloqueada
+    const usuario = await Usuario.findById(req.usuario.id).select('consentimiento').lean()
+    if (!usuario) throw new AppError(404, 'NOT_FOUND', 'Usuario no encontrado.')
+    res.json({ consentimientoPendiente: false, consentimiento: usuario.consentimiento })
 }

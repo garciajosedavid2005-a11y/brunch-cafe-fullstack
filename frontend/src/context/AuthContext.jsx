@@ -15,6 +15,8 @@ function normalizeUser(user) {
     roleLabel: user.roleLabel || user.rolEtiqueta || user.rol?.etiqueta || "",
     permisos: user.permisos || [],
     esPersonal: Boolean(user.esPersonal),
+    // 6.4 (F6-f) · Cliente sin la política de datos vigente: la acepta en /consentimiento antes de seguir
+    consentimientoPendiente: Boolean(user.consentimientoPendiente),
   };
 }
 
@@ -66,6 +68,7 @@ export function AuthProvider({ children }) {
         correo: data.email,
         contraseña: data.password,
         telefono: data.telefono,
+        aceptaDatos: data.aceptaDatos === true, // 6.4 · casilla obligatoria de la política de datos
       }),
     });
     const normalizedUser = normalizeUser(registeredUser);

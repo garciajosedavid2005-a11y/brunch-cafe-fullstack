@@ -1,0 +1,129 @@
+/* 6.4 · Política de datos (pública) y aceptación del consentimiento (cliente con la versión pendiente) */
+.consentimiento {
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+}
+
+.consentimiento__tarjeta {
+  width: min(100%, 680px);
+  padding: clamp(1.5rem, 5vw, 2.75rem);
+  border: 1px solid #eadbd5;
+  border-radius: 22px;
+  background: linear-gradient(145deg, #fffdfa, #f7e7e2);
+  box-shadow: 0 20px 55px #2c07031c;
+  color: var(--color-oscuro);
+}
+
+.consentimiento h1 {
+  margin: 0 0 0.5rem;
+  color: var(--color-oscuro);
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+}
+
+.consentimiento__intro,
+.consentimiento__version {
+  margin: 0 0 1rem;
+  color: #594742;
+  line-height: 1.6;
+}
+
+.consentimiento__version { font-size: 0.95rem; }
+
+.consentimiento__secciones {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0 0 1.25rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid #eadbd5;
+  border-radius: 14px;
+  background: #fffdfa;
+}
+
+.consentimiento__secciones h2 {
+  margin: 0 0 0.2rem;
+  color: var(--color-oscuro);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.consentimiento__secciones p {
+  margin: 0;
+  color: #4a3a35;
+  line-height: 1.55;
+}
+
+.consentimiento__casilla {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  min-height: 44px;
+  margin: 0 0 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.consentimiento__casilla input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 0.15rem;
+  accent-color: var(--color-primario);
+}
+
+.consentimiento__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.consentimiento__boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 1.4rem;
+  border: 1.5px solid var(--color-primario);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-primario);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.consentimiento__boton:hover,
+.consentimiento__boton:focus-visible {
+  background: var(--color-suave);
+  color: var(--color-oscuro);
+}
+
+.consentimiento__boton--principal {
+  background: var(--color-primario);
+  color: var(--color-marfil);
+}
+
+.consentimiento__boton--principal:hover,
+.consentimiento__boton--principal:focus-visible {
+  background: var(--color-oscuro);
+  color: var(--color-marfil);
+}
+
+.consentimiento__boton:disabled {
+  border-color: #b9a8a3;
+  background: #efe6e3;
+  color: #5e4d48;
+  cursor: not-allowed;
+}
+
+.consentimiento__error {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.8rem;
+  border-left: 4px solid #a3221b;
+  border-radius: 8px;
+  background: #fdecea;
+  color: #7a1712;
+}

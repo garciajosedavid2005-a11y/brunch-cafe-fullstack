@@ -7,6 +7,7 @@ import Producto from '../src/modulos/catalogo/producto.model.js'
 import { categoriaDePrueba } from './helpers/datos.js'
 
 const usuario = {
+    aceptaDatos: true, // 6.4 · casilla obligatoria del consentimiento
     nombre: 'Ana',
     apellido: 'Pérez',
     correo: 'ana@example.com',
