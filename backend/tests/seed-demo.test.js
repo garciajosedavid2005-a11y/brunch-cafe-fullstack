@@ -16,6 +16,10 @@ import Pedido from '../src/modulos/pedidos/pedido.model.js'
 import Evento from '../src/modulos/compartido/evento.model.js'
 import Estado from '../src/modulos/compartido/estado.model.js'
 import Contador from '../src/modulos/compartido/contador.model.js'
+import Espera from '../src/modulos/salon/espera.model.js'
+import Insumo from '../src/modulos/inventario/insumo.model.js'
+import TurnoCaja from '../src/modulos/caja/turno.model.js'
+import { fechaLocal } from '../src/modulos/compartido/fechas.js'
 import { verificarConsistenciaSalon } from '../src/modulos/salon/consistencia.js'
 import { exigirEntornoDemo, sembrarDemo } from '../src/seeds/demo.js'
 
@@ -27,7 +31,7 @@ beforeEach(async () => {
 
 const mesaN = async (numero) => Mesa.findOne({ numero }).lean()
 const conteos = async () => Object.fromEntries(await Promise.all(
-    Object.entries({ Usuario, Producto, Mesa, Cuenta, Comanda, Comprobante, Reserva, Pedido, Evento })
+    Object.entries({ Usuario, Producto, Mesa, Cuenta, Comanda, Comprobante, Reserva, Pedido, Evento, Insumo, Espera, TurnoCaja })
         .map(async ([nombre, Modelo]) => [nombre, await Modelo.countDocuments()]),
 ))
 
@@ -75,6 +79,11 @@ describe('seed:demo (3.5)', () => {
             mesas: (await Mesa.find().sort({ numero: 1 }).lean()).map((m) => [m.numero, m.estado, String(m.cuentaActual)]),
             cuentas: (await Cuenta.find().sort({ _id: 1 }).lean()).map((c) => [c.estado, c.version]),
             agotados: (await Producto.find({ disponible: false }).lean()).map((x) => x.nombre),
+            // Cierre · Lo nuevo tampoco cambia: existencias, cliente.dev, reserva de hoy y repartidor
+            insumos: (await Insumo.find().sort({ nombre: 1 }).lean()).map((i) => [i.nombre, i.existencia]),
+            cliente: await Usuario.findOne({ correo: 'cliente.dev@brunchcafe.test' }).select('puntos fechaNacimiento alergias -_id').lean(),
+            reservas: (await Reserva.find().sort({ _id: 1 }).lean()).map((x) => [String(x.mesa), x.hora]),
+            repartidores: (await Pedido.find().sort({ _id: 1 }).lean()).map((x) => String(x.repartidor)),
         })
         const antes = await foto()
         const r = await sembrarDemo({ password: CLAVE })
@@ -100,6 +109,60 @@ describe('seed:demo (3.5)', () => {
         const script = readFileSync(join(import.meta.dirname, '..', 'scripts', 'seed-demo.js'), 'utf8')
         expect(script.indexOf('exigirEntornoDemo(')).toBeGreaterThan(-1)
         expect(script.indexOf('exigirEntornoDemo(')).toBeLessThan(script.indexOf('mongoose.connect('))
+    })
+})
+
+describe('seed:demo · datos de las Fases 3b a 6 (cierre)', () => {
+    it('turno abierto, reserva de hoy con mesa, espera, insumo bajo, domicilio con repartidor, para llevar y cliente con puntos y cumpleaños', { timeout: 90_000 }, async () => {
+        const r = await sembrarDemo({ password: CLAVE })
+        expect(r).toMatchObject({ salon: 'creado', reservaHoy: 'creada', espera: 'creada', repartidor: 'asignado', paraLlevar: 'creada', cliente: 'preparado' })
+        expect(r.insumosBajos).toBeGreaterThanOrEqual(1)
+
+        expect(await TurnoCaja.countDocuments({ estado: 'abierto' })).toBe(1)
+        // Reserva de hoy (Bogotá) confirmada y con la mesa 4, que sigue libre
+        const confirmada = await Estado.findOne({ tipo: 'reserva', codigo: 'confirmada' }).lean()
+        const hoy = await Reserva.findOne({ estado: confirmada._id, mesa: { $ne: null } }).lean()
+        expect(fechaLocal(hoy.inicio)).toBe(fechaLocal())
+        expect(String(hoy.mesa)).toBe(String((await mesaN(4))._id))
+        expect((await mesaN(4)).estado).toBe('libre')
+        expect(await Espera.countDocuments({ estado: 'esperando', dia: fechaLocal() })).toBe(1)
+        // Inventario de ejemplo con al menos un insumo bajo el mínimo
+        expect(await Insumo.countDocuments({ $expr: { $lte: ['$existencia', '$minimo'] } })).toBeGreaterThanOrEqual(1)
+        // Domicilio confirmado y asignado al repartidor de prueba
+        const repartidor = await Usuario.findOne({ correo: 'repartidor.dev@brunchcafe.test' }).lean()
+        expect(await Pedido.countDocuments({ repartidor: repartidor._id })).toBe(1)
+        // Cuenta para llevar con su ronda en cocina
+        const llevar = await Cuenta.findOne({ canal: 'para_llevar', estado: 'abierta' }).lean()
+        expect(llevar.paraLlevar.nombre).toBe('Laura')
+        expect((await Comanda.findOne({ cuenta: llevar._id }).lean()).enviadaEn).toBeTruthy()
+        // Cliente con puntos para canjear y cumpleaños este mes, identificado en la mesa 3 (cuenta pedida)
+        const cliente = await Usuario.findOne({ correo: 'cliente.dev@brunchcafe.test' }).lean()
+        expect(cliente.puntos).toBeGreaterThanOrEqual(200)
+        expect(cliente.fechaNacimiento.toISOString().slice(5, 7)).toBe(fechaLocal().slice(5, 7))
+        expect(cliente.alergias).toBeTruthy()
+        const tres = await Cuenta.findById((await mesaN(3)).cuentaActual).lean()
+        expect(String(tres.cliente.usuario)).toBe(String(cliente._id))
+        expect(await verificarConsistenciaSalon()).toMatchObject({ ok: true })
+
+        // La segunda vez no repite nada
+        const r2 = await sembrarDemo({ password: CLAVE })
+        expect(r2).toMatchObject({ reservaHoy: 'existente', espera: 'existente', repartidor: 'existente', paraLlevar: 'existente', cliente: 'existente' })
+        expect(await Espera.countDocuments()).toBe(1)
+        expect(await Cuenta.countDocuments({ canal: 'para_llevar' })).toBe(1)
+    })
+
+    it('repetido horas después, crea otra reserva de hoy que todavía se puede sentar; un domicilio ya entregado no aborta la demo', { timeout: 90_000 }, async () => {
+        await sembrarDemo({ password: CLAVE })
+        // La reserva de hoy ya pasó (su bloque de 90 min terminó) y el domicilio salió sin repartidor
+        const hace3h = new Date(Date.now() - 3 * 3_600_000)
+        await Reserva.updateOne({ motivo: 'Demostración de hoy (seed:demo)' }, { $set: { inicio: hace3h } })
+        const entregado = await Estado.findOne({ tipo: 'pedido', codigo: 'entregado' }).lean()
+        await Pedido.updateMany({}, { $set: { estado: entregado._id }, $unset: { repartidor: 1 } })
+        const r = await sembrarDemo({ password: CLAVE })
+        expect(r).toMatchObject({ reservaHoy: 'creada', repartidor: 'no-asignable' })
+        const vigentes = await Reserva.find({ motivo: 'Demostración de hoy (seed:demo)', inicio: { $gt: new Date(Date.now() - 90 * 60_000) } }).lean()
+        expect(vigentes).toHaveLength(1)
+        expect(vigentes[0].mesa).toBeTruthy()
     })
 })
 

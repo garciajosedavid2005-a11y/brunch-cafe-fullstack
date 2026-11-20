@@ -12,6 +12,10 @@
 //   Mesas 5 + 6 unidas, con una ronda en preparación
 //   Mesa 7 por limpiar (se cobró en efectivo con propina: comprobante 2)
 //   Un producto agotado, una reserva pendiente para mañana y un pedido a domicilio confirmado.
+// Cierre (Fases 3b a 6): turno de caja abierto, inventario de ejemplo (con insumos bajo el mínimo), cliente.dev con
+// puntos, alergias y cumpleaños este mes, identificado en la mesa 3 (lista para cobrar con canje o cumpleaños), una
+// reserva de HOY confirmada con la mesa 4, una persona en la lista de espera, el domicilio asignado a repartidor.dev
+// y una cuenta para llevar con su ronda en cocina.
 import { sembrarBase } from './base.js'
 import { sembrarMenu } from './menu.js'
 import { sembrarModificadoresEjemplo } from './modificadores.js'
@@ -40,6 +44,14 @@ import { abrirTurno } from '../modulos/caja/turno.service.js'
 import TurnoCaja from '../modulos/caja/turno.model.js'
 import { cambiarEstadoItem } from '../modulos/cocina/cocina.service.js'
 import { cambiarDisponibilidadProducto } from '../modulos/catalogo/agotados.service.js'
+import { abrirParaLlevar, identificarCliente } from '../modulos/salon/cuentas.service.js'
+import { asignarMesa } from '../modulos/salon/reservasSalon.service.js'
+import { agregarEspera } from '../modulos/salon/espera.service.js'
+import Espera from '../modulos/salon/espera.model.js'
+import { asignarRepartidor } from '../modulos/pedidos/repartidor.service.js'
+import { sembrarInventarioEjemplo } from './inventario.js'
+import Insumo from '../modulos/inventario/insumo.model.js'
+import { CONSENTIMIENTO_VERSION } from '../modulos/identidad/consentimiento.js'
 
 const MOTIVO = 'Demostración (seed:demo)'
 const CORREO = (rol) => `${rol}.dev@brunchcafe.test`
@@ -58,7 +70,7 @@ const itemsDe = async (cuentaId, numeroRonda) =>
     (await Comanda.findOne({ cuenta: cuentaId, numeroRonda }).lean()).items.map((i) => String(i._id))
 
 // ── Salón en servicio ──────────────────────────────────────────────────────────────────
-const sembrarSalon = async ({ admin, mesero, cajero }, productos, { alEmpezar, alTerminar }) => {
+const sembrarSalon = async ({ admin, mesero, cajero }, productos, { alEmpezar, alTerminar }, clienteId) => {
     const mesas = new Map((await Mesa.find({ ejemplo: true }).lean()).map((m) => [m.numero, String(m._id)]))
     const faltan = [1, 2, 3, 4, 5, 6, 7].filter((n) => !mesas.has(n))
     if (faltan.length) return { salon: 'sin-salon-ejemplo', faltan }
@@ -109,6 +121,8 @@ const sembrarSalon = async ({ admin, mesero, cajero }, productos, { alEmpezar, a
 
     // Mesa 3: cuenta pedida
     const tres = await abrirCuenta({ mesaId: mesas.get(3), comensales: 4 }, mesero)
+    // Cierre · Con cliente.dev identificado: en la caja se ve su aviso de alergias y se puede canjear o aplicar el 10 %
+    await identificarCliente(tres.id, { clienteId: String(clienteId) }, mesero)
     for (const itemId of await ronda(tres.id, [a, c, d], 1)) await preparar(itemId, 'servido')
     await solicitarCuenta(tres.id, { versionEsperada: await version(tres.id) }, mesero)
 
@@ -171,6 +185,109 @@ const sembrarDomicilio = async (cliente, admin, productos) => {
     return resultado
 }
 
+// ── Cierre · Datos de las Fases 3b a 6 ─────────────────────────────────────────────────
+const MOTIVO_HOY = 'Demostración de hoy (seed:demo)'
+
+/** cliente.dev: consentimiento vigente, alergias, 250 puntos y cumpleaños (día 5) en el mes en curso. */
+const prepararCliente = async (cliente) => {
+    const mes = fechaLocal().slice(5, 7)
+    const listo = cliente.fechaNacimiento?.toISOString().slice(5, 7) === mes && (cliente.puntos || 0) >= 200
+        && cliente.alergias && cliente.consentimiento?.version === CONSENTIMIENTO_VERSION
+    if (listo) return 'existente'
+    // Usuario de prueba (*.dev): los puntos se siembran en el saldo, como en las capturas (decisión de 6.6)
+    await Usuario.updateOne({ _id: cliente._id }, { $set: {
+        fechaNacimiento: new Date(`1992-${mes}-05T00:00:00.000Z`),
+        alergias: cliente.alergias || 'Maní y nueces',
+        preferencias: cliente.preferencias || 'Leche de almendra',
+        puntos: Math.max(cliente.puntos || 0, 250),
+        consentimiento: cliente.consentimiento?.version === CONSENTIMIENTO_VERSION ? cliente.consentimiento : { version: CONSENTIMIENTO_VERSION, aceptadoEn: new Date() },
+    } })
+    return 'preparado'
+}
+
+/** Hora en punto de hoy en Bogotá para la reserva: la actual (o la siguiente después de :45), así «Sentar» sirve ya. */
+const horaReservaHoy = () => {
+    const [h, m] = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+        .format(new Date()).split(':').map(Number)
+    const hora = m >= 45 && h < 23 ? h + 1 : h
+    return `${String(hora).padStart(2, '0')}:00`
+}
+
+const BLOQUE_RESERVA_MS = 90 * 60_000 // el bloque de una reserva (4.1): «Sentar» vale hasta su fin
+
+/** Asigna la mesa 4 con el servicio del panel; si no se puede (ocupada, solape), la reserva queda sin mesa y se reintenta. */
+const asignarMesa4 = async (reservaId, mesa4, admin) => {
+    try {
+        await asignarMesa(String(reservaId), { mesaId: String(mesa4._id) }, admin)
+        return true
+    } catch (error) {
+        if (error?.status === 409) return false
+        throw error
+    }
+}
+
+/**
+ * Reserva de hoy confirmada, para 2, con la mesa 4 asignada por el mismo servicio del panel (bloque sin solapes).
+ * Cuenta como existente solo si todavía se puede sentar (su bloque no terminó) y tiene la mesa; si quedó sin mesa,
+ * se reintenta la asignación; si su bloque ya pasó (seed repetido horas después), se crea otra a la hora actual.
+ */
+const sembrarReservaHoy = async (cliente, admin) => {
+    const mesa4 = await Mesa.findOne({ ejemplo: true, numero: 4 }).select('_id estado').lean()
+    const vigente = await Reserva.findOne({ usuario: cliente._id, motivo: MOTIVO_HOY, inicio: { $gt: new Date(Date.now() - BLOQUE_RESERVA_MS) } })
+        .select('_id mesa').lean()
+    if (vigente?.mesa) return 'existente'
+    if (!mesa4 || mesa4.estado !== 'libre') return 'sin-mesa'
+    if (vigente) return (await asignarMesa4(vigente._id, mesa4, admin)) ? 'creada' : 'sin-mesa'
+    const hoy = fechaLocal()
+    const hora = horaReservaHoy()
+    const confirmada = await estadoPorCodigo('reserva', 'confirmada')
+    const reserva = await conTransaccion(async (session) => {
+        const [creada] = await Reserva.create([{
+            usuario: cliente._id, estado: confirmada._id, cantidadPersonas: 2,
+            fecha: new Date(`${hoy}T12:00:00Z`), hora, inicio: instanteLocal(hoy, hora),
+            nombre: 'Cliente Prueba', telefono: '3000000000', motivo: MOTIVO_HOY,
+        }], { session })
+        await registrarEvento({ entidad: 'reserva', entidadId: creada._id, a: 'confirmada', actor: 'sistema', motivo: MOTIVO_HOY, session })
+        return creada
+    })
+    return (await asignarMesa4(reserva._id, mesa4, admin)) ? 'creada' : 'sin-mesa'
+}
+
+/** Una persona esperando hoy (sin reserva). */
+const sembrarEspera = async (mesero) => {
+    if (await Espera.exists({ dia: fechaLocal(), nombre: 'Familia Rojas' })) return 'existente'
+    await agregarEspera({ nombre: 'Familia Rojas', personas: 3, telefono: '3001112233' }, mesero)
+    return 'creada'
+}
+
+/** El domicilio de la demo, asignado a repartidor.dev (si aún no tiene repartidor y sigue antes de «en camino»). */
+const sembrarRepartidor = async (cliente, cajero) => {
+    const pedido = await Pedido.findOne({ usuario: cliente._id, indicaciones: MOTIVO }).select('_id repartidor').lean()
+    if (!pedido) return 'sin-pedido'
+    if (pedido.repartidor) return 'existente'
+    const repartidor = await Usuario.findOne({ correo: CORREO('repartidor') }).select('_id').lean()
+    try {
+        await asignarRepartidor(String(pedido._id), { repartidorId: String(repartidor._id) }, cajero)
+    } catch (error) {
+        // Ya salió, se entregó o se canceló (en un ensayo): no se asigna y la demo sigue
+        if (error?.code === 'PEDIDO_NO_ASIGNABLE') return 'no-asignable'
+        throw error
+    }
+    return 'asignado'
+}
+
+/** Una cuenta para llevar («Laura») con una ronda enviada a cocina. */
+const sembrarParaLlevar = async (mesero, producto) => {
+    // En cualquier estado: una sola por BD. Si un corte la dejó abierta y sin ronda enviada, se completa
+    const existente = await Cuenta.findOne({ canal: 'para_llevar', 'paraLlevar.nombre': 'Laura' }).select('_id estado').lean()
+    if (existente && (existente.estado !== 'abierta' || await Comanda.exists({ cuenta: existente._id, estado: 'enviada' }))) return 'existente'
+    const cuentaId = existente ? String(existente._id) : (await abrirParaLlevar({ nombre: 'Laura' }, mesero)).id
+    const borrador = await Comanda.findOne({ cuenta: cuentaId, estado: 'borrador' }).select('numeroRonda items').lean()
+    if (!borrador?.items?.length) await agregarItem(cuentaId, { productoId: String(producto._id), cantidad: 1 }, mesero)
+    await enviarRonda(cuentaId, { numeroRonda: borrador?.numeroRonda || 1, versionEsperada: await version(cuentaId) }, mesero)
+    return 'creada'
+}
+
 // Marca de la demo del salón en la colección de contadores: 1 = empezada, 2 = terminada. Una demo cortada
 // a mitad no se repite encima (volvería a cobrar y gastaría consecutivos de comprobante)
 const MARCA = 'seed-demo'
@@ -200,7 +317,10 @@ export const sembrarDemo = async ({ password, confirmado = false }) => {
     await sembrarSalonEjemplo()
     await sembrarUsuariosDev(password)
     const [admin, mesero, cajero] = await Promise.all(['admin', 'mesero', 'cajero'].map(sesionDe))
-    const cliente = await Usuario.findOne({ correo: CORREO('cliente') }).select('_id').lean()
+    const cliente = await Usuario.findOne({ correo: CORREO('cliente') }).select('_id fechaNacimiento puntos alergias preferencias consentimiento').lean()
+    // Cierre · Inventario de ejemplo antes del salón (así las rondas lo descuentan) y el cliente listo para la caja
+    await sembrarInventarioEjemplo()
+    const clienteDemo = await prepararCliente(cliente)
 
     // Productos sencillos (sin modificadores) para las cuentas, y otro distinto para agotar
     const productos = await Producto.find({ disponible: { $ne: false }, 'gruposModificadores.0': { $exists: false } })
@@ -210,17 +330,25 @@ export const sembrarDemo = async ({ password, confirmado = false }) => {
 
     const resultado = await sembrarSalon({ admin, mesero, cajero }, [p1, p2, p3, p4], {
         alEmpezar: () => marcar(1), alTerminar: () => marcar(2),
-    })
+    }, cliente._id)
     // Un producto agotado (si ya hay alguno, no se agota otro)
     let agotado = 'existente'
     if (!(await Producto.exists({ disponible: false }))) {
         await cambiarDisponibilidadProducto(String(agotable._id), { disponible: false }, admin)
         agotado = 'creado'
     }
+    const reserva = await sembrarReserva(cliente)
+    const domicilio = await sembrarDomicilio(cliente, admin, [p1, p2])
     return {
         ...resultado,
         agotado,
-        reserva: await sembrarReserva(cliente),
-        domicilio: await sembrarDomicilio(cliente, admin, [p1, p2]),
+        reserva,
+        domicilio,
+        reservaHoy: await sembrarReservaHoy(cliente, admin),
+        espera: await sembrarEspera(mesero),
+        repartidor: await sembrarRepartidor(cliente, cajero),
+        paraLlevar: await sembrarParaLlevar(mesero, p3),
+        cliente: clienteDemo,
+        insumosBajos: await Insumo.countDocuments({ activo: { $ne: false }, $expr: { $lte: ['$existencia', '$minimo'] } }),
     }
 }

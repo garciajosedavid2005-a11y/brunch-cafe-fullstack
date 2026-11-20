@@ -21,7 +21,7 @@ if (password.length < 10) {
 
 const SALON = {
     creado: 'Salón en servicio: mesa 1 ocupada (ítems servido, listo, en preparación y por empezar), 2 y 4 libres, 3 con la cuenta pedida, 5 + 6 unidas y 7 por limpiar; 2 comprobantes del día.',
-    'con-actividad': 'El salón ya tiene actividad (cuentas abiertas o mesas no libres): no se tocó. Para prepararlo de nuevo, cobra o cancela las cuentas y marca las mesas como limpias, o usa una base de datos vacía (docs/GUIA_DEMO.md).',
+    'con-actividad': 'El salón ya tiene actividad (cuentas abiertas o mesas no libres): las mesas no se tocaron (el resto de la demo solo se crea si falta). Para prepararlo de nuevo, cobra o cancela las cuentas y marca las mesas como limpias, o usa una base de datos vacía (docs/GUIA_DEMO.md).',
     'sin-salon-ejemplo': 'Esta base de datos tiene un salón real (mesas que no son de ejemplo): no se escribió nada. Usa una base de datos de desarrollo (docs/GUIA_DEMO.md).',
     'requiere-confirmacion': 'Esta base de datos tiene usuarios reales: no se escribió nada. seed:demo crearía cuentas, cobros, una reserva y un pedido de demostración, y volvería a fijar la contraseña de los usuarios *.dev. Si es lo que quieres, repite con: npm run seed:demo -- --confirmar',
     incompleta: 'Una ejecución anterior de seed:demo se cortó a mitad: no se repite encima (volvería a cobrar). Usa una base de datos vacía (docs/GUIA_DEMO.md, plan B).',
@@ -38,11 +38,15 @@ try {
         if (r.salon !== 'sin-salon-ejemplo') process.exitCode = 1
     } else {
         console.log(`Producto agotado: ${PARTE[r.agotado]}. Reserva pendiente para mañana: ${PARTE[r.reserva]}. Pedido a domicilio confirmado: ${PARTE[r.domicilio]}.`)
-        console.log('Usuarios: admin.dev, cliente.dev, mesero.dev, cocina.dev y cajero.dev @brunchcafe.test (contraseña: DEV_USUARIOS_PASSWORD).')
+        // Cierre · Datos de las Fases 3b a 6
+        const HOY = { creada: 'creada', existente: 'ya existía', 'sin-mesa': 'sin la mesa 4 (no está libre o no se pudo apartar)' }
+        console.log(`Reserva de hoy con la mesa 4: ${HOY[r.reservaHoy]}. Lista de espera: ${PARTE[r.espera]}. Para llevar «Laura»: ${PARTE[r.paraLlevar]}.`)
+        console.log(`Domicilio con repartidor.dev: ${{ asignado: 'asignado', existente: 'ya tenía repartidor', 'no-asignable': 'no (el pedido ya salió o terminó)', 'sin-pedido': 'sin pedido' }[r.repartidor]}. Insumos bajo el mínimo: ${r.insumosBajos}. cliente.dev con puntos y cumpleaños este mes: ${r.cliente === 'preparado' ? 'listo' : 'ya estaba'}.`)
+        console.log('Usuarios: admin.dev, cliente.dev, mesero.dev, cocina.dev, cajero.dev, repartidor.dev y compras.dev @brunchcafe.test (contraseña: DEV_USUARIOS_PASSWORD).')
     }
 } catch (error) {
     console.error('seed:demo falló:', error.message)
-    console.error('Si se cortó a mitad, la próxima vez dirá «incompleta»: usa una base de datos vacía (docs/GUIA_DEMO.md, plan B).')
+    console.error('Si se cortó a mitad del salón, la próxima vez dirá «incompleta»: usa una base de datos vacía (docs/GUIA_DEMO.md, plan B). Si falló después, repítelo: solo crea lo que falte.')
     process.exitCode = 1
 } finally {
     await mongoose.disconnect()
