@@ -1,6 +1,6 @@
 import mongoose from 'mongoose'
 import { AppError } from '../compartido/errors.js'
-import { BLOQUE_CANJE, descuentoPorPuntos, puntosGanados } from '../fidelizacion/reglas.js'
+import { BLOQUE_CANJE, descuentoPorPuntos, puntosGanados, descuentoCumpleanos } from '../fidelizacion/reglas.js'
 
 // Fase 3 · Comprobante interno del cobro (PLAN_FASE_3 §3.3; F3-4, F3-5). Sin DIAN: lleva la leyenda
 // «Documento no válido como factura electrónica» y «Precios con impuestos incluidos» (sin desglose).
@@ -114,6 +114,11 @@ export const problemasDeComprobante = (c) => {
     if ((c.descuentos || []).filter((d) => d.tipo === 'puntos').length > 1) problemas.push('Un solo descuento por puntos')
     if (c.puntos?.canjeados && c.puntos.canjeados % BLOQUE_CANJE !== 0) problemas.push('Los puntos se canjean en bloques de 100')
     if (porPuntos !== descuentoPorPuntos(c.puntos?.canjeados || 0)) problemas.push('El descuento por puntos no corresponde a lo canjeado')
+    // 6.7 · Cumpleaños: uno como mucho, de un cliente identificado y exactamente el 10 % del consumo
+    const deCumpleanos = (c.descuentos || []).filter((d) => d.tipo === 'cumpleanos')
+    if (deCumpleanos.length > 1) problemas.push('Un solo descuento de cumpleaños')
+    if (deCumpleanos.length && !c.puntos?.cliente) problemas.push('El descuento de cumpleaños es de un cliente identificado')
+    if (deCumpleanos.some((d) => d.monto !== descuentoCumpleanos(c.subtotal))) problemas.push('El descuento de cumpleaños no es el 10 % del consumo')
     // Los ganados salen de lo pagado del consumo (sin propina): nadie acuña puntos de más
     if (c.puntos && c.puntos.ganados !== puntosGanados(c.subtotal - descuentos)) problemas.push('Los puntos ganados no corresponden a lo pagado')
     if (suma(c.pagos || [], 'monto') !== c.total) problemas.push('Los pagos no suman el total')

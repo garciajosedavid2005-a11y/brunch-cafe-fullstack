@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import { registrarPuntosDelCobro, saldoDe } from '../fidelizacion/puntos.service.js'
+import { estadoCumpleanos, descuentoCumpleanos, PORCENTAJE_CUMPLEANOS } from '../fidelizacion/cumpleanos.service.js'
 import Cuenta from '../salon/cuenta.model.js'
 import Comanda from '../salon/comanda.model.js'
 import Usuario from '../identidad/usuario.model.js'
@@ -188,6 +189,10 @@ export const detalleParaCobro = async (id, sesion) => {
     return {
         id: String(cuenta._id), codigo: cuenta.codigo, mesas: cuenta.mesas.map((m) => m.numero), paraLlevar: paraLlevarDe(cuenta), cliente: clienteDe(cuenta),
         puntosCliente: cuenta.cliente?.usuario ? await saldoDe(cuenta.cliente.usuario) : null, // 6.6 · para el canje
+        // 6.7 · Si el cliente identificado puede usar hoy su 10 % de cumpleaños (y cuánto sería sobre el consumo)
+        cumpleanosCliente: cuenta.cliente?.usuario
+            ? { disponible: (await estadoCumpleanos(cuenta.cliente.usuario)) === 'disponible', porcentaje: PORCENTAJE_CUMPLEANOS, monto: descuentoCumpleanos(cuenta.total) }
+            : null,
         mesero: nombres.get(String(cuenta.mesero)) || '',
         comensales: cuenta.comensales, total: cuenta.total, version: cuenta.version,
         division: formatoDivision(cuenta.division), porCobrar: cuenta.total - (cuenta.division?.cobrado || 0),

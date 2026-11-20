@@ -14,7 +14,7 @@ import { aCSV } from "../../../utils/csv";
 // Fase 5 · 5.6 y 5.7 · Admin › Reportes
 const VENTAS = {
   rango: { desde: "2026-10-30", hasta: "2026-11-05" },
-  resumen: { ventas: 45000, tickets: 2, cuentas: 2, pedidos: 0, ticketPromedio: 22500, propinas: 3000, notasCredito: 0, comprobantes: 2 },
+  resumen: { ventas: 45000, tickets: 2, cuentas: 2, pedidos: 0, ticketPromedio: 22500, propinas: 3000, notasCredito: 0, comprobantes: 2, descuentos: 4500, ventasNetas: 40500 },
   porDia: [{ fecha: "2026-11-05", salon: 45000, domicilio: 0, paraLlevar: 0, total: 45000, tickets: 2 }],
   porFranja: [{ hora: 7, franja: "07:00–08:00", ventas: 45000, tickets: 2 }],
   porProducto: [{ id: "p1", nombre: "Huevos pericos", categoria: "Desayunos", cantidad: 3, ventas: 45000 }],
@@ -22,6 +22,7 @@ const VENTAS = {
   porCanal: [{ canal: "salon", etiqueta: "Salón", ventas: 45000, tickets: 2, disponible: true }, { canal: "para_llevar", etiqueta: "Para llevar", ventas: 0, tickets: 0, disponible: false }],
   porMesero: [{ id: "u1", mesero: "Mesero P.", cuentas: 2, ventas: 45000, propinas: 3000, ticketPromedio: 22500 }],
   porMetodo: [{ metodo: "efectivo", pagos: 1, cobrado: 33000, devuelto: 0, neto: 33000 }],
+  porDescuento: [{ tipo: "puntos", etiqueta: "Puntos", monto: 0, cantidad: 0 }, { tipo: "cumpleanos", etiqueta: "Cumpleaños", monto: 4500, cantidad: 1 }],
 };
 const OPERACION = {
   rango: VENTAS.rango,
@@ -45,6 +46,9 @@ describe("Admin › Reportes", () => {
     expect(screen.getByRole("list", { name: "Ventas por franja horaria" })).toHaveTextContent("07:00–08:00");
     expect(within(screen.getByRole("table", { name: "Ventas por mesero" })).getByText("Mesero P.").closest("tr")).toHaveTextContent("$ 3.000");
     expect(screen.getByRole("table", { name: "Ventas por canal" })).toHaveTextContent("Para llevar (aún no existe)");
+    // 6.7 · Descuentos y ventas netas; descuentos por tipo
+    expect(screen.getByText("Ventas netas", { selector: ".reportes-kpi span" }).nextElementSibling).toHaveTextContent("$ 40.500");
+    expect(within(screen.getByRole("table", { name: "Descuentos por tipo" })).getByText("Cumpleaños").closest("tr")).toHaveTextContent("$ 4.500");
   });
 
   it("atajo «Hoy» y pestaña de operación con mediana, p90 y margen", async () => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Gift } from "lucide-react";
+import { Cake, Gift } from "lucide-react";
 import { apiRequest } from "../../../services/api";
 import { formatearCOP } from "../../../utils/moneda";
 import { formatearFecha } from "../../../utils/fechas";
@@ -7,6 +7,14 @@ import SectionHeading from "../SectionHeading";
 
 // 6.6 (F6-5) · Mis puntos: saldo, cómo se ganan y se canjean, y los últimos movimientos del libro.
 const TIPO = { acumula: "Ganados", canjea: "Canjeados", revierte: "Ajuste por anulación" };
+
+// 6.7 (F6-6) · Estado del descuento de cumpleaños (una compra en el mes de cumpleaños, una vez al año)
+const textoCumpleanos = ({ estado, porcentaje }) => ({
+  disponible: `¡Feliz cumpleaños! Este mes tienes ${porcentaje} % de descuento en una compra: pídelo en la caja o márcalo en el carrito de tu domicilio.`,
+  usado: `Ya usaste este año tu descuento de cumpleaños (${porcentaje} %).`,
+  fuera_de_mes: `En el mes de tu cumpleaños tendrás ${porcentaje} % de descuento en una compra.`,
+  sin_fecha: `Agrega tu fecha de nacimiento en «Mi perfil» para recibir ${porcentaje} % de descuento en una compra durante el mes de tu cumpleaños.`,
+}[estado] || "");
 
 export default function PuntosSection() {
   const [datos, setDatos] = useState(null);
@@ -37,6 +45,12 @@ export default function PuntosSection() {
             <span>Tienes <strong>{datos.saldo}</strong> {datos.saldo === 1 ? "punto" : "puntos"}</span>
           </p>
           <p className="dashboard-form__ayuda">Para usarlos, pide en la caja que te identifiquen con tu correo o tu teléfono.</p>
+          {datos.cumpleanos && (
+            <p className={`dashboard-puntos__cumple${datos.cumpleanos.estado === "disponible" ? " is-disponible" : ""}`}>
+              <Cake size={20} aria-hidden="true" />
+              <span>{textoCumpleanos(datos.cumpleanos)}</span>
+            </p>
+          )}
           <h3 className="dashboard-subheading dashboard-direcciones__titulo">Movimientos</h3>
           {datos.movimientos.length === 0
             ? <p className="dashboard-empty">Aún no tienes movimientos.</p>

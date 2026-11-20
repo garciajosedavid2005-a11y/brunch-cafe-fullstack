@@ -318,6 +318,9 @@
   gap: 1rem;
 }
 
+/* 6.7 · Descuento del pedido, encima del total */
+.dashboard-card__descuento { display: flex; justify-content: space-between; gap: 1rem; padding-top: 0.5rem; color: #493733; }
+
 .dashboard-order-items > li > div > span:first-child {
   color: #38241f;
 }
@@ -777,6 +780,20 @@
   color: #4a2a00;
   font-size: 1.1rem;
 }
+
+/* 6.7 · Aviso del descuento de cumpleaños (destacado cuando está disponible) */
+.dashboard-puntos__cumple {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid #e3d3cf;
+  color: #3d2b27;
+}
+.dashboard-puntos__cumple svg { flex-shrink: 0; margin-top: 0.1rem; }
+.dashboard-puntos__cumple.is-disponible { background: #fbe8ec; border-color: #e7b9c3; color: #5c0a1b; font-weight: 600; }
 
 .dashboard-puntos__tabla { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
 

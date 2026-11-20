@@ -43,10 +43,14 @@ export const estadoPagos = (pagos, totalACobrar) => {
 export const BLOQUE_PUNTOS = 100;
 export const VALOR_BLOQUE = 10000;
 
-export const cuerpoCobro = ({ versionEsperada, propina, pagos, canjearPuntos = 0 }) => ({
+// 6.7 · 10 % de cumpleaños sobre el consumo, hacia abajo (el backend calcula y valida lo mismo)
+export const descuentoCumpleanos = (consumo, porcentaje = 10) => Math.max(0, Math.floor((consumo * porcentaje) / 100));
+
+export const cuerpoCobro = ({ versionEsperada, propina, pagos, canjearPuntos = 0, aplicarCumpleanos = false }) => ({
   versionEsperada,
   propina,
   ...(canjearPuntos > 0 ? { canjearPuntos } : {}),
+  ...(aplicarCumpleanos ? { aplicarCumpleanos: true } : {}),
   pagos: pagos.map((p) => (p.metodo === "efectivo"
     ? { metodo: p.metodo, monto: p.monto, recibido: p.recibido ?? p.monto }
     : { metodo: p.metodo, monto: p.monto })),

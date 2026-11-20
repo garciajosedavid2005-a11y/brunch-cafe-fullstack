@@ -9,3 +9,9 @@ export const puntosGanados = (consumoPagado) => Math.max(0, Math.floor(consumoPa
 
 /** Pesos que descuenta canjear `puntos` (múltiplo de 100). */
 export const descuentoPorPuntos = (puntos) => (puntos / BLOQUE_CANJE) * VALOR_BLOQUE
+
+// 6.7 (F6-6, F6-d) · Cumpleaños: 10 % del consumo (sin propina), hacia abajo, en una compra del mes de cumpleaños
+export const PORCENTAJE_CUMPLEANOS = 10
+
+/** Pesos que descuenta el cumpleaños sobre `consumo` (entero, hacia abajo). */
+export const descuentoCumpleanos = (consumo) => Math.max(0, Math.floor((consumo * PORCENTAJE_CUMPLEANOS) / 100))

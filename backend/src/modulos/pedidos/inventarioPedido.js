@@ -4,6 +4,7 @@ import DetallePedido from './detallePedido.model.js'
 import { codigoPedido } from './pedidoComoCuenta.js'
 import { descontarPedido, devolverPedido } from '../inventario/consumo.service.js'
 import { acreditarDomicilioEntregado } from '../fidelizacion/puntos.service.js'
+import { liberarCumpleanos } from '../fidelizacion/cumpleanos.service.js'
 
 /** Devuelve { efectos, cambios }: `efectos` va a cambiarEstado y `cambios()` da lo que hay que avisar. */
 export const efectosInventarioPedido = (sesion) => {
@@ -16,6 +17,7 @@ export const efectosInventarioPedido = (sesion) => {
             cambios = await descontarPedido({ pedido: documento, codigo, lineas, sesion, session })
         } else if (a === 'cancelado') {
             cambios = await devolverPedido({ pedido: documento, codigo, de, sesion, session }) // en preparación o listo: merma (5.8.5)
+            await liberarCumpleanos({ referencias: [documento._id], motivo: 'cancelado', session }) // 6.7 · si lo usó en el carrito
         } else if (a === 'entregado') {
             await acreditarDomicilioEntregado({ pedidoId: documento._id, session }) // 6.6 (F6-5) · si ya se cobró
         }

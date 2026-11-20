@@ -28,7 +28,8 @@ export const ESTADOS_COBRABLES = ['en_camino', 'entregado']
 export const VENTANA_COBRO_MS = 48 * 60 * 60 * 1000
 const recientes = () => ({ createdAt: { $gte: new Date(Date.now() - VENTANA_COBRO_MS) } })
 const MAXIMO_LISTA = 200
-const cobroSchema = cobrarSchema.omit({ versionEsperada: true, canjearPuntos: true }) // 6.6 · sin canje en el domicilio
+// 6.6 / 6.7 · Sin canje ni cumpleaños en el cobro del domicilio (el cumpleaños se aplica en el carrito)
+const cobroSchema = cobrarSchema.omit({ versionEsperada: true, canjearPuntos: true, aplicarCumpleanos: true })
 // 6.1 · Todos los pedidos tienen canal (migración 6.1)
 const DOMICILIO = { canal: 'domicilio' }
 // 6.2 (F6-2) · Cerrado por defecto: quien cobra domicilios sin ser cajero (cuenta:cobrar) ni asignarlos solo ve y
@@ -114,21 +115,24 @@ export const cobrarDomicilio = async (id, datos, sesion) => {
             const lineas = (await DetallePedido.find({ pedido: pedido._id }).session(session).lean()).map(lineaDeDetalle)
             if (!lineas.length) throw new AppError(409, 'PEDIDO_SIN_LINEAS', 'El pedido no tiene productos para cobrar.')
             const subtotal = lineas.reduce((n, l) => n + l.subtotal, 0)
-            // El comprobante cobra lo mismo que dice el pedido (sin domicilio ni descuentos hoy): si no cuadra, no se cobra
-            if (subtotal !== pedido.total) {
-                throw new AppError(409, 'PEDIDO_TOTAL_INCONSISTENTE', 'El total del pedido no coincide con sus productos. Avisa al administrador.', { total: pedido.total, lineas: subtotal })
+            // 6.7 · Los descuentos del pedido (el cumpleaños del carrito) pasan tal cual al comprobante
+            const descuentos = (pedido.descuentos || []).map((d) => ({ tipo: d.tipo, monto: d.monto, detalle: d.detalle || '' }))
+            const descontado = descuentos.reduce((n, d) => n + d.monto, 0)
+            // El comprobante cobra lo mismo que dice el pedido (productos − descuentos): si no cuadra, no se cobra
+            if (subtotal - descontado !== pedido.total) {
+                throw new AppError(409, 'PEDIDO_TOTAL_INCONSISTENTE', 'El total del pedido no coincide con sus productos. Avisa al administrador.', { total: pedido.total, lineas: subtotal, descuentos: descontado })
             }
-            const total = subtotal + propina
+            const total = pedido.total + propina
             const pagosCalculados = calcularPagos(pagos, total)
             // 6.6 · Los puntos del cliente quedan en el comprobante (sin canje: el domicilio no se cobra en la caja)
-            const { puntos } = await puntosDelCobro({ clienteId: pedido.usuario, consumo: subtotal, session })
+            const { puntos } = await puntosDelCobro({ clienteId: pedido.usuario, consumo: pedido.total, session })
             const { seq: numero } = await Contador.findOneAndUpdate({ _id: 'comprobante' }, { $inc: { seq: 1 } }, { returnDocument: 'after', upsert: true, session })
             const cobrador = await Usuario.findById(sesion.id).select(CAMPOS_NOMBRE).session(session).lean()
             const codigo = codigoPedido(pedido._id)
             const [comprobante] = await Comprobante.create([{
                 numero, codigo: codigoComprobante(numero), pedido: pedido._id, pedidoCodigo: codigo, turno: turno._id,
                 mesas: [], cajero: { id: sesion.id, nombre: nombreCorto(cobrador) }, emitidoEn: new Date(),
-                lineas, subtotal, propina, total, puntos, pagos: pagosCalculados, cambio: pagosCalculados.reduce((n, p) => n + (p.cambio ?? 0), 0),
+                lineas, subtotal, descuentos, propina, total, puntos, pagos: pagosCalculados, cambio: pagosCalculados.reduce((n, p) => n + (p.cambio ?? 0), 0),
             }], { session }).catch((error) => {
                 if (error?.name !== 'ValidationError') throw error
                 throw new AppError(500, 'COMPROBANTE_INCONSISTENTE', 'No se pudo emitir el comprobante. Avisa al administrador.', undefined, { cause: error })

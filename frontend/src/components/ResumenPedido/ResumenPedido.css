@@ -149,6 +149,16 @@
 }
 
 /* Total */
+/* 6.7 · Descuento de cumpleaños sobre el total */
+.resumen-pedido__descuento {
+    display: flex;
+    justify-content: space-between;
+    margin: 0 0 0.5rem;
+    padding: 0 1rem;
+    font-weight: 600;
+    color: var(--color-oscuro);
+}
+
 .resumen-pedido__total {
     display: flex;
     justify-content: space-between;

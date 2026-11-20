@@ -6,7 +6,7 @@ import { formatearCOP } from '../../utils/moneda'
 import { deLineaCarrito, textoModificadores } from '../../utils/modificadores'
 import { formatearHoraTexto } from '../../utils/fechas'
 
-const ResumenPedido = ({ formData, metodoPago, onEditar, onConfirmar, guardando = false, error = '' }) => {
+const ResumenPedido = ({ formData, metodoPago, onEditar, onConfirmar, guardando = false, error = '', descuentoCumpleanos = 0 }) => {
 
     const { productos, calcularTotal } = useCarrito()
 
@@ -120,11 +120,19 @@ const ResumenPedido = ({ formData, metodoPago, onEditar, onConfirmar, guardando 
                     </div>
                 )}
 
+                {/* 6.7 · Descuento de cumpleaños (resta de los productos) */}
+                {descuentoCumpleanos > 0 && (
+                    <p className="resumen-pedido__descuento">
+                        <span>Descuento de cumpleaños</span>
+                        <span>−{formatearCOP(descuentoCumpleanos)}</span>
+                    </p>
+                )}
+
                 {/* Total */}
                 <div className="resumen-pedido__total">
                     <span className="resumen-pedido__total-label">TOTAL ESTIMADO</span>
                     <span className="resumen-pedido__total-valor">
-                        {formatearCOP(calcularTotal())}
+                        {formatearCOP(calcularTotal() - descuentoCumpleanos)}
                     </span>
                 </div>
 

@@ -33,10 +33,22 @@ const pedidoSchema = new mongoose.Schema({
         ref: 'MetodoPago',
         required: true
     },
+    // Lo que paga el cliente: productos − descuentos (6.7). Antes de 6.7, la suma de los productos
     total: {
         type: Number,
         required: true,
-        min: 0
+        min: 0,
+        validate: { validator: Number.isSafeInteger, message: 'El total debe ser un entero en COP' }
+    },
+    // 6.7 (F6-6) · Descuentos del pedido (hoy, el 10 % de cumpleaños aplicado en el carrito); pasan al comprobante
+    descuentos: {
+        type: [new mongoose.Schema({
+            tipo: { type: String, required: true, enum: ['cumpleanos'] },
+            monto: { type: Number, required: true, min: 1, validate: { validator: Number.isSafeInteger, message: 'El descuento debe ser un entero en COP' } },
+            detalle: { type: String, trim: true, maxlength: 80, default: '' },
+        }, { _id: false })],
+        default: [],
+        validate: { validator: (ds) => ds.filter((d) => d.tipo === 'cumpleanos').length <= 1, message: 'Un solo descuento de cumpleaños por pedido' }
     },
     nombreEntrega: {
         type: String,

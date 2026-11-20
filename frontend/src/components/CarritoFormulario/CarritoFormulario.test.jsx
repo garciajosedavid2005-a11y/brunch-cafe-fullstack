@@ -77,6 +77,7 @@ describe("Checkout: hora de entrega y teléfono", () => {
       if (ruta === "/v1/horarios") return Promise.resolve({ horarios: HORARIOS });
       if (ruta === "/v1/cliente/metodos-pago") return Promise.resolve([{ id: "m1", nombre: "Contra entrega", descripcion: "" }]);
       if (ruta === "/v1/cliente/direcciones") return Promise.resolve({ direcciones: [] }); // 6.4 · sin libreta
+      if (ruta === "/v1/cliente/puntos") return Promise.resolve({ saldo: 0, movimientos: [] }); // 6.7 · sin cumpleaños
       intentos += 1;
       return intentos === 1
         ? Promise.reject(Object.assign(new Error("No se pudo conectar con el servidor."), {}))

@@ -4,6 +4,8 @@
 //                       fecha del cobro (cerradaEn). Las cerradas sin cobro y las canceladas no son venta.
 //   Ventas a domicilio = líneas de los pedidos ENTREGADOS, con la fecha del pedido (createdAt).
 //   Métodos de pago y propinas: de los comprobantes emitidos en el rango; las notas crédito van aparte (restan).
+//   Descuentos (6.7): los de los mismos tickets que las ventas (comprobantes de esas cuentas y descuentos de esos
+//                     pedidos), por tipo; ventas netas = ventas − descuentos. Las notas crédito siguen aparte.
 // Los montos son enteros en COP. Las consultas leen solo el rango (índices por fecha) y el cálculo se hace aquí:
 // el volumen de un café (cientos de cuentas al mes) no justifica un pipeline de agregación más complejo.
 import { z } from 'zod'
@@ -22,6 +24,10 @@ import { esFechaValida, fechaLocal, horaLocal, instanteLocal } from '../comparti
 import { tienePermiso } from '../identidad/permisos.js'
 import { validar } from '../salon/cuentas.schema.js'
 import { cargarRecetas, consumoUnitario } from '../inventario/recetas.service.js'
+import { TIPOS_DESCUENTO } from '../caja/comprobante.model.js'
+
+// 6.7 (F6-7) · Descuentos por tipo, en el orden del modelo
+const ETIQUETAS_DESCUENTO = { cumpleanos: 'Cumpleaños', puntos: 'Puntos' }
 
 export const MAX_DIAS_REPORTE = 366
 const fecha = (campo) => z.string({ error: `${campo} es requerida` }).refine(esFechaValida, { error: `${campo} no es válida (AAAA-MM-DD)` })
@@ -76,7 +82,7 @@ const lineasDeVenta = async ({ inicio, fin }) => {
     }
     const entregado = await Estado.findOne({ tipo: 'pedido', codigo: 'entregado' }).select('_id').lean()
     const pedidos = entregado
-        ? await Pedido.find({ estado: entregado._id, createdAt: { $gte: inicio, $lt: fin } }).select('canal createdAt total').lean()
+        ? await Pedido.find({ estado: entregado._id, createdAt: { $gte: inicio, $lt: fin } }).select('canal createdAt total descuentos').lean()
         : []
     const detalles = pedidos.length ? await DetallePedido.find({ pedido: { $in: pedidos.map((p) => p._id) } }).lean() : []
     const porPedido = new Map(pedidos.map((p) => [String(p._id), p]))
@@ -106,6 +112,11 @@ export const reporteVentas = async (sesion, consulta) => {
     const tickets = cuentas.length + pedidos.length
     const propinas = comprobantes.reduce((t, c) => t + c.propina, 0)
     const devuelto = notas.reduce((t, n) => t + n.total, 0)
+    // 6.7 · Descuentos de los mismos tickets que las ventas: los comprobantes de esas cuentas y los de esos pedidos
+    const deCuentas = cuentas.length ? await Comprobante.find({ cuenta: { $in: cuentas.map((c) => c._id) } }).select('descuentos').lean() : []
+    const porDescuento = new Map(TIPOS_DESCUENTO.map((t) => [t, { monto: 0, cantidad: 0 }]))
+    for (const ticket of [...deCuentas, ...pedidos]) for (const d of ticket.descuentos || []) sumar(porDescuento, d.tipo, { monto: d.monto, cantidad: 1 })
+    const descuentos = [...porDescuento.values()].reduce((t, v) => t + v.monto, 0)
 
     // Por día (todos los días del rango, también los que no vendieron) y por franja horaria
     const porDia = new Map()
@@ -157,7 +168,9 @@ export const reporteVentas = async (sesion, consulta) => {
             ventas, tickets, cuentas: cuentas.length, pedidos: pedidos.length,
             ticketPromedio: tickets ? Math.round(ventas / tickets) : 0,
             propinas, notasCredito: devuelto, comprobantes: comprobantes.length,
+            descuentos, ventasNetas: ventas - descuentos, // 6.7
         },
+        porDescuento: [...porDescuento].map(([tipo, v]) => ({ tipo, etiqueta: ETIQUETAS_DESCUENTO[tipo] || tipo, monto: v.monto, cantidad: v.cantidad })),
         porDia: [...porDia].map(([f, v]) => ({ fecha: f, salon: v.salon || 0, domicilio: v.domicilio || 0, paraLlevar: v.para_llevar || 0, total: (v.salon || 0) + (v.domicilio || 0) + (v.para_llevar || 0), tickets: v.tickets || 0 })),
         porFranja: [...porHora].sort((a, b) => a[0] - b[0]).map(([h, v]) => ({ hora: h, franja: `${String(h).padStart(2, '0')}:00–${String(h + 1).padStart(2, '0')}:00`, ventas: v.ventas, tickets: v.tickets })),
         porProducto: [...porProducto].map(([id, v]) => ({ id, nombre: v.nombre, categoria: categoriaDe.get(id) || 'Sin categoría', cantidad: v.cantidad, ventas: v.ventas })).sort(ordenarPor('ventas')),

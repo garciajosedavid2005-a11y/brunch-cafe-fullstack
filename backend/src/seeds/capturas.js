@@ -88,7 +88,8 @@ const sembrarPerfilesCliente = async () => {
     const cliente = await Usuario.findOne({ correo: 'cliente.dev@brunchcafe.test' })
     if (!cliente) throw new Error('Falta cliente.dev: ejecuta npm run seed:dev')
     cliente.set({
-        fechaNacimiento: new Date('1992-11-05T00:00:00.000Z'), alergias: 'Maní y nueces', preferencias: 'Leche de almendra',
+        // 6.7 · Nació el día 5 del mes en curso (Bogotá): las capturas del cumpleaños funcionan en cualquier mes
+        fechaNacimiento: new Date(`1992-${fechaLocal().slice(5, 7)}-05T00:00:00.000Z`), alergias: 'Maní y nueces', preferencias: 'Leche de almendra',
         puntos: 250, // 6.6 · para las capturas del canje (sin movimientos: se siembra el saldo)
         direcciones: [
             { etiqueta: 'Casa', direccion: 'Cra 36B #30-06', barrio: 'Centro', indicaciones: 'Torre 2, apto 301', principal: true },

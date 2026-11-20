@@ -162,6 +162,8 @@ export default function ReportesSection() {
           <div className="reportes-kpis">
             {[
               ["Ventas", formatearCOP(v.resumen.ventas)],
+              ["Descuentos", formatearCOP(v.resumen.descuentos ?? 0)], // 6.7
+              ["Ventas netas", formatearCOP(v.resumen.ventasNetas ?? v.resumen.ventas)],
               ["Cuentas y pedidos", formatearNumero(v.resumen.tickets)],
               ["Ticket promedio", formatearCOP(v.resumen.ticketPromedio)],
               ["Propinas", formatearCOP(v.resumen.propinas)],
@@ -176,7 +178,7 @@ export default function ReportesSection() {
           <div className="reportes-rejilla">
             <Reporte titulo="Ventas por día" archivo={`ventas-por-dia_${sufijo}`} filas={v.porDia}
               grafico={<Barras titulo="Ventas por día" filas={v.porDia} etiqueta={(f) => formatearFechaCalendario(f.fecha, "diaMes")} valor={(f) => f.total} formato={formatearCOP} />}
-              columnas={[texto("fecha", "Fecha"), peso("salon", "Salón"), peso("domicilio", "Domicilio"), peso("total", "Total"), numero("tickets", "Cuentas y pedidos")]} />
+              columnas={[texto("fecha", "Fecha"), peso("salon", "Salón"), peso("domicilio", "Domicilio"), peso("paraLlevar", "Para llevar"), peso("total", "Total"), numero("tickets", "Cuentas y pedidos")]} />
             <Reporte titulo="Ventas por franja horaria" archivo={`ventas-por-franja_${sufijo}`} filas={v.porFranja}
               grafico={<Barras titulo="Ventas por franja horaria" filas={v.porFranja} etiqueta={(f) => f.franja} valor={(f) => f.ventas} formato={formatearCOP} />}
               columnas={[texto("franja", "Franja"), peso("ventas", "Ventas"), numero("tickets", "Cuentas y pedidos")]} />
@@ -186,10 +188,13 @@ export default function ReportesSection() {
               grafico={<Barras titulo="Ventas por categoría" filas={v.porCategoria} etiqueta={(f) => f.categoria} valor={(f) => f.ventas} formato={formatearCOP} />}
               columnas={[texto("categoria", "Categoría"), numero("cantidad", "Unidades"), peso("ventas", "Ventas")]} />
             <Reporte titulo="Ventas por canal" archivo={`ventas-por-canal_${sufijo}`} filas={v.porCanal}
-              nota="«Para llevar» aparecerá cuando exista ese canal (Fase 6)."
               columnas={[{ titulo: "Canal", valor: (f) => f.etiqueta, mostrar: (f) => (f.disponible ? f.etiqueta : `${f.etiqueta} (aún no existe)`) }, peso("ventas", "Ventas"), numero("tickets", "Cuentas y pedidos")]} />
             <Reporte titulo="Ventas por mesero" archivo={`ventas-por-mesero_${sufijo}`} filas={v.porMesero}
               columnas={[texto("mesero", "Mesero"), numero("cuentas", "Cuentas"), peso("ventas", "Ventas"), peso("ticketPromedio", "Ticket promedio"), peso("propinas", "Propinas")]} />
+            {/* 6.7 (F6-7) · Descuentos de los comprobantes del rango, por tipo */}
+            <Reporte titulo="Descuentos por tipo" archivo={`descuentos-por-tipo_${sufijo}`} filas={v.porDescuento || []}
+              nota="De los comprobantes emitidos en el rango. Ventas netas = ventas − descuentos."
+              columnas={[texto("etiqueta", "Tipo"), numero("cantidad", "Comprobantes"), peso("monto", "Descontado")]} />
             <Reporte titulo="Por método de pago" archivo={`metodos-de-pago_${sufijo}`} filas={v.porMetodo}
               nota="Lo cobrado en los comprobantes (con propina) menos lo devuelto con notas crédito."
               columnas={[{ titulo: "Método", valor: (f) => METODOS[f.metodo] || f.metodo }, numero("pagos", "Pagos"), peso("cobrado", "Cobrado"), peso("devuelto", "Devuelto"), peso("neto", "Neto")]} />

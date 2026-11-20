@@ -3,7 +3,7 @@ import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { apiRequest } from "../../../services/api";
 import { formatearCOP } from "../../../utils/moneda";
 import { nuevaClave } from "../plano/estadosMesa";
-import { BLOQUE_PUNTOS, METODOS, VALOR_BLOQUE, cuerpoCobro, estadoPagos, montoParte, origenCuenta, propinaSugerida } from "./cobro";
+import { BLOQUE_PUNTOS, METODOS, VALOR_BLOQUE, cuerpoCobro, descuentoCumpleanos, estadoPagos, montoParte, origenCuenta, propinaSugerida } from "./cobro";
 import CampoPesos from "./CampoPesos";
 import ClienteCuenta from "../compartido/ClienteCuenta";
 import { tienePermiso } from "../../../utils/permisos";
@@ -54,22 +54,28 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
       : cuenta.total;
   const [propina, setPropina] = useState(0);
   // 6.6 (F6-5) · Canje de puntos del cliente identificado: solo en el cobro completo (bloques de 100 = $10.000, sin
-  // superar el consumo). El saldo llega con el detalle de la cuenta
-  const puedeCanjear = !esDomicilio && modo === "entera" && Boolean(cliente) && tienePermiso(user, "puntos:canjear");
+  // superar el consumo). 6.7 (F6-d) · Antes, su 10 % de cumpleaños si le corresponde. Saldo y cumpleaños llegan con el
+  // detalle de la cuenta
+  const conCliente = !esDomicilio && modo === "entera" && Boolean(cliente);
+  const puedeCanjear = conCliente && tienePermiso(user, "puntos:canjear");
   const [saldoPuntos, setSaldoPuntos] = useState(null);
+  const [cumpleanos, setCumpleanos] = useState(null);
+  const [aplicarCumple, setAplicarCumple] = useState(false);
   const [bloques, setBloques] = useState(0);
   useEffect(() => {
-    if (!puedeCanjear) return undefined;
+    if (!conCliente) return undefined;
     let vivo = true;
     apiRequest(`/v1/staff/caja/cuentas/${cuenta.id}`)
-      .then((d) => { if (vivo) setSaldoPuntos(d.puntosCliente ?? 0); })
-      .catch(() => { if (vivo) setSaldoPuntos(0); });
+      .then((d) => { if (vivo) { setSaldoPuntos(d.puntosCliente ?? 0); setCumpleanos(d.cumpleanosCliente ?? null); } })
+      .catch(() => { if (vivo) { setSaldoPuntos(0); setCumpleanos(null); } });
     return () => { vivo = false; };
-  }, [puedeCanjear, cuenta.id, cliente?.id]);
-  const maxBloques = puedeCanjear ? Math.max(0, Math.min(Math.floor((saldoPuntos || 0) / BLOQUE_PUNTOS), Math.floor(consumo / VALOR_BLOQUE))) : 0;
+  }, [conCliente, cuenta.id, cliente?.id]);
+  const cumpleDisponible = conCliente && Boolean(cumpleanos?.disponible);
+  const descuentoCumple = cumpleDisponible && aplicarCumple ? descuentoCumpleanos(consumo, cumpleanos.porcentaje) : 0;
+  const maxBloques = puedeCanjear ? Math.max(0, Math.min(Math.floor((saldoPuntos || 0) / BLOQUE_PUNTOS), Math.floor((consumo - descuentoCumple) / VALOR_BLOQUE))) : 0;
   const bloquesUsados = Math.min(bloques, maxBloques);
   const descuentoPuntos = bloquesUsados * VALOR_BLOQUE;
-  const total = consumo - descuentoPuntos + propina;
+  const total = consumo - descuentoCumple - descuentoPuntos + propina;
   // Un solo pago sigue al total mientras el cajero no lo cambie
   // Un domicilio llega con el método de su pedido (tarjeta con datáfono o efectivo contra entrega)
   const [pagos, setPagos] = useState([{ metodo: (esDomicilio && cuenta.metodoSugerido) || "efectivo", monto: consumo, recibido: null }]);
@@ -120,7 +126,7 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
     setEnviando(true);
     setError("");
     try {
-      const cuerpo = cuerpoCobro({ versionEsperada: version, propina, pagos: pagosVistos, canjearPuntos: bloquesUsados * BLOQUE_PUNTOS });
+      const cuerpo = cuerpoCobro({ versionEsperada: version, propina, pagos: pagosVistos, canjearPuntos: bloquesUsados * BLOQUE_PUNTOS, aplicarCumpleanos: descuentoCumple > 0 });
       const parte = esDomicilio ? null : modo === "iguales" ? { modo, partes } : modo === "items" ? { modo, items: elegidos } : null;
       const ruta = esDomicilio ? `/v1/staff/caja/domicilios/${cuenta.id}/cobrar` : `/v1/staff/caja/cuentas/${cuenta.id}/${parte ? "cobrar-parte" : "cobrar"}`;
       const resultado = await apiRequest(ruta, {
@@ -162,10 +168,20 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
             onElegir={(itemId) => setElegidos((l) => (l.includes(itemId) ? l.filter((x) => x !== itemId) : [...l, itemId]))} />}
           <dl className="caja-cobro__resumen">
             <div><dt>{modo === "entera" ? "Consumo" : "Consumo de esta parte"}</dt><dd>{formatearCOP(consumo)}</dd></div>
+            {descuentoCumple > 0 && (
+              <div><dt>Descuento de cumpleaños ({cumpleanos.porcentaje} %)</dt><dd>−{formatearCOP(descuentoCumple)}</dd></div>
+            )}
             {descuentoPuntos > 0 && (
               <div><dt>Descuento por puntos ({bloquesUsados * BLOQUE_PUNTOS})</dt><dd>−{formatearCOP(descuentoPuntos)}</dd></div>
             )}
           </dl>
+          {cumpleDisponible && (
+            <label className="caja-cobro__cumple">
+              <input type="checkbox" checked={aplicarCumple}
+                onChange={(e) => { setAplicarCumple(e.target.checked); clave.current = nuevaClave(); }} />
+              <span>Aplicar descuento de cumpleaños <span className="caja-cobro__cumple-monto">({cumpleanos.porcentaje} %: −{formatearCOP(descuentoCumpleanos(consumo, cumpleanos.porcentaje))})</span></span>
+            </label>
+          )}
           {puedeCanjear && saldoPuntos !== null && (
             <div className="caja-cobro__puntos">
               <label htmlFor={`${id}-puntos`}>Canjear puntos <span className="caja-cobro__saldo">(saldo: {saldoPuntos})</span></label>

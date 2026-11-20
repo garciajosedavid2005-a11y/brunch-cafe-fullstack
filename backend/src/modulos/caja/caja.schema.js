@@ -28,6 +28,8 @@ export const cobrarSchema = z.object({
     // 6.6 (F6-5) · Puntos que el cliente identificado canjea (bloques de 100 = $10.000); solo en el cobro completo
     canjearPuntos: z.number({ error: 'Los puntos a canjear deben ser un número' }).int().min(0).max(1_000_000)
         .refine((n) => n % 100 === 0, { error: 'Los puntos se canjean en bloques de 100' }).default(0),
+    // 6.7 (F6-6) · 10 % de cumpleaños del cliente identificado (el backend decide si le corresponde); solo en el cobro completo
+    aplicarCumpleanos: z.boolean({ error: 'Indica si se aplica el descuento de cumpleaños (sí o no)' }).default(false),
 }).strict()
 
 // 3b.2 · Cobrar una parte: lo mismo que el cobro más cómo se divide (F3b-3, F3b-4)

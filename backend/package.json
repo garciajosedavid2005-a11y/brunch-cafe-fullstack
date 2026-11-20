@@ -38,6 +38,7 @@
     "migrate:6.3": "node scripts/migrar-6.3-para-llevar.js",
     "migrate:6.5": "node scripts/migrar-6.5-cliente-identificar.js",
     "migrate:6.6": "node scripts/migrar-6.6-puntos.js",
+    "migrate:6.7": "node scripts/migrar-6.7-cumpleanos.js",
     "seed:dev": "node scripts/seed-dev.js",
     "seed:demo": "node scripts/seed-demo.js",
     "seed:salon": "node scripts/seed-salon.js",

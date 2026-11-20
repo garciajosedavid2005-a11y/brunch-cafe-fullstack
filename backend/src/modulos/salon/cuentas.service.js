@@ -27,6 +27,7 @@ import {
 } from './cuentas.schema.js'
 import { clienteActivo } from '../identidad/clienteStaff.js'
 import { puntosDelCobro } from '../fidelizacion/puntos.service.js'
+import { usarCumpleanos, comprobarCumpleanos, descuentoCumpleanos, PORCENTAJE_CUMPLEANOS } from '../fidelizacion/cumpleanos.service.js'
 import { nombreCorto } from '../compartido/nombres.js'
 import { MAX_MESAS_POR_CUENTA } from './cuenta.model.js'
 import { cobrarSchema, cobrarParteSchema } from '../caja/caja.schema.js'
@@ -886,7 +887,7 @@ export const cerrarSinCobro = async (cuentaId, datos, sesion) => {
  */
 export const cobrarCuenta = async (cuentaId, datos, sesion) => {
     exigirPermiso(sesion, 'cuenta:cobrar')
-    const { versionEsperada, propina, pagos, canjearPuntos } = validar(cobrarSchema, datos)
+    const { versionEsperada, propina, pagos, canjearPuntos, aplicarCumpleanos } = validar(cobrarSchema, datos)
     if (canjearPuntos) exigirPermiso(sesion, 'puntos:canjear') // 6.6 · el cajero (y el admin)
     await asegurarContador()
 
@@ -894,14 +895,25 @@ export const cobrarCuenta = async (cuentaId, datos, sesion) => {
         const turno = await tomarTurnoAbierto(session) // 3b.1 · sin turno abierto no se cobra
         const cuenta = await tocarCuenta(cuentaId, { versionEsperada }, session)
         MAQUINA_CUENTA.validar(cuenta.estado, 'cerrada', { permisos: permisosDe(sesion) })
-        // 6.6 · Puntos del cliente identificado: el canje es un descuento sobre el consumo (nunca sobre la propina)
-        const { puntos, descuento } = await puntosDelCobro({ clienteId: cuenta.cliente?.usuario, consumo: cuenta.total, canjear: canjearPuntos, session })
-        const descuentos = descuento ? [{ tipo: 'puntos', monto: descuento, detalle: `${canjearPuntos} puntos` }] : []
-        const total = cuenta.total - descuento + propina
+        const clienteId = cuenta.cliente?.usuario
+        // 6.7 (F6-d) · Cumpleaños primero (10 % del consumo); el uso se registra al emitir el comprobante (su referencia)
+        if (aplicarCumpleanos && !clienteId) throw error(400, 'CUMPLEANOS_SIN_CLIENTE', 'Para aplicar el descuento de cumpleaños, identifica primero al cliente de la cuenta.')
+        const cumpleanos = aplicarCumpleanos ? descuentoCumpleanos(cuenta.total) : 0
+        if (aplicarCumpleanos) await comprobarCumpleanos({ usuarioId: clienteId, monto: cumpleanos, session }) // antes de emitir nada
+        // 6.6 · Puntos del cliente identificado: el canje es un descuento sobre lo que queda del consumo (nunca sobre la propina)
+        const { puntos, descuento } = await puntosDelCobro({ clienteId, consumo: cuenta.total - cumpleanos, canjear: canjearPuntos, session })
+        const descuentos = [
+            ...(aplicarCumpleanos ? [{ tipo: 'cumpleanos', monto: cumpleanos, detalle: `${PORCENTAJE_CUMPLEANOS} % de cumpleaños` }] : []),
+            ...(descuento ? [{ tipo: 'puntos', monto: descuento, detalle: `${canjearPuntos} puntos` }] : []),
+        ]
+        const total = cuenta.total - cumpleanos - descuento + propina
         const pagosCalculados = calcularPagos(pagos, total)
         const comandas = await comandasDe(cuenta._id, session).lean()
         await cerrarCuenta(cuenta, 'cerrada', { sesion, session, motivo: '', cierre })
         const comprobante = await emitirComprobante({ cuenta, comandas, propina, total, pagos: pagosCalculados, sesion, session, turno, descuentos, puntos })
+        if (aplicarCumpleanos) {
+            await usarCumpleanos({ usuarioId: clienteId, consumo: cuenta.total, session, referencia: { modelo: 'Comprobante', id: comprobante._id, codigo: comprobante.codigo } })
+        }
         await registrarEvento({
             entidad: 'cuenta', entidadId: cuenta._id, tipo: 'cuenta_cobrada', ...quien(sesion),
             datos: {
@@ -909,6 +921,7 @@ export const cobrarCuenta = async (cuentaId, datos, sesion) => {
                 pagos: pagosCalculados.map((p) => ({ metodo: p.metodo, monto: p.monto })),
                 // 6.6 · Rastro del canje: cliente, descuento y puntos (quién cobró ya lo dice el Evento)
                 ...(puntos ? { puntos: { cliente: puntos.cliente, canjeados: puntos.canjeados, ganados: puntos.ganados, descuento } } : {}),
+                ...(aplicarCumpleanos ? { cumpleanos } : {}), // 6.7
             },
             session,
         })
@@ -934,9 +947,10 @@ const lineaDeItem = (i) => ({
  */
 export const cobrarParte = async (cuentaId, datos, sesion) => {
     exigirPermiso(sesion, 'cuenta:cobrar')
-    const { versionEsperada, propina, pagos, division, canjearPuntos } = validar(cobrarParteSchema, datos)
+    const { versionEsperada, propina, pagos, division, canjearPuntos, aplicarCumpleanos } = validar(cobrarParteSchema, datos)
     // 6.6 (F6-c) · El canje solo en el cobro completo de la cuenta; cada parte sí acumula lo que paga
     if (canjearPuntos) throw error(400, 'CANJE_SOLO_COMPLETO', 'Los puntos se canjean solo al cobrar la cuenta completa.')
+    if (aplicarCumpleanos) throw error(400, 'CUMPLEANOS_SOLO_COMPLETO', 'El descuento de cumpleaños se aplica solo al cobrar la cuenta completa.')
     await asegurarContador()
 
     return conCierre(async (session, cierre) => {

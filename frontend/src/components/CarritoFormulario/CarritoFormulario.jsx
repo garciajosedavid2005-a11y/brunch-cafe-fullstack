@@ -116,6 +116,21 @@ const CarritoFormulario = () => {
         return () => { activo = false }
     }, [user?.id, user?.esPersonal])
 
+    // 6.7 (F6-6, F6-d) · Descuento de cumpleaños: si está disponible, el cliente puede usarlo en este pedido (10 % de los
+    // productos, hacia abajo; el backend vuelve a decidir si le corresponde)
+    const [cumpleanos, setCumpleanos] = useState(null)
+    const [usarCumple, setUsarCumple] = useState(false)
+    useEffect(() => {
+        if (!user?.id || user.esPersonal) return undefined
+        let activo = true
+        apiRequest('/v1/cliente/puntos')
+            .then((r) => { if (activo) setCumpleanos(r.cumpleanos || null) })
+            .catch(() => {}) // sin el dato, no se ofrece
+        return () => { activo = false }
+    }, [user?.id, user?.esPersonal])
+    const cumpleDisponible = cumpleanos?.estado === 'disponible'
+    const descuentoCumple = cumpleDisponible && usarCumple ? Math.floor((calcularTotal() * cumpleanos.porcentaje) / 100) : 0
+
     const handleChange = (e) => {
         // 6.4 · Si cambia a mano la dirección o el barrio, ya no es la guardada
         if (['direccion', 'barrio'].includes(e.target.name)) setDireccionElegida('')
@@ -221,9 +236,14 @@ const CarritoFormulario = () => {
                 body: JSON.stringify({
                     ...formData,
                     metodoPagoId,
-                    items: itemsDelPedido(productos)
+                    items: itemsDelPedido(productos),
+                    ...(descuentoCumple > 0 ? { usarCumpleanos: true } : {}),
                 })
             })
+            if (descuentoCumple > 0) {
+                setCumpleanos((c) => ({ ...c, estado: 'usado' }))
+                setUsarCumple(false)
+            }
             setMostrarModal(false)
             limpiarCarrito()
             setFormData(formularioInicial(user))
@@ -502,12 +522,26 @@ const CarritoFormulario = () => {
                         </div>
                     </section>
 
+                    {/* 6.7 · Cumpleaños */}
+                    {cumpleDisponible && (
+                        <label className="carrito-cumple">
+                            <input type="checkbox" checked={usarCumple} onChange={(e) => setUsarCumple(e.target.checked)} />
+                            <span>
+                                Usar mi descuento de cumpleaños ({cumpleanos.porcentaje} %: −{formatearCOP(Math.floor((calcularTotal() * cumpleanos.porcentaje) / 100))})
+                                <small>Una compra en el mes de tu cumpleaños, una vez al año.</small>
+                            </span>
+                        </label>
+                    )}
+
                     {/* TOTAL */}
+                    {descuentoCumple > 0 && (
+                        <p className="carrito-formulario__descuento">Descuento de cumpleaños: −{formatearCOP(descuentoCumple)}</p>
+                    )}
                     <div className="carrito-formulario__total">
                         <div className="carrito-formulario__total-linea"></div>
                         <p className="carrito-formulario__total-texto">
                             TOTAL ESTIMADO:{" "}
-                            {formatearCOP(calcularTotal())}
+                            {formatearCOP(calcularTotal() - descuentoCumple)}
                         </p>
                         <div className="carrito-formulario__total-linea"></div>
                     </div>
@@ -536,6 +570,7 @@ const CarritoFormulario = () => {
                     metodoPago={metodosPago.find((metodo) => metodo.id === metodoPagoId)}
                     onEditar={() => setMostrarModal(false)}
                     onConfirmar={handleConfirmar}
+                    descuentoCumpleanos={descuentoCumple}
                     guardando={guardando}
                     error={errorPedido}
                 />

@@ -3,7 +3,8 @@ import MovimientoPuntos from './movimientoPuntos.model.js'
 import Comprobante from '../caja/comprobante.model.js'
 import { AppError } from '../compartido/errors.js'
 import { logger } from '../compartido/logger.js'
-import { PESOS_POR_PUNTO, BLOQUE_CANJE, VALOR_BLOQUE, puntosGanados, descuentoPorPuntos } from './reglas.js'
+import { PESOS_POR_PUNTO, BLOQUE_CANJE, VALOR_BLOQUE, PORCENTAJE_CUMPLEANOS, puntosGanados, descuentoPorPuntos } from './reglas.js'
+import { estadoCumpleanos } from './cumpleanos.service.js'
 
 // 6.6 (F6-5, F6-c) · Puntos: 1 por cada $1.000 pagados del consumo (después de descuentos, sin propina, hacia abajo);
 // canje en la caja en bloques de 100 = $10.000, solo en el cobro completo y sin superar el consumo; un comprobante
@@ -96,12 +97,14 @@ export const puntosDelCobro = async ({ clienteId, consumo, canjear = 0, session 
 
 /** 6.6 · GET /cliente/puntos: saldo, reglas y los últimos movimientos. */
 export const misPuntos = async (usuarioId) => {
-    const [saldo, movimientos] = await Promise.all([
+    const [saldo, movimientos, cumpleanos] = await Promise.all([
         saldoDe(usuarioId),
         MovimientoPuntos.find({ usuario: usuarioId }).sort({ createdAt: -1, _id: -1 }).limit(MAX_HISTORIAL).lean(),
+        estadoCumpleanos(usuarioId),
     ])
     return {
         saldo,
+        cumpleanos: { estado: cumpleanos, porcentaje: PORCENTAJE_CUMPLEANOS }, // 6.7 · para Mis puntos y el carrito
         reglas: { pesosPorPunto: PESOS_POR_PUNTO, bloque: BLOQUE_CANJE, valorBloque: VALOR_BLOQUE },
         movimientos: movimientos.map((m) => ({
             id: String(m._id), tipo: m.tipo, puntos: m.puntos, saldoDespues: m.saldoDespues,

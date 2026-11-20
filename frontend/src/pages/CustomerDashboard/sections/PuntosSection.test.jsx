@@ -27,6 +27,17 @@ describe("6.6 · Mis puntos", () => {
     expect(filas[2]).toHaveTextContent("Canjeados · CI-000012-20050");
   });
 
+  // 6.7 · Aviso del descuento de cumpleaños según su estado
+  it("dice el estado del descuento de cumpleaños", async () => {
+    estado.apiRequest.mockResolvedValue({ ...RESPUESTA, cumpleanos: { estado: "disponible", porcentaje: 10 } });
+    const { unmount } = render(<PuntosSection />);
+    expect(await screen.findByText(/¡Feliz cumpleaños!/)).toHaveTextContent("10 % de descuento en una compra");
+    unmount();
+    estado.apiRequest.mockResolvedValue({ ...RESPUESTA, cumpleanos: { estado: "sin_fecha", porcentaje: 10 } });
+    render(<PuntosSection />);
+    expect(await screen.findByText(/Agrega tu fecha de nacimiento/)).toBeInTheDocument();
+  });
+
   it("sin movimientos lo dice", async () => {
     estado.apiRequest.mockResolvedValue({ ...RESPUESTA, saldo: 0, movimientos: [] });
     render(<PuntosSection />);

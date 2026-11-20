@@ -1560,6 +1560,20 @@ const VISTAS = {
     await p.getByRole("button", { name: "Mis puntos" }).first().click();
     await p.getByText(/^Tienes/).waitFor();
   } },
+  // 6.7 · Cumpleaños en la caja (cliente.dev nació en noviembre): 10 % marcado y luego 200 puntos (caben 2 bloques)
+  "staff-caja-cumpleanos": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await VISTAS["staff-caja-canje"].preparar(p);
+    await p.getByRole("checkbox", { name: /descuento de cumpleaños/i }).check();
+    await p.getByText(/^Descuento de cumpleaños \(10 %\)$/).waitFor();
+  } },
+  // 6.7 · Cumpleaños en el carrito: la casilla marcada, el descuento y el total
+  "carrito-cumpleanos": { usuario: "cliente", preparar: async (p) => {
+    await VISTAS.carrito.preparar(p);
+    const casilla = p.getByRole("checkbox", { name: /descuento de cumpleaños/i });
+    await casilla.check();
+    await p.getByText(/^Descuento de cumpleaños: /).waitFor();
+    await casilla.evaluate((e) => e.scrollIntoView({ block: "center" }));
+  } },
   "staff-comanda-producto": { usuario: "mesero", preparar: async (p) => {
     await abrirCuentaDeMesa(p, 1);
     await p.getByRole("group", { name: "Categorías" }).getByRole("button", { name: "Desayunos" }).click();

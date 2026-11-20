@@ -104,6 +104,12 @@ export default function OrdersSection() {
                 {order.paymentMethod && <p>Método de pago: {order.paymentMethod}</p>}
               </div>
             )}
+            {/* 6.7 · Descuento de cumpleaños aplicado en el carrito */}
+            {(order.descuentos || []).map((d) => (
+              <div key={d.tipo} className="dashboard-card__descuento">
+                <span>{d.tipo === "cumpleanos" ? "Descuento de cumpleaños" : "Descuento"}</span><span>−{money(d.monto)}</span>
+              </div>
+            ))}
             <div className="dashboard-card__total"><span>Total</span><strong>{money(order.total)}</strong></div>
             {order.status === "pending" && (
               <div className="dashboard-reservation__actions">

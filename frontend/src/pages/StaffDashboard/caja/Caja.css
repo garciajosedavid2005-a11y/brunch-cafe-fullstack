@@ -375,6 +375,19 @@
 /* 6.6 · Canje de puntos */
 .caja-cobro__puntos { display: grid; gap: 0.3rem; margin: 0.25rem 0 0; font-weight: 600; }
 
+/* 6.7 · Casilla del descuento de cumpleaños: toda la fila responde (44 px de alto) */
+.caja-cobro__cumple {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  margin: 0.25rem 0 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+.caja-cobro__cumple-monto { white-space: nowrap; }
+.caja-cobro__cumple input { width: 1.25rem; height: 1.25rem; margin: 0; flex-shrink: 0; accent-color: var(--color-oscuro); }
+
 /* El signo y el monto del descuento no se separan en dos líneas */
 .caja-cobro__resumen dd { white-space: nowrap; }
 

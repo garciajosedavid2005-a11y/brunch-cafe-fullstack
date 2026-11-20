@@ -18,6 +18,8 @@ import { esDireccionValida, MENSAJE_DIRECCION, normalizarDireccion } from '../co
 import { horasDomicilio, hora12, textoAnticipacion, textoRango } from '../configuracion/horarios.reglas.js';
 import { obtenerHorarios } from '../configuracion/horarios.service.js';
 import { conTransaccion } from '../compartido/transacciones.js';
+import { usarCumpleanos, liberarCumpleanos } from '../fidelizacion/cumpleanos.service.js';
+import { codigoPedido } from './pedidoComoCuenta.js';
 
 const orderSchema = z.object({
   items: z.array(z.object({
@@ -36,6 +38,8 @@ const orderSchema = z.object({
   hora: z.string().regex(/^([01]\d|2[0-3]):00$/, 'Elige una hora de entrega en punto (HH:00).'),
   barrio: z.string().trim().min(3).max(40),
   indicaciones: z.string().trim().max(120).default(''),
+  // 6.7 (F6-6, F6-d) · Usar el 10 % de cumpleaños (el backend decide si le corresponde)
+  usarCumpleanos: z.boolean().default(false),
   metodoPagoId: z.string().refine(mongoose.isValidObjectId, 'Selecciona un método de pago válido.'),
 });
 
@@ -58,6 +62,9 @@ const serializeOrder = (order, details) => ({
   statusLabel: order.estado?.nombre || 'Pendiente',
   codigo: order.estado?.codigo || '',
   paymentMethod: order.metodoPago?.nombre || '',
+  // 6.7 · subtotal (productos), descuentos y total (lo que se paga)
+  subtotal: details.reduce((n, d) => n + (d.subtotal ?? d.precioProducto * d.cantidad), 0),
+  descuentos: (order.descuentos || []).map((d) => ({ tipo: d.tipo, monto: d.monto, detalle: d.detalle || '' })),
   total: order.total,
   createdAt: order.createdAt,
   delivery: {
@@ -197,12 +204,20 @@ export const crearPedido = async (req, res) => {
 
   // Pedido, líneas (con nombre y precio del momento) y Evento inicial en una transacción (0.9):
   // si algo falla no queda nada a medias
+  const consumo = lines.reduce((total, line) => total + line.subtotal, 0);
   const { order, details } = await conTransaccion(async (session) => {
+    // 6.7 · El descuento de cumpleaños baja el total del pedido; el uso se registra con el pedido (su referencia)
+    const _id = new mongoose.Types.ObjectId();
+    const descuentos = parsed.data.usarCumpleanos
+      ? [await usarCumpleanos({ usuarioId: req.usuario.id, consumo, session, referencia: { modelo: 'Pedido', id: _id, codigo: codigoPedido(_id) } })]
+      : [];
     const [creado] = await Pedido.create([{
+      _id,
       usuario: req.usuario.id,
       estado: pending._id,
       metodoPago: paymentMethod._id,
-      total: lines.reduce((total, line) => total + line.subtotal, 0),
+      total: consumo - descuentos.reduce((n, d) => n + d.monto, 0),
+      descuentos,
       nombreEntrega: parsed.data.nombre,
       telefono: parsed.data.telefono,
       direccion: parsed.data.direccion,
@@ -265,6 +280,8 @@ export const cancelarMiPedido = async (req, res) => {
     sesion: req.usuario,
     motivo: req.validado?.motivo,
     filtro: { usuario: req.usuario.id },
+    // 6.7 · Cancelar libera el cumpleaños que usó el pedido
+    efectos: ({ documento, session }) => liberarCumpleanos({ referencias: [documento._id], motivo: 'cancelado', session }),
   });
   const updated = await Pedido.findById(order._id)
     .populate('estado', POBLAR_ESTADO)

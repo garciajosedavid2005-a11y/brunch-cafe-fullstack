@@ -69,8 +69,9 @@ describe('Pedido.canal (1.9)', () => {
         await crearPedido(cliente)
         const res = await cliente.get('/api/v1/cliente/pedidos')
         expect(res.status).toBe(200)
+        // 6.7 · + subtotal y descuentos (el cliente ve su descuento de cumpleaños); canal sigue sin salir
         expect(Object.keys(res.body.orders[0]).sort()).toEqual(
-            ['_id', 'codigo', 'createdAt', 'delivery', 'items', 'orderNumber', 'paymentMethod', 'status', 'statusLabel', 'total'])
+            ['_id', 'codigo', 'createdAt', 'delivery', 'descuentos', 'items', 'orderNumber', 'paymentMethod', 'status', 'statusLabel', 'subtotal', 'total'])
     })
 })
 
