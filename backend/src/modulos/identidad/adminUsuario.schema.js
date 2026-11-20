@@ -22,10 +22,21 @@ export const actualizarUsuarioSchema = z
             .string(requerido('El rol'))
             .refine(mongoose.isValidObjectId, { error: 'El rol seleccionado no es válido' })
             .optional(),
-        // Cierre · Solo el admin corrige la fecha de nacimiento (el cliente la pone una vez); '' la borra
+        // Cierre · Solo el admin corrige la fecha de nacimiento (el cliente la pone una vez); '' la borra.
+        // Limpieza final (Brayan) · Con motivo obligatorio, que es lo único que guarda el Evento junto con el autor
         fechaNacimiento: fechaNacimiento.optional(),
+        motivo: z.string({ error: 'El motivo debe ser un texto' }).trim()
+            .min(5, { error: 'Escribe el motivo de la corrección (al menos 5 caracteres)' })
+            .max(300, { error: 'El motivo no puede superar 300 caracteres' })
+            .optional(),
     })
-    .strict({ error: 'Solo se pueden cambiar los campos activo, rolId y fechaNacimiento' })
+    .strict({ error: 'Solo se pueden cambiar los campos activo, rolId y fechaNacimiento (con su motivo)' })
     .refine((datos) => datos.activo !== undefined || datos.rolId !== undefined || datos.fechaNacimiento !== undefined, {
         error: 'Indica activo, rolId o fechaNacimiento',
+    })
+    .refine((datos) => datos.fechaNacimiento === undefined || datos.motivo !== undefined, {
+        error: 'Escribe el motivo de la corrección de la fecha de nacimiento', path: ['motivo'],
+    })
+    .refine((datos) => datos.motivo === undefined || datos.fechaNacimiento !== undefined, {
+        error: 'El motivo solo acompaña la corrección de la fecha de nacimiento', path: ['motivo'],
     })

@@ -56,6 +56,16 @@ describe('6.4 · Consentimiento de datos', () => {
         expect((await sesion.get('/api/v1/auth/me')).body.user.consentimientoPendiente).toBe(false)
     })
 
+    it('limpieza final · la versión 2026-11b deja pendiente a quien aceptó la 2026-11 (la vuelve a aceptar al entrar)', async () => {
+        expect(CONSENTIMIENTO_VERSION).toBe('2026-11b')
+        const { sesion, usuario } = await crearConSesion('cliente', { consentimiento: { version: '2026-11', aceptadoEn: new Date() } })
+        const login = await agente().post('/api/v1/auth/login').send({ correo: usuario.correo, contraseña: 'secreta123' })
+        expect(login.body.consentimientoPendiente).toBe(true)
+        expect((await sesion.get('/api/v1/cliente/pedidos')).body.error?.code).toBe('CONSENTIMIENTO_PENDIENTE')
+        expect((await sesion.post('/api/v1/auth/consentimiento').send({ version: '2026-11b' })).status).toBe(200)
+        expect((await sesion.get('/api/v1/cliente/pedidos')).status).toBe(200)
+    })
+
     it('una versión anterior también queda pendiente; el personal no se bloquea', async () => {
         const { sesion } = await crearConSesion('cliente', { consentimiento: { version: '2020-01', aceptadoEn: new Date() } })
         expect((await sesion.get('/api/v1/cliente/pedidos')).body.error?.code).toBe('CONSENTIMIENTO_PENDIENTE')
@@ -122,35 +132,53 @@ describe('6.4 · Datos del perfil', () => {
 })
 
 describe('Cierre · El admin corrige la fecha de nacimiento', () => {
-    it('Admin › Usuarios la corrige (o la borra) con Evento de/a; el cliente la ve; sin usuario:gestionar, 403', async () => {
+    it('Admin › Usuarios la corrige (o la borra) con motivo y un Evento sin fechas; el cliente la ve; sin usuario:gestionar, 403', async () => {
         const { sesion: admin, usuario: adminU } = await crearConSesion('admin')
         const { sesion: cliente, usuario } = await crearConSesion('cliente', { fechaNacimiento: new Date('1990-11-05T00:00:00.000Z') })
         const { sesion: mesero } = await crearConSesion('mesero')
 
-        expect((await mesero.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '1990-12-05' })).status).toBe(403)
-        expect((await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '2999-01-01' })).status).toBe(400)
+        const MOTIVO = 'El cliente mostró su cédula'
+        expect((await mesero.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '1990-12-05', motivo: MOTIVO })).status).toBe(403)
+        expect((await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '2999-01-01', motivo: MOTIVO })).status).toBe(400)
+        // Limpieza final · El motivo es obligatorio (5 a 300 caracteres); sin él no se escribe nada
+        for (const motivo of [undefined, '', 'ab', 'x'.repeat(301)]) {
+            const sin = await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '1990-12-05', motivo })
+            expect(sin.status, String(motivo).slice(0, 10)).toBe(400)
+            expect(sin.body.error.code).toBe('VALIDATION_ERROR')
+            expect(JSON.stringify(sin.body.error.details)).toContain('motivo')
+        }
+        // El motivo solo acompaña la corrección de la fecha
+        const soloMotivo = await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ activo: true, motivo: 'Corrección pedida' })
+        expect(soloMotivo.status).toBe(400)
+        expect(JSON.stringify(soloMotivo.body.error.details)).toContain('motivo')
+        expect(await Evento.countDocuments({ entidadId: usuario._id, tipo: 'fecha_nacimiento_corregida' })).toBe(0)
+        expect((await Usuario.findById(usuario._id).lean()).fechaNacimiento.toISOString()).toBe('1990-11-05T00:00:00.000Z')
 
         const lista = await admin.get('/api/v1/admin/usuarios')
         expect(lista.body.find((u) => String(u.id) === String(usuario._id))).toMatchObject({ fechaNacimiento: '1990-11-05', nacimientoEditable: true })
 
-        const r = await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '1990-12-05' })
+        const r = await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '1990-12-05', motivo: MOTIVO })
         expect(r.status, JSON.stringify(r.body)).toBe(200)
         expect(r.body.fechaNacimiento).toBe('1990-12-05')
         expect((await cliente.get('/api/v1/cliente/perfil')).body.perfil.fechaNacimiento).toBe('1990-12-05')
         const eventos = await Evento.find({ entidad: 'usuario', entidadId: usuario._id, tipo: 'fecha_nacimiento_corregida' }).lean()
         expect(eventos).toHaveLength(1)
-        expect(eventos[0]).toMatchObject({ de: '1990-11-05', a: '1990-12-05' })
+        // Limpieza final · Solo el hecho, el motivo y el autor: ninguna fecha (dato personal en una bitácora inmutable)
+        expect(eventos[0]).toMatchObject({ motivo: MOTIVO, de: null })
+        expect(eventos[0].a ?? null).toBeNull()
+        expect(eventos[0].datos ?? null).toBeNull()
+        expect(JSON.stringify(eventos[0])).not.toMatch(/1990/)
         expect(String(eventos[0].usuario)).toBe(String(adminU._id))
 
         // La misma fecha otra vez no escribe otro Evento; vacío la borra (y el cliente puede volver a ponerla una vez)
-        const igual = await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '1990-12-05' })
+        const igual = await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '1990-12-05', motivo: MOTIVO })
         expect(igual.status).toBe(200)
         expect(igual.body.fechaNacimiento).toBe('1990-12-05')
         expect(await Evento.countDocuments({ entidadId: usuario._id, tipo: 'fecha_nacimiento_corregida' })).toBe(1)
-        const borra = await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '' })
+        const borra = await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '', motivo: 'Fecha registrada por error' })
         expect(borra.body.fechaNacimiento).toBe('')
         const ultimo = await Evento.findOne({ entidadId: usuario._id, tipo: 'fecha_nacimiento_corregida' }).sort({ createdAt: -1, _id: -1 }).lean()
-        expect(ultimo).toMatchObject({ de: '1990-12-05', a: null })
+        expect(ultimo).toMatchObject({ motivo: 'Fecha registrada por error', de: null })
         const base = { nombre: 'Ana', apellido: 'Ruiz', correo: usuario.correo }
         expect((await cliente.patch('/api/v1/cliente/perfil').send({ ...base, fechaNacimiento: '1990-10-01' })).status).toBe(200)
         expect((await cliente.patch('/api/v1/cliente/perfil').send({ ...base, fechaNacimiento: '1990-09-01' })).status).toBe(409)
@@ -169,7 +197,7 @@ describe('Cierre · El admin corrige la fecha de nacimiento', () => {
             } }
         })
         try {
-            const r = await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '1985-01-01' })
+            const r = await admin.patch(`/api/v1/admin/usuarios/${usuario._id}`).send({ fechaNacimiento: '1985-01-01', motivo: 'Corrección pedida' })
             expect(r.status, JSON.stringify(r.body)).toBe(409)
             expect(r.body.error.code).toBe('FECHA_NACIMIENTO_MODIFICADA')
         } finally {
@@ -184,8 +212,8 @@ describe('Cierre · El admin corrige la fecha de nacimiento', () => {
         const { sesion: gestor } = await crearConSesion('gestor-test')
         const { usuario: otroAdmin } = await crearConSesion('admin')
         const { usuario: cliente } = await crearConSesion('cliente')
-        expect((await gestor.patch(`/api/v1/admin/usuarios/${otroAdmin._id}`).send({ fechaNacimiento: '1990-12-05' })).status).toBe(403)
-        expect((await gestor.patch(`/api/v1/admin/usuarios/${cliente._id}`).send({ fechaNacimiento: '2999-01-01' })).status).toBe(400)
+        expect((await gestor.patch(`/api/v1/admin/usuarios/${otroAdmin._id}`).send({ fechaNacimiento: '1990-12-05', motivo: 'Corrección pedida' })).status).toBe(403)
+        expect((await gestor.patch(`/api/v1/admin/usuarios/${cliente._id}`).send({ fechaNacimiento: '2999-01-01', motivo: 'Corrección pedida' })).status).toBe(400)
         expect(await Evento.countDocuments({ tipo: 'fecha_nacimiento_corregida', entidadId: { $in: [otroAdmin._id, cliente._id] } })).toBe(0)
         expect((await Usuario.findById(otroAdmin._id).lean()).fechaNacimiento ?? null).toBeNull()
     })

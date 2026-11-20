@@ -114,8 +114,15 @@ describe("Usuarios (admin)", () => {
     const campo = within(dialogo).getByLabelText("Fecha de nacimiento");
     expect(campo).toHaveValue("1990-11-05");
     fireEvent.change(campo, { target: { value: "1990-12-05" } });
+    // Limpieza final · El motivo es obligatorio
+    const motivo = within(dialogo).getByLabelText("Motivo de la corrección *");
+    expect(motivo).toBeRequired();
+    const guardar = within(dialogo).getByRole("button", { name: "Guardar fecha" });
+    fireEvent.change(motivo, { target: { value: "   ab   " } });
+    expect(guardar).toBeDisabled(); // con espacios no llega a 5 caracteres
+    fireEvent.change(motivo, { target: { value: "  Mostró su cédula " } });
     fireEvent.click(within(dialogo).getByRole("button", { name: "Guardar fecha" }));
-    await waitFor(() => expect(api.patch).toHaveBeenCalledWith("/v1/admin/usuarios/nora", { fechaNacimiento: "1990-12-05" }));
+    await waitFor(() => expect(api.patch).toHaveBeenCalledWith("/v1/admin/usuarios/nora", { fechaNacimiento: "1990-12-05", motivo: "Mostró su cédula" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 

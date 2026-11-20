@@ -57,7 +57,7 @@ export const listarUsuarios = async (req, res) => {
 }
 
 /**
- * PATCH /api/admin/usuarios/:id  { activo?, rolId?, fechaNacimiento? }
+ * PATCH /api/admin/usuarios/:id  { activo?, rolId?, fechaNacimiento? (con motivo) }
  * Protecciones:
  *  - Un admin no puede desactivarse ni quitarse el rol admin a sí mismo.
  *  - No se puede dejar el sistema sin ningún admin activo.
@@ -65,7 +65,7 @@ export const listarUsuarios = async (req, res) => {
  */
 export const actualizarUsuario = async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) throw notFound('Usuario no encontrado')
-    const { activo, rolId, fechaNacimiento } = req.validado
+    const { activo, rolId, fechaNacimiento, motivo } = req.validado
 
     const usuario = await Usuario.findById(req.params.id).populate('rol', 'nombre etiqueta permisos')
     if (!usuario || usuario.eliminado === true) throw notFound('Usuario no encontrado')
@@ -100,7 +100,7 @@ export const actualizarUsuario = async (req, res) => {
     }
     if (activo !== undefined) usuario.activo = activo
     if (rolNuevo) usuario.rol = rolNuevo._id
-    // Cierre · Corrección de la fecha de nacimiento: solo si cambia, con Evento de/a en la misma transacción
+    // Cierre · Corrección de la fecha de nacimiento: solo si cambia (si no, el motivo se ignora), con Evento (motivo y autor, sin fechas) en la misma transacción
     const fechaLeida = usuario.fechaNacimiento || null
     const fechaAntes = diaTexto(fechaLeida)
     const corrigeFecha = fechaNacimiento !== undefined && diaTexto(fechaNacimiento) !== fechaAntes
@@ -121,10 +121,11 @@ export const actualizarUsuario = async (req, res) => {
             if (!matchedCount) {
                 throw new AppError(409, 'FECHA_NACIMIENTO_MODIFICADA', 'La fecha de nacimiento cambió mientras la editabas. Recarga e intenta de nuevo.')
             }
+            // Limpieza final (Brayan) · Solo el hecho, el motivo y el autor: sin las fechas (dato personal en una
+            // bitácora inmutable)
             await registrarEvento({
                 entidad: 'usuario', entidadId: usuario._id, tipo: 'fecha_nacimiento_corregida',
-                de: fechaAntes || null, a: diaTexto(fechaNacimiento) || null,
-                usuario: req.usuario.id, actor: req.usuario.rol || 'admin', session,
+                motivo, usuario: req.usuario.id, actor: req.usuario.rol || 'admin', session,
             })
         }
     })

@@ -85,6 +85,8 @@ Trabajas en la tablet, en el **panel de sala**. Se abre en la pestaña **Mesas**
 6. Para pedir más, agrega productos y envía otra ronda.
 
 ### Identificar al cliente (puntos y alergias)
+Si no aparece, puede que no haya aceptado la última versión de la política de datos: la acepta la próxima vez que entre a su cuenta.
+
 1. Dentro de la cuenta, pulsa **Identificar cliente**.
 2. Escribe el correo completo o el teléfono del cliente y pulsa **Buscar**.
 3. Elige al cliente. Si tiene alergias o preferencias, aparece un aviso en la cuenta, en la caja y en la cocina.
@@ -254,7 +256,7 @@ Trabajas en el **panel de administración**. Con **Panel de sala** entras a la o
 1. **Usuarios:** crea la cuenta del personal con su rol. La persona recibe un correo para crear su contraseña; si no le llegó, pulsa **Reenviar enlace**.
 2. **Roles:** revisa qué puede hacer cada rol (mesero, cocina, barista, cajero, repartidor y compras).
 3. Para que alguien deje de entrar, pulsa **Desactivar**. Las cuentas del personal que ya no trabaja se pueden **Eliminar**.
-4. **Corregir la fecha de nacimiento de un cliente:** pulsa **Nacimiento** en su fila, escribe la fecha correcta y pulsa **Guardar fecha**. El cambio queda registrado.
+4. **Corregir la fecha de nacimiento de un cliente:** pulsa **Nacimiento** en su fila, escribe la fecha correcta y el **motivo** (por ejemplo, «el cliente mostró su documento») y pulsa **Guardar fecha**. Queda registrado quién la corrigió y por qué.
 
 ### Reportes
 1. Entra a **Reportes** y elige el rango (o pulsa **Hoy**, **7 días** o **30 días**).

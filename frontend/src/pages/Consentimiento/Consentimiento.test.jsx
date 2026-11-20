@@ -29,6 +29,14 @@ beforeEach(() => {
   };
 });
 
+describe("Limpieza final · política con la corrección de la fecha de nacimiento", () => {
+  it("versión 2026-11b y dice que la fecha de nacimiento la corrige el café a pedido del cliente", () => {
+    expect(CONSENTIMIENTO_VERSION).toBe("2026-11b");
+    render(<MemoryRouter><PoliticaDatos /></MemoryRouter>);
+    expect(screen.getByText(/salvo la fecha de nacimiento: una vez registrada, la corrige el café cuando nos lo pidas/)).toBeInTheDocument();
+  });
+});
+
 describe("6.4 · Aceptar la política de datos", () => {
   it("muestra la política y la versión; «Aceptar» solo con la casilla; envía la versión vigente y lleva a /cuenta", async () => {
     montar();

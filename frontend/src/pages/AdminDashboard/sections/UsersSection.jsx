@@ -102,9 +102,10 @@ function FormularioCrear({ roles, guardando, onCrear, onCerrar }) {
 function FormularioNacimiento({ usuario, guardando, onGuardar, onCerrar }) {
   const id = useId();
   const [fecha, setFecha] = useState(usuario.fechaNacimiento || "");
+  const [motivo, setMotivo] = useState("");
   const enviar = (e) => {
     e.preventDefault();
-    onGuardar(fecha);
+    onGuardar(fecha, motivo.trim());
   };
   return (
     <div className="admin-modal-overlay" onClick={onCerrar}>
@@ -120,17 +121,22 @@ function FormularioNacimiento({ usuario, guardando, onGuardar, onCerrar }) {
           <div className="admin-modal-body">
             <p className="admin-users__ayuda">
               {`${usuario.nombre} ${usuario.apellido}`.trim()} · {usuario.correo}. El cliente no puede cambiarla desde su perfil;
-              el cambio queda registrado. Déjala vacía para borrarla.
+              el cambio queda registrado con el motivo. Déjala vacía para borrarla.
             </p>
             <div className="admin-form-group">
               <label htmlFor={`${id}-fecha`} className="admin-form-label">Fecha de nacimiento</label>
               <input id={`${id}-fecha`} className="admin-form-input" type="date" min="1900-01-01" max={hoyLocal()}
                 value={fecha} onChange={(e) => setFecha(e.target.value)} />
             </div>
+            <div className="admin-form-group">
+              <label htmlFor={`${id}-motivo`} className="admin-form-label">Motivo de la corrección *</label>
+              <input id={`${id}-motivo`} className="admin-form-input" required minLength={5} maxLength={300}
+                placeholder="Ej.: el cliente mostró su documento" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+            </div>
           </div>
           <div className="admin-modal-actions">
             <button type="button" className="admin-button--secondary-sm" onClick={onCerrar}>Cancelar</button>
-            <button type="submit" className="admin-button--primary" disabled={guardando}>Guardar fecha</button>
+            <button type="submit" className="admin-button--primary" disabled={guardando || motivo.trim().length < 5}>Guardar fecha</button>
           </div>
         </form>
       </div>
@@ -292,8 +298,8 @@ export default function UsersSection() {
     await parchear(usuario.id, { activo: !usuario.activo });
   };
 
-  const guardarNacimiento = async (fecha) => {
-    const actualizado = await parchear(nacimiento.id, { fechaNacimiento: fecha });
+  const guardarNacimiento = async (fecha, motivo) => {
+    const actualizado = await parchear(nacimiento.id, { fechaNacimiento: fecha, motivo });
     if (actualizado) setNacimiento(null);
   };
 

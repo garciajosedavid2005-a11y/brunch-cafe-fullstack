@@ -33,7 +33,7 @@ export const TIPOS_EVENTO = [
     'cuenta_cobrada',
     // 3.8 · Baja de una cuenta del personal (entidad 'usuario'): borrado real o archivado
     'usuario_eliminado', 'usuario_archivado',
-    // Cierre · El admin corrige la fecha de nacimiento de un usuario (entidad 'usuario'; de/a «AAAA-MM-DD» o null)
+    // Cierre · El admin corrige la fecha de nacimiento de un usuario (entidad 'usuario'; solo motivo y autor, sin las fechas)
     'fecha_nacimiento_corregida',
     // 3b.1 · Turno de caja (entidad 'turno'): apertura con base y cierre con el arqueo en datos
     'turno_abierto', 'turno_cerrado',
