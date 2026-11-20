@@ -117,7 +117,7 @@ const tarjetasDomicilio = async (codigo, limite) => {
     const codigoPorEstado = new Map(estados.map((e) => [String(e._id), e.codigo]))
     const pedidos = await Pedido.find({
         estado: { $in: estados.map((e) => e._id) },
-        canal: { $in: ['domicilio', null] },
+        canal: 'domicilio', // 6.1 · todos los pedidos tienen canal
         estacionesListas: { $ne: codigo },
     }).sort({ createdAt: 1 }).lean() // los pedidos en curso son pocos: el límite va después de filtrar por estación
     const lineas = await DetallePedido.find({ pedido: { $in: pedidos.map((p) => p._id) } }).sort({ _id: 1 }).lean()

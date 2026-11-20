@@ -32,6 +32,7 @@
     "migrate:4.6": "node scripts/migrar-4.6-apartar-mesa.js",
     "migrate:4.6.5": "node scripts/migrar-4.6.5-texto-no-show.js",
     "migrate:5": "node scripts/migrar-5-inventario.js",
+    "migrate:6.1": "node scripts/migrar-6.1-canal-pedidos.js",
     "seed:dev": "node scripts/seed-dev.js",
     "seed:demo": "node scripts/seed-demo.js",
     "seed:salon": "node scripts/seed-salon.js",

@@ -83,7 +83,7 @@ const lineasDeVenta = async ({ inicio, fin }) => {
     for (const d of detalles) {
         const pedido = porPedido.get(String(d.pedido))
         lineas.push({
-            canal: pedido.canal || 'domicilio', instante: pedido.createdAt, ticket: `p:${pedido._id}`, mesero: null,
+            canal: pedido.canal, instante: pedido.createdAt, ticket: `p:${pedido._id}`, mesero: null,
             producto: String(d.producto), nombre: d.nombreProducto, cantidad: d.cantidad, subtotal: d.subtotal ?? d.precioProducto * d.cantidad,
             modificadores: (d.modificadores || []).map((m) => ({ grupo: m.grupo, opcion: m.opcion })),
         })
@@ -135,7 +135,7 @@ export const reporteVentas = async (sesion, consulta) => {
     // Por canal
     const porCanal = new Map(CANALES.map(([c]) => [c, { ventas: 0, tickets: 0 }]))
     sumar(porCanal, 'salon', { tickets: cuentas.length })
-    for (const p of pedidos) sumar(porCanal, p.canal || 'domicilio', { tickets: 1 })
+    for (const p of pedidos) sumar(porCanal, p.canal, { tickets: 1 })
     for (const l of lineas) sumar(porCanal, l.canal, { ventas: l.subtotal })
 
     // Por mesero (cuentas cobradas; propinas de sus comprobantes)

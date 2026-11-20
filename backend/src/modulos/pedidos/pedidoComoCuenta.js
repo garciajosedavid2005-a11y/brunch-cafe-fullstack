@@ -9,13 +9,13 @@ export const codigoPedido = (id) => `PED-${String(id).slice(-6).toUpperCase()}`
 /**
  * Pedido (lean, con `estado` poblado con codigo y nombre) → fila de «Cuentas abiertas».
  * Sin datos de contacto: ni correo, ni teléfono, ni dirección (están en el detalle del pedido).
- * Un pedido anterior a 1.9 no tiene `canal`: todos los de la Fase 1 son domicilio.
+ * Desde la migración 6.1 todos los pedidos tienen `canal`.
  */
 export const pedidoComoCuenta = (pedido, ahora = new Date()) => {
     const desde = new Date(pedido.createdAt)
     return {
         id: String(pedido._id),
-        canal: pedido.canal || 'domicilio',
+        canal: pedido.canal,
         codigo: codigoPedido(pedido._id),
         estado: { codigo: pedido.estado?.codigo || '', nombre: pedido.estado?.nombre || '' },
         // El canal ya lo dice la etiqueta: la referencia es el barrio (como «Mesa 3» en el salón)

@@ -5,10 +5,11 @@ import { instanteLocal, fechaLocal, esHoraValida } from '../compartido/fechas.js
 export const CANALES_PEDIDO = ['domicilio']
 
 const pedidoSchema = new mongoose.Schema({
-    // Sin migración: los pedidos anteriores no tienen el campo y se leen como domicilio (pedidoComoCuenta)
+    // 6.1 · Obligatorio: la migración 6.1 lo rellenó en los pedidos anteriores a 1.9
     canal: {
         type: String,
         enum: CANALES_PEDIDO,
+        required: true,
         default: 'domicilio'
     },
     usuario: {

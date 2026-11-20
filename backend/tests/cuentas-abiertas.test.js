@@ -13,6 +13,7 @@ import Cuenta from '../src/modulos/salon/cuenta.model.js'
 import Comanda from '../src/modulos/salon/comanda.model.js'
 import Pedido from '../src/modulos/pedidos/pedido.model.js'
 import { pedidoComoCuenta } from '../src/modulos/pedidos/pedidoComoCuenta.js'
+import { up as upCanal } from '../src/migraciones/m61-canal-pedidos.js'
 import { listarCuentasAbiertas } from '../src/modulos/salon/salonStaff.service.js'
 
 const URL = '/api/v1/staff/cuentas-abiertas'
@@ -45,13 +46,23 @@ describe('Pedido.canal (1.9)', () => {
         expect((await Pedido.findById(id).lean()).canal).toBe('domicilio')
     })
 
-    it('un pedido anterior sin el campo se lee como domicilio (sin migración) y sale en la vista', async () => {
+    it('6.1 · un pedido anterior sin el campo recibe canal con la migración 6.1 y sale en la vista', async () => {
         const id = await crearPedido(cliente)
         await Pedido.collection.updateOne({ _id: new mongoose.Types.ObjectId(id) }, { $unset: { canal: '' } })
+        await upCanal(mongoose.connection.db)
         const pedido = await Pedido.findById(id).populate('estado', 'codigo nombre').lean()
-        expect(pedido.canal).toBeUndefined()
+        expect(pedido.canal).toBe('domicilio')
         expect(pedidoComoCuenta(pedido)).toMatchObject({ canal: 'domicilio', id })
         expect((await mesero.get(URL)).body.cuentas.map((c) => c.id)).toEqual([id])
+    })
+
+    it('6.1 · canal es obligatorio y un pedido con canal null (sin migrar) no sale en la vista', async () => {
+        const id = await crearPedido(cliente)
+        const pedido = await Pedido.findById(id)
+        pedido.canal = null
+        await expect(pedido.validate()).rejects.toThrow(/canal/)
+        await Pedido.collection.updateOne({ _id: pedido._id }, { $set: { canal: null } })
+        expect((await mesero.get(URL)).body.cuentas.map((c) => c.id)).toEqual([])
     })
 
     it('el portal del cliente responde igual: mismas claves, sin canal', async () => {

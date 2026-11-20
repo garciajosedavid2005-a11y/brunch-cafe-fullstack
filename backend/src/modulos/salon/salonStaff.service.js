@@ -278,8 +278,8 @@ const cuentasDeSalon = async (ahora, limite) => {
 const domiciliosEnCurso = async (ahora, limite) => {
     const estados = await estadosDelTipo('pedido')
     const enCurso = [...estados.values()].filter((e) => !esEstadoFinal('pedido', e.codigo)).map((e) => e._id)
-    // canal: los anteriores a 1.9 no lo tienen (null); cuando la Fase 6 añada otros canales no se cuelan aquí
-    const pedidos = await Pedido.find({ estado: { $in: enCurso }, canal: { $in: ['domicilio', null] } })
+    // 6.1 · Todos los pedidos tienen canal; los otros canales de la Fase 6 (para llevar) no se cuelan aquí
+    const pedidos = await Pedido.find({ estado: { $in: enCurso }, canal: 'domicilio' })
         .sort({ createdAt: -1 }).limit(limite)
         .select('canal estado total nombreEntrega barrio horaEntrega entregaEn createdAt').populate('estado', 'codigo nombre').lean()
     return pedidos.map((p) => pedidoComoCuenta(p, ahora))

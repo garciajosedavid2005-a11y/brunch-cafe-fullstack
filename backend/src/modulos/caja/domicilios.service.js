@@ -28,8 +28,8 @@ export const VENTANA_COBRO_MS = 48 * 60 * 60 * 1000
 const recientes = () => ({ createdAt: { $gte: new Date(Date.now() - VENTANA_COBRO_MS) } })
 const MAXIMO_LISTA = 200
 const cobroSchema = cobrarSchema.omit({ versionEsperada: true })
-// Los pedidos anteriores a 1.9 no tienen canal y son domicilios (pendiente de 1.9)
-const DOMICILIO = { canal: { $in: ['domicilio', null] } }
+// 6.1 · Todos los pedidos tienen canal (migración 6.1)
+const DOMICILIO = { canal: 'domicilio' }
 
 // Sin pago en línea, todo domicilio se paga al recibir (Contra Entrega, Tarjeta débito o crédito con datáfono):
 // cualquiera se cobra UNA vez en la caja con su método real, para que entre en el arqueo (Brayan, 2026-11-15).
