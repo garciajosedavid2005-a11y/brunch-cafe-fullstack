@@ -96,7 +96,7 @@ export const PERMISOS_COCINA = {
 
 // Permiso de cobro de la Fase 3 (F3-1). La migración 3.1 usa una copia fija; un cambio aquí necesita su
 // propia migración. El admin cobra por "*"; el mesero no cobra.
-// 3b · El cajero abre y cierra el turno y cobra domicilios; el repartidor cobra los suyos contra entrega.
+// 3b · El cajero abre y cierra el turno y cobra domicilios; el repartidor cobra los suyos al entregarlos, con su método de pago (3b.q).
 // factura:anular solo el admin ("*"). La migración 3b usa una copia fija de lo que agrega.
 export const PERMISOS_CAJA = {
     cajero: ['cuenta:cobrar', 'caja:abrir', 'caja:cerrar', 'pedido:cobrar'],

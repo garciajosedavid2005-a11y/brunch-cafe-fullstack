@@ -29,6 +29,7 @@ describe('Migración 6.2b (descripción de pedido:cobrar)', () => {
         expect(await cobrar()).toEqual({ ...antes, descripcion: DESCRIPCION_NUEVA })
         expect(await up(db)).toEqual({ cambiar: 0, aplicado: false })
         expect(await down(db, { dryRun: true })).toEqual({ cambiar: 1, aplicado: false })
+        expect((await cobrar()).descripcion).toBe(DESCRIPCION_NUEVA)
         expect(await down(db)).toEqual({ cambiar: 1, aplicado: true })
         expect(await cobrar()).toEqual(antes)
         expect((await up(db)).aplicado).toBe(true)
