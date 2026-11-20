@@ -37,6 +37,8 @@ export const PERMISOS = [
     { clave: 'item:anular', modulo: 'salon', descripcion: 'Anular un ítem ya enviado, con motivo' },
     // 6.3 (F6-3) · Cuentas para llevar: abrirlas y, solo en ellas, tomar el pedido, enviarlo, pasarlo a caja y entregarlo
     { clave: 'cuenta:para_llevar', modulo: 'salon', descripcion: 'Abrir cuentas para llevar, tomar su pedido y entregarlo' },
+    // 6.5 (F6-a) · Identificar al cliente de una cuenta (por correo o teléfono) para ver sus alergias y preferencias
+    { clave: 'cliente:identificar', modulo: 'salon', descripcion: 'Identificar al cliente de una cuenta y ver sus alergias y preferencias' },
     // Fase 2 · cocina y barra (PLAN_FASE_2 §2, F2-2, F2-3, F2-5)
     { clave: 'kds:ver', modulo: 'cocina', descripcion: 'Ver la pantalla de cocina (KDS) de su estación' },
     { clave: 'item:preparar', modulo: 'cocina', descripcion: 'Marcar ítems en preparación y listos' },
@@ -116,6 +118,12 @@ export const PERMISOS_PARA_LLEVAR = {
     mesero: ['cuenta:para_llevar'],
     cajero: ['cuenta:para_llevar'],
 }
+// 6.5 (F6-a) · Identificar al cliente de la cuenta: el mesero en la toma de comanda y el cajero en la caja. La migración
+// 6.5 usa una copia fija
+export const PERMISOS_CLIENTE = {
+    mesero: ['cliente:identificar'],
+    cajero: ['cliente:identificar'],
+}
 // Lo que `cuenta:para_llevar` permite, solo dentro de una cuenta para llevar (el cajero no toma comandas del salón)
 export const PERMISOS_EN_PARA_LLEVAR = ['cuenta:ver', 'cuenta:abrir', 'comanda:tomar', 'comanda:enviar', 'cuenta:solicitar', 'item:servir']
 
@@ -144,11 +152,11 @@ export const ROLES_STAFF = [
         nombre: 'mesero',
         etiqueta: 'Mesero',
         descripcion: 'Atiende mesas, toma comandas y gestiona las reservas.',
-        permisos: ['pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear', 'reserva:cambiar_estado', ...PERMISOS_SALON.mesero, ...PERMISOS_COCINA.mesero, ...PERMISOS_PARA_LLEVAR.mesero],
+        permisos: ['pedido:ver', 'pedido:cambiar_estado', 'reserva:ver', 'reserva:crear', 'reserva:cambiar_estado', ...PERMISOS_SALON.mesero, ...PERMISOS_COCINA.mesero, ...PERMISOS_PARA_LLEVAR.mesero, ...PERMISOS_CLIENTE.mesero],
     },
     { nombre: 'cocina', etiqueta: 'Cocina', descripcion: 'Prepara los platos.', permisos: ['pedido:ver', ...PERMISOS_COCINA.cocina], estaciones: ESTACIONES_POR_ROL.cocina },
     { nombre: 'barista', etiqueta: 'Barista', descripcion: 'Prepara las bebidas.', permisos: ['pedido:ver', ...PERMISOS_COCINA.barista], estaciones: ESTACIONES_POR_ROL.barista },
-    { nombre: 'cajero', etiqueta: 'Cajero', descripcion: 'Cobra cuentas y gestiona la caja.', permisos: ['pedido:ver', ...PERMISOS_CAJA.cajero, ...PERMISOS_DOMICILIO.cajero, ...PERMISOS_PARA_LLEVAR.cajero] },
+    { nombre: 'cajero', etiqueta: 'Cajero', descripcion: 'Cobra cuentas y gestiona la caja.', permisos: ['pedido:ver', ...PERMISOS_CAJA.cajero, ...PERMISOS_DOMICILIO.cajero, ...PERMISOS_PARA_LLEVAR.cajero, ...PERMISOS_CLIENTE.cajero] },
     { nombre: 'repartidor', etiqueta: 'Repartidor', descripcion: 'Entrega pedidos a domicilio.', permisos: ['pedido:ver', ...PERMISOS_CAJA.repartidor, ...PERMISOS_DOMICILIO.repartidor] },
     // Fase 5 (F5-8) · Vuelve el rol compras (se había quitado en 1.5b, cuando no tenía permisos)
     { nombre: 'compras', etiqueta: 'Compras', descripcion: 'Gestiona el inventario, los proveedores y las compras.', permisos: [...PERMISOS_INVENTARIO.compras] },

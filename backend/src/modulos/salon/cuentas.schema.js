@@ -42,6 +42,16 @@ export const abrirParaLlevarSchema = z.strictObject({
     notas: textoOpcional('Las notas', 300),
 }).refine((d) => Boolean(d.nombre) || Boolean(d.telefono), { error: 'Indica el nombre o el teléfono de quien recoge el pedido' })
 
+// 6.5 · Identificar al cliente de la cuenta (null lo quita) y buscarlo por correo o teléfono
+export const identificarClienteSchema = z.strictObject({
+    clienteId: id('El cliente').nullable(),
+    versionEsperada: version(false),
+})
+export const buscarClienteSchema = z.strictObject({
+    buscar: z.string({ error: 'Escribe el correo o el teléfono del cliente' }).trim()
+        .min(5, { error: 'Escribe el correo o el teléfono completo' }).max(254, { error: 'El texto es demasiado largo' }),
+})
+
 // 1.5 · Transferir, mover, unir y separar (F1-8, F1-9). La versión es opcional (como al agregar).
 export const transferirSchema = z.strictObject({ meseroId: id('El mesero'), motivo, versionEsperada: version(false) })
 export const moverSchema = z.strictObject({ mesaDestinoId: id('La mesa de destino'), versionEsperada: version(false) })

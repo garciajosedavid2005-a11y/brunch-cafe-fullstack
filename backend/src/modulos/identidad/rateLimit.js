@@ -75,3 +75,11 @@ export const crearLimitesRestablecimiento = () => [
         mensaje: 'Demasiados intentos para restablecer la contraseña. Intenta de nuevo más tarde.',
     }),
 ]
+
+// 6.5 · Búsqueda de clientes del personal: 60 por hora por usuario (no por IP: todas las tablets salen por la misma).
+// Frena recorrer números o correos para sacar datos de salud (alergias); el uso normal es una búsqueda por mesa
+export const crearLimiteBusquedaClientes = () => limite({
+    limit: 60,
+    clave: (req) => `cliente|${req.usuario?.id || ipKeyGenerator(req.ip)}`,
+    mensaje: 'Demasiadas búsquedas de clientes. Intenta de nuevo más tarde.',
+})

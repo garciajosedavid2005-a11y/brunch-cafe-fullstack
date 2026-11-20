@@ -34,6 +34,7 @@ describe('Seed de roles base', () => {
             'comanda:tomar', 'comanda:enviar', 'cuenta:solicitar',
             'item:servir', 'producto:agotar', // 2.1 (F2-2, F2-5)
             'cuenta:para_llevar', // 6.3 (F6-3)
+            'cliente:identificar', // 6.5 (F6-a)
         ])
         // Fase 5 (F5-8): compras vuelve, solo con permisos de inventario
         expect(porNombre.compras).toEqual(['inventario:ver', 'inventario:gestionar', 'inventario:ajustar', 'compra:gestionar', 'compra:recibir'])

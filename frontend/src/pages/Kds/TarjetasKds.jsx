@@ -1,3 +1,4 @@
+import { AvisoCliente } from "../StaffDashboard/compartido/ClienteCuenta";
 import { Bike, CheckCheck, Clock3, Flame, Play, TriangleAlert, Undo2 } from "lucide-react";
 import { VENTANA_DESHACER_MS, textoMesas, textoMinutos } from "./kdsUtils";
 import { MOTIVOS_ANULACION } from "../StaffDashboard/comanda/estadosComanda";
@@ -100,6 +101,8 @@ export function TarjetaRonda({ ronda, minutos, nivel, ahora, usuarioId, puedePre
         </div>
         <Temporizador minutos={minutos} nivel={nivel} />
       </header>
+      {/* 6.5 · Alergias y preferencias del cliente identificado */}
+      <AvisoCliente aviso={ronda.avisoCliente} compacto />
       {anulados > 0 && (
         <p className="kds-tarjeta__aviso" role="alert">
           <TriangleAlert size={20} aria-hidden="true" />
@@ -134,6 +137,7 @@ export function TarjetaDomicilio({ pedido, minutos, nivel, puedePreparar, ocupad
         </div>
         <Temporizador minutos={minutos} nivel={nivel} />
       </header>
+      <AvisoCliente aviso={pedido.avisoCliente} compacto />
       <ul className="kds-tarjeta__items">
         {pedido.lineas.map((linea) => (
           <li key={linea.id} className="kds-item">

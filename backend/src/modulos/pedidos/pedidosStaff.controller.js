@@ -12,10 +12,11 @@ import { soloDomiciliosAsignados } from '../identidad/permisos.js'
 import { cambiarEstado, codigoDestino, estadosDelTipo, opcionesDeCambio } from '../compartido/estados.service.js'
 import { efectosInventarioPedido } from './inventarioPedido.js'
 import { avisarCambiosDisponibilidad } from '../inventario/consumo.service.js'
+import { avisoCliente } from '../identidad/clienteStaff.js'
 import { alcancePedidos, asignarRepartidor as asignar, listarRepartidores as repartidores, nombresRepartidores } from './repartidor.service.js'
 
 const POBLAR = [
-    ['usuario', 'nombre apellido correo telefono'],
+    ['usuario', 'nombre apellido correo telefono alergias preferencias'],
     ['estado', 'nombre codigo'],
     ['metodoPago', 'nombre'],
 ]
@@ -46,6 +47,8 @@ const formato = (pedido, detalles, { permisos, estados, repartidores }) => {
         // 6.2 · Repartidor asignado (null: sin asignar)
         repartidor: pedido.repartidor ? { id: String(pedido.repartidor), nombre: repartidores.get(String(pedido.repartidor)) || '' } : null,
         notas: pedido.indicaciones || '',
+        // 6.5 · Alergias y preferencias del cliente (del perfil; null si no tiene)
+        avisoCliente: avisoCliente(pedido.usuario),
         // 1.12 · precio = unitario con recargos; las líneas anteriores no tienen opciones ni nota
         items: detalles.map((detalle) => ({
             nombre: detalle.nombreProducto,

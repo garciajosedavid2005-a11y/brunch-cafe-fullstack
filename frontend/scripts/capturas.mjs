@@ -1514,6 +1514,32 @@ const VISTAS = {
     await abrirCuentaDeMesa(p, 1);
     await p.getByRole("group", { name: "Categorías" }).getByRole("button", { name: "Bebidas" }).click();
   } },
+  // 6.5 · Identificar al cliente en la toma de comanda: búsqueda con datos enmascarados y aviso de alergias
+  "staff-comanda-cliente-buscar": { usuario: "mesero", preparar: async (p) => {
+    await abrirCuentaDeMesa(p, 1);
+    await p.getByRole("button", { name: /^(Identificar cliente|Cambiar)$/ }).click(); // en el segundo ancho ya está identificado
+    await p.getByLabel("Correo o teléfono del cliente").fill(USUARIOS.cliente);
+    await p.getByRole("button", { name: /^Buscar$/ }).click();
+    await p.getByRole("list", { name: "Clientes encontrados" }).waitFor();
+  } },
+  "staff-comanda-cliente": { usuario: "mesero", preparar: async (p) => {
+    await VISTAS["staff-comanda-cliente-buscar"].preparar(p);
+    await p.getByRole("button", { name: /^Elegir a / }).click();
+    await p.getByRole("note").filter({ hasText: "Alergias" }).first().waitFor();
+  } },
+  // 6.5 · La ronda de la mesa 5 (KDS) con el cliente identificado: «Alergias: …» en la tarjeta
+  "kds-aviso-cliente": { usuario: "cocina", completa: false, preparar: async (p) => {
+    await prepararCocina();
+    await abrirSesionAdmin();
+    const { mesas } = await (await sesionAdmin.get(`${API}/staff/salon/mesas`)).json();
+    const cuentaId = mesas.find((m) => m.numero === 5)?.cuenta?.id;
+    const { clientes } = await (await sesionAdmin.get(`${API}/staff/salon/clientes?buscar=${encodeURIComponent(USUARIOS.cliente)}`)).json();
+    const res = await sesionAdmin.put(`${API}/staff/salon/cuentas/${cuentaId}/cliente`, { data: { clienteId: clientes[0].id } });
+    if (!res.ok()) throw new Error(`No se pudo identificar al cliente: ${res.status()} ${(await res.text()).slice(0, 200)}`);
+    await p.goto(`${FRONT}/kds`);
+    await p.getByRole("region", { name: "Cola de Cocina" }).waitFor();
+    await p.getByRole("note").filter({ hasText: "Alergias" }).first().waitFor();
+  } },
   "staff-comanda-producto": { usuario: "mesero", preparar: async (p) => {
     await abrirCuentaDeMesa(p, 1);
     await p.getByRole("group", { name: "Categorías" }).getByRole("button", { name: "Desayunos" }).click();

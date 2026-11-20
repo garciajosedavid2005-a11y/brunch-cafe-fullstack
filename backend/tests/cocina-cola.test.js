@@ -171,7 +171,7 @@ describe('Domicilio en la cola, por estación (F2-3)', () => {
         const barra = await obtenerCola({ estacion: 'barra' }, barista)
         expect(barra.domicilio[0].lineas.map((l) => l.nombre)).toEqual(['Latte'])
         // Sin datos de contacto del cliente: solo estas claves
-        expect(Object.keys(cocina.domicilio[0]).sort()).toEqual(['codigo', 'desde', 'entregaEn', 'estacionesListas', 'estado', 'horaEntrega', 'lineas', 'pedidoId', 'tipo'])
+        expect(Object.keys(cocina.domicilio[0]).sort()).toEqual(['avisoCliente', 'codigo', 'desde', 'entregaEn', 'estacionesListas', 'estado', 'horaEntrega', 'lineas', 'pedidoId', 'tipo'])
         expect(JSON.stringify(cocina.domicilio[0])).not.toMatch(/3001234567|Carrera 36B|Ana Pérez|Centro/)
     })
 

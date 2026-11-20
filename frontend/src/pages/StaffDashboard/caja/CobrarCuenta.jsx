@@ -5,6 +5,9 @@ import { formatearCOP } from "../../../utils/moneda";
 import { nuevaClave } from "../plano/estadosMesa";
 import { METODOS, cuerpoCobro, estadoPagos, montoParte, origenCuenta, propinaSugerida } from "./cobro";
 import CampoPesos from "./CampoPesos";
+import ClienteCuenta from "../compartido/ClienteCuenta";
+import { tienePermiso } from "../../../utils/permisos";
+import { useAuth } from "../../../context/useAuth";
 import DivisionCuenta from "./DivisionCuenta";
 
 // Fase 3 · Cobrar una cuenta (F3-2, F3-3): propina voluntaria (atajos «10 %» y «Sin propina»), uno o varios
@@ -22,6 +25,10 @@ const textoEstado = ({ restante, valido, cambio }) => {
 
 export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
   const id = useId();
+  const { user } = useAuth();
+  // 6.5 · Identificar al cliente sube la versión de la cuenta: el cobro envía la última
+  const [version, setVersion] = useState(cuenta.version);
+  const [cliente, setCliente] = useState(cuenta.cliente && typeof cuenta.cliente === "object" ? cuenta.cliente : null);
   const [error, setError] = useState("");
   // 3b.2 · Cómo se cobra: entera, en partes iguales o por ítems (con una parte cobrada, el modo queda fijo)
   const division = cuenta.division || null;
@@ -97,7 +104,7 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
     setEnviando(true);
     setError("");
     try {
-      const cuerpo = cuerpoCobro({ versionEsperada: cuenta.version, propina, pagos: pagosVistos });
+      const cuerpo = cuerpoCobro({ versionEsperada: version, propina, pagos: pagosVistos });
       const parte = esDomicilio ? null : modo === "iguales" ? { modo, partes } : modo === "items" ? { modo, items: elegidos } : null;
       const ruta = esDomicilio ? `/v1/staff/caja/domicilios/${cuenta.id}/cobrar` : `/v1/staff/caja/cuentas/${cuenta.id}/${parte ? "cobrar-parte" : "cobrar"}`;
       const resultado = await apiRequest(ruta, {
@@ -125,6 +132,11 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
       <p className="caja-cobro__sub">
         {esDomicilio ? [cuenta.cliente, cuenta.direccion].filter(Boolean).join(" · ") : `${cuenta.codigo}${cuenta.mesero ? ` · ${cuenta.mesero}` : ""}`}
       </p>
+      {/* 6.5 · Identificar al cliente desde la caja (la versión de la cuenta sube: el cobro usa la nueva) */}
+      {!esDomicilio && (
+        <ClienteCuenta cuenta={{ ...cuenta, estado: cuenta.estado || "cuenta_pedida", version, cliente }} puedeIdentificar={tienePermiso(user, "cliente:identificar")}
+          onCambio={(actualizada) => { setVersion(actualizada.version); setCliente(actualizada.cliente); }} />
+      )}
 
       <div className="caja-cobro__columnas">
         <div className="caja-cobro__bloque">

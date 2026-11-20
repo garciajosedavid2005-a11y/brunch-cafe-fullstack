@@ -13,6 +13,7 @@ import Estacion, { umbralesDe, COLACION_NOMBRE } from '../catalogo/estacion.mode
 import { AppError } from '../compartido/errors.js'
 import { ESTADOS_CUENTA_ABIERTA } from '../compartido/estadosSalon.js'
 import { VENTANA_PARA_LLEVAR_MS } from '../salon/cuenta.model.js'
+import { avisoCliente } from '../identidad/clienteStaff.js'
 import { estadoPorCodigo, registrarEvento } from '../compartido/estados.service.js'
 import { validarTransicion } from '../compartido/estados.js'
 import { conTransaccion } from '../compartido/transacciones.js'
@@ -88,7 +89,7 @@ const tarjetasSalon = async (codigo, ahora, limite) => {
             { estado: { $in: ESTADOS_CUENTA_ABIERTA } },
             { canal: 'para_llevar', estado: 'cerrada', cerradaEn: { $gte: new Date(ahora.getTime() - VENTANA_PARA_LLEVAR_MS) } },
         ],
-    }).select('canal paraLlevar mesas mesero').lean()
+    }).select('canal paraLlevar mesas mesero cliente.alergias cliente.preferencias').lean()
     const cuentaPorId = new Map(cuentas.map((c) => [String(c._id), c]))
     const ids = cuentas.map((c) => c._id)
     const [pendientes, recientes] = await Promise.all([
@@ -113,6 +114,8 @@ const tarjetasSalon = async (codigo, ahora, limite) => {
                 mesas: (cuenta.mesas || []).map((m) => m.numero),
                 // 6.3 · «Para llevar · nombre» en la tarjeta (sin el teléfono)
                 paraLlevar: cuenta.canal === 'para_llevar' ? { nombre: cuenta.paraLlevar?.nombre || '' } : null,
+                // 6.5 · «Alergias: …» del cliente identificado (solo alergias y preferencias)
+                avisoCliente: avisoCliente(cuenta.cliente),
                 mesero: nombreCorto(meseroPorId.get(String(cuenta.mesero))),
                 enviadaEn: c.enviadaEn,
                 items: c.items.filter((i) => i.estacion?.codigo === codigo && i.estado !== 'borrador').map(itemDeCola),
@@ -128,7 +131,7 @@ const tarjetasDomicilio = async (codigo, limite) => {
         estado: { $in: estados.map((e) => e._id) },
         canal: 'domicilio', // 6.1 · todos los pedidos tienen canal
         estacionesListas: { $ne: codigo },
-    }).sort({ createdAt: 1 }).lean() // los pedidos en curso son pocos: el límite va después de filtrar por estación
+    }).sort({ createdAt: 1 }).populate('usuario', 'alergias preferencias').lean() // los pedidos en curso son pocos: el límite va después de filtrar por estación
     const lineas = await DetallePedido.find({ pedido: { $in: pedidos.map((p) => p._id) } }).sort({ _id: 1 }).lean()
     const codigoDe = await codigosDeLineas(lineas)
     const lineasPorPedido = new Map()
@@ -151,6 +154,7 @@ const tarjetasDomicilio = async (codigo, limite) => {
             entregaEn: p.entregaEn ?? null,
             desde: p.createdAt,
             estacionesListas: p.estacionesListas || [],
+            avisoCliente: avisoCliente(p.usuario), // 6.5 · leído del perfil del cliente
             lineas: lineasPorPedido.get(String(p._id)),
         })),
     }

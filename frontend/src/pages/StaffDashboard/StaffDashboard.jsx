@@ -30,6 +30,7 @@ import { textoModificadores } from "../../utils/modificadores";
 import { claseEstado } from "../AdminDashboard/components/estadoUtils";
 import ProfileSection from "../CustomerDashboard/sections/ProfileSection";
 import EntregaPedido from "./pedidos/EntregaPedido";
+import { AvisoCliente } from "./compartido/ClienteCuenta";
 import AgendaReservas from "./reservas/AgendaReservas";
 import ListaEspera from "./reservas/ListaEspera";
 import { textoCambioReserva } from "./reservas/avisoReserva";
@@ -530,6 +531,8 @@ export default function StaffDashboard() {
                           </span>
                         ))}
                       </div>
+                      {/* 6.5 · Alergias y preferencias del cliente (de su perfil) */}
+                      <AvisoCliente aviso={pedido.avisoCliente} compacto />
                       <EntregaPedido pedido={pedido} repartidores={repartidores} puedeAsignar={puedeAsignarRepartidor}
                         onActualizado={(actualizado) => setEstadoPedidos((estado) => ({
                           ...estado,

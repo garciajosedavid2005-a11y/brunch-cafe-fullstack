@@ -132,7 +132,7 @@ export const emitirComprobante = async ({ cuenta, comandas, propina, total, pago
 export const listarPorCobrar = async (sesion) => {
     exigirCobro(sesion)
     const cuentas = await Cuenta.find({ estado: 'cuenta_pedida' }).sort({ updatedAt: 1 }).limit(MAXIMO_LISTA)
-        .select('codigo canal paraLlevar mesas mesero comensales subtotal total version division').lean()
+        .select('codigo canal paraLlevar cliente mesas mesero comensales subtotal total version division').lean()
     const ids = cuentas.map((c) => c._id)
     const [nombres, pedidas] = await Promise.all([
         nombresDe(cuentas.map((c) => c.mesero)),
@@ -146,13 +146,18 @@ export const listarPorCobrar = async (sesion) => {
     const pedidaEn = new Map(pedidas.map((p) => [String(p._id), p.en]))
     return {
         cuentas: cuentas.map((c) => ({
-            id: String(c._id), codigo: c.codigo, mesas: c.mesas.map((m) => m.numero), paraLlevar: paraLlevarDe(c),
+            id: String(c._id), codigo: c.codigo, mesas: c.mesas.map((m) => m.numero), paraLlevar: paraLlevarDe(c), cliente: clienteDe(c),
             mesero: nombres.get(String(c.mesero)) || '', comensales: c.comensales,
             subtotal: c.subtotal, total: c.total, version: c.version, pedidaEn: pedidaEn.get(String(c._id)) || null,
             division: formatoDivision(c.division), porCobrar: c.total - (c.division?.cobrado || 0),
         })),
     }
 }
+
+/** 6.5 · Cliente identificado: nombre corto, alergias y preferencias (null si no se identificó). */
+const clienteDe = (c) => (c.cliente?.usuario
+    ? { id: String(c.cliente.usuario), nombre: c.cliente.nombre || '', alergias: c.cliente.alergias || '', preferencias: c.cliente.preferencias || '' }
+    : null)
 
 /** 6.3 · Quién recoge una cuenta para llevar (null en el salón). */
 const paraLlevarDe = (c) => (c.canal === 'para_llevar' ? { nombre: c.paraLlevar?.nombre || '', telefono: c.paraLlevar?.telefono || '' } : null)
@@ -168,14 +173,14 @@ export const detalleParaCobro = async (id, sesion) => {
     exigirCobro(sesion)
     const noExiste = () => new AppError(404, 'CUENTA_NO_ENCONTRADA', 'La cuenta no existe.')
     if (!mongoose.isValidObjectId(id)) throw noExiste()
-    const cuenta = await Cuenta.findById(id).select('codigo canal paraLlevar estado mesas mesero comensales total version division').lean()
+    const cuenta = await Cuenta.findById(id).select('codigo canal paraLlevar cliente estado mesas mesero comensales total version division').lean()
     if (!cuenta) throw noExiste()
     if (cuenta.estado !== 'cuenta_pedida') throw new AppError(409, 'CUENTA_NO_EDITABLE', 'La cuenta no está esperando el cobro.', { estado: cuenta.estado })
     const comandas = await Comanda.find({ cuenta: cuenta._id, estado: 'enviada' }).sort({ numeroRonda: 1 }).lean()
     const cobrados = new Set((cuenta.division?.itemsCobrados || []).map(String))
     const nombres = await nombresDe([cuenta.mesero])
     return {
-        id: String(cuenta._id), codigo: cuenta.codigo, mesas: cuenta.mesas.map((m) => m.numero), paraLlevar: paraLlevarDe(cuenta), mesero: nombres.get(String(cuenta.mesero)) || '',
+        id: String(cuenta._id), codigo: cuenta.codigo, mesas: cuenta.mesas.map((m) => m.numero), paraLlevar: paraLlevarDe(cuenta), cliente: clienteDe(cuenta), mesero: nombres.get(String(cuenta.mesero)) || '',
         comensales: cuenta.comensales, total: cuenta.total, version: cuenta.version,
         division: formatoDivision(cuenta.division), porCobrar: cuenta.total - (cuenta.division?.cobrado || 0),
         items: comandas.flatMap((c) => c.items).filter((i) => i.estado !== 'anulado').map((i) => ({

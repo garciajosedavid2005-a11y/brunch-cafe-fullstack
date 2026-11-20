@@ -14,6 +14,7 @@ import {
   puede, textoModificadores,
 } from "./estadosComanda";
 import { permisosEnCuenta } from "../../../utils/permisos";
+import ClienteCuenta from "../compartido/ClienteCuenta";
 import "./TomaComanda.css";
 
 // 1.7 · Toma de comanda en tablet (PLAN_FASE_1 §1.7). Menú por categorías, diálogo de modificadores y
@@ -355,6 +356,8 @@ export default function TomaComanda({ cuentaId, permisos: permisosUsuario = [], 
           <RefreshCw size={20} aria-hidden="true" />
         </button>
       </header>
+      {/* 6.5 · Cliente identificado: sus alergias y preferencias a la vista de quien atiende */}
+      <ClienteCuenta cuenta={cuenta} puedeIdentificar={puede(permisos, "cliente:identificar")} onCambio={recargar} />
 
       {!editable && (
         <p className="comanda__aviso" role="status">

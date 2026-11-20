@@ -1,5 +1,9 @@
 import { Router } from 'express'
 import { requirePermission } from '../identidad/requirePermission.js'
+import { buscarClientes } from '../identidad/clienteStaff.js'
+import { crearLimiteBusquedaClientes } from '../identidad/rateLimit.js'
+import { logger } from '../compartido/logger.js'
+import { validar, buscarClienteSchema } from './cuentas.schema.js'
 import { idempotencia } from '../compartido/idempotencia.js'
 import * as cuentas from './cuentas.service.js'
 import * as lecturas from './salonStaff.service.js'
@@ -13,6 +17,7 @@ import Cuenta from './cuenta.model.js'
 // precios, estados o el mesero nunca se toman del cliente salvo donde el esquema lo declara.
 // Idempotency-Key (opcional, 0.9) en abrir cuenta, agregar ítem y enviar ronda.
 const router = Router()
+const limiteBusquedaClientes = crearLimiteBusquedaClientes() // 6.5
 
 // Express 5 pasa al manejador de errores lo que lance la promesa
 const responder = (status, operacion) => async (req, res) => {
@@ -83,6 +88,14 @@ router.post('/cuentas/:id/rondas/:n/enviar', requirePermission('comanda:enviar',
     cambio(200, (req) => cuentas.enviarRonda(req.params.id, { ...req.body, numeroRonda: Number(req.params.n) }, req.usuario)))
 router.post('/cuentas/:id/solicitar', requirePermission('cuenta:solicitar', 'cuenta:para_llevar'), cambio(200, (req) => cuentas.solicitarCuenta(req.params.id, req.body, req.usuario)))
 router.post('/cuentas/:id/cancelar', requirePermission('cuenta:abrir', 'cuenta:para_llevar'), cambio(200, (req) => cuentas.cancelarCuenta(req.params.id, req.body, req.usuario)))
+// 6.5 · Identificar al cliente de la cuenta y buscarlo por correo o teléfono (cliente:identificar: mesero y cajero)
+router.put('/cuentas/:id/cliente', requirePermission('cliente:identificar'), cambio(200, (req) => cuentas.identificarCliente(req.params.id, req.body, req.usuario)))
+router.get('/clientes', requirePermission('cliente:identificar'), limiteBusquedaClientes, async (req, res) => {
+    const resultado = await buscarClientes(validar(buscarClienteSchema, req.query).buscar)
+    // Auditoría del acceso a datos personales: quién buscó y cuántos encontró (nunca el correo ni el teléfono buscados)
+    logger.info({ evento: 'busqueda_cliente', usuario: req.usuario.id, encontrados: resultado.clientes.length }, 'búsqueda de cliente')
+    res.set('Cache-Control', 'no-store').json(resultado)
+})
 router.post('/cuentas/:id/transferir', requirePermission('cuenta:transferir'), cambio(200, (req) => cuentas.transferirCuenta(req.params.id, req.body, req.usuario), meseroAnterior))
 router.post('/cuentas/:id/cerrar-sin-cobro', requirePermission('cuenta:cerrar_sin_cobro'),
     cambio(200, (req) => cuentas.cerrarSinCobro(req.params.id, req.body, req.usuario)))

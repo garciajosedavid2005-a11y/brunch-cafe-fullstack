@@ -23,8 +23,10 @@ import { calcularItem, subtotalRonda, totalesCuenta } from './totales.js'
 import {
     validar, abrirCuentaSchema, abrirParaLlevarSchema, agregarItemSchema, modificarItemSchema, versionOpcionalSchema,
     enviarRondaSchema, cambioCuentaSchema, anularItemSchema, cambioMesaSchema,
-    transferirSchema, moverSchema, unirSchema,
+    transferirSchema, moverSchema, unirSchema, identificarClienteSchema,
 } from './cuentas.schema.js'
+import { clienteActivo } from '../identidad/clienteStaff.js'
+import { nombreCorto } from '../compartido/nombres.js'
 import { MAX_MESAS_POR_CUENTA } from './cuenta.model.js'
 import { cobrarSchema, cobrarParteSchema } from '../caja/caja.schema.js'
 import { asegurarContador, calcularPagos, emitirComprobante, formatoComprobante } from '../caja/caja.service.js'
@@ -123,6 +125,11 @@ const formatoCuenta = (cuenta, comandas) => ({
     })),
     // 6.3 · Quién recoge una cuenta para llevar (null en el salón)
     paraLlevar: cuenta.paraLlevar ? { nombre: cuenta.paraLlevar.nombre || '', telefono: cuenta.paraLlevar.telefono || '' } : null,
+    // 6.5 · Cliente identificado: nombre corto, alergias y preferencias (null si no se identificó)
+    cliente: cuenta.cliente?.usuario ? {
+        id: String(cuenta.cliente.usuario), nombre: cuenta.cliente.nombre || '',
+        alergias: cuenta.cliente.alergias || '', preferencias: cuenta.cliente.preferencias || '',
+    } : null,
     mesero: String(cuenta.mesero),
     comensales: cuenta.comensales,
     subtotal: cuenta.subtotal,
@@ -602,6 +609,36 @@ export const abrirParaLlevar = async (datos, sesion) => {
             datos: { codigo, canal: 'para_llevar', nombre: nombre || '' }, session,
         })
         return formatoCuenta(cuenta, [])
+    })
+}
+
+/**
+ * 6.5 (F6-8) · Identifica al cliente de la cuenta (o lo quita con null): copia su nombre corto, alergias y preferencias
+ * para que la cuenta, la caja y el KDS los muestren. Con la cuenta abierta o pedida; el Evento guarda solo el id.
+ */
+export const identificarCliente = async (cuentaId, datos, sesion) => {
+    exigirPermiso(sesion, 'cliente:identificar')
+    const { clienteId, versionEsperada } = validar(identificarClienteSchema, datos)
+    const usuario = clienteId ? await clienteActivo(clienteId) : null
+    if (clienteId && !usuario) throw error(400, 'CLIENTE_NO_VALIDO', 'Ese cliente no existe o su cuenta no está activa.')
+
+    return conTransaccion(async (session) => {
+        // Un reintento con el mismo cliente (o quitar uno que no hay) no escribe nada ni sube la versión
+        const previa = mongoose.isValidObjectId(cuentaId) ? await Cuenta.findById(cuentaId).select('cliente.usuario estado').session(session).lean() : null
+        if (previa && ESTADOS_CUENTA_ABIERTA.includes(previa.estado) && String(previa.cliente?.usuario || null) === String(usuario?._id || null)) {
+            return detalle(await Cuenta.findById(cuentaId).session(session), session)
+        }
+        const cuenta = await tocarCuenta(cuentaId, { versionEsperada, permitirDividida: true }, session)
+        const anterior = cuenta.cliente?.usuario || null
+        cuenta.cliente = usuario
+            ? { usuario: usuario._id, nombre: nombreCorto(usuario), alergias: usuario.alergias || '', preferencias: usuario.preferencias || '' }
+            : null
+        await cuenta.save({ session })
+        await registrarEvento({
+            entidad: 'cuenta', entidadId: cuenta._id, tipo: 'cliente_identificado', ...quien(sesion),
+            datos: { cliente: usuario?._id || null, anterior }, session,
+        })
+        return detalle(cuenta, session)
     })
 }
 

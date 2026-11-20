@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { MAX_TEXTO_PERFIL } from '../identidad/usuario.model.js'
 import { ESTADOS_CUENTA, ESTADOS_CUENTA_ABIERTA } from '../compartido/estadosSalon.js'
 
 // 1.4 · Cuenta de una mesa (o de varias unidas, F1-9). Una mesa no está en dos cuentas abiertas a la
@@ -49,6 +50,13 @@ const paraLlevarSchema = new mongoose.Schema({
     telefono: { type: String, trim: true, match: /^$|^\d{7,15}$/, default: '' },
 }, { _id: false })
 
+const clienteDeCuentaSchema = new mongoose.Schema({
+    usuario: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
+    nombre: { type: String, trim: true, maxlength: 80, default: '' },
+    alergias: { type: String, trim: true, maxlength: MAX_TEXTO_PERFIL, default: '' },
+    preferencias: { type: String, trim: true, maxlength: MAX_TEXTO_PERFIL, default: '' },
+}, { _id: false })
+
 const cuentaSchema = new mongoose.Schema({
     // «C-000123» (contador atómico «cuenta»; los huecos son aceptables)
     codigo: { type: String, required: true, immutable: true, match: /^C-\d{6,}$/ },
@@ -61,6 +69,9 @@ const cuentaSchema = new mongoose.Schema({
         ],
     },
     paraLlevar: { type: paraLlevarSchema, default: null }, // 6.3 · solo en canal para_llevar
+    // 6.5 (F6-8) · Cliente identificado: copia de su nombre corto, alergias y preferencias al identificarlo (como el
+    // pedido copia la dirección). Solo eso: nunca su correo ni su teléfono
+    cliente: { type: clienteDeCuentaSchema, default: null },
     // Responsable (F1-17: cualquiera con el permiso puede operar la cuenta; el Evento dice quién lo hizo)
     mesero: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
     comensales: { type: Number, required: true, min: 1, max: MAX_COMENSALES, validate: entero('Los comensales') },
