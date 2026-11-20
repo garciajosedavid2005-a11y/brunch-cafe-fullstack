@@ -1,4 +1,6 @@
-# API del cliente
+# API de Brunch Café (backend)
+
+Visión general del proyecto, módulos, roles y variables en el [README de la raíz](../README.md). Aquí: instalación, migraciones, seguridad y la referencia de endpoints.
 
 ## Inicio local
 
@@ -100,8 +102,37 @@ Pantalla de cocina y barra para tablet o TV (1024×768, 768×1024 y 1920×1080),
 - **Cobrar:** propina voluntaria en COP con atajos «10 %» y «Sin propina» (F3-3); efectivo, tarjeta o transferencia (F3-2), uno o varios (pago mixto, uno por método); en efectivo, lo recibido y el cambio. «Cobrar» solo se habilita si los pagos suman exactamente consumo + propina; el servidor lo vuelve a validar (`PAGO_NO_CUADRA`, `EFECTIVO_INSUFICIENTE`). Con `Idempotency-Key`: un reintento no cobra dos veces.
 - **Al cobrar** (una transacción): la cuenta pasa a «cerrada», sus mesas a «por limpiar», se emite el comprobante y queda el Evento `cuenta_cobrada` (quién, montos y métodos); después se avisa por `plano`, `caja`, la cuenta y su mesero.
 - **Comprobante interno:** consecutivo `CI-000001` sin reinicio y sin huecos (el contador se incrementa dentro de la transacción), copia de las líneas, subtotal, propina, total, pagos y cambio, con «Precios con impuestos incluidos» y «Documento no válido como factura electrónica» (sin DIAN, F3-5). Inmutable. En pantalla e imprimible (tirilla de 80 mm); «Cobradas hoy» lo vuelve a abrir.
-- **Fuera de alcance:** turnos y arqueo, división de cuenta, notas crédito, DIAN, impuestos y descuentos, y el cobro de domicilios (ver `docs/PLAN_FASE_3.md`).
+- **Después (Fase 3b y 6):** turno y arqueo, división de cuenta, nota crédito, cobro de domicilios, canje de puntos y 10 % de cumpleaños (secciones siguientes). Sigue fuera de alcance la facturación electrónica DIAN y los impuestos discriminados.
 - **Probar:** `cajero.dev` (de `seed:dev`) entra en `/staff` › Caja; la cuenta aparece cuando `mesero.dev` pide la cuenta de una mesa.
+
+### Caja completa (Fase 3b)
+
+- **Turno (3b.1):** `caja:abrir` con la base en efectivo y `caja:cerrar` con el arqueo por método (esperado, contado, diferencia). Sin turno abierto ningún cobro pasa (`409 TURNO_CERRADO`).
+- **División de cuenta (3b.2):** en partes iguales o por ítems; cada parte emite su comprobante y la cuenta se cierra con la última. La primera parte congela la cuenta (`409 CUENTA_EN_COBRO` al editarla).
+- **Nota crédito (3b.3):** `factura:anular` (solo el admin) anula un comprobante con motivo y emite `NC-000001` con la devolución por método; el comprobante no cambia y la cuenta no se reabre. Revierte los puntos ganados y canjeados y libera el uso de cumpleaños de la caja.
+- **Domicilios (3b.4):** se cobran al recibirlos (`pedido:cobrar`), una sola vez, con su propio comprobante.
+
+### Reservas en el salón (Fase 4)
+
+Mesa asignada a la reserva (bloque de 90 min sin solapamientos), aforo por franja, mesa apartada desde 15 a 240 min antes (configurable en Admin › Horarios), «Sentar» que abre la cuenta en la mesa (desde 10 min antes de la hora), no-show, lista de espera de hoy con su propia «Sentar», y el canal en vivo `reservas`. Las esperas que quedan de días anteriores se cierran solas.
+
+### Inventario, compras y reportes (Fase 5)
+
+- **Insumos** (`insumos`) con unidad (g, ml, unidad), existencia, mínimo y costo promedio ponderado; libro inmutable `movimientos_inventario` (entrada, consumo, devolución, ajuste, merma, vencimiento) con índice único por referencia contra el doble descuento.
+- **Recetas** por producto y por opción de modificador (suma o reemplaza un insumo, con % de merma). Enviar la ronda o confirmar el domicilio descuenta en la misma transacción; anular o cancelar devuelve, y si ya estaba en preparación o listo registra la merma automática. La existencia puede quedar negativa (se ve en rojo). Un producto u opción sin insumo para una unidad se agota solo y vuelve al recibir.
+- **Compras:** proveedores, órdenes `OC-000001` y recepciones (no más de lo pendiente, `Idempotency-Key`) que suman existencias, recalculan el costo y guardan lotes con vencimiento.
+- **Alertas:** stock bajo el mínimo, existencia negativa y lotes que vencen en 7 días (con «descartar»).
+- **Reportes** (`reporte:ver`, solo el admin): ventas por día, franja, producto, categoría, canal, mesero, descuentos por tipo y método de pago; operación (rotación de mesas, tiempos por estación con mediana y p90, costo frente a venta por producto). Rango de hasta 366 días en fechas de Bogotá; CSV con `;` y BOM para Excel.
+
+### Domicilio y fidelización (Fase 6)
+
+- **Canal del pedido (6.1):** `Pedido.canal` obligatorio (`domicilio`); la migración 6.1 lo rellenó en los pedidos anteriores.
+- **Repartidor (6.2):** el cajero asigna o cambia el repartidor hasta «listo» (Evento `repartidor_asignado`); quien tiene `pedido:entregar` sin `pedido:asignar_repartidor` solo ve, lleva (listo → en camino → entregado) y cobra los suyos (lo ajeno da 404). Canal en vivo `repartidor:<id>`.
+- **Para llevar (6.3):** cuentas sin mesa con nombre o teléfono (`cuenta:para_llevar`, mesero y cajero), que pasan por cocina, caja y entrega como las del salón. Una cobrada sigue en el KDS hasta entregarla, dentro de 12 h. Canal `para_llevar`.
+- **Perfil del cliente (6.4):** fecha de nacimiento (día a las 00:00 UTC; **fija tras el primer registro**: cambiarla da `409 FECHA_NACIMIENTO_FIJA` y solo el admin la corrige en `PATCH /admin/usuarios/:id`, con Evento `fecha_nacimiento_corregida`), alergias y preferencias (≤ 200), hasta 5 direcciones con una principal y consentimiento de datos versionado (`CONSENTIMIENTO_VERSION`, Ley 1581): sin la versión vigente el cliente recibe `403 CONSENTIMIENTO_PENDIENTE` salvo en `/auth/me`, `/auth/consentimiento` y `GET /cliente/perfil`.
+- **Alergias al personal (6.5):** `cliente:identificar` busca por correo exacto o teléfono (60 búsquedas por hora, sin mostrar correo ni teléfono completos) e identifica al cliente en la cuenta; el aviso de alergias sale en la comanda, la caja, el KDS y los pedidos.
+- **Puntos (6.6):** libro inmutable `movimientos_puntos` y saldo `Usuario.puntos`, cambiados en la transacción del cobro: 1 punto por cada $1.000 pagados del consumo (sin propina, hacia abajo) al cobrar la cuenta de un cliente identificado o al entregar su domicilio. Canje en la caja (`puntos:canjear`) en bloques de 100 = $10.000, solo en el cobro completo.
+- **Cumpleaños (6.7):** 10 % del consumo (hacia abajo), una vez por año de Bogotá y solo en el mes del cumpleaños, en la caja (cobro completo, antes del canje) o en el carrito del domicilio. Colección `usos_cumpleanos` con un uso vigente por usuario y año. El comprobante y los reportes muestran los descuentos (ventas netas = ventas − descuentos).
 
 ### Configurar el correo (SMTP)
 
@@ -157,7 +188,7 @@ No publiques `.env` ni incluyas credenciales en mensajes o commits. Si una contr
 | `npm run verificar:salon` | Consistencia de cuentas, rondas y mesas, solo lectura (1.4; ver «Cuentas y comandas del salón») |
 | `npm run seed:salon` | Salón de ejemplo (Interior y Terraza, mesas de 2 y 4, marcadas como ejemplo); solo si no hay zonas (1.2) |
 | `npm run seed:dev` | Usuarios de prueba `*.dev@brunchcafe.test` (solo desarrollo; contraseña en `DEV_USUARIOS_PASSWORD`) |
-| `npm run seed:demo` | Datos de demostración (solo desarrollo, se niega en producción): salón de ejemplo en servicio con mesas en todos los estados (unidas incluidas), ítems de cocina en cada estado, un producto agotado, una reserva, un domicilio confirmado y 2 comprobantes del día. Idempotente y sin borrar nada. Antes de escribir comprueba la BD: con un salón real (mesas que no son de ejemplo) no hace nada; con usuarios reales pide `npm run seed:demo -- --confirmar`; si una ejecución anterior se cortó a mitad, no la repite encima. Si el salón ya tiene actividad, no lo toca. Guion en `docs/GUIA_DEMO.md` |
+| `npm run seed:demo` | Datos de demostración (solo desarrollo, se niega en producción): salón de ejemplo en servicio con mesas en todos los estados (unidas incluidas), ítems de cocina en cada estado, un producto agotado, una reserva, un domicilio confirmado y 2 comprobantes del día. Desde el cierre, además: turno de caja abierto, una reserva de hoy con mesa asignada, lista de espera, insumos con uno bajo el mínimo, un domicilio asignado al repartidor, una cuenta para llevar y un cliente con puntos y cumpleaños este mes. Idempotente y sin borrar nada. Antes de escribir comprueba la BD: con un salón real (mesas que no son de ejemplo) no hace nada; con usuarios reales pide `npm run seed:demo -- --confirmar`; si una ejecución anterior se cortó a mitad, no la repite encima. Si el salón ya tiene actividad, no toca las mesas (el resto solo se crea si falta). Guion en `docs/GUIA_DEMO.md` |
 
 - La primera ejecución de `npm test` descarga el binario de `mongod` (~100 MB) y lo deja en caché; no necesita un Mongo instalado.
 - **Windows: ejecuta los tests (backend y frontend) desde una ruta con la unidad en mayúscula**, `C:\Users\…\brunch-cafe-fullstack`, no `c:\…`. Con la unidad en minúscula (la que abren a veces VS Code o Git Bash como `/c/…`), Vitest carga dos veces sus módulos y todos los archivos fallan con «Vitest failed to find the current suite» y 0 tests. En PowerShell: `Set-Location C:\Users\<usuario>\Documents\GitHub\brunch-cafe-fullstack\frontend; npm test`. No es el crash `3221226505` de Node 24 (ver «Inicio local»).
@@ -327,15 +358,20 @@ Desde 0.12 la API es solo `/api/v1`. Las rutas sin versión responden `404 NOT_F
 | POST | `/api/v1/auth/recuperar-contrasena` | Pedir el enlace de recuperación (siempre `202`; rate limit 3/h por IP + correo y 30/h por IP) |
 | POST | `/api/v1/auth/restablecer-contrasena` | Cambiar la contraseña con el enlace (rate limit 5/h por IP + enlace y 30/h por IP) |
 | POST | `/api/v1/auth/logout` | Cerrar sesión. Personal (incluido el admin): sube `tokenVersion`, así el token deja de servir al instante y se cierran sus otras sesiones (1.1b). Cliente: solo borra la cookie |
-| GET | `/api/v1/auth/me` | Usuario de la sesión, rol y permisos |
+| GET | `/api/v1/auth/me` | Usuario de la sesión, rol y permisos (6.4: con `consentimientoPendiente`) |
+| POST | `/api/v1/auth/consentimiento` | 6.4: `{ version }` (la vigente) → guarda versión y fecha; otra versión → 400 |
 
 ### Cliente (`/api/v1/cliente`, sesión; cada uno ve y edita solo lo suyo)
 
 | Método | Ruta | Acción |
 |---|---|---|
-| GET, PATCH | `/api/v1/cliente/perfil` | Ver y editar el perfil (`nombre`, `apellido`, `correo`, `telefono` opcional) |
+| GET, PATCH | `/api/v1/cliente/perfil` | Ver y editar el perfil (`nombre`, `apellido`, `correo`, `telefono` opcional). 6.4: `fechaNacimiento` («AAAA-MM-DD», solo si no hay una: cambiarla o borrarla → `409 FECHA_NACIMIENTO_FIJA`), `alergias` y `preferencias` (≤ 200; vacío las borra); la respuesta trae además `consentimiento` |
+| GET, POST | `/api/v1/cliente/direcciones` | 6.4: libreta (≤ 5, la principal primero); la sexta → `409 LIMITE_DIRECCIONES`; dos pestañas a la vez → `409 DIRECCIONES_MODIFICADAS` |
+| PATCH, DELETE | `/api/v1/cliente/direcciones/:id` | 6.4: editar solo lo enviado o borrar (la siguiente pasa a principal); id ajeno → 404 |
+| POST | `/api/v1/cliente/direcciones/:id/principal` | 6.4: marcarla como principal |
+| GET | `/api/v1/cliente/puntos` | 6.6: saldo, reglas, movimientos y estado del cumpleaños (`disponible`, `usado`, `fuera_de_mes`, `sin_fecha`) |
 | PUT | `/api/v1/cliente/perfil/contrasena` | Cambiar la contraseña (`actual`, `nueva`); cierra las demás sesiones |
-| GET, POST | `/api/v1/cliente/pedidos` | Historial y crear un pedido a domicilio (teléfono obligatorio, hora en punto de hoy con 1 h de anticipación, dirección con la validación flexible de 1.11, `Idempotency-Key` opcional). 1.12: cada ítem admite `modificadores: [{ grupoId, opcionIds }]` y `nota` (≤ 140), validados con el mismo validador que las cuentas del salón: `400 MODIFICADOR_REQUERIDO`, `MODIFICADORES_FUERA_DE_RANGO`, `GRUPO_NO_VALIDO`, `OPCION_NO_VALIDA` y `409 OPCION_NO_DISPONIBLE`, con `details.linea` (índice del ítem) y `details.producto`. Precio y total los calcula el servidor (base + recargos). En las respuestas, cada ítem trae además `options: [{ group, option, extraPrice }]` y `note`, y `unitPrice` incluye los recargos (las líneas anteriores: `[]`, `''` y el precio base). 1.14, errores con el formato de las cuentas: `400 VALIDATION_ERROR` con `details: [{ campo, mensaje }]` (p. ej. `items.1.nota`), `400 HORA_NO_DISPONIBLE`, `404 PRODUCTO_NO_ENCONTRADO`, `409 PRODUCT_UNAVAILABLE` (`details.productos`) y `400 METODO_PAGO_NO_DISPONIBLE`; los errores de una línea traen `details.lineas` (índices de `items`) |
+| GET, POST | `/api/v1/cliente/pedidos` | Historial y crear un pedido a domicilio (teléfono obligatorio, hora en punto de hoy con 1 h de anticipación, dirección con la validación flexible de 1.11, `Idempotency-Key` opcional). 1.12: cada ítem admite `modificadores: [{ grupoId, opcionIds }]` y `nota` (≤ 140), validados con el mismo validador que las cuentas del salón (6.7: `usarCumpleanos: true` aplica el 10 % y el `total` es lo que se paga; `409 CUMPLEANOS_NO_DISPONIBLE`): `400 MODIFICADOR_REQUERIDO`, `MODIFICADORES_FUERA_DE_RANGO`, `GRUPO_NO_VALIDO`, `OPCION_NO_VALIDA` y `409 OPCION_NO_DISPONIBLE`, con `details.linea` (índice del ítem) y `details.producto`. Precio y total los calcula el servidor (base + recargos). En las respuestas, cada ítem trae además `options: [{ group, option, extraPrice }]` y `note`, y `unitPrice` incluye los recargos (las líneas anteriores: `[]`, `''` y el precio base). 1.14, errores con el formato de las cuentas: `400 VALIDATION_ERROR` con `details: [{ campo, mensaje }]` (p. ej. `items.1.nota`), `400 HORA_NO_DISPONIBLE`, `404 PRODUCTO_NO_ENCONTRADO`, `409 PRODUCT_UNAVAILABLE` (`details.productos`) y `400 METODO_PAGO_NO_DISPONIBLE`; los errores de una línea traen `details.lineas` (índices de `items`) |
 | GET | `/api/v1/cliente/pedidos/:id` | Detalle de un pedido propio |
 | PATCH | `/api/v1/cliente/pedidos/:id/cancelar` | Cancelar un pedido propio en `pendiente` (`motivo` opcional) |
 | GET | `/api/v1/cliente/metodos-pago` | Métodos de pago activos |
@@ -384,6 +420,10 @@ Desde 0.12 la API es solo `/api/v1`. Las rutas sin versión responden `404 NOT_F
 | POST | `/api/v1/staff/caja/domicilios/:id/cobrar` | `pedido:cobrar` | 3b.4: `{ propina, pagos }` → `201 { comprobante }` del pedido; turno abierto; `Idempotency-Key` opcional. `409 PEDIDO_YA_COBRADO` (un domicilio se cobra una sola vez) / `PEDIDO_NO_COBRABLE` / `PEDIDO_TOTAL_INCONSISTENTE` / `TURNO_CERRADO`, `400 PAGO_NO_CUADRA` |
 | GET | `/api/v1/staff/eventos?canales=plano,cuenta:<id>` | según el canal | 2.4: Server-Sent Events. Canales: `plano` (`mesa:ver`), `estacion:<codigo>` (`kds:ver` y estación asignada al rol; el admin, todas), `cuenta:<id>` (`cuenta:ver`), `mesero:<id>` (solo el propio usuario, con `cuenta:ver` o `item:servir`), `catalogo` (2.7: `comanda:tomar`, `kds:ver`, `producto:agotar` o `producto:reactivar`; aviso `disponibilidad` al agotar o reactivar un producto o una opción) y `caja` (Fase 3: `cuenta:cobrar`; `salon_cambio` al pedir, reabrir, cerrar o cobrar una cuenta); hasta 10 por conexión y 5 conexiones por usuario (`429 DEMASIADAS_CONEXIONES`). Abre con `event: conectado`; cada aviso llega como mensaje sin nombre `{ canal, tipo, ids }` (`item_estado`, `ronda_lista`, `salon_cambio`, `pedido_estado`, `pedido_estacion`, `disponibilidad`), nunca con datos: el cliente vuelve a leer con su permiso. Latido cada 25 s; si la sesión deja de valer (cerrada, contraseña cambiada, usuario desactivado o vencida) o ya no tiene permiso de algún canal envía `event: sesion_cerrada` y cierra. `400 CANALES_NO_VALIDOS`, `403` con el canal que falla 4.5: canal `reservas` (`reserva:ver`): `reserva_cambio` (crear, editar, cambiar estado, asignar mesa, sentar), `reserva_editada` (un cliente editó su reserva confirmada) y `espera_cambio`, con solo el id; los de reservas también van a `plano` |
 | GET | `/api/v1/staff/cuentas-abiertas` | `cuenta:ver` o `pedido:ver` | 1.9 (F1-11), solo lectura: `{ actualizadoEn, canales: { salon, domicilio }, truncado, cuentas[] }`. Cuentas de salón abiertas o pedidas (con `cuenta:ver`) y domicilios sin terminar (con `pedido:ver`), de la más antigua a la más nueva; cada fila con `canal`, `codigo`, `estado { codigo, nombre }`, `referencia` (mesas o barrio), `responsable` o `cliente`, `total`, `pendiente`, `desde` y `minutos`, sin datos de contacto. Máximo 200 por canal (las más nuevas, con `truncado: true`) |
+| GET | `/api/v1/staff/pedidos/repartidores` | `pedido:asignar_repartidor` | 6.2: usuarios activos con `pedido:entregar` |
+| PATCH | `/api/v1/staff/pedidos/:id/repartidor` | `pedido:asignar_repartidor` | 6.2: `{ repartidorId \| null }` hasta «listo» (`409 PEDIDO_NO_ASIGNABLE`, `400 REPARTIDOR_NO_VALIDO`); Evento `repartidor_asignado` con de/a |
+| GET | `/api/v1/staff/caja/cuentas/:id` | `cuenta:cobrar` | 6.6 y 6.7: además, `puntosCliente` (saldo) y `cumpleanosCliente { disponible, porcentaje, monto }` del cliente identificado |
+| POST | `/api/v1/staff/caja/cuentas/:id/cobrar` | `cuenta:cobrar` (+ `puntos:canjear` para canjear) | 6.6 y 6.7: `canjearPuntos` (bloques de 100) y `aplicarCumpleanos`, solo en el cobro completo; errores `PUNTOS_INSUFICIENTES`, `CUMPLEANOS_NO_DISPONIBLE`, `CUMPLEANOS_SOLO_COMPLETO` y `CUMPLEANOS_SIN_CLIENTE`. El comprobante guarda `descuentos[]` y `puntos { cliente, canjeados, ganados }` |
 
 #### Salón (`/api/v1/staff/salon`, 1.5)
 
@@ -409,6 +449,9 @@ Cualquiera con el permiso opera cualquier cuenta (F1-17); `mesero` es el respons
 | POST | `/api/v1/staff/salon/mesas/unir` | `mesa:unir` | `{ principalId, mesaIds[] }`: mesas libres, combinables y de la misma zona se suman a la cuenta abierta de la principal (F1-9) |
 | POST | `/api/v1/staff/salon/mesas/:id/separar` | `mesa:unir` | Solo si la cuenta no tiene ítems enviados; la mesa pasa a por limpiar |
 | POST | `/api/v1/staff/salon/mesas/:id/estado` | `mesa:operar` / `mesa:bloquear` | `{ a, motivo? }`: `por_limpiar → libre`; `libre ↔ bloqueada` con motivo. Con cuenta → `409 MESA_CON_CUENTA` |
+| GET, POST | `/api/v1/staff/salon/para-llevar` | `cuenta:para_llevar` (GET también `cuenta:ver`) | 6.3: lista con lo que falta (sin enviar, en cocina, para entregar, entregados) y abrir `{ nombre?, telefono? }` (al menos uno; `Idempotency-Key`). Dentro de una cuenta para llevar el permiso suma ver, tomar, enviar, pasar a caja y entregar |
+| GET | `/api/v1/staff/salon/clientes?buscar=` | `cliente:identificar` | 6.5: correo exacto o teléfono con los mismos dígitos; nombre corto, correo y teléfono enmascarados, si tiene avisos y si cumple este mes (sin las alergias). 60 por hora, `Cache-Control: no-store` |
+| PUT | `/api/v1/staff/salon/cuentas/:id/cliente` | `cliente:identificar` | 6.5: `{ clienteId \| null, versionEsperada? }` copia en la cuenta el nombre corto, las alergias y las preferencias; Evento `cliente_identificado` solo con ids |
 
 ### Admin (`/api/v1/admin`, sesión + permiso)
 
@@ -428,12 +471,35 @@ Cualquiera con el permiso opera cualquier cuenta (F1-17); `mesero` es el respons
 | GET | `/api/v1/admin/permisos` | `rol:gestionar` | Catálogo de permisos |
 | GET, POST, PUT, DELETE | `/api/v1/admin/metodos-pago[/:id]` | `metodo_pago:gestionar` | Métodos de pago |
 | GET | `/api/v1/admin/usuarios` | `usuario:gestionar` | Listar usuarios |
-| PATCH | `/api/v1/admin/usuarios/:id` | `usuario:gestionar` | `{ activo?, rolId? }` (`409 AUTO_BLOQUEO` / `ULTIMO_ADMIN`) |
+| PATCH | `/api/v1/admin/usuarios/:id` | `usuario:gestionar` | `{ activo?, rolId?, fechaNacimiento? }` (`409 AUTO_BLOQUEO` / `ULTIMO_ADMIN`). Cierre: `fechaNacimiento` («AAAA-MM-DD» o '' para borrarla) corrige la del cliente con Evento `fecha_nacimiento_corregida` (de/a); si cambió entretanto, `409 FECHA_NACIMIENTO_MODIFICADA`. La lista trae `fechaNacimiento` y `nacimientoEditable` |
+| GET | `/api/v1/admin/reportes/ventas?desde&hasta` | `reporte:ver` | 5.6 y 6.7: resumen (ventas, descuentos, ventas netas, cuentas y pedidos, ticket promedio, propinas, notas crédito), por día, franja, producto, categoría, canal, mesero, descuentos por tipo y método de pago. Fechas de Bogotá, hasta 366 días |
+| GET | `/api/v1/admin/reportes/operacion?desde&hasta` | `reporte:ver` | 5.7: rotación por mesa, tiempos por estación (mediana y p90) y costo frente a venta por producto |
 | GET | `/api/v1/admin/comentarios` | `resena:moderar` | Todas las reseñas |
 | PATCH | `/api/v1/admin/comentarios/:id/visibilidad` | `resena:moderar` | `{ visible }` |
 | DELETE | `/api/v1/admin/comentarios/:id` | `resena:moderar` | Borrar una reseña (`404 NOT_FOUND` si no existe, también en `visibilidad`) |
 | GET, PUT | `/api/v1/admin/horarios` | `horario:editar` | Ver y editar los horarios. 1.15: el GET devuelve `version` y `actualizadoEn` (último cambio real); el PUT exige `versionEsperada` y responde `409 HORARIOS_MODIFICADOS` si otro admin guardó antes. Cada cambio deja un Evento (`configuracion`, `horarios_cambiados`) 4.2: `reservas.aforo { general: 1–500 \| null, porHora: [{ hora, maximo: 0–500 }] }` (null = sin límite; sin `aforo` en el PUT se conserva el guardado) |
 | GET, POST, PUT, DELETE | `/api/v1/admin/zonas[/:id]` | `salon:configurar` | Zonas del salón `{ nombre, orden, activa }` (nombre único sin mayúsculas ni tildes → `409 ZONA_DUPLICADA`; con mesas no se borra → `409 ZONA_CON_MESAS`; no se desactiva con mesas en uso → `409 ZONA_CON_MESAS_EN_USO`) |
 | GET, POST, PUT, DELETE | `/api/v1/admin/mesas[/:id]` (`?zona=`) | `salon:configurar` | Mesas `{ numero, nombre?, zona, capacidad, combinable, activa }`; el estado no se asigna aquí. Número único → `409 MESA_NUMERO_DUPLICADO`; zona inexistente o inactiva → `400 ZONA_NO_VALIDA`; una mesa que no está libre no se borra, no se desactiva ni cambia de zona → `409 MESA_EN_USO` |
+
+### Inventario (`/api/v1/inventario`, sesión + permiso; Fase 5)
+
+Toda la sección exige al menos un permiso de inventario o de compras para entrar (`inventario:ver` lee).
+
+| Método | Ruta | Permiso | Acción |
+|---|---|---|---|
+| GET, POST | `/api/v1/inventario/insumos` | lectura / `inventario:gestionar` | Insumos con existencia, mínimo, costo promedio y nivel (`ok`, `bajo`, `negativo`); crear con existencia inicial (nombre único → 409) |
+| PUT | `/api/v1/inventario/insumos/:id` | `inventario:gestionar` | Editar (con versión; la existencia solo cambia con movimientos) |
+| GET | `/api/v1/inventario/insumos/:id/movimientos` | lectura | Libro de movimientos del insumo |
+| GET | `/api/v1/inventario/recetas` | lectura | Productos con su receta, costo estimado y `variantes` por opción; grupos con sus opciones |
+| PUT | `/api/v1/inventario/recetas/productos/:productoId` | `inventario:gestionar` | Receta del producto (insumos activos, sin repetidos, % de merma; Evento `receta_editada`) |
+| PUT | `/api/v1/inventario/recetas/grupos/:grupoId/opciones/:opcionId` | `inventario:gestionar` | Receta de una opción (suma o reemplaza) |
+| POST | `/api/v1/inventario/movimientos` | `inventario:ajustar` | Ajuste, merma o vencimiento con motivo |
+| GET, POST | `/api/v1/inventario/proveedores` | lectura / `compra:gestionar` | Proveedores (nombre único, NIT, contacto) |
+| PUT | `/api/v1/inventario/proveedores/:id` | `compra:gestionar` | Editar o desactivar |
+| GET, POST | `/api/v1/inventario/ordenes` | lectura / `compra:gestionar` | Órdenes de compra `OC-…` con lo recibido de cada insumo |
+| POST | `/api/v1/inventario/ordenes/:id/cancelar` | `compra:gestionar` | Cancelar con motivo |
+| POST | `/api/v1/inventario/ordenes/:id/recepciones` | `compra:recibir` | Recibir (versión obligatoria, `Idempotency-Key`; `409 RECEPCION_EXCEDE`): suma existencias, recalcula el costo y crea lotes |
+| GET | `/api/v1/inventario/alertas` | lectura | Stock bajo, existencia negativa y lotes por vencer en 7 días |
+| POST | `/api/v1/inventario/lotes/:id/descartar` | `inventario:ajustar` | Descarta lo que queda del lote como vencimiento (`409 LOTE_YA_DESCARTADO`) |
 
 Los pedidos se guardan en `Pedido` y `DetallePedido` (nombre y precio del momento en cada línea). El backend valida los productos contra el catálogo (existentes y disponibles) y calcula precios y total desde allí, sin confiar en importes del navegador. Las reservas se guardan en `Reserva` con un `Estado` del catálogo fijo. Las reseñas se guardan en `Comentario` (una por usuario y producto; las anteriores a 0.12 cuentan como no verificadas).
