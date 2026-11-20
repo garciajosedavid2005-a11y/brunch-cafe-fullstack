@@ -807,6 +807,18 @@ const prepararCumpleanosEnCarrito = async (p) => {
   await hora.selectOption(await hora.locator("option[value]:not([value=''])").first().getAttribute("value"));
 };
 
+// Limpieza final · Tablas de Reportes que se desplazan por dentro (contenedor más angosto que la tabla), por ancho
+const medirTablasReportes = async (p, vista) => {
+  const anchas = await p.locator(".reportes-tabla").evaluateAll((tablas) => tablas
+    .map((t) => ({ nombre: t.getAttribute("aria-label"), caja: t.parentElement }))
+    .filter(({ caja }) => caja.scrollWidth > caja.clientWidth + 1)
+    .map(({ nombre, caja }) => `${nombre} (${caja.scrollWidth - caja.clientWidth} px)`));
+  const ancho = p.viewportSize()?.width;
+  console.log(anchas.length
+    ? `  ⚠ tablas con desplazamiento interno (${vista} ${ancho}): ${anchas.join(", ")}`
+    : `  ✓ tablas de reportes sin desplazamiento interno (${vista} ${ancho})`);
+};
+
 const VISTAS = {
   inicio: { preparar: (p) => p.goto(`${FRONT}/`) },
   // 3.6 · «Lo que dicen nuestros clientes» con reseñas (la BD de capturas no tiene publicadas): la respuesta
@@ -1222,12 +1234,14 @@ const VISTAS = {
   "admin-reportes": { usuario: "admin", preparar: async (p) => {
     await abrirPestanaAdmin("Reportes")(p);
     await p.getByRole("table", { name: "Ventas por mesero" }).getByText(/Mesero/).first().waitFor();
+    await medirTablasReportes(p, "admin-reportes");
   } },
   "admin-reportes-operacion": { usuario: "admin", preparar: async (p) => {
     await abrirPestanaAdmin("Reportes")(p);
     await p.getByRole("table", { name: "Ventas por día" }).waitFor();
     await p.getByRole("button", { name: "Operación y márgenes" }).click();
     await p.getByRole("table", { name: "Tiempos de preparación por estación" }).getByText(/min/).first().waitFor();
+    await medirTablasReportes(p, "admin-reportes-operacion");
   } },
   "staff-inventario-compras": { usuario: "compras", preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);

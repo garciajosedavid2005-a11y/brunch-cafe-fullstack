@@ -153,14 +153,20 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Tablet: los encabezados se parten para que las tablas anchas quepan mejor (revisor-visual) */
-@media (max-width: 820px) {
-  .reportes-tabla th {
-    white-space: normal;
-  }
-
-  .reportes-tabla th,
-  .reportes-tabla td {
-    padding: 0.5rem 0.4rem;
-  }
+/* Limpieza final (Brayan): las tablas caben sin desplazamiento interno junto al menú lateral del admin, a cualquier
+   ancho: encabezados que se parten, relleno menor y el nombre en hasta dos líneas (antes solo por debajo de 820 px) */
+.reportes-tabla th {
+  white-space: normal;
 }
+
+.reportes-tabla th,
+.reportes-tabla td {
+  padding: 0.5rem 0.4rem;
+}
+
+/* El nombre (producto, mesa, estación) puede ocupar dos líneas; los montos siguen en una */
+.reportes-tabla td:first-child {
+  white-space: normal;
+  min-width: 6rem;
+}
+
