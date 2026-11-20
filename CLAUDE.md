@@ -16,7 +16,7 @@
 
 ## Proyecto
 
-Brunch Café: evolución a un POS de servicio a la mesa. Backend Node 24 + Express 5 + Mongoose 9 + Zod 4 (ESM); frontend React 19 + Vite + Foundation. La guía es la auditoría de `docs/auditoria/`; el diagnóstico inicial está en `docs/DIAGNOSTICO_FASE_A.md`.
+Brunch Café: evolución a un POS de servicio a la mesa. Backend Node 22 LTS (`.nvmrc`) + Express 5 + Mongoose 9 + Zod 4 (ESM); frontend React 19 + Vite + Foundation. La guía es la auditoría de `docs/auditoria/`; el diagnóstico inicial está en `docs/DIAGNOSTICO_FASE_A.md`.
 
 **`docs/PROGRESO.md` es el archivo de seguimiento**: estado de cada ítem, decisiones (fecha · decisión · quién) y pendientes. Léelo al empezar y actualízalo al cerrar cada ítem.
 
