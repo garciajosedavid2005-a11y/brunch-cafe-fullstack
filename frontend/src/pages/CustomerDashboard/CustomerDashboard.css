@@ -764,3 +764,27 @@
 }
 
 .dashboard-direcciones__titulo { margin-top: 1.75rem; }
+
+/* 6.6 · Mis puntos */
+.dashboard-puntos__saldo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: #f3e3c4;
+  color: #4a2a00;
+  font-size: 1.1rem;
+}
+
+.dashboard-puntos__tabla { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+
+.dashboard-puntos__tabla th,
+.dashboard-puntos__tabla td { padding: 0.55rem 0.5rem; border-bottom: 1px solid #eddfd9; text-align: left; }
+
+.dashboard-puntos__tabla th { color: #493733; font-size: 0.85rem; }
+
+.dashboard-puntos__tabla .is-positivo { color: #2f642a; font-weight: 700; }
+
+.dashboard-puntos__tabla .is-negativo { color: #9c2520; font-weight: 700; }

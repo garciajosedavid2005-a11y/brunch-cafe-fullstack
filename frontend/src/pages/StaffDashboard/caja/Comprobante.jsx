@@ -9,6 +9,9 @@ import { formatearCOP } from "../../../utils/moneda";
 import { formatearFecha, formatearHora } from "../../../utils/fechas";
 import { etiquetaMetodo } from "./cobro";
 
+// 6.6 / 6.7 · Nombre de cada tipo de descuento en el comprobante
+const ETIQUETA_DESCUENTO = { puntos: "Descuento por puntos", cumpleanos: "Descuento de cumpleaños" };
+
 // Fase 3 · Comprobante interno (F3-4, F3-5): en pantalla e imprimible en tirilla de 80 mm (Caja.css,
 // @media print: solo se imprime el comprobante). Sin DIAN: lleva sus leyendas.
 
@@ -120,11 +123,22 @@ export default function Comprobante({ comprobante, onVolver }) {
         </table>
 
         {/* 3.5 · Se lee como una operación: Consumo + Propina = Total pagado */}
-        <dl className="comprobante__totales" role="group" aria-label="Consumo + Propina = Total pagado">
+        <dl className="comprobante__totales" role="group"
+          aria-label={c.descuentos?.length ? "Consumo − Descuentos + Propina = Total pagado" : "Consumo + Propina = Total pagado"}>
           <div><dt>Consumo</dt><dd>{formatearCOP(c.subtotal)}</dd></div>
+          {/* 6.6 · Descuentos (puntos; 6.7 cumpleaños): restan del consumo, nunca de la propina */}
+          {(c.descuentos || []).map((d) => (
+            <div key={`${d.tipo}-${d.monto}`}>
+              <dt><span className="comprobante__operador">−</span> {ETIQUETA_DESCUENTO[d.tipo] || "Descuento"}{d.detalle ? ` (${d.detalle})` : ""}</dt>
+              <dd>{formatearCOP(d.monto)}</dd>
+            </div>
+          ))}
           <div><dt><span className="comprobante__operador">+</span> Propina voluntaria</dt><dd>{formatearCOP(c.propina)}</dd></div>
           <div className="comprobante__total"><dt><span className="comprobante__operador">=</span> Total pagado</dt><dd>{formatearCOP(c.total)}</dd></div>
+
         </dl>
+        {/* 6.6 · Fuera de la operación: no es dinero */}
+        {c.puntos?.ganados > 0 && <p className="comprobante__puntos">Puntos ganados con esta compra: <strong>{c.puntos.ganados}</strong></p>}
 
         <dl className="comprobante__pagos">
           {c.pagos.map((p) => (

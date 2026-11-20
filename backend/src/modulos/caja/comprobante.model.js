@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import { AppError } from '../compartido/errors.js'
+import { BLOQUE_CANJE, descuentoPorPuntos, puntosGanados } from '../fidelizacion/reglas.js'
 
 // Fase 3 · Comprobante interno del cobro (PLAN_FASE_3 §3.3; F3-4, F3-5). Sin DIAN: lleva la leyenda
 // «Documento no válido como factura electrónica» y «Precios con impuestos incluidos» (sin desglose).
@@ -31,6 +32,21 @@ const pagoSchema = new mongoose.Schema({
     cambio: { type: Number, default: null, min: 0, validate: { validator: (v) => v === null || Number.isSafeInteger(v), message: 'El cambio debe ser un entero en COP' } },
 }, { _id: false })
 
+// 6.6 / 6.7 (F6-7) · Descuentos del comprobante: total = subtotal − descuentos + propina; nunca más que el consumo ni
+// sobre la propina
+export const TIPOS_DESCUENTO = ['puntos', 'cumpleanos']
+const descuentoSchema = new mongoose.Schema({
+    tipo: { type: String, required: true, enum: TIPOS_DESCUENTO },
+    monto: monto('El descuento', { min: 1 }),
+    detalle: { type: String, trim: true, maxlength: 80, default: '' },
+}, { _id: false })
+// 6.6 · Puntos del cobro: el cliente que los gana y cuántos se canjearon y ganaron (para revertirlos con la nota crédito)
+const puntosSchema = new mongoose.Schema({
+    cliente: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
+    canjeados: { type: Number, default: 0, min: 0, validate: entero('Los puntos canjeados') },
+    ganados: { type: Number, default: 0, min: 0, validate: entero('Los puntos ganados') },
+}, { _id: false })
+
 const persona = new mongoose.Schema({
     id: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
     nombre: { type: String, trim: true, default: '' }, // copia: «Ana P.»
@@ -60,8 +76,10 @@ const comprobanteSchema = new mongoose.Schema({
     emitidoEn: { type: Date, required: true },
     lineas: { type: [lineaSchema], validate: { validator: (v) => v.length > 0, message: 'El comprobante necesita al menos una línea' } },
     subtotal: monto('El subtotal'),
+    descuentos: { type: [descuentoSchema], default: [] }, // 6.6
     propina: monto('La propina'),
     total: monto('El total'),
+    puntos: { type: puntosSchema, default: null }, // 6.6
     pagos: { type: [pagoSchema], validate: { validator: (v) => v.length > 0 && v.length <= METODOS_PAGO_CAJA.length, message: 'Entre 1 y 3 pagos' } },
     cambio: monto('El cambio'),
 }, { timestamps: { createdAt: true, updatedAt: false }, collection: 'comprobantes' })
@@ -88,7 +106,16 @@ export const problemasDeComprobante = (c) => {
     if (c.pedido && c.parte) problemas.push('Un pedido no se divide en partes')
     for (const l of c.lineas || []) if (l.subtotal !== l.precioUnitario * l.cantidad) problemas.push(`La línea «${l.nombre}» no cuadra`)
     if (suma(c.lineas || [], 'subtotal') !== c.subtotal) problemas.push('El subtotal no coincide con las líneas')
-    if (c.total !== c.subtotal + c.propina) problemas.push('El total no es subtotal + propina')
+    // 6.6 · total = subtotal − descuentos + propina; los descuentos no superan el consumo
+    const descuentos = suma(c.descuentos || [], 'monto')
+    if (descuentos > c.subtotal) problemas.push('Los descuentos superan el consumo')
+    if (c.total !== c.subtotal - descuentos + c.propina) problemas.push('El total no es subtotal − descuentos + propina')
+    const porPuntos = suma((c.descuentos || []).filter((d) => d.tipo === 'puntos'), 'monto')
+    if ((c.descuentos || []).filter((d) => d.tipo === 'puntos').length > 1) problemas.push('Un solo descuento por puntos')
+    if (c.puntos?.canjeados && c.puntos.canjeados % BLOQUE_CANJE !== 0) problemas.push('Los puntos se canjean en bloques de 100')
+    if (porPuntos !== descuentoPorPuntos(c.puntos?.canjeados || 0)) problemas.push('El descuento por puntos no corresponde a lo canjeado')
+    // Los ganados salen de lo pagado del consumo (sin propina): nadie acuña puntos de más
+    if (c.puntos && c.puntos.ganados !== puntosGanados(c.subtotal - descuentos)) problemas.push('Los puntos ganados no corresponden a lo pagado')
     if (suma(c.pagos || [], 'monto') !== c.total) problemas.push('Los pagos no suman el total')
     for (const p of c.pagos || []) {
         if (p.metodo === 'efectivo' ? p.recibido === null || p.cambio !== p.recibido - p.monto : p.recibido !== null || p.cambio !== null) {

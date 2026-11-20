@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { revertirPuntos } from '../fidelizacion/puntos.service.js'
 import { z } from 'zod'
 import Comprobante from './comprobante.model.js'
 import NotaCredito, { codigoNota } from './notaCredito.model.js'
@@ -69,6 +70,7 @@ export const anularComprobante = async (id, datos, sesion) => {
                 if (error?.name !== 'ValidationError') throw error
                 throw new AppError(500, 'NOTA_INCONSISTENTE', 'No se pudo emitir la nota crédito. Avisa al administrador.', undefined, { cause: error })
             })
+            await revertirPuntos({ comprobante, nota, session }) // 6.6 (F6-c) · quita lo ganado y devuelve lo canjeado
             await registrarEvento({
                 // 3b.4 · El de un domicilio queda en el historial del pedido
                 entidad: comprobante.pedido ? 'pedido' : 'cuenta', entidadId: comprobante.pedido ?? comprobante.cuenta, tipo: 'comprobante_anulado', motivo,

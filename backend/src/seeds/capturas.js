@@ -89,6 +89,7 @@ const sembrarPerfilesCliente = async () => {
     if (!cliente) throw new Error('Falta cliente.dev: ejecuta npm run seed:dev')
     cliente.set({
         fechaNacimiento: new Date('1992-11-05T00:00:00.000Z'), alergias: 'Maní y nueces', preferencias: 'Leche de almendra',
+        puntos: 250, // 6.6 · para las capturas del canje (sin movimientos: se siembra el saldo)
         direcciones: [
             { etiqueta: 'Casa', direccion: 'Cra 36B #30-06', barrio: 'Centro', indicaciones: 'Torre 2, apto 301', principal: true },
             { etiqueta: 'Oficina', direccion: 'Calle 10 #43A-30', barrio: 'El Poblado', indicaciones: '', principal: false },

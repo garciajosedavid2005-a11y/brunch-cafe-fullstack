@@ -116,6 +116,9 @@ const usuarioSchema = new mongoose.Schema({
             { validator: (v) => v.length === 0 || v.filter((d) => d.principal).length === 1, message: 'Una sola dirección es la principal' },
         ],
     },
+    // 6.6 · Saldo de puntos (lo cambia solo fidelizacion/puntos.service.js junto con su movimiento). Puede quedar
+    // negativo si se anula una compra cuyos puntos ya se gastaron (F6-c); con saldo negativo no se canjea
+    puntos: { type: Number, default: 0, validate: { validator: Number.isSafeInteger, message: 'Los puntos son enteros' } },
     // 6.4 · Consentimiento de datos (Ley 1581): versión aceptada y cuándo. null = sin aceptar
     consentimiento: { type: consentimientoSchema, default: null },
     //Se relaciona con el rol del usuario, usando el ObjectId del rol

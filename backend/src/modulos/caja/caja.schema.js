@@ -25,6 +25,9 @@ export const cobrarSchema = z.object({
         .min(1, { error: 'Indica al menos un pago' })
         .max(METODOS_PAGO_CAJA.length, { error: 'Como máximo un pago por método' })
         .refine((ps) => new Set(ps.map((p) => p.metodo)).size === ps.length, { error: 'Como máximo un pago por método' }),
+    // 6.6 (F6-5) · Puntos que el cliente identificado canjea (bloques de 100 = $10.000); solo en el cobro completo
+    canjearPuntos: z.number({ error: 'Los puntos a canjear deben ser un número' }).int().min(0).max(1_000_000)
+        .refine((n) => n % 100 === 0, { error: 'Los puntos se canjean en bloques de 100' }).default(0),
 }).strict()
 
 // 3b.2 · Cobrar una parte: lo mismo que el cobro más cómo se divide (F3b-3, F3b-4)

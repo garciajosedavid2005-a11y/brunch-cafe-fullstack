@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { registrarPuntosDelCobro, saldoDe } from '../fidelizacion/puntos.service.js'
 import Cuenta from '../salon/cuenta.model.js'
 import Comanda from '../salon/comanda.model.js'
 import Usuario from '../identidad/usuario.model.js'
@@ -72,8 +73,10 @@ export const formatoComprobante = (c) => ({
     emitidoEn: c.emitidoEn,
     lineas: c.lineas.map((l) => ({ nombre: l.nombre, cantidad: l.cantidad, opciones: l.opciones, nota: l.nota || '', precioUnitario: l.precioUnitario, subtotal: l.subtotal })),
     subtotal: c.subtotal,
+    descuentos: (c.descuentos || []).map((d) => ({ tipo: d.tipo, monto: d.monto, detalle: d.detalle || '' })), // 6.6
     propina: c.propina,
     total: c.total,
+    puntos: c.puntos ? { canjeados: c.puntos.canjeados || 0, ganados: c.puntos.ganados || 0 } : null, // 6.6 · sin el id del cliente
     pagos: c.pagos.map((p) => ({ metodo: p.metodo, monto: p.monto, recibido: p.recibido ?? null, cambio: p.cambio ?? null })),
     cambio: c.cambio,
     leyendas: LEYENDAS_COMPROBANTE,
@@ -84,7 +87,7 @@ export const formatoComprobante = (c) => ({
  * misma transacción: si el cobro falla, el número no se gasta y no quedan huecos) y guarda la copia
  * de lo cobrado: ítems enviados y no anulados, propina y pagos.
  */
-export const emitirComprobante = async ({ cuenta, comandas, propina, total, pagos, sesion, session, turno, lineas: lineasParte, subtotal, parte = null }) => {
+export const emitirComprobante = async ({ cuenta, comandas, propina, total, pagos, sesion, session, turno, lineas: lineasParte, subtotal, parte = null, descuentos = [], puntos = null }) => {
     // 3b.1 · Todo comprobante nuevo es de un turno abierto (lo exige el cobro); sin él es un fallo nuestro
     if (!turno?._id) throw new AppError(500, 'COMPROBANTE_SIN_TURNO', 'No se pudo emitir el comprobante. Avisa al administrador.')
     // upsert por si el contador falta (asegurarContador ya lo crea antes, fuera de la transacción)
@@ -111,8 +114,10 @@ export const emitirComprobante = async ({ cuenta, comandas, propina, total, pago
         lineas,
         subtotal: subtotal ?? cuenta.subtotal,
         parte,
+        descuentos, // 6.6
         propina,
-        total, // el mismo con el que se validaron los pagos (consumo + propina)
+        total, // el mismo con el que se validaron los pagos (consumo − descuentos + propina)
+        puntos, // 6.6
         pagos,
         cambio: pagos.reduce((n, p) => n + (p.cambio ?? 0), 0),
     }], { session }).catch((error) => {
@@ -124,6 +129,7 @@ export const emitirComprobante = async ({ cuenta, comandas, propina, total, pago
         // El detalle (qué invariante falló) va al log como causa, no a la respuesta
         throw new AppError(500, 'COMPROBANTE_INCONSISTENTE', 'No se pudo emitir el comprobante. Avisa al administrador.', undefined, { cause: error })
     })
+    await registrarPuntosDelCobro({ comprobante, session }) // 6.6 · en la misma transacción
     return comprobante
 }
 
@@ -180,7 +186,9 @@ export const detalleParaCobro = async (id, sesion) => {
     const cobrados = new Set((cuenta.division?.itemsCobrados || []).map(String))
     const nombres = await nombresDe([cuenta.mesero])
     return {
-        id: String(cuenta._id), codigo: cuenta.codigo, mesas: cuenta.mesas.map((m) => m.numero), paraLlevar: paraLlevarDe(cuenta), cliente: clienteDe(cuenta), mesero: nombres.get(String(cuenta.mesero)) || '',
+        id: String(cuenta._id), codigo: cuenta.codigo, mesas: cuenta.mesas.map((m) => m.numero), paraLlevar: paraLlevarDe(cuenta), cliente: clienteDe(cuenta),
+        puntosCliente: cuenta.cliente?.usuario ? await saldoDe(cuenta.cliente.usuario) : null, // 6.6 · para el canje
+        mesero: nombres.get(String(cuenta.mesero)) || '',
         comensales: cuenta.comensales, total: cuenta.total, version: cuenta.version,
         division: formatoDivision(cuenta.division), porCobrar: cuenta.total - (cuenta.division?.cobrado || 0),
         items: comandas.flatMap((c) => c.items).filter((i) => i.estado !== 'anulado').map((i) => ({

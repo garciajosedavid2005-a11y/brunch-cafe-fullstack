@@ -39,9 +39,14 @@ export const estadoPagos = (pagos, totalACobrar) => {
 };
 
 /** Cuerpo para POST …/cobrar: `recibido` solo en efectivo. */
-export const cuerpoCobro = ({ versionEsperada, propina, pagos }) => ({
+// 6.6 · Canje de puntos (el backend lo vuelve a validar): bloques de 100 = $10.000
+export const BLOQUE_PUNTOS = 100;
+export const VALOR_BLOQUE = 10000;
+
+export const cuerpoCobro = ({ versionEsperada, propina, pagos, canjearPuntos = 0 }) => ({
   versionEsperada,
   propina,
+  ...(canjearPuntos > 0 ? { canjearPuntos } : {}),
   pagos: pagos.map((p) => (p.metodo === "efectivo"
     ? { metodo: p.metodo, monto: p.monto, recibido: p.recibido ?? p.monto }
     : { metodo: p.metodo, monto: p.monto })),

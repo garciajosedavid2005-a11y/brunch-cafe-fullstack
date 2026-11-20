@@ -3,7 +3,7 @@ import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { apiRequest } from "../../../services/api";
 import { formatearCOP } from "../../../utils/moneda";
 import { nuevaClave } from "../plano/estadosMesa";
-import { METODOS, cuerpoCobro, estadoPagos, montoParte, origenCuenta, propinaSugerida } from "./cobro";
+import { BLOQUE_PUNTOS, METODOS, VALOR_BLOQUE, cuerpoCobro, estadoPagos, montoParte, origenCuenta, propinaSugerida } from "./cobro";
 import CampoPesos from "./CampoPesos";
 import ClienteCuenta from "../compartido/ClienteCuenta";
 import { tienePermiso } from "../../../utils/permisos";
@@ -53,7 +53,23 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
       ? (items || []).filter((i) => elegidos.includes(i.id)).reduce((n, i) => n + i.subtotal, 0)
       : cuenta.total;
   const [propina, setPropina] = useState(0);
-  const total = consumo + propina;
+  // 6.6 (F6-5) · Canje de puntos del cliente identificado: solo en el cobro completo (bloques de 100 = $10.000, sin
+  // superar el consumo). El saldo llega con el detalle de la cuenta
+  const puedeCanjear = !esDomicilio && modo === "entera" && Boolean(cliente) && tienePermiso(user, "puntos:canjear");
+  const [saldoPuntos, setSaldoPuntos] = useState(null);
+  const [bloques, setBloques] = useState(0);
+  useEffect(() => {
+    if (!puedeCanjear) return undefined;
+    let vivo = true;
+    apiRequest(`/v1/staff/caja/cuentas/${cuenta.id}`)
+      .then((d) => { if (vivo) setSaldoPuntos(d.puntosCliente ?? 0); })
+      .catch(() => { if (vivo) setSaldoPuntos(0); });
+    return () => { vivo = false; };
+  }, [puedeCanjear, cuenta.id, cliente?.id]);
+  const maxBloques = puedeCanjear ? Math.max(0, Math.min(Math.floor((saldoPuntos || 0) / BLOQUE_PUNTOS), Math.floor(consumo / VALOR_BLOQUE))) : 0;
+  const bloquesUsados = Math.min(bloques, maxBloques);
+  const descuentoPuntos = bloquesUsados * VALOR_BLOQUE;
+  const total = consumo - descuentoPuntos + propina;
   // Un solo pago sigue al total mientras el cajero no lo cambie
   // Un domicilio llega con el método de su pedido (tarjeta con datáfono o efectivo contra entrega)
   const [pagos, setPagos] = useState([{ metodo: (esDomicilio && cuenta.metodoSugerido) || "efectivo", monto: consumo, recibido: null }]);
@@ -104,7 +120,7 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
     setEnviando(true);
     setError("");
     try {
-      const cuerpo = cuerpoCobro({ versionEsperada: version, propina, pagos: pagosVistos });
+      const cuerpo = cuerpoCobro({ versionEsperada: version, propina, pagos: pagosVistos, canjearPuntos: bloquesUsados * BLOQUE_PUNTOS });
       const parte = esDomicilio ? null : modo === "iguales" ? { modo, partes } : modo === "items" ? { modo, items: elegidos } : null;
       const ruta = esDomicilio ? `/v1/staff/caja/domicilios/${cuenta.id}/cobrar` : `/v1/staff/caja/cuentas/${cuenta.id}/${parte ? "cobrar-parte" : "cobrar"}`;
       const resultado = await apiRequest(ruta, {
@@ -146,7 +162,22 @@ export default function CobrarCuenta({ cuenta, onVolver, onCobrada }) {
             onElegir={(itemId) => setElegidos((l) => (l.includes(itemId) ? l.filter((x) => x !== itemId) : [...l, itemId]))} />}
           <dl className="caja-cobro__resumen">
             <div><dt>{modo === "entera" ? "Consumo" : "Consumo de esta parte"}</dt><dd>{formatearCOP(consumo)}</dd></div>
+            {descuentoPuntos > 0 && (
+              <div><dt>Descuento por puntos ({bloquesUsados * BLOQUE_PUNTOS})</dt><dd>−{formatearCOP(descuentoPuntos)}</dd></div>
+            )}
           </dl>
+          {puedeCanjear && saldoPuntos !== null && (
+            <div className="caja-cobro__puntos">
+              <label htmlFor={`${id}-puntos`}>Canjear puntos <span className="caja-cobro__saldo">(saldo: {saldoPuntos})</span></label>
+              <select id={`${id}-puntos`} className="caja-cobro__select" value={bloquesUsados} disabled={maxBloques === 0}
+                onChange={(e) => { setBloques(Number(e.target.value)); clave.current = nuevaClave(); }}>
+                <option value={0}>{maxBloques === 0 ? `Sin puntos suficientes (${BLOQUE_PUNTOS} = ${formatearCOP(VALOR_BLOQUE)})` : "No canjear"}</option>
+                {Array.from({ length: maxBloques }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>{`${n * BLOQUE_PUNTOS} puntos = ${formatearCOP(n * VALOR_BLOQUE)}`}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <CampoPesos id={`${id}-propina`} etiqueta="Propina voluntaria" valor={propina} onCambiar={cambiarPropina} />
           <div className="caja-cobro__atajos" role="group" aria-label="Atajos de propina">
             <button type="button" className="caja__boton caja__boton--opcion" aria-pressed={propina === propinaSugerida(consumo) && propina > 0}

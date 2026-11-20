@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { puntosDelCobro, registrarPuntosDelCobro } from '../fidelizacion/puntos.service.js'
 import Pedido from '../pedidos/pedido.model.js'
 import DetallePedido from '../pedidos/detallePedido.model.js'
 import Estado from '../compartido/estado.model.js'
@@ -27,7 +28,7 @@ export const ESTADOS_COBRABLES = ['en_camino', 'entregado']
 export const VENTANA_COBRO_MS = 48 * 60 * 60 * 1000
 const recientes = () => ({ createdAt: { $gte: new Date(Date.now() - VENTANA_COBRO_MS) } })
 const MAXIMO_LISTA = 200
-const cobroSchema = cobrarSchema.omit({ versionEsperada: true })
+const cobroSchema = cobrarSchema.omit({ versionEsperada: true, canjearPuntos: true }) // 6.6 · sin canje en el domicilio
 // 6.1 · Todos los pedidos tienen canal (migración 6.1)
 const DOMICILIO = { canal: 'domicilio' }
 // 6.2 (F6-2) · Cerrado por defecto: quien cobra domicilios sin ser cajero (cuenta:cobrar) ni asignarlos solo ve y
@@ -119,17 +120,22 @@ export const cobrarDomicilio = async (id, datos, sesion) => {
             }
             const total = subtotal + propina
             const pagosCalculados = calcularPagos(pagos, total)
+            // 6.6 · Los puntos del cliente quedan en el comprobante (sin canje: el domicilio no se cobra en la caja)
+            const { puntos } = await puntosDelCobro({ clienteId: pedido.usuario, consumo: subtotal, session })
             const { seq: numero } = await Contador.findOneAndUpdate({ _id: 'comprobante' }, { $inc: { seq: 1 } }, { returnDocument: 'after', upsert: true, session })
             const cobrador = await Usuario.findById(sesion.id).select(CAMPOS_NOMBRE).session(session).lean()
             const codigo = codigoPedido(pedido._id)
             const [comprobante] = await Comprobante.create([{
                 numero, codigo: codigoComprobante(numero), pedido: pedido._id, pedidoCodigo: codigo, turno: turno._id,
                 mesas: [], cajero: { id: sesion.id, nombre: nombreCorto(cobrador) }, emitidoEn: new Date(),
-                lineas, subtotal, propina, total, pagos: pagosCalculados, cambio: pagosCalculados.reduce((n, p) => n + (p.cambio ?? 0), 0),
+                lineas, subtotal, propina, total, puntos, pagos: pagosCalculados, cambio: pagosCalculados.reduce((n, p) => n + (p.cambio ?? 0), 0),
             }], { session }).catch((error) => {
                 if (error?.name !== 'ValidationError') throw error
                 throw new AppError(500, 'COMPROBANTE_INCONSISTENTE', 'No se pudo emitir el comprobante. Avisa al administrador.', undefined, { cause: error })
             })
+            // 6.6 (F6-5) · Acumula al entregarse: si ya está entregado, ahora; si va en camino, al pasar a «entregado»
+            const entregado = estados.find((e) => String(e._id) === String(pedido.estado))?.codigo === 'entregado'
+            if (entregado) await registrarPuntosDelCobro({ comprobante, session })
             await registrarEvento({
                 entidad: 'pedido', entidadId: pedido._id, tipo: 'pedido_cobrado', usuario: sesion.id, actor: sesion.rol || 'staff',
                 datos: { comprobante: comprobante.codigo, subtotal, propina, total, pagos: pagosCalculados.map((p) => ({ metodo: p.metodo, monto: p.monto })) },

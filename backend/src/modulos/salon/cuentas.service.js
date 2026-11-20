@@ -26,6 +26,7 @@ import {
     transferirSchema, moverSchema, unirSchema, identificarClienteSchema,
 } from './cuentas.schema.js'
 import { clienteActivo } from '../identidad/clienteStaff.js'
+import { puntosDelCobro } from '../fidelizacion/puntos.service.js'
 import { nombreCorto } from '../compartido/nombres.js'
 import { MAX_MESAS_POR_CUENTA } from './cuenta.model.js'
 import { cobrarSchema, cobrarParteSchema } from '../caja/caja.schema.js'
@@ -885,23 +886,29 @@ export const cerrarSinCobro = async (cuentaId, datos, sesion) => {
  */
 export const cobrarCuenta = async (cuentaId, datos, sesion) => {
     exigirPermiso(sesion, 'cuenta:cobrar')
-    const { versionEsperada, propina, pagos } = validar(cobrarSchema, datos)
+    const { versionEsperada, propina, pagos, canjearPuntos } = validar(cobrarSchema, datos)
+    if (canjearPuntos) exigirPermiso(sesion, 'puntos:canjear') // 6.6 · el cajero (y el admin)
     await asegurarContador()
 
     return conCierre(async (session, cierre) => {
         const turno = await tomarTurnoAbierto(session) // 3b.1 · sin turno abierto no se cobra
         const cuenta = await tocarCuenta(cuentaId, { versionEsperada }, session)
         MAQUINA_CUENTA.validar(cuenta.estado, 'cerrada', { permisos: permisosDe(sesion) })
-        const total = cuenta.total + propina
+        // 6.6 · Puntos del cliente identificado: el canje es un descuento sobre el consumo (nunca sobre la propina)
+        const { puntos, descuento } = await puntosDelCobro({ clienteId: cuenta.cliente?.usuario, consumo: cuenta.total, canjear: canjearPuntos, session })
+        const descuentos = descuento ? [{ tipo: 'puntos', monto: descuento, detalle: `${canjearPuntos} puntos` }] : []
+        const total = cuenta.total - descuento + propina
         const pagosCalculados = calcularPagos(pagos, total)
         const comandas = await comandasDe(cuenta._id, session).lean()
         await cerrarCuenta(cuenta, 'cerrada', { sesion, session, motivo: '', cierre })
-        const comprobante = await emitirComprobante({ cuenta, comandas, propina, total, pagos: pagosCalculados, sesion, session, turno })
+        const comprobante = await emitirComprobante({ cuenta, comandas, propina, total, pagos: pagosCalculados, sesion, session, turno, descuentos, puntos })
         await registrarEvento({
             entidad: 'cuenta', entidadId: cuenta._id, tipo: 'cuenta_cobrada', ...quien(sesion),
             datos: {
                 comprobante: comprobante.codigo, subtotal: cuenta.subtotal, propina, total,
                 pagos: pagosCalculados.map((p) => ({ metodo: p.metodo, monto: p.monto })),
+                // 6.6 · Rastro del canje: cliente, descuento y puntos (quién cobró ya lo dice el Evento)
+                ...(puntos ? { puntos: { cliente: puntos.cliente, canjeados: puntos.canjeados, ganados: puntos.ganados, descuento } } : {}),
             },
             session,
         })
@@ -927,7 +934,9 @@ const lineaDeItem = (i) => ({
  */
 export const cobrarParte = async (cuentaId, datos, sesion) => {
     exigirPermiso(sesion, 'cuenta:cobrar')
-    const { versionEsperada, propina, pagos, division } = validar(cobrarParteSchema, datos)
+    const { versionEsperada, propina, pagos, division, canjearPuntos } = validar(cobrarParteSchema, datos)
+    // 6.6 (F6-c) · El canje solo en el cobro completo de la cuenta; cada parte sí acumula lo que paga
+    if (canjearPuntos) throw error(400, 'CANJE_SOLO_COMPLETO', 'Los puntos se canjean solo al cobrar la cuenta completa.')
     await asegurarContador()
 
     return conCierre(async (session, cierre) => {
@@ -966,6 +975,7 @@ export const cobrarParte = async (cuentaId, datos, sesion) => {
         }
         const total = consumo + propina
         const pagosCalculados = calcularPagos(pagos, total)
+        const { puntos } = await puntosDelCobro({ clienteId: cuenta.cliente?.usuario, consumo, session }) // 6.6
         const parte = { modo: division.modo, numero, de: division.modo === 'iguales' ? division.partes : null }
         cuenta.division = {
             modo: division.modo,
@@ -977,7 +987,7 @@ export const cobrarParte = async (cuentaId, datos, sesion) => {
         if (ultima) await cerrarCuenta(cuenta, 'cerrada', { sesion, session, motivo: '', cierre })
         else await guardarCuenta(cuenta, session)
         const comprobante = await emitirComprobante({
-            cuenta, comandas, propina, total, pagos: pagosCalculados, sesion, session, turno, lineas, subtotal: consumo, parte,
+            cuenta, comandas, propina, total, pagos: pagosCalculados, sesion, session, turno, lineas, subtotal: consumo, parte, puntos,
         })
         const resumen = {
             comprobante: comprobante.codigo, parte, subtotal: consumo, propina, total,

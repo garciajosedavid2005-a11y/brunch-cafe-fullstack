@@ -39,6 +39,8 @@ export const PERMISOS = [
     { clave: 'cuenta:para_llevar', modulo: 'salon', descripcion: 'Abrir cuentas para llevar, tomar su pedido y entregarlo' },
     // 6.5 (F6-a) · Identificar al cliente de una cuenta (por correo o teléfono) para ver sus alergias y preferencias
     { clave: 'cliente:identificar', modulo: 'salon', descripcion: 'Identificar al cliente de una cuenta y ver sus alergias y preferencias' },
+    // 6.6 (F6-a) · Canjear los puntos del cliente identificado al cobrar la cuenta completa
+    { clave: 'puntos:canjear', modulo: 'caja', descripcion: 'Canjear los puntos del cliente al cobrar (bloques de 100 = $10.000)' },
     // Fase 2 · cocina y barra (PLAN_FASE_2 §2, F2-2, F2-3, F2-5)
     { clave: 'kds:ver', modulo: 'cocina', descripcion: 'Ver la pantalla de cocina (KDS) de su estación' },
     { clave: 'item:preparar', modulo: 'cocina', descripcion: 'Marcar ítems en preparación y listos' },
@@ -122,7 +124,7 @@ export const PERMISOS_PARA_LLEVAR = {
 // 6.5 usa una copia fija
 export const PERMISOS_CLIENTE = {
     mesero: ['cliente:identificar'],
-    cajero: ['cliente:identificar'],
+    cajero: ['cliente:identificar', 'puntos:canjear'], // 6.6 · el canje, solo el cajero (migración 6.6)
 }
 // Lo que `cuenta:para_llevar` permite, solo dentro de una cuenta para llevar (el cajero no toma comandas del salón)
 export const PERMISOS_EN_PARA_LLEVAR = ['cuenta:ver', 'cuenta:abrir', 'comanda:tomar', 'comanda:enviar', 'cuenta:solicitar', 'item:servir']

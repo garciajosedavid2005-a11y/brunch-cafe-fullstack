@@ -1540,6 +1540,26 @@ const VISTAS = {
     await p.getByRole("region", { name: "Cola de Cocina" }).waitFor();
     await p.getByRole("note").filter({ hasText: "Alergias" }).first().waitFor();
   } },
+  // 6.6 · Canje de puntos en la caja: «Ana» para llevar con cliente.dev identificado (250 puntos) → 200 puntos
+  "staff-caja-canje": { usuario: "cajero", completa: false, preparar: async (p) => {
+    await cuentaParaLlevar();
+    await abrirSesionAdmin();
+    const { cuentas } = await (await sesionAdmin.get(`${API}/staff/caja/cuentas`)).json();
+    const ana = cuentas.find((c) => c.paraLlevar?.nombre === "Ana");
+    const { clientes } = await (await sesionAdmin.get(`${API}/staff/salon/clientes?buscar=${encodeURIComponent(USUARIOS.cliente)}`)).json();
+    await sesionAdmin.put(`${API}/staff/salon/cuentas/${ana.id}/cliente`, { data: { clienteId: clientes[0].id } });
+    await VISTAS["staff-caja"].preparar(p);
+    await p.getByRole("button", { name: /^Cobrar Para llevar · Ana/ }).click();
+    const canje = p.getByLabel(/Canjear puntos/);
+    await canje.waitFor();
+    await canje.selectOption("2");
+    await p.getByText("Descuento por puntos (200)").waitFor();
+  } },
+  "cuenta-cliente-puntos": { usuario: "cliente", preparar: async (p) => {
+    await p.goto(`${FRONT}/cuenta`);
+    await p.getByRole("button", { name: "Mis puntos" }).first().click();
+    await p.getByText(/^Tienes/).waitFor();
+  } },
   "staff-comanda-producto": { usuario: "mesero", preparar: async (p) => {
     await abrirCuentaDeMesa(p, 1);
     await p.getByRole("group", { name: "Categorías" }).getByRole("button", { name: "Desayunos" }).click();

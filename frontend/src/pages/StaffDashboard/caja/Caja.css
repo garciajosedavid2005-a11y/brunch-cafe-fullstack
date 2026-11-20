@@ -371,3 +371,26 @@
 /* 3b.4 · Domicilios por cobrar: el icono junto al código; números de forma uniforme en los títulos («PED-79FA24») */
 .caja__cuenta--domicilio .caja__cuenta-mesa { display: inline-flex; align-items: center; gap: 0.4rem; }
 .caja__titulo { font-variant-numeric: lining-nums; }
+
+/* 6.6 · Canje de puntos */
+.caja-cobro__puntos { display: grid; gap: 0.3rem; margin: 0.25rem 0 0; font-weight: 600; }
+
+/* El signo y el monto del descuento no se separan en dos líneas */
+.caja-cobro__resumen dd { white-space: nowrap; }
+
+.caja-cobro__saldo { color: #594742; font-weight: 400; }
+
+.caja-cobro__select {
+  min-height: 44px;
+  padding: 0.45rem 0.7rem;
+  border: 2px solid #8a6f69; /* ≥ 3:1 sobre blanco (control) */
+  border-radius: 10px;
+  background: #fff;
+  color: var(--color-oscuro);
+  font: inherit;
+}
+
+.caja-cobro__select:focus-visible { outline: 3px solid var(--color-oscuro); outline-offset: 2px; }
+
+/* 6.6 · Puntos ganados (fuera de la operación del total) */
+.comprobante__puntos { margin: 0.5rem 0 0; padding-top: 0.4rem; border-top: 1px dashed #c9b2ac; color: #4a3a35; }
