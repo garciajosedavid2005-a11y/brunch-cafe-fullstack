@@ -16,6 +16,7 @@ import { urlPublica } from '../catalogo/imagenesProducto.js'
 import { obtenerCuenta } from './cuentas.service.js'
 import Pedido from '../pedidos/pedido.model.js'
 import { pedidoComoCuenta } from '../pedidos/pedidoComoCuenta.js'
+import { alcancePedidos } from '../pedidos/repartidor.service.js'
 import { esEstadoFinal } from '../compartido/estados.js'
 import { estadosDelTipo } from '../compartido/estados.service.js'
 import { nombreCorto, CAMPOS_NOMBRE } from '../compartido/nombres.js'
@@ -275,11 +276,12 @@ const cuentasDeSalon = async (ahora, limite) => {
     })
 }
 
-const domiciliosEnCurso = async (ahora, limite) => {
+const domiciliosEnCurso = async (ahora, limite, sesion) => {
     const estados = await estadosDelTipo('pedido')
     const enCurso = [...estados.values()].filter((e) => !esEstadoFinal('pedido', e.codigo)).map((e) => e._id)
     // 6.1 · Todos los pedidos tienen canal; los otros canales de la Fase 6 (para llevar) no se cuelan aquí
-    const pedidos = await Pedido.find({ estado: { $in: enCurso }, canal: 'domicilio' })
+    // 6.2 · El repartidor solo ve sus domicilios asignados (también aquí, no solo en Pedidos)
+    const pedidos = await Pedido.find({ estado: { $in: enCurso }, canal: 'domicilio', ...alcancePedidos(sesion) })
         .sort({ createdAt: -1 }).limit(limite)
         .select('canal estado total nombreEntrega barrio horaEntrega entregaEn createdAt').populate('estado', 'codigo nombre').lean()
     return pedidos.map((p) => pedidoComoCuenta(p, ahora))
@@ -296,7 +298,7 @@ export const listarCuentasAbiertas = async (sesion, { ahora = new Date(), limite
     exigirAlguno(sesion, ['cuenta:ver', 'pedido:ver'])
     const [deSalon, aDomicilio] = await Promise.all([
         salon ? cuentasDeSalon(ahora, limite) : [],
-        domicilio ? domiciliosEnCurso(ahora, limite) : [],
+        domicilio ? domiciliosEnCurso(ahora, limite, sesion) : [],
     ])
     return {
         actualizadoEn: ahora.toISOString(),

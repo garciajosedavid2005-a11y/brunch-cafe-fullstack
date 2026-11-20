@@ -26,6 +26,8 @@ export const USUARIOS_DEV = [
     { rol: 'cajero', correo: 'cajero.dev@brunchcafe.test', nombre: 'Carla', apellido: 'Caja' },
     // Fase 5 · Para revisar el inventario desde /staff (rol compras)
     { rol: 'compras', correo: 'compras.dev@brunchcafe.test', nombre: 'Camilo', apellido: 'Compras' },
+    // 6.2 · Para revisar la vista del repartidor (sus domicilios asignados) y sus capturas
+    { rol: 'repartidor', correo: 'repartidor.dev@brunchcafe.test', nombre: 'Rubén', apellido: 'Reparto' },
 ]
 
 /** Devuelve { usuarios, pedido: 'creado' | 'existente' | 'sin-productos' }. */

@@ -23,7 +23,7 @@ export const MAX_CONEXIONES_POR_USUARIO = 5
 export const MAX_CANALES = 10
 // El código de estación sigue el formato del modelo (si cambia allí, cambia aquí)
 const CODIGO = FORMATO_CODIGO.source.slice(1, -1) // sin ^ ni $
-const FORMATO_CANAL = new RegExp(`^(plano|catalogo|caja|reservas|estacion:${CODIGO}|cuenta:[0-9a-f]{24}|mesero:[0-9a-f]{24})$`)
+const FORMATO_CANAL = new RegExp(`^(plano|catalogo|caja|reservas|estacion:${CODIGO}|cuenta:[0-9a-f]{24}|mesero:[0-9a-f]{24}|repartidor:[0-9a-f]{24})$`)
 
 const conexiones = new Map() // usuarioId → número de conexiones abiertas
 
@@ -49,6 +49,8 @@ export const validarCanales = (texto, sesion) => {
             cuenta: () => tienePermiso(sesion.permisos, 'cuenta:ver') && mongoose.isValidObjectId(id),
             // Solo el propio usuario, y solo personal de salón (un cliente no abre flujos en /staff)
             mesero: () => id === String(sesion.id) && ['cuenta:ver', 'item:servir'].some((p) => tienePermiso(sesion.permisos, p)),
+            // 6.2 · Sus domicilios asignados: solo el propio repartidor
+            repartidor: () => id === String(sesion.id) && tienePermiso(sesion.permisos, 'pedido:entregar'),
         }[tipo]()
         if (!permitido) throw new AppError(403, 'FORBIDDEN', 'No tienes permiso para escuchar ese canal.', { canal })
     }

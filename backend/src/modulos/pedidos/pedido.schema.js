@@ -28,3 +28,8 @@ export const cancelacionStaffSchema = z.object({
         .min(3, { error: 'El motivo debe tener al menos 3 caracteres' })
         .max(300, { error: 'El motivo no puede superar 300 caracteres' }),
 })
+
+// 6.2 · Asignar (id del repartidor) o quitar (null) el repartidor de un domicilio
+export const asignarRepartidorSchema = z.strictObject({
+    repartidorId: z.string().regex(/^[0-9a-f]{24}$/, { error: 'Repartidor no válido' }).nullable(),
+})

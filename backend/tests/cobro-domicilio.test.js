@@ -27,9 +27,13 @@ beforeEach(async () => {
     ;({ sesion: adminS } = await crearConSesion('admin'))
 })
 
-/** Pedido de 1 × Latte (9.000) llevado hasta `hasta` (en_camino o entregado). */
-const domicilio = async (hasta = 'entregado') => {
+/** Pedido de 1 × Latte (9.000) llevado hasta `hasta` (en_camino o entregado); 6.2: con su repartidor, si se da. */
+const domicilio = async (hasta = 'entregado', repartidor = null) => {
     const id = await crearPedido(cliente)
+    if (repartidor) {
+        const r = await adminS.patch(`/api/v1/staff/pedidos/${id}/repartidor`).send({ repartidorId: String(repartidor._id) })
+        expect(r.status, JSON.stringify(r.body)).toBe(200)
+    }
     if (hasta === 'entregado') await entregarPedido(adminS, id)
     else {
         for (const codigo of ['confirmado', 'en_preparacion', 'listo', 'en_camino']) {
@@ -41,8 +45,9 @@ const domicilio = async (hasta = 'entregado') => {
 
 describe('3b.4 · Cobro de domicilios', () => {
     it('el repartidor cobra un entregado: comprobante del pedido (CI-…), en el turno, con sus líneas y Evento', async () => {
-        const id = await domicilio('entregado')
-        const { sesion: repartidor } = await crearConSesion('repartidor')
+        // 6.2 · El repartidor ve y cobra los que tiene asignados
+        const { sesion: repartidor, usuario: yo } = await crearConSesion('repartidor')
+        const id = await domicilio('entregado', yo)
         const lista = await repartidor.get(`${BASE}/domicilios`)
         expect(lista.status, JSON.stringify(lista.body)).toBe(200)
         expect(lista.body.domicilios).toEqual([expect.objectContaining({ id, total: 9000, estado: 'entregado', cliente: 'Ana Pérez' })])
@@ -188,11 +193,11 @@ describe('3b · Pendientes: método de pago y comprobantes del repartidor', () =
 
     it('el repartidor vuelve a abrir el comprobante de un domicilio que él cobró, pero no los de otros ni los de mesas', async () => {
         const { sesion: repartidor, usuario: yo } = await crearConSesion('repartidor')
-        const { sesion: otro } = await crearConSesion('repartidor')
+        const { sesion: otro, usuario: otroU } = await crearConSesion('repartidor')
         // Un comprobante de mesa (sin pedido) con el repartidor como cajero: tampoco lo ve (atajo de prueba)
         const deMesa = new ObjectId()
         await Comprobante.collection.insertOne({ _id: deMesa, numero: 999, codigo: 'CI-000999', cuenta: new ObjectId(), mesas: [1], cajero: { id: yo._id, nombre: 'R' }, emitidoEn: new Date(), lineas: [], pagos: [], subtotal: 0, propina: 0, total: 0 })
-        const [mio, ajeno] = [await domicilio('entregado'), await domicilio('entregado')]
+        const [mio, ajeno] = [await domicilio('entregado', yo), await domicilio('entregado', otroU)]
         const a = await repartidor.post(`${BASE}/domicilios/${mio}/cobrar`).send(cobro)
         const b = await otro.post(`${BASE}/domicilios/${ajeno}/cobrar`).send(cobro)
         expect([a.status, b.status]).toEqual([201, 201])

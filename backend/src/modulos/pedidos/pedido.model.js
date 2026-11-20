@@ -17,6 +17,12 @@ const pedidoSchema = new mongoose.Schema({
         ref: 'Usuario',
         required: true
     },
+    // 6.2 (F6-2) · Repartidor asignado por el admin o el cajero (null: sin asignar)
+    repartidor: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Usuario',
+        default: null
+    },
     estado: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Estado',
@@ -88,5 +94,7 @@ pedidoSchema.add({
 
 // 1.9 · «Cuentas abiertas»: pedidos en curso por estado, de los más nuevos a los más viejos
 pedidoSchema.index({ estado: 1, createdAt: -1 })
+// 6.2 · Los domicilios de un repartidor por estado (su lista y su cobro)
+pedidoSchema.index({ repartidor: 1, estado: 1 }, { name: 'repartidor_estado' }) // mismo nombre que la migración 6.2
 
 export default mongoose.model('Pedido', pedidoSchema)

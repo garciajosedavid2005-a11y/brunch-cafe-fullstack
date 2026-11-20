@@ -30,6 +30,10 @@ const MAXIMO_LISTA = 200
 const cobroSchema = cobrarSchema.omit({ versionEsperada: true })
 // 6.1 · Todos los pedidos tienen canal (migración 6.1)
 const DOMICILIO = { canal: 'domicilio' }
+// 6.2 (F6-2) · Cerrado por defecto: quien cobra domicilios sin ser cajero (cuenta:cobrar) ni asignarlos solo ve y
+// cobra los que tiene asignados (el repartidor, y también un rol personalizado con solo pedido:cobrar)
+const cobraSoloLosSuyos = (permisos = []) => !tienePermiso(permisos, 'cuenta:cobrar') && !tienePermiso(permisos, 'pedido:asignar_repartidor')
+const alcance = (sesion) => (cobraSoloLosSuyos(sesion?.permisos) ? { repartidor: new mongoose.Types.ObjectId(String(sesion.id)) } : {})
 
 // Sin pago en línea, todo domicilio se paga al recibir (Contra Entrega, Tarjeta débito o crédito con datáfono):
 // cualquiera se cobra UNA vez en la caja con su método real, para que entre en el arqueo (Brayan, 2026-11-15).
@@ -67,7 +71,7 @@ export const listarDomiciliosPorCobrar = async (sesion) => {
     // Los ya cobrados se excluyen en la consulta, antes del límite (un pedido de las últimas 48 h solo pudo
     // cobrarse en ese plazo): así 200 cobrados no tapan a los pendientes
     const cobrados = await Comprobante.distinct('pedido', { pedido: { $ne: null }, emitidoEn: { $gte: new Date(Date.now() - VENTANA_COBRO_MS) } })
-    const pedidos = await Pedido.find({ ...DOMICILIO, ...recientes(), _id: { $nin: cobrados }, estado: { $in: estados.map((e) => e._id) } }).sort({ createdAt: -1 })
+    const pedidos = await Pedido.find({ ...DOMICILIO, ...alcance(sesion), ...recientes(), _id: { $nin: cobrados }, estado: { $in: estados.map((e) => e._id) } }).sort({ createdAt: -1 })
         .limit(MAXIMO_LISTA).populate('metodoPago', 'nombre codigo').lean()
     return {
         domicilios: pedidos.map((p) => ({
@@ -98,10 +102,11 @@ export const cobrarDomicilio = async (id, datos, sesion) => {
             const estados = await idsDeEstados(ESTADOS_COBRABLES, session)
             // Escritura condicional: choca con un cambio de estado simultáneo (p. ej. cancelarlo)
             const pedido = await Pedido.findOneAndUpdate(
-                { _id: id, ...DOMICILIO, ...recientes(), estado: { $in: estados.map((e) => e._id) } }, { $currentDate: { updatedAt: true } }, { returnDocument: 'after', session },
+                { _id: id, ...DOMICILIO, ...alcance(sesion), ...recientes(), estado: { $in: estados.map((e) => e._id) } }, { $currentDate: { updatedAt: true } }, { returnDocument: 'after', session },
             ).lean()
             if (!pedido) {
-                if (!(await Pedido.exists({ _id: id }).session(session))) throw noExiste()
+                // Uno de otro repartidor no existe para él (404, sin revelar que existe)
+                if (!(await Pedido.exists({ _id: id, ...alcance(sesion) }).session(session))) throw noExiste()
                 throw new AppError(409, 'PEDIDO_NO_COBRABLE', 'Solo se cobra un domicilio en camino o entregado de las últimas 48 horas.')
             }
             if (await Comprobante.exists({ pedido: pedido._id }).session(session)) throw yaCobrado()

@@ -81,6 +81,7 @@ const USUARIOS = {
   cocina: "cocina.dev@brunchcafe.test", // 2.5 · KDS
   cajero: "cajero.dev@brunchcafe.test", // Fase 3 · Caja
   compras: "compras.dev@brunchcafe.test", // Fase 5 · Inventario
+  repartidor: "repartidor.dev@brunchcafe.test", // 6.2 · Sus domicilios asignados
 };
 
 // ── Entorno aislado: API sobre la BD de capturas + Vite apuntando a ella ──
@@ -198,16 +199,41 @@ const agregarPlatoConOpciones = async (p, { n = 0, nota = "" } = {}) => {
 
 // 1.7 · Ayudas de la toma de comanda. `disponibilidad` usa una sesión de admin aparte (BD de capturas)
 let sesionAdmin = null;
-const disponibilidad = async (nombre, disponible) => {
+const abrirSesionAdmin = async () => {
   if (!sesionAdmin) {
     sesionAdmin = await request.newContext();
     await sesionAdmin.post(`${API}/auth/login`, { data: { correo: USUARIOS.admin, contraseña: CLAVE } });
   }
+  return sesionAdmin;
+};
+const disponibilidad = async (nombre, disponible) => {
+  await abrirSesionAdmin();
   const productos = await (await sesionAdmin.get(`${API}/admin/productos`)).json();
   const producto = productos.find((pr) => pr.nombre === nombre);
   if (!producto) throw new Error(`No está el producto «${nombre}» en la BD de capturas`);
   const res = await sesionAdmin.put(`${API}/admin/productos/${producto.id ?? producto._id}`, { data: { disponible } });
   if (!res.ok()) throw new Error(`No se pudo cambiar la disponibilidad de «${nombre}»: ${res.status()}`);
+};
+// 6.2 · Asigna al repartidor.dev el domicilio con opciones (lo crea si falta) con la sesión de admin
+const asignarDomicilioARepartidor = async () => {
+  await pedidoConOpciones();
+  await abrirSesionAdmin();
+  const { repartidores } = await (await sesionAdmin.get(`${API}/staff/pedidos/repartidores`)).json();
+  const repartidor = repartidores.find((r) => r.nombre.startsWith("Rubén"));
+  if (!repartidor) throw new Error("No está repartidor.dev en la BD de capturas");
+  const pedidos = await (await sesionAdmin.get(`${API}/staff/pedidos`)).json();
+  const pedido = pedidos.find((x) => !x.esFinal && x.estadoCodigo !== "en_camino");
+  if (!pedido) throw new Error("No hay un domicilio asignable en la BD de capturas");
+  if (pedido.repartidor?.id !== repartidor.id) {
+    const res = await sesionAdmin.patch(`${API}/staff/pedidos/${pedido.id}/repartidor`, { data: { repartidorId: repartidor.id } });
+    if (!res.ok()) throw new Error(`No se pudo asignar el repartidor: ${res.status()} ${(await res.text()).slice(0, 200)}`);
+  }
+  // Listo para salir: el repartidor ve «En camino»
+  const orden = ["pendiente", "confirmado", "en_preparacion", "listo"];
+  for (const codigo of orden.slice(orden.indexOf(pedido.estadoCodigo) + 1)) {
+    const res = await sesionAdmin.patch(`${API}/staff/pedidos/${pedido.id}/estado`, { data: { codigo } });
+    if (!res.ok()) throw new Error(`No se pudo pasar el domicilio a ${codigo}: ${res.status()}`);
+  }
 };
 // 3b.4 · Un domicilio «en camino» (el pedido sembrado de cliente.dev, avanzado por el admin) para cobrarlo
 let domicilioListo = false;
@@ -1656,6 +1682,19 @@ const VISTAS = {
     await p.goto(`${FRONT}/staff`);
     await p.getByText("La caja está cerrada").waitFor();
     await p.getByLabel("Base en efectivo").fill("150000");
+  } },
+  // 6.2 · El cajero asigna el repartidor en Pedidos; el repartidor solo ve los suyos (con dirección y teléfono)
+  "staff-pedidos-asignar": { usuario: "cajero", preparar: async (p) => {
+    await pedidoConOpciones();
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: "Pedidos", exact: true }).click();
+    await p.getByLabel("Repartidor").first().waitFor();
+  } },
+  "staff-repartidor": { usuario: "repartidor", preparar: async (p) => {
+    await asignarDomicilioARepartidor();
+    await p.goto(`${FRONT}/staff`);
+    await p.getByRole("button", { name: "Pedidos", exact: true }).click();
+    await p.getByRole("button", { name: "En camino" }).first().waitFor();
   } },
   "staff-caja": { usuario: "cajero", completa: false, preparar: async (p) => {
     await p.goto(`${FRONT}/staff`);

@@ -277,6 +277,45 @@
   margin-top: 0.8rem;
 }
 
+/* 6.2 · Entrega del domicilio: lugar, hora, teléfono y repartidor */
+.staff-dashboard__entrega {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+
+.staff-dashboard__entrega-lugar,
+.staff-dashboard__entrega-repartidor {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0;
+  color: #4f3f38;
+  font-size: 0.9rem;
+}
+
+.staff-dashboard__entrega-lugar svg,
+.staff-dashboard__entrega-repartidor svg {
+  flex: none;
+  color: #8a1c2b;
+}
+
+.staff-dashboard__select {
+  flex: 0 1 16rem;
+  margin: 0;
+  width: auto;
+  max-width: 100%;
+  min-height: 44px;
+  min-width: 12rem;
+  padding: 0 0.7rem;
+  border: 1px solid #d9c4bb;
+  border-radius: 10px;
+  background: #fff;
+  color: #2d211d;
+  font: inherit;
+}
+
 /* Tablet vertical (768 px): cuatro tarjetas de ~90 px no caben; dos por fila (1.1b) */
 @media (max-width: 900px) {
   .staff-dashboard__stats {

@@ -69,6 +69,9 @@ export const TRANSICIONES = {
         staff('en_preparacion', 'listo', 'pedido:cambiar_estado'),
         staff('listo', 'en_camino', 'pedido:cambiar_estado', { condicion: (c) => modalidad(c) === 'domicilio' }),
         staff('en_camino', 'entregado', 'pedido:cambiar_estado'),
+        // 6.2 (F6-2) · El repartidor lleva los suyos (el servicio comprueba que sea el asignado)
+        staff('listo', 'en_camino', 'pedido:entregar', { condicion: (c) => modalidad(c) === 'domicilio' }),
+        staff('en_camino', 'entregado', 'pedido:entregar'),
         staff('listo', 'entregado', 'pedido:cambiar_estado', { condicion: (c) => modalidad(c) === 'para_llevar' }),
         // 5.8.5 · También en preparación o listo (lo preparado queda como merma automática del inventario)
         staff(['pendiente', 'confirmado', 'en_preparacion', 'listo'], 'cancelado', 'pedido:cancelar', { requiereMotivo: true }),
@@ -108,8 +111,11 @@ const aplica = (t, de, contexto) => t.de.includes(de) && (!t.condicion || t.cond
 
 /** Transiciones que `actor` ('staff' | 'cliente' | 'cocina' | 'sistema') puede hacer desde `de`. Para staff y cocina filtra por permisos. */
 export const transicionesDisponibles = (tipo, de, { actor = 'staff', permisos = [], contexto } = {}) =>
-    (TRANSICIONES[tipo] || []).filter((t) =>
+    (TRANSICIONES[tipo] || []).filter((t, i, todas) =>
         t.actor === actor && aplica(t, de, contexto) && (!CON_PERMISO.includes(actor) || tienePermiso(permisos, t.permiso))
+        // 6.2 · Un destino una sola vez aunque el usuario tenga los dos permisos que llevan a él
+        && !todas.slice(0, i).some((o) => o.actor === actor && o.a === t.a && aplica(o, de, contexto)
+            && (!CON_PERMISO.includes(actor) || tienePermiso(permisos, o.permiso))),
     )
 
 /**
@@ -125,7 +131,9 @@ export const validarTransicion = (tipo, de, a, { actor = 'staff', permisos = [],
     if (esEstadoFinal(tipo, de)) {
         throw new AppError(409, 'ESTADO_FINAL', `El ${tipo} ya está en un estado final y no puede cambiar.`, { de })
     }
-    const transicion = (TRANSICIONES[tipo] || []).find((t) => t.actor === actor && t.a === a && aplica(t, de, contexto))
+    // 6.2 · Puede haber dos caminos al mismo estado con permisos distintos: vale el que el usuario tiene
+    const candidatas = (TRANSICIONES[tipo] || []).filter((t) => t.actor === actor && t.a === a && aplica(t, de, contexto))
+    const transicion = candidatas.find((t) => !CON_PERMISO.includes(actor) || tienePermiso(permisos, t.permiso)) || candidatas[0]
     if (!transicion) {
         const permitidos = transicionesDisponibles(tipo, de, { actor, permisos, contexto }).map((t) => t.a)
         throw new AppError(409, 'TRANSICION_INVALIDA', `No se puede pasar de "${de}" a "${a}".`, { de, a, permitidos })

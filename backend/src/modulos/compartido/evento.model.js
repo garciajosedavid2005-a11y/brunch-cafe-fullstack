@@ -39,6 +39,8 @@ export const TIPOS_EVENTO = [
     'comprobante_anulado',
     // 3b.4 · Cobro de un domicilio al recibirlo (entidad 'pedido'; datos: comprobante, montos y métodos)
     'pedido_cobrado',
+    // 6.2 · Repartidor asignado o cambiado (entidad 'pedido'; datos.de y datos.a con el id de cada uno)
+    'repartidor_asignado',
     // 4.1 · Mesa asignada o quitada a una reserva (entidad 'reserva'; datos: de y a, números de mesa o null)
     'mesa_asignada',
     // 4.4 · Lista de espera (entidad 'espera'): llegó, se sentó (datos: mesa y cuenta) o se fue

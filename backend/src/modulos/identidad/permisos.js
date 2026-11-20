@@ -9,6 +9,9 @@ export const PERMISOS = [
     { clave: 'pedido:ver', modulo: 'pedidos', descripcion: 'Ver todos los pedidos' },
     { clave: 'pedido:cambiar_estado', modulo: 'pedidos', descripcion: 'Avanzar el estado de un pedido' },
     { clave: 'pedido:cancelar', modulo: 'pedidos', descripcion: 'Cancelar un pedido con motivo' },
+    // 6.2 (F6-2) · Repartidor asignado: quien asigna (admin y cajero) y quien entrega (el repartidor, solo los suyos)
+    { clave: 'pedido:asignar_repartidor', modulo: 'pedidos', descripcion: 'Asignar el repartidor de un domicilio' },
+    { clave: 'pedido:entregar', modulo: 'pedidos', descripcion: 'Llevar sus domicilios asignados (en camino → entregado)' },
     { clave: 'reserva:ver', modulo: 'reservas', descripcion: 'Ver todas las reservas' },
     { clave: 'reserva:crear', modulo: 'reservas', descripcion: 'Registrar reservas para los clientes' },
     { clave: 'reserva:cambiar_estado', modulo: 'reservas', descripcion: 'Confirmar, sentar, completar o cancelar reservas' },
@@ -45,7 +48,7 @@ export const PERMISOS = [
     { clave: 'caja:abrir', modulo: 'caja', descripcion: 'Abrir el turno de caja con la base' },
     { clave: 'caja:cerrar', modulo: 'caja', descripcion: 'Cerrar el turno de caja con el arqueo' },
     { clave: 'factura:anular', modulo: 'caja', descripcion: 'Anular comprobantes con nota crédito' },
-    { clave: 'pedido:cobrar', modulo: 'caja', descripcion: 'Registrar el cobro contra entrega de un domicilio' },
+    { clave: 'pedido:cobrar', modulo: 'caja', descripcion: 'Registrar en la caja el cobro de un domicilio' },
     // Fase 5 · inventario y compras (PLAN_FASE_5, F5-8 y F5-a): el rol compras; el admin por «*»
     { clave: 'inventario:ver', modulo: 'inventario', descripcion: 'Ver insumos, existencias, recetas, movimientos y alertas' },
     { clave: 'inventario:gestionar', modulo: 'inventario', descripcion: 'Crear y editar insumos y recetas' },
@@ -100,6 +103,12 @@ export const PERMISOS_CAJA = {
     repartidor: ['pedido:cobrar'],
 }
 
+// 6.2 (F6-2) · Domicilio con repartidor asignado. La migración 6.2 usa una copia fija de esta lista.
+export const PERMISOS_DOMICILIO = {
+    cajero: ['pedido:asignar_repartidor'],
+    repartidor: ['pedido:entregar'],
+}
+
 // Fase 5 (F5-8) · El rol compras: inventario, proveedores, órdenes y recepción; sin caja, salón ni cocina.
 // La migración 5 usa una copia fija de esta lista; un cambio aquí necesita su propia migración.
 export const PERMISOS_INVENTARIO = {
@@ -123,8 +132,8 @@ export const ROLES_STAFF = [
     },
     { nombre: 'cocina', etiqueta: 'Cocina', descripcion: 'Prepara los platos.', permisos: ['pedido:ver', ...PERMISOS_COCINA.cocina], estaciones: ESTACIONES_POR_ROL.cocina },
     { nombre: 'barista', etiqueta: 'Barista', descripcion: 'Prepara las bebidas.', permisos: ['pedido:ver', ...PERMISOS_COCINA.barista], estaciones: ESTACIONES_POR_ROL.barista },
-    { nombre: 'cajero', etiqueta: 'Cajero', descripcion: 'Cobra cuentas y gestiona la caja.', permisos: ['pedido:ver', ...PERMISOS_CAJA.cajero] },
-    { nombre: 'repartidor', etiqueta: 'Repartidor', descripcion: 'Entrega pedidos a domicilio.', permisos: ['pedido:ver', ...PERMISOS_CAJA.repartidor] },
+    { nombre: 'cajero', etiqueta: 'Cajero', descripcion: 'Cobra cuentas y gestiona la caja.', permisos: ['pedido:ver', ...PERMISOS_CAJA.cajero, ...PERMISOS_DOMICILIO.cajero] },
+    { nombre: 'repartidor', etiqueta: 'Repartidor', descripcion: 'Entrega pedidos a domicilio.', permisos: ['pedido:ver', ...PERMISOS_CAJA.repartidor, ...PERMISOS_DOMICILIO.repartidor] },
     // Fase 5 (F5-8) · Vuelve el rol compras (se había quitado en 1.5b, cuando no tenía permisos)
     { nombre: 'compras', etiqueta: 'Compras', descripcion: 'Gestiona el inventario, los proveedores y las compras.', permisos: [...PERMISOS_INVENTARIO.compras] },
 ]
@@ -139,6 +148,13 @@ export const puedeSerResponsable = (permisosUsuario = []) => atiendeMesas(permis
 
 export const tienePermiso = (permisosUsuario = [], clave) =>
     permisosUsuario.includes(COMODIN) || permisosUsuario.includes(clave)
+
+/**
+ * 6.2 (F6-2) · Quien entrega domicilios pero no los asigna (el repartidor) solo ve, avanza y cobra los que tiene
+ * asignados. Por permisos, no por el nombre del rol; el admin («*») y el cajero ven todos.
+ */
+export const soloDomiciliosAsignados = (permisosUsuario = []) =>
+    tienePermiso(permisosUsuario, 'pedido:entregar') && !tienePermiso(permisosUsuario, 'pedido:asignar_repartidor')
 
 /** 2.5b · ¿Puede ver u operar esa estación del KDS? El comodín, todas; el resto, solo las de su rol
  * (sin estaciones asignadas, ninguna: cerrado por defecto). */

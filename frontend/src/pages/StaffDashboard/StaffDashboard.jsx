@@ -28,6 +28,7 @@ import { esAdministrador, puedeVerInventario, tienePermiso } from "../../utils/p
 import { textoModificadores } from "../../utils/modificadores";
 import { claseEstado } from "../AdminDashboard/components/estadoUtils";
 import ProfileSection from "../CustomerDashboard/sections/ProfileSection";
+import EntregaPedido from "./pedidos/EntregaPedido";
 import AgendaReservas from "./reservas/AgendaReservas";
 import ListaEspera from "./reservas/ListaEspera";
 import { textoCambioReserva } from "./reservas/avisoReserva";
@@ -111,6 +112,20 @@ export default function StaffDashboard() {
   const [errorPanel, setErrorPanel] = useState("");
   const [pedidoActualizando, setPedidoActualizando] = useState("");
   const [errorPedido, setErrorPedido] = useState("");
+  // 6.2 (F6-2) · Repartidor: quien asigna ve la lista para elegir; el repartidor recibe sus asignaciones en vivo
+  const puedeAsignarRepartidor = tienePermiso(user, "pedido:asignar_repartidor");
+  const esRepartidor = tienePermiso(user, "pedido:entregar") && !puedeAsignarRepartidor && Boolean(user?.id);
+  const [repartidores, setRepartidores] = useState([]);
+  const [versionPedidos, setVersionPedidos] = useState(0);
+  useEnVivo(esRepartidor ? [`repartidor:${user.id}`] : [], () => setVersionPedidos((v) => v + 1));
+  useEffect(() => {
+    if (!puedeAsignarRepartidor) return undefined;
+    let activa = true;
+    apiRequest("/v1/staff/pedidos/repartidores")
+      .then((r) => { if (activa) setRepartidores(Array.isArray(r?.repartidores) ? r.repartidores : []); })
+      .catch(() => {}); // sin la lista el selector solo ofrece «Sin asignar» y el asignado
+    return () => { activa = false; };
+  }, [puedeAsignarRepartidor]);
 
   // 4.1 · Tras asignar una mesa se vuelve a leer la agenda
   const [versionReservas, setVersionReservas] = useState(0);
@@ -167,7 +182,7 @@ export default function StaffDashboard() {
     return () => {
       activa = false;
     };
-  }, [puedeVerPedidos]);
+  }, [puedeVerPedidos, versionPedidos]);
 
   const reservas = useMemo(
     () => puedeVerReservas ? estadoReservas.datos : [],
@@ -509,6 +524,11 @@ export default function StaffDashboard() {
                           </span>
                         ))}
                       </div>
+                      <EntregaPedido pedido={pedido} repartidores={repartidores} puedeAsignar={puedeAsignarRepartidor}
+                        onActualizado={(actualizado) => setEstadoPedidos((estado) => ({
+                          ...estado,
+                          datos: estado.datos.map((item) => item.id === actualizado.id ? actualizado : item),
+                        }))} />
                       {pedido.transiciones?.length > 0 && (
                         <div className="staff-dashboard__order-actions">
                           {pedido.transiciones.map((transicion) => (

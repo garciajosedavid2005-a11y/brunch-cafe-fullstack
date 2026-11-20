@@ -8,9 +8,11 @@ import { instanteLocal } from '../compartido/fechas.js'
 import { notFound } from '../compartido/errors.js'
 import { codigoPedido } from './pedidoComoCuenta.js'
 import { esEstadoFinal } from '../compartido/estados.js'
+import { soloDomiciliosAsignados } from '../identidad/permisos.js'
 import { cambiarEstado, codigoDestino, estadosDelTipo, opcionesDeCambio } from '../compartido/estados.service.js'
 import { efectosInventarioPedido } from './inventarioPedido.js'
 import { avisarCambiosDisponibilidad } from '../inventario/consumo.service.js'
+import { alcancePedidos, asignarRepartidor as asignar, listarRepartidores as repartidores, nombresRepartidores } from './repartidor.service.js'
 
 const POBLAR = [
     ['usuario', 'nombre apellido correo telefono'],
@@ -18,13 +20,14 @@ const POBLAR = [
     ['metodoPago', 'nombre'],
 ]
 
-const formato = (pedido, detalles, { permisos, estados }) => {
+const formato = (pedido, detalles, { permisos, estados, repartidores }) => {
     const codigo = pedido.estado?.codigo || ''
     return {
         id: pedido._id,
         codigo: codigoPedido(pedido._id),
         cliente: pedido.nombreEntrega || [pedido.usuario?.nombre, pedido.usuario?.apellido].filter(Boolean).join(' ') || 'Cliente',
-        correo: pedido.usuario?.correo || '',
+        // 6.2 · El repartidor no necesita el correo para entregar (le basta el teléfono)
+        correo: soloDomiciliosAsignados(permisos) ? '' : pedido.usuario?.correo || '',
         // El del pedido; los anteriores a 0.8 no lo tienen y se muestra el del perfil
         telefono: pedido.telefono || pedido.usuario?.telefono || '',
         direccion: pedido.direccion || '',
@@ -40,6 +43,8 @@ const formato = (pedido, detalles, { permisos, estados }) => {
         transiciones: opcionesDeCambio('pedido', codigo, { permisos, contexto: pedido }, estados),
         total: pedido.total,
         metodoPago: pedido.metodoPago?.nombre || '',
+        // 6.2 · Repartidor asignado (null: sin asignar)
+        repartidor: pedido.repartidor ? { id: String(pedido.repartidor), nombre: repartidores.get(String(pedido.repartidor)) || '' } : null,
         notas: pedido.indicaciones || '',
         // 1.12 · precio = unitario con recargos; las líneas anteriores no tienen opciones ni nota
         items: detalles.map((detalle) => ({
@@ -55,14 +60,14 @@ const formato = (pedido, detalles, { permisos, estados }) => {
 }
 
 const serializar = async (pedidos, permisos) => {
-    const estados = await estadosDelTipo('pedido')
+    const [estados, repartidores] = await Promise.all([estadosDelTipo('pedido'), nombresRepartidores(pedidos)])
     const detalles = await DetallePedido.find({ pedido: { $in: pedidos.map(({ _id }) => _id) } }).lean()
     const porPedido = new Map()
     for (const detalle of detalles) {
         const key = String(detalle.pedido)
         porPedido.set(key, [...(porPedido.get(key) || []), detalle])
     }
-    return pedidos.map((pedido) => formato(pedido, porPedido.get(String(pedido._id)) || [], { permisos, estados }))
+    return pedidos.map((pedido) => formato(pedido, porPedido.get(String(pedido._id)) || [], { permisos, estados, repartidores }))
 }
 
 const poblar = (consulta) => POBLAR.reduce((q, [ruta, campos]) => q.populate(ruta, campos), consulta)
@@ -78,7 +83,8 @@ const diaSiguiente = (fecha) => {
 // Sin parámetros: todos, más recientes primero (como antes). X-Total-Count = total sin límite.
 export const listarPedidos = async (req, res) => {
     const { estado, fecha, limite } = filtrosPedidosSchema.parse(req.query)
-    const filtro = {}
+    // 6.2 · El repartidor solo ve sus domicilios asignados
+    const filtro = { ...alcancePedidos(req.usuario) }
     if (estado) {
         const estados = await Estado.find({ tipo: 'pedido', codigo: { $in: estado } }).select('_id').lean()
         filtro.estado = { $in: estados.map(({ _id }) => _id) }
@@ -94,16 +100,17 @@ export const listarPedidos = async (req, res) => {
     res.json(await serializar(pedidos, req.usuario.permisos))
 }
 
-const buscarPedido = async (id) => {
+// 6.2 · Uno que no es suyo no existe para el repartidor (404, no 403: no revela que existe)
+const buscarPedido = async (id, sesion) => {
     if (!mongoose.isValidObjectId(id)) throw notFound('Pedido no encontrado')
-    const pedido = await Pedido.findById(id).populate('estado', 'codigo')
+    const pedido = await Pedido.findOne({ _id: id, ...alcancePedidos(sesion) }).populate('estado', 'codigo')
     if (!pedido) throw notFound('Pedido no encontrado')
     return pedido
 }
 
 // GET /api/v1/staff/pedidos/:id: el pedido y su historial de cambios (Evento) (0.13)
 export const verPedido = async (req, res) => {
-    const pedido = await buscarPedido(req.params.id)
+    const pedido = await buscarPedido(req.params.id, req.usuario)
     const [[respuesta], eventos] = await Promise.all([
         serializar([await poblar(Pedido.findById(pedido._id)).lean()], req.usuario.permisos),
         Evento.find({ entidad: 'pedido', entidadId: pedido._id })
@@ -128,11 +135,12 @@ export const verPedido = async (req, res) => {
 // la máquina de estados decide desde qué estados se puede (pendiente, confirmado y, desde 5.8.5, en preparación o
 // listo: lo preparado queda como merma automática)
 export const cancelarPedido = async (req, res) => {
-    const pedido = await buscarPedido(req.params.id)
+    const pedido = await buscarPedido(req.params.id, req.usuario)
     const inventario = efectosInventarioPedido(req.usuario) // 5.3 · devuelve lo que descontó la confirmación
     const actualizado = await cambiarEstado({
         tipo: 'pedido', Modelo: Pedido, documento: pedido, a: 'cancelado',
         sesion: req.usuario, motivo: req.validado.motivo, contexto: pedido, efectos: inventario.efectos,
+        filtro: alcancePedidos(req.usuario), // 6.2 · si lo reasignaron entretanto, choca (409)
     })
     avisarCambiosDisponibilidad(inventario.cambios())
     const [respuesta] = await serializar([await poblar(Pedido.findById(actualizado._id)).lean()], req.usuario.permisos)
@@ -142,7 +150,7 @@ export const cancelarPedido = async (req, res) => {
 // PATCH /api/pedidos/:id/estado  { codigo | estado, motivo? }
 // Cada transición exige su permiso (ver src/modulos/compartido/estados.js); cancelar pide motivo.
 export const cambiarEstadoPedido = async (req, res) => {
-    const pedido = await buscarPedido(req.params.id)
+    const pedido = await buscarPedido(req.params.id, req.usuario)
 
     const a = await codigoDestino('pedido', req.validado)
     const inventario = efectosInventarioPedido(req.usuario) // 5.3 · descuenta al confirmar, devuelve al cancelar
@@ -155,8 +163,21 @@ export const cambiarEstadoPedido = async (req, res) => {
         motivo: req.validado.motivo,
         contexto: pedido,
         efectos: inventario.efectos,
+        filtro: alcancePedidos(req.usuario), // 6.2 · si lo reasignaron entretanto, choca (409)
     })
     avisarCambiosDisponibilidad(inventario.cambios())
     const [respuesta] = await serializar([await poblar(Pedido.findById(actualizado._id)).lean()], req.usuario.permisos)
     res.json(respuesta)
+}
+
+// PATCH /api/v1/staff/pedidos/:id/repartidor { repartidorId | null } (6.2): pedido:asignar_repartidor
+export const asignarRepartidor = async (req, res) => {
+    const id = await asignar(req.params.id, req.validado, req.usuario)
+    const [respuesta] = await serializar([await poblar(Pedido.findById(id)).lean()], req.usuario.permisos)
+    res.json(respuesta)
+}
+
+// GET /api/v1/staff/pedidos/repartidores (6.2): quién puede llevar domicilios, para elegirlo
+export const listarRepartidores = async (req, res) => {
+    res.json({ repartidores: await repartidores(req.usuario) })
 }
